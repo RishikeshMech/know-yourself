@@ -1,0 +1,17 @@
+# Kong Gateway — self-hosted, no SaaS
+_format_version: "3.0"
+services:
+  - name: auth-service
+    url: http://auth-service:4001
+    routes: [{ paths: ["/api/v1/auth"] }]
+    plugins: [{ name: rate-limiting, config: { minute: 600 } }]
+  - name: assessment-service
+    url: http://assessment-service:4002
+    routes: [{ paths: ["/api/v1/assessment"] }]
+    plugins:
+      - { name: jwt, config: { key_claim_name: kid } }
+      - { name: rate-limiting, config: { minute: 1000 } }
+  - name: evaluation-worker
+    url: http://evaluation-worker:4003
+  - name: report-service
+    url: http://report-service:4004
