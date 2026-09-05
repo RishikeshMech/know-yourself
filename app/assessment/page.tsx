@@ -59,24 +59,52 @@ function AssessmentInner() {
   const sid = session?.id
 
   useEffect(() => {
-    const raw = localStorage.getItem('calibiai_session')
-    if (!raw) { window.location.href = '/instructions'; return }
-    const s = JSON.parse(raw)
-    if (!session) setSession(s)
-    try {
-      const a = localStorage.getItem('calibiai_answers_' + s.id); if (a) setAnswers(JSON.parse(a))
-      const ai = localStorage.getItem('calibiai_ai_' + s.id); if (ai) setAiResults(JSON.parse(ai))
-    } catch { }
-    const expires = new Date(s.expires_at).getTime()
-    const tick = () => {
-      const rem = Math.max(0, Math.floor((expires - Date.now()) / 1000))
-      setRemaining(rem)
-      if (rem <= 0) handleSubmit(true)
+    // Read session from localStorage. A short retry covers the rare case where
+    // another effect hasn't finished writing yet right after navigation from
+    // /instructions (START 120-MIN TIMER).
+    let cancelled = false
+    let intervalId: any = null
+    let pollId: any = null
+    let attempts = 0
+
+    const boot = (raw: string) => {
+      if (cancelled) return
+      let s: any
+      try { s = JSON.parse(raw) } catch { window.location.href = '/instructions'; return }
+      if (!s?.id || !s?.expires_at) { window.location.href = '/instructions'; return }
+      if (!session) setSession(s)
+      try {
+        const a = localStorage.getItem('calibiai_answers_' + s.id); if (a) setAnswers(JSON.parse(a))
+        const ai = localStorage.getItem('calibiai_ai_' + s.id); if (ai) setAiResults(JSON.parse(ai))
+      } catch { }
+      const expires = new Date(s.expires_at).getTime()
+      const tick = () => {
+        const rem = Math.max(0, Math.floor((expires - Date.now()) / 1000))
+        setRemaining(rem)
+        if (rem <= 0) handleSubmit(true)
+      }
+      tick()
+      intervalId = setInterval(tick, 1000)
+      pollId = setInterval(tick, 5000)
+      intervalRef.current = intervalId
     }
-    tick()
-    intervalRef.current = setInterval(tick, 1000)
-    const poll = setInterval(tick, 5000)
-    return () => { clearInterval(intervalRef.current); clearInterval(poll) }
+
+    const tryLoad = () => {
+      if (cancelled) return
+      const raw = localStorage.getItem('calibiai_session')
+      if (raw) { boot(raw); return }
+      attempts += 1
+      if (attempts >= 8) { window.location.href = '/instructions'; return }
+      setTimeout(tryLoad, 50)
+    }
+    tryLoad()
+
+    return () => {
+      cancelled = true
+      clearInterval(intervalId)
+      clearInterval(pollId)
+      clearInterval(intervalRef.current)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

@@ -22,6 +22,11 @@ export function StoreProvider({children}:{children:React.ReactNode}){
   const [tracking,setTracking] = useState({whatsapp:false, linkedin:false})
   const [session,setSession] = useState<any>(null)
   const [scores,setScores] = useState<any>(null)
+  // Gate persistence until localStorage has been read once. Without this, the
+  // session effect sees the initial `null` on mount and wipes `calibiai_session`
+  // before hydration finishes — which made /assessment bounce straight back to
+  // /instructions after clicking "START 120-MIN TIMER →".
+  const [hydrated,setHydrated] = useState(false)
 
   useEffect(()=>{
     try{
@@ -33,6 +38,7 @@ export function StoreProvider({children}:{children:React.ReactNode}){
       const s = localStorage.getItem('calibiai_session'); if(s) setSession(JSON.parse(s))
       const sc = localStorage.getItem('calibiai_scores'); if(sc) setScores(JSON.parse(sc))
     }catch{}
+    setHydrated(true)
   },[])
 
   const setUser = (u:User|null)=>{
@@ -61,11 +67,14 @@ export function StoreProvider({children}:{children:React.ReactNode}){
     setScores(s)
     if(s) localStorage.setItem('calibiai_scores', JSON.stringify(s))
   }
-  useEffect(()=>{ if(profile) localStorage.setItem('calibiai_profile', JSON.stringify(profile)) },[profile])
-  useEffect(()=>{ if(resume) localStorage.setItem('calibiai_resume', JSON.stringify(resume)) },[resume])
-  useEffect(()=>{ localStorage.setItem('calibiai_tracking', JSON.stringify(tracking)) },[tracking])
-  useEffect(()=>{ if(session) localStorage.setItem('calibiai_session', JSON.stringify(session)); else localStorage.removeItem('calibiai_session') },[session])
-  useEffect(()=>{ if(scores) localStorage.setItem('calibiai_scores', JSON.stringify(scores)) },[scores])
+  useEffect(()=>{ if(!hydrated) return; if(profile) localStorage.setItem('calibiai_profile', JSON.stringify(profile)) },[profile, hydrated])
+  useEffect(()=>{ if(!hydrated) return; if(resume) localStorage.setItem('calibiai_resume', JSON.stringify(resume)) },[resume, hydrated])
+  useEffect(()=>{ if(!hydrated) return; localStorage.setItem('calibiai_tracking', JSON.stringify(tracking)) },[tracking, hydrated])
+  // Only write when we have a session. NEVER remove on null here — initial
+  // mount is null before hydration, and removing would drop a just-started
+  // assessment session. Explicit clears go through setSessionSafe(null)/logout.
+  useEffect(()=>{ if(!hydrated) return; if(session) localStorage.setItem('calibiai_session', JSON.stringify(session)) },[session, hydrated])
+  useEffect(()=>{ if(!hydrated) return; if(scores) localStorage.setItem('calibiai_scores', JSON.stringify(scores)) },[scores, hydrated])
 
   const logout = ()=>{
     localStorage.clear()

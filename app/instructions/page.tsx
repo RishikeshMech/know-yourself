@@ -35,25 +35,36 @@ function Inner(){
     const seed = Math.floor(Math.random()*1_000_000_000)
     let session:any = null
     try{
+      // Don't let a slow/hung auth call block starting the assessment.
       const sb = getSupabase()
       if(sb){
-        const { data:{ user } } = await sb.auth.getUser()
+        const authRace = Promise.race([
+          sb.auth.getUser().then((r: any) => r?.data?.user ?? null).catch(() => null),
+          new Promise<null>(resolve => setTimeout(() => resolve(null), 2500)),
+        ])
+        const user: any = await authRace
         if(user){
-          const { data, error } = await sb.from('assessment_sessions')
-            .insert({ student_id: user.id, question_seed: seed }).select().single()
-          if(!error && data){
-            session = { id: data.id, started_at: data.started_at, expires_at: data.expires_at, duration_sec: data.duration_sec, status: data.status, question_seed: data.question_seed }
-          }
+          try{
+            const { data, error } = await sb.from('assessment_sessions')
+              .insert({ student_id: user.id, question_seed: seed }).select().single()
+            if(!error && data){
+              session = { id: data.id, started_at: data.started_at, expires_at: data.expires_at, duration_sec: data.duration_sec, status: data.status, question_seed: data.question_seed }
+            }
+          }catch{ /* fall through to local session */ }
         }
       }
     }catch(e){ /* any backend problem — fall back to a local session */ }
     if(!session){
       session = { id: 'sess_'+Math.random().toString(16).slice(2,10), started_at: new Date(now).toISOString(), expires_at: new Date(now+7200*1000).toISOString(), duration_sec: 7200, status:'in_progress', question_seed: seed }
     }
+    // Write localStorage FIRST so /assessment can pick the session up even if
+    // React state is wiped by a full page navigation in the same tick.
+    try{
+      localStorage.setItem('calibiai_session', JSON.stringify(session))
+      localStorage.setItem('calibiai_session_server_start', String(now))
+    }catch{ /* private mode / quota — still try to navigate */ }
     setSession(session)
-    localStorage.setItem('calibiai_session', JSON.stringify(session))
-    localStorage.setItem('calibiai_session_server_start', String(now))
-    window.location.href='/assessment'
+    window.location.assign('/assessment')
   }
 
   return (
