@@ -34,9 +34,9 @@ function Inner(){
     const now = Date.now()
     const seed = Math.floor(Math.random()*1_000_000_000)
     let session:any = null
-    const sb = getSupabase()
-    if(sb){
-      try{
+    try{
+      const sb = getSupabase()
+      if(sb){
         const { data:{ user } } = await sb.auth.getUser()
         if(user){
           const { data, error } = await sb.from('assessment_sessions')
@@ -45,8 +45,8 @@ function Inner(){
             session = { id: data.id, started_at: data.started_at, expires_at: data.expires_at, duration_sec: data.duration_sec, status: data.status, question_seed: data.question_seed }
           }
         }
-      }catch(e){ /* fall back to local */ }
-    }
+      }
+    }catch(e){ /* any backend problem — fall back to a local session */ }
     if(!session){
       session = { id: 'sess_'+Math.random().toString(16).slice(2,10), started_at: new Date(now).toISOString(), expires_at: new Date(now+7200*1000).toISOString(), duration_sec: 7200, status:'in_progress', question_seed: seed }
     }
