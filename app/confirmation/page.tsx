@@ -5,28 +5,41 @@ import { Stepper } from '@/components/Stepper'
 
 function Inner(){
   const {profile, resume, tracking} = useStore()
-  const ready = profile && resume && tracking.whatsapp && tracking.linkedin
+  const items = [
+    {label:'Your profile', done: !!profile, detail: profile?.full_name || 'Not filled'},
+    {label:'Resume analysis', done: !!resume, detail: resume ? `${resume.resume_score}/100` : 'Not uploaded'},
+    {label:'WhatsApp community', done: tracking.whatsapp, detail: tracking.whatsapp ? 'Joined' : 'Skipped'},
+    {label:'LinkedIn', done: tracking.linkedin, detail: tracking.linkedin ? 'Followed' : 'Skipped'},
+  ]
+  const ready = !!profile && !!resume
   return (
     <div>
       <Navbar />
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6">
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
         <Stepper step={6} />
-        <div className="mt-6 rounded-[24px] glass p-6 sm:p-8">
-          <h1 className="text-xl font-black">Confirmation</h1>
-          <p className="text-sm text-white/60">Review before assessment. All actions audit-logged.</p>
-          <div className="mt-6 space-y-3 text-sm">
-            <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10"><span>Profile</span><span className={profile?'text-emerald-400':'text-amber-300'}>{profile?'✓ Complete':'✗ Missing'}</span></div>
-            <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10"><span>Resume Analysis</span><span className={resume?'text-emerald-400':'text-amber-300'}>{resume?`✓ ${resume.resume_score}/100`:'✗ Upload required'}</span></div>
-            <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10"><span>Join WhatsApp</span><span className={tracking.whatsapp?'text-emerald-400':'text-amber-300'}>{tracking.whatsapp?'✓ Tracked':'✗ Pending'}</span></div>
-            <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10"><span>Follow LinkedIn</span><span className={tracking.linkedin?'text-emerald-400':'text-amber-300'}>{tracking.linkedin?'✓ Tracked':'✗ Pending'}</span></div>
+        <div className="mt-6 glass-card animate-fade-up">
+          <h1 className="text-2xl font-black text-slate-900">You're all set</h1>
+          <p className="text-sm text-slate-500 mt-1">A quick check before you begin the assessment.</p>
+
+          <div className="mt-6 space-y-2.5">
+            {items.map(it=>(
+              <div key={it.label} className={`flex items-center justify-between p-4 rounded-2xl border ${it.done ? 'bg-emerald-50/70 border-emerald-200' : 'bg-slate-50/70 border-slate-200'}`}>
+                <span className="text-sm font-semibold text-slate-700">{it.label}</span>
+                <span className={`text-sm font-bold flex items-center gap-1.5 ${it.done ? 'text-emerald-600' : 'text-slate-400'}`}>
+                  {it.done ? <><span className="w-5 h-5 rounded-full bg-emerald-500 text-white text-xs flex items-center justify-center">✓</span> {it.detail}</> : <>○ {it.detail}</>}
+                </span>
+              </div>
+            ))}
           </div>
-          <label className="mt-6 flex gap-2 text-xs text-white/70"><input type="checkbox" defaultChecked /> I confirm details are accurate and agree to 120-min assessment terms (tab-switch monitored, timer server-controlled).</label>
-          <div className="mt-6 flex gap-3">
-            <button onClick={()=>window.location.href='/instructions'} className={`px-6 py-3 rounded-full font-bold text-sm ${ready?'calibiai-gradient text-white':'bg-white/10 text-white/40 cursor-not-allowed'}`} disabled={!ready}>Proceed to Instructions →</button>
-            {!ready && <span className="text-xs text-amber-300 self-center">Complete all steps to continue</span>}
-          </div>
-          <div className="mt-2 text-xs text-white/30">You can still proceed — demo allows, but prod enforces all tracking completed.</div>
-          <button onClick={()=>window.location.href='/instructions'} className="mt-2 text-xs text-sky-400">Continue anyway →</button>
+
+          <label className="mt-6 flex gap-2 text-xs text-slate-500">
+            <input type="checkbox" defaultChecked className="accent-indigo-600 mt-0.5" />
+            I confirm my details are accurate and agree to the 120-minute assessment (focus is monitored to keep results fair).
+          </label>
+
+          <button onClick={()=>window.location.href='/instructions'} className="btn-primary mt-6 w-full sm:w-auto">
+            Continue to instructions →
+          </button>
         </div>
       </main>
     </div>

@@ -1,125 +1,162 @@
-// Calibiai Scoring Engine — mirrors docs/SCORING.md, used client & server
-import { englishListening, englishReading, problemSolving, cognitiveLogical } from './mockData'
+// Calibiai scoring engine — pure function over answers + AI results.
+// MCQ answers are stored as the chosen option TEXT (order-independent because
+// options are shuffled per session). Behavioral answers store the option's
+// own trait score (0-100). Subjective sections use DeepSeek results when
+// present (aiResults), else a deterministic heuristic.
+import { bank } from './questions'
 
 export type Answers = Record<string, any>
+export type AiResults = Record<string, { score: number; rubric?: Record<string, number>; summary?: string; strengths?: string[]; improvements?: string[]; engine?: string }>
 
-export function computeScores(answers: Answers, meta: { gridAcc?: number, speakingSubmitted?:boolean, writingText?:string, prompts?:string[], speakingAudioCount?:number } = {}){
-  // English
-  let listening = 0
-  englishListening.forEach(q=>{
-    if(answers[q.id] === q.answer) listening += 10
-  }) // max 50
-  // Speaking: mock rubric based on submission
-  let speaking = 0
-  if(meta.speakingSubmitted) {
-    // if 2 recordings -> give 45, if 1 -> 38, else 0 ; add mock variation by prompt quality?
-    const count = meta.speakingAudioCount ?? 0
-    if(count>=2) speaking = 45
-    else if(count===1) speaking = 32
-    else speaking = 28
-  }
-  let reading = 0
-  englishReading.forEach(q=>{ if(answers[q.id]===q.answer) reading+=10 }) // 50
+function clamp(n: number, lo = 0, hi = 100) {
+  return Math.max(lo, Math.min(hi, Math.round(n)))
+}
+function clamp01(n: number) {
+  return Math.max(0, Math.min(1, n))
+}
+function round(n: number) {
+  return Math.round(n)
+}
+
+export function computeScores(answers: Answers, ai: AiResults = {}, meta: { gridAcc?: number; speakingCount?: number } = {}) {
+  // ---------------- English: Listening (max 50) ----------------
+  const listenQs = bank.english.listening.clips.flatMap((c: any) => c.questions)
+  const listenCorrect = listenQs.filter((q: any) => answers[q.id] === q.answer).length
+  const listening = round((listenCorrect / listenQs.length) * 50)
+
+  // ---------------- English: Speaking (max 50) ----------------
+  const speakingCount =
+    meta.speakingCount ??
+    (answers['SP1_audio'] ? 1 : 0) + (answers['SP2_audio'] ? 1 : 0)
+  const speakingAi = ai['SP_speaking']
+  const speaking = speakingAi ? round((speakingAi.score / 100) * 50) : (speakingCount >= 2 ? 42 : speakingCount === 1 ? 32 : 0)
+
+  // ---------------- English: Reading (max 50) ----------------
+  const readQs = bank.english.reading.questions
+  const readCorrect = readQs.filter((q: any) => answers[q.id] === q.answer).length
+  const reading = round((readCorrect / readQs.length) * 50)
+
+  // ---------------- English: Writing (max 50) ----------------
+  const writingText: string = answers['WRITING'] || ''
+  const writingAi = ai['WRITING']
   let writing = 0
-  const w = (meta.writingText||'').trim()
-  if(w.length>0){
-    const words = w.split(/\s+/).length
-    const hasStructure = w.includes('\n') || w.length>200
-    const grammarMock = Math.min(25, Math.floor(words/12)+10)
-    const clarity = words>=150 && words<=300 ? 22 : words>=80 ? 18 : 12
-    const structure = hasStructure ? 20 : 14
-    const tone = w.toLowerCase().includes('please') || w.toLowerCase().includes('thank') ? 20 : 16
-    writing = Math.min(50, Math.round((clarity+grammarMock+structure+tone)/2))
+  if (writingAi) writing = round((writingAi.score / 100) * 50)
+  else if (writingText.trim()) {
+    const words = writingText.trim().split(/\s+/).length
+    const lengthScore = words >= 150 && words <= 300 ? 85 : words >= 90 ? 68 : words > 0 ? 48 : 20
+    writing = round((lengthScore / 100) * 50)
   }
 
-  const english_total = listening + speaking + reading + writing // 200
+  const english_total = listening + speaking + reading + writing // /200
 
-  // Problem solving
-  let psCorrect = 0
-  problemSolving.forEach(q=>{ if(answers[q.id]===q.answer) psCorrect++ })
-  const problem_solving = Math.round((psCorrect / problemSolving.length)*200)
+  // ---------------- Problem Solving (max 200) ----------------
+  const psQs = bank.problem
+  const psCorrect = psQs.filter((q: any) => answers[q.id] === q.answer).length
+  const problem_solving = round((psCorrect / psQs.length) * 200)
 
-  // AI Debugging — 2 tasks each 75 pts
-  let ad = 0
-  // Check if fixes submitted
-  if(answers['AD1_fix'] && String(answers['AD1_fix']).length>30) ad += 68 // mock test pass + quality
-  else if(answers['AD1_fix']) ad += 40
-  if(answers['AD2_fix'] && String(answers['AD2_fix']).length>30) ad += 64
-  else if(answers['AD2_fix']) ad+=35
-  const ai_debugging = Math.min(150, ad)
-
-  // AI Feature
-  let af = 0
-  if(answers['AF1_code'] && String(answers['AF1_code']).includes('Map') && String(answers['AF1_code']).length>80) af = 132
-  else if(answers['AF1_code'] && String(answers['AF1_code']).length>30) af = 88
-  else if(answers['AF1_code']) af = 50
-  const ai_feature = Math.min(150, af)
-
-  // Prompt Eng — avg of 3
-  let peTotal = 0
-  ;['PE1','PE2','PE3'].forEach(id=>{
-    const t = answers[id]||''
-    const len = String(t).length
+  // ---------------- AI Debugging (max 150, 3 tasks) ----------------
+  let debuggingPts = 0
+  const debugPer: Record<string, number> = {}
+  bank.debugging.forEach((d: any, idx: number) => {
+    const fix = answers[d.id + '_fix'] || ''
+    const r = ai[d.id]
     let s = 0
-    if(len>40) s+=20
-    if(len>100) s+=15
-    if(String(t).toLowerCase().includes('role') || String(t).toLowerCase().includes('act as')) s+=10
-    if(String(t).toLowerCase().includes('constraint') || String(t).toLowerCase().includes('limit')) s+=10
-    if(len>80) s+=10
-    peTotal += Math.min(100, s*0.33 + 55) // mock ensures mid range
+    if (r) s = r.score
+    else s = fix.trim().length > 60 ? 72 : fix.trim().length > 20 ? 48 : fix.trim() ? 30 : 0
+    debugPer[d.id] = s
+    debuggingPts += (s / 100) * 50 // 3 tasks * 50 = 150
   })
-  const prompt_engineering = Math.round(Math.min(100, peTotal/3))
+  const ai_debugging = round(debuggingPts)
 
-  // Cognitive
-  let grid = 0
-  if(typeof meta.gridAcc === 'number'){
-    const acc = meta.gridAcc
-    const speedBonus = 0.85 // mock
-    grid = Math.round((0.7*acc + 0.3*speedBonus)*30)
-  } else {
-    // fallback from answers if grid manually?
-    grid = answers['GRID'] ? Math.round(answers['GRID']*30) : 22
-  }
-  let logicalCorrect = 0
-  cognitiveLogical.forEach(q=>{ if(answers[q.id]===q.answer) logicalCorrect++ })
-  const logical = Math.round((logicalCorrect / cognitiveLogical.length)*70)
-  const cognitive_score = Math.min(100, grid + logical)
+  // ---------------- AI Feature Development (max 150) ----------------
+  const featureCode = answers['AF1_code'] || ''
+  const fAi = ai['AF1']
+  let featureScore100 = 0
+  if (fAi) featureScore100 = fAi.score
+  else featureScore100 = featureCode.trim().length > 120 ? 70 : featureCode.trim().length > 40 ? 45 : featureCode.trim() ? 25 : 0
+  const ai_feature = round((featureScore100 / 100) * 150)
 
-  // Behavioral — avg
-  const behavTraits = ['logical_thinking','problem_solving','adaptability','teamwork','accountability','learning_mindset','responsible_ai']
+  // ---------------- Prompt Engineering (max 100, 3 tasks) ----------------
+  let promptPts = 0
+  const promptPer: Record<string, number> = {}
+  bank.prompt.forEach((t: any) => {
+    const val = answers[t.id] || ''
+    const r = ai[t.id]
+    let s = 0
+    if (r) s = r.score
+    else {
+      const v = String(val).toLowerCase()
+      const len = String(val).length
+      let h = 30
+      if (len > 60) h += 20
+      if (/act as|you are|role/.test(v)) h += 14
+      if (/constraint|must|only|without|limit/.test(v)) h += 14
+      if (/json|format|bullet|exactly|return/.test(v)) h += 14
+      if (/context|audience|given|scenario/.test(v)) h += 8
+      s = val ? clamp(h) : 0
+    }
+    promptPer[t.id] = s
+    promptPts += s
+  })
+  const prompt_engineering = round(promptPts / bank.prompt.length)
+
+  // ---------------- Cognitive: Grid (max 30) ----------------
+  const attempted = answers['GRID'] !== undefined || typeof meta.gridAcc === 'number'
+  const gridAcc = clamp01(typeof meta.gridAcc === 'number' ? meta.gridAcc : (answers['GRID'] || 0))
+  // Only award the speed/accuracy composite when the challenge was actually
+  // attempted; a never-played grid must score 0 (no free speed points).
+  const grid = attempted ? Math.round((0.7 * gridAcc + 0.3 * 0.85) * 30) : 0
+
+  // ---------------- Cognitive: Logical (max 70) ----------------
+  const clQs = bank.cognitive.logical
+  const clCorrect = clQs.filter((q: any) => answers[q.id] === q.answer).length
+  const logical = round((clCorrect / clQs.length) * 70)
+
+  // ---------------- Behavioral (max 100) ----------------
+  const behaviors = bank.cognitive.behavioral
   const traitScores: Record<string, number> = {}
-  // Map answers to traits mock: if answered optimally give high
-  const optimal: Record<string,string> = { BE1:'B', BE2:'B', BE3:'B', BE4:'B', BE5:'B', BE6:'B' }
-  let bSum = 0
-  behavTraits.forEach((trait,idx)=>{
-    const qid = `BE${idx+1}`
-    const ans = answers[qid]
-    const isOpt = ans===optimal[qid]
-    const s = isOpt ? 85 + Math.floor(Math.random()*10) : ans ? 68 + Math.floor(Math.random()*12) : 70
-    traitScores[trait] = Math.min(100,s)
-    bSum+=traitScores[trait]
+  const traitLabels: Record<string, string> = {
+    teamwork: 'Teamwork', accountability: 'Accountability', adaptability: 'Adaptability',
+    responsible_ai: 'Responsible AI', decision_making: 'Decision Making', learning_mindset: 'Learning Mindset',
+  }
+  let bSum = 0, bCount = 0
+  behaviors.forEach((b: any) => {
+    const val = answers[b.id]
+    const s = typeof val === 'number' ? clamp(val) : 40 // unanswered -> neutral-low
+    traitScores[b.trait] = s
+    bSum += s
+    bCount++
   })
-  // Override with some deterministic for demo
-  traitScores['logical_thinking'] = 82 + (psCorrect>7?3:0)
-  traitScores['adaptability'] = 88
-  traitScores['accountability'] = 91
-  traitScores['teamwork'] = 76
-  const behavioral_total = Math.round(bSum / behavTraits.length)
-  const cognitive_total = cognitive_score + behavioral_total // 200
+  const behavioral_total = bCount ? round(bSum / bCount) : 0
+  const cognitive_score = grid + logical // /100
+  const cognitive_total = cognitive_score + behavioral_total // /200
 
+  // ---------------- Total ----------------
   const total = english_total + problem_solving + ai_debugging + ai_feature + prompt_engineering + cognitive_total
-
-  const grade = total>=900 ? 'S' : total>=750 ? 'A' : total>=600 ? 'B' : total>=400 ? 'C' : 'D'
-  const percentile = Math.min(99.9, 45 + (total/1000)*52 + (Math.random()*3)) // mock 45-99
+  const grade = total >= 900 ? 'S' : total >= 750 ? 'A' : total >= 600 ? 'B' : total >= 400 ? 'C' : 'D'
+  const percentile = clamp(35 + (total / 1000) * 60 + (total > 750 ? 4 : 0), 1, 99.9)
 
   return {
-    english: { listening, speaking, reading, writing, total: english_total, max:200 },
+    english: { listening, speaking, reading, writing, total: english_total, max: 200 },
     problem_solving,
     ai_debugging,
     ai_feature,
     prompt_engineering,
-    cognitive: { grid, logical, cognitive_score, behavioral_total, total: cognitive_total, behavioral: traitScores },
+    cognitive: {
+      grid, logical, cognitive_score, behavioral_total,
+      total: cognitive_total, max: 200,
+      behavioral: traitScores, traitLabels,
+    },
+    detail: {
+      listeningCorrect: listenCorrect, listeningTotal: listenQs.length,
+      readingCorrect: readCorrect, readingTotal: readQs.length,
+      problemCorrect: psCorrect, problemTotal: psQs.length,
+      logicalCorrect: clCorrect, logicalTotal: clQs.length,
+      debugPer, promptPer, featureScore100,
+      speakingCount,
+    },
     total, grade, percentile: Number(percentile.toFixed(1)),
-    verifiable_hash: `sha256:${total.toString(16)}-${Math.random().toString(16).slice(2,10)}`
+    ai_results: ai,
+    verifiable_hash: `sha256:${(total * 2654435761 % 100000000).toString(16)}-${Date.now().toString(16).slice(2, 10)}`,
   }
 }

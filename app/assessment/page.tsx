@@ -1,381 +1,550 @@
 'use client'
 export const dynamic = 'force-dynamic'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { StoreProvider, useStore } from '@/lib/store'
-import { englishListening, englishReading, englishReadingPassage, problemSolving, aiDebugging, aiFeature, promptTasks, cognitiveLogical, behavioralScenarios } from '@/lib/mockData'
+import { bank, shuffledOptions, shuffledChoiceOptions, mulberry32 } from '@/lib/questions'
 import { computeScores } from '@/lib/scoring'
+import { getSupabase } from '@/lib/supabase'
 
-const MODULES = [
-  { id:'english_listening', label:'English: Listening', max:50 },
-  { id:'english_speaking', label:'English: Speaking', max:50 },
-  { id:'english_reading', label:'English: Reading', max:50 },
-  { id:'english_writing', label:'English: Writing', max:50 },
-  { id:'problem', label:'Problem Solving', max:200 },
-  { id:'debugging', label:'AI Debugging', max:150 },
-  { id:'feature', label:'AI Feature Dev', max:150 },
-  { id:'prompt', label:'Prompt Eng', max:100 },
-  { id:'cognitive_grid', label:'Cognitive: Grid', max:30 },
-  { id:'cognitive_logical', label:'Cognitive: Logical', max:70 },
-  { id:'behavioral', label:'Cognitive: Behavioral', max:100 },
+const STAGES = [
+  { id: 'english', label: 'English Communication', sub: ['Listening', 'Speaking', 'Reading', 'Writing'], min: 15 },
+  { id: 'problem', label: 'Problem Solving', sub: [], min: 20 },
+  { id: 'debugging', label: 'AI-Assisted Debugging', sub: [], min: 20 },
+  { id: 'feature', label: 'AI Feature Development', sub: [], min: 25 },
+  { id: 'prompt', label: 'Prompt Engineering', sub: [], min: 15 },
+  { id: 'cognitive', label: 'Cognitive Assessment', sub: ['Grid Challenge', 'Logical Reasoning', 'Behavioural'], min: 25 },
 ]
 
-function AssessmentInner(){
-  const {session, setSession, setScores} = useStore()
-  const [answers,setAnswers] = useState<Record<string,any>>({})
-  const [modIdx,setModIdx]=useState(0)
-  const [qIdx,setQIdx]=useState(0)
-  const [remaining,setRemaining]=useState(7200)
-  const [tabSwitches,setTabSwitches]=useState(0)
-  const [recording,setRecording]=useState<string|null>(null)
-  const [gridRound,setGridRound]=useState(0)
-  const [gridPattern,setGridPattern]=useState<number[]>([])
-  const [gridShow,setGridShow]=useState(false)
-  const [gridSelected,setGridSelected]=useState<number[]>([])
-  const [gridScores,setGridScores]=useState<number[]>([])
-  const intervalRef = useRef<any>(null)
+const clamp01 = (n: number) => Math.max(0, Math.min(1, n))
 
-  // Load session + timer
-  useEffect(()=>{
+function AssessmentInner() {
+  const { session, setSession, setScores } = useStore()
+  const [answers, setAnswers] = useState<Record<string, any>>({})
+  const [aiResults, setAiResults] = useState<Record<string, any>>({})
+  const [stage, setStage] = useState(0)
+  const [sub, setSub] = useState(0)
+  const [remaining, setRemaining] = useState(7200)
+  const [strikes, setStrikes] = useState(0)
+  const [showViolation, setShowViolation] = useState(false)
+  const [terminated, setTerminated] = useState(false)
+  const [mediaReady, setMediaReady] = useState(false)
+  const [mediaError, setMediaError] = useState('')
+  const [videoOn, setVideoOn] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
+  const [recording, setRecording] = useState<string | null>(null)
+  const [busy, setBusy] = useState<Record<string, boolean>>({})
+  const [playCounts, setPlayCounts] = useState<Record<string, number>>({})
+  const [showHint, setShowHint] = useState<Record<string, boolean>>({})
+
+  const gridCfg = bank.cognitive.grid
+  const [gridRound, setGridRound] = useState(0)
+  const [gridPattern, setGridPattern] = useState<number[]>([])
+  const [gridShow, setGridShow] = useState(false)
+  const [gridSelected, setGridSelected] = useState<number[]>([])
+  const [gridScores, setGridScores] = useState<number[]>([])
+  const gridHideAt = useRef(0)
+
+  const intervalRef = useRef<any>(null)
+  const mediaRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const proctorStreamRef = useRef<MediaStream | null>(null)
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const awayRef = useRef(false)
+  const suppressRef = useRef(false)
+  const strikesRef = useRef(0)
+  const submitRef = useRef<(auto?: boolean) => void>(() => {})
+  const mediaReadyRef = useRef(false)
+
+  const seed: number = session?.question_seed ?? 8675309
+  const sid = session?.id
+
+  useEffect(() => {
     const raw = localStorage.getItem('calibiai_session')
-    if(!raw) { window.location.href='/instructions'; return }
+    if (!raw) { window.location.href = '/instructions'; return }
     const s = JSON.parse(raw)
-    if(!session) setSession(s)
+    if (!session) setSession(s)
+    try {
+      const a = localStorage.getItem('calibiai_answers_' + s.id); if (a) setAnswers(JSON.parse(a))
+      const ai = localStorage.getItem('calibiai_ai_' + s.id); if (ai) setAiResults(JSON.parse(ai))
+    } catch { }
     const expires = new Date(s.expires_at).getTime()
-    const tick = ()=>{
-      const now = Date.now()
-      const rem = Math.max(0, Math.floor((expires - now)/1000))
+    const tick = () => {
+      const rem = Math.max(0, Math.floor((expires - Date.now()) / 1000))
       setRemaining(rem)
-      if(rem<=0){
-        handleSubmit(true)
-      }
+      if (rem <= 0) handleSubmit(true)
     }
     tick()
     intervalRef.current = setInterval(tick, 1000)
-    // Also reconcile with "server" every 5s (simulate NTP)
-    const serverPoll = setInterval(tick, 5000)
-    return ()=>{ clearInterval(intervalRef.current); clearInterval(serverPoll) }
-  },[])
+    const poll = setInterval(tick, 5000)
+    return () => { clearInterval(intervalRef.current); clearInterval(poll) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  // Tab switch detection
-  useEffect(()=>{
-    const onHidden = ()=>{
-      if(document.hidden){
-        setTabSwitches(n=>n+1)
-        // POST /assessment/heartbeat {tab_hidden}
+  useEffect(() => { if (sid) localStorage.setItem('calibiai_answers_' + sid, JSON.stringify(answers)) }, [answers, sid])
+  useEffect(() => { if (sid) localStorage.setItem('calibiai_ai_' + sid, JSON.stringify(aiResults)) }, [aiResults, sid])
+
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3200) }
+
+  const enableMedia = async () => {
+    setMediaError('')
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      proctorStreamRef.current = stream
+      setMediaReady(true); mediaReadyRef.current = true; setVideoOn(true)
+    } catch (e: any) {
+      setMediaError(e?.name === 'NotAllowedError'
+        ? 'Camera/mic permission was denied. The live preview is off, but focus monitoring is still active.'
+        : 'No camera/mic detected on this device. Focus monitoring is still active.')
+      setMediaReady(true); mediaReadyRef.current = true
+    }
+  }
+
+  useEffect(() => {
+    if (videoRef.current && proctorStreamRef.current) {
+      videoRef.current.srcObject = proctorStreamRef.current
+      videoRef.current.play().catch(() => {})
+    }
+  }, [mediaReady, videoOn])
+
+  useEffect(() => {
+    const onLeave = () => {
+      if (!mediaReadyRef.current || suppressRef.current || terminated) return
+      if (document.hidden || !document.hasFocus()) {
+        if (awayRef.current) return
+        awayRef.current = true
+        const n = strikesRef.current + 1
+        strikesRef.current = n
+        setStrikes(n)
+        if (n >= 3) { setTerminated(true); setShowViolation(false); submitRef.current(true) }
+        else setShowViolation(true)
       }
     }
-    document.addEventListener('visibilitychange', onHidden)
-    const onBlur = ()=> setTabSwitches(n=>n+0) // window blur also
-    window.addEventListener('blur', onBlur)
-    return ()=>{ document.removeEventListener('visibilitychange', onHidden); window.removeEventListener('blur', onBlur)}
-  },[])
+    document.addEventListener('visibilitychange', onLeave)
+    window.addEventListener('blur', onLeave)
+    return () => {
+      document.removeEventListener('visibilitychange', onLeave)
+      window.removeEventListener('blur', onLeave)
+    }
+  }, [terminated])
 
-  // Grid pattern generation
-  useEffect(()=>{
-    if(MODULES[modIdx].id !== 'cognitive_grid') return
-    const pattern = Array.from({length:4},()=>Math.floor(Math.random()*16))
-    setGridPattern(pattern)
-    setGridShow(true)
-    setGridSelected([])
-    const t = setTimeout(()=>setGridShow(false), 2800)
-    return ()=>clearTimeout(t)
-  },[modIdx, gridRound])
+  useEffect(() => () => { proctorStreamRef.current?.getTracks().forEach(t => t.stop()) }, [])
 
-  const currentMod = MODULES[modIdx]
+  useEffect(() => {
+    if (stage !== 5 || sub !== 0) return
+    const rng = mulberry32(seed + gridRound * 101 + 7)
+    const set = new Set<number>()
+    while (set.size < gridCfg.patternSize) set.add(Math.floor(rng() * gridCfg.gridCells))
+    setGridPattern([...set]); setGridShow(true); setGridSelected([])
+    const t = setTimeout(() => { setGridShow(false); gridHideAt.current = Date.now() }, gridCfg.showMs)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, sub, gridRound])
 
-  const handleAnswer = (qid:string, val:any)=>{
-    setAnswers(a=>({...a,[qid]:val}))
-    // simulate POST /answer streaming to Kafka
+  const handleAnswer = (qid: string, val: any) => setAnswers(a => ({ ...a, [qid]: val }))
+
+  const runAi = async (key: string, kind: any, payload: any) => {
+    setBusy(b => ({ ...b, [key]: true }))
+    try {
+      const res = await fetch('/api/ai/evaluate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind, ...payload }),
+      })
+      const data = await res.json()
+      if (data.ok) setAiResults(prev => ({ ...prev, [key]: data.result }))
+      else showToast('Evaluation failed — the built-in engine will score this on submit.')
+    } catch { showToast('AI evaluation offline — the built-in engine will score this on submit.') }
+    finally { setBusy(b => ({ ...b, [key]: false })) }
   }
 
-  const handleSubmit = (auto=false)=>{
-    if(!auto && !confirm('Submit assessment? You can’t change answers after.')) return
-    clearInterval(intervalRef.current)
-    // compute grid accuracy
-    let gridAcc = 0
-    if(gridScores.length>0){
-      gridAcc = gridScores.reduce((a,b)=>a+b,0)/gridScores.length
-    } else {
-      // if not played, fallback
-      gridAcc = 0.72
+  const startRecording = async (id: string) => {
+    try {
+      const proctorAudio = proctorStreamRef.current?.getAudioTracks()[0]
+      const stream = proctorAudio ? new MediaStream([proctorAudio]) : await navigator.mediaDevices.getUserMedia({ audio: true })
+      const ownsStream = !proctorAudio
+      const rec = new MediaRecorder(stream)
+      chunksRef.current = []
+      rec.ondataavailable = e => chunksRef.current.push(e.data)
+      rec.onstop = async () => {
+        const blob = new Blob(chunksRef.current, { type: rec.mimeType || 'audio/webm' })
+        if (ownsStream) stream.getTracks().forEach(t => t.stop())
+        const meta = { name: id + '.webm', size: blob.size, type: blob.type, at: new Date().toISOString(), uploaded: false }
+        const sb = getSupabase()
+        if (sb && sid) {
+          try {
+            const { data: { user } } = await sb.auth.getUser()
+            if (user) {
+              const up = await sb.storage.from('speaking').upload(`${user.id}/${sid}/${id}.webm`, blob, { contentType: blob.type, upsert: true })
+              if (!up.error) meta.uploaded = true
+            }
+          } catch { }
+        }
+        handleAnswer(id + '_audio', meta)
+        setRecording(null)
+      }
+      rec.start(); mediaRef.current = rec; setRecording(id)
+    } catch {
+      showToast('Microphone access is needed for the speaking task — please allow the mic and try again.')
     }
-    const speakingCount = (answers['SPEAK1_audio']?1:0)+(answers['SPEAK2_audio']?1:0)
-    const scores = computeScores(answers, { gridAcc, speakingSubmitted: speakingCount>0, writingText: answers['WRITING']||'', prompts: [answers['PE1'],answers['PE2'],answers['PE3']], speakingAudioCount:speakingCount })
-    const sessionId = session?.id || 'sess_'+Math.random().toString(16).slice(2,6)
-    const payload = { session_id: sessionId, ...scores, tab_switches: tabSwitches, submitted_at: new Date().toISOString() }
+  }
+  const stopRecording = () => mediaRef.current?.stop()
+
+  const speakingCount = (answers['SP1_audio'] ? 1 : 0) + (answers['SP2_audio'] ? 1 : 0)
+
+  const handleSubmit = async (auto = false) => {
+    if (terminated) return
+    if (!auto && !confirm('Submit assessment? You cannot change answers afterwards.')) return
+    clearInterval(intervalRef.current)
+    proctorStreamRef.current?.getTracks().forEach(t => t.stop())
+    proctorStreamRef.current = null
+    const scores = computeScores(answers, aiResults, { gridAcc: answers['GRID'], speakingCount })
+    const payload = { session_id: sid || 'sess_demo', ...scores, tab_switches: strikes, auto_submitted: !!auto, submitted_at: new Date().toISOString() }
     localStorage.setItem('calibiai_scores', JSON.stringify(payload))
     setScores(payload)
-    // enqueue evaluation mock — already computed synchronously for demo, but in prod queue
-    // mark session submitted
-    const sess = JSON.parse(localStorage.getItem('calibiai_session')||'{}')
-    sess.status='submitted'
-    localStorage.setItem('calibiai_session', JSON.stringify(sess))
-    window.location.href='/result'
+    const sb = getSupabase()
+    if (sb && sid) {
+      try {
+        const { data: { user } } = await sb.auth.getUser()
+        if (user) {
+          await sb.from('assessment_sessions').update({ answers, status: auto ? 'expired' : 'submitted', submitted_at: new Date().toISOString(), tab_switches: strikes }).eq('id', sid)
+          await sb.from('assessment_results').upsert({ session_id: sid, student_id: user.id, scores, total: scores.total, grade: scores.grade, percentile: scores.percentile, verifiable_hash: scores.verifiable_hash, ai_feedback: aiResults })
+        }
+      } catch (e) { /* demo mode */ }
+    }
+    const s = JSON.parse(localStorage.getItem('calibiai_session') || '{}')
+    s.status = 'submitted'
+    localStorage.setItem('calibiai_session', JSON.stringify(s))
+    window.location.href = '/result'
+  }
+  useEffect(() => { submitRef.current = handleSubmit })
+
+  const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
+  const critical = remaining < 600
+  if (!session) return <div className="p-16 text-center text-slate-500">Loading your session…</div>
+
+  const OptionList = ({ qid, options, accent = 'indigo' }: { qid: string; options: string[]; accent?: 'indigo' | 'violet' }) => {
+    const opts = useMemo(() => shuffledOptions(options, seed, qid), [qid, options])
+    const sel = accent === 'violet' ? 'bg-violet-600 text-white border-violet-500' : 'bg-indigo-600 text-white border-indigo-500'
+    return (
+      <div className="space-y-2">
+        {opts.map(opt => (
+          <label key={opt} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer border transition ${answers[qid] === opt ? `${sel} shadow-md` : 'bg-white/70 border-slate-200 hover:bg-white hover:shadow-sm'}`}>
+            <input type="radio" name={qid} checked={answers[qid] === opt} onChange={() => handleAnswer(qid, opt)} className={accent === 'violet' ? 'accent-violet-600' : 'accent-indigo-600'} />
+            <span className="text-sm">{opt}</span>
+          </label>
+        ))}
+      </div>
+    )
   }
 
-  const formatTime = (s:number)=>{
-    const m = Math.floor(s/60), sec=s%60
-    return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`
-  }
-
-  const isTimerCritical = remaining < 600
-
-  if(!session) return <div className="p-10 text-center text-white/60">Loading session…</div>
-
-  // Helpers for rendering module content
-  const renderModule = ()=>{
-    switch(currentMod.id){
-      case 'english_listening':
-        const q = englishListening[qIdx] ?? englishListening[0]
-        return (
-          <div>
-            <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
-              <div className="text-sm font-bold">{q.title}</div>
-              <audio controls className="w-full mt-3" src={q.audio || undefined} />
-              {!q.audio && <div className="mt-2 text-xs text-white/50">Audio stored on MinIO CDS — CDN-fronted. (Demo: audio placeholder, transcript hidden per exam integrity)</div>}
-              <div className="mt-4 p-3 rounded-xl bg-navy-800 border border-white/10">
-                <div className="text-sm font-semibold">{qIdx+1}. {q.question}</div>
-                <div className="mt-3 space-y-2">
-                  {['A','B','C','D'].map((opt,i)=>(
-                    <label key={opt} className={`flex items-center gap-3 p-2.5 rounded-xl cursor-pointer border ${answers[q.id]===opt ? 'bg-sky-500 text-white border-sky-400' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
-                      <input type="radio" name={q.id} checked={answers[q.id]===opt} onChange={()=>handleAnswer(q.id, opt)} className="accent-sky-500" />
-                      <span className="text-sm"><b>{opt}.</b> {q.options[i]}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div className="mt-3 text-xs text-white/40">Play count limited 2x • Answer streamed to assessment_answers + Kafka partition by session_id</div>
+  const AiFeedback = ({ r }: { r: any }) => !r ? null : (
+    <div className="mt-3 rounded-2xl bg-emerald-50/80 border border-emerald-200 p-3.5 text-sm animate-fade-in">
+      <div className="flex items-center justify-between">
+        <span className="font-bold text-emerald-700">AI score: {r.score}/100</span>
+        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white text-emerald-700 border border-emerald-200">{r.engine === 'deepseek' ? 'DeepSeek' : 'rule engine'}</span>
+      </div>
+      {r.rubric && (
+        <div className="mt-2 space-y-1.5">
+          {Object.entries(r.rubric).map(([k, v]: any) => (
+            <div key={k} className="flex items-center gap-2 text-xs">
+              <span className="w-40 capitalize text-slate-500">{k.replace(/_/g, ' ')}</span>
+              <div className="flex-1 h-1.5 rounded-full bg-emerald-100 overflow-hidden"><div className="h-full bg-emerald-500" style={{ width: `${v}%` }} /></div>
+              <span className="w-8 text-right font-mono text-slate-600">{v}</span>
             </div>
-            <div className="mt-3 flex gap-2">
-              <button onClick={()=>setQIdx(Math.max(0,qIdx-1))} className="px-3 py-2 rounded-full bg-white/10 text-xs">Prev</button>
-              <button onClick={()=>setQIdx(Math.min(englishListening.length-1,qIdx+1))} className="px-3 py-2 rounded-full bg-white text-navy-900 text-xs font-bold">Next</button>
-              <span className="text-xs text-white/50 self-center ml-2">{qIdx+1} / {englishListening.length}</span>
+          ))}
+        </div>
+      )}
+      {r.strengths?.length > 0 && <div className="mt-2 text-xs text-emerald-700"><b>Strengths:</b> {r.strengths.join(' • ')}</div>}
+      {r.improvements?.length > 0 && <div className="mt-1 text-xs text-amber-700"><b>Improve:</b> {r.improvements.join(' • ')}</div>}
+      {r.summary && <div className="mt-1 text-xs text-slate-500 italic">{r.summary}</div>}
+    </div>
+  )
+
+  const EvalButton = ({ id, kind, payload }: any) => (
+    <button disabled={busy[id]} onClick={() => runAi(id, kind, payload)}
+      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold shadow-sm shadow-violet-300 disabled:opacity-50 transition">
+      {busy[id] ? 'Evaluating…' : '✨ Evaluate with AI'}
+    </button>
+  )
+
+  const renderStage = () => {
+    switch (STAGES[stage].id) {
+      case 'english':
+        if (sub === 0) {
+          return (
+            <div className="space-y-5">
+              <p className="text-xs text-slate-500">{bank.english.listening.instruction}</p>
+              {bank.english.listening.clips.map((c: any) => {
+                const plays = playCounts[c.id] || 0
+                return (
+                  <div key={c.id} className="panel p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-sm font-bold text-slate-800">🎧 {c.title}</div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 shrink-0">plays {plays}/2</span>
+                    </div>
+                    <audio controls className="w-full mt-3" src={c.audio}
+                      onPlay={(e) => { if ((playCounts[c.id] || 0) >= 2) { e.currentTarget.pause(); return } setPlayCounts(p => ({ ...p, [c.id]: (p[c.id] || 0) + 1 })) }} />
+                    {plays >= 2 && <div className="mt-1 text-[11px] text-amber-600">Play limit reached — answer from memory.</div>}
+                    <div className="mt-4 space-y-4">
+                      {c.questions.map((q: any) => (
+                        <div key={q.id} className="p-3.5 rounded-xl bg-white/70 border border-slate-200">
+                          <div className="text-sm font-semibold text-slate-800 mb-2.5">{q.question}</div>
+                          <OptionList qid={q.id} options={q.options} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        }
+        if (sub === 1) {
+          return (
+            <div className="space-y-5">
+              <p className="text-xs text-slate-500">{bank.english.speaking.instruction}</p>
+              {bank.english.speaking.tasks.map((t: any) => {
+                const rec = answers[t.id + '_audio']
+                return (
+                  <div key={t.id} className="panel p-4">
+                    <div className="text-sm font-bold text-slate-800">{t.label}</div>
+                    <div className="text-sm text-slate-600 mt-1">{t.prompt}</div>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <button onClick={() => recording === t.id ? stopRecording() : startRecording(t.id)}
+                        className={`px-4 py-2 rounded-full text-xs font-bold transition ${recording === t.id ? 'bg-rose-500 text-white animate-pulse shadow shadow-rose-300' : rec ? 'bg-emerald-500 text-white shadow shadow-emerald-300' : 'btn-primary !py-2 !px-4'}`}>
+                        {recording === t.id ? '● Recording… click to stop' : rec ? '✓ Recorded — re-record' : '● Start recording'}
+                      </button>
+                      {rec && <span className="text-xs text-emerald-600 font-medium">Saved {rec.name} ({Math.round(rec.size / 1024)} KB){rec.uploaded ? ' · uploaded' : ''}</span>}
+                    </div>
+                    {recording === t.id && (
+                      <div className="mt-3 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center px-3 gap-1">
+                        {Array.from({ length: 28 }).map((_, i) => <div key={i} className="w-1 bg-indigo-400 rounded-full" style={{ height: `${8 + Math.random() * 22}px` }} />)}
+                        <span className="ml-2 text-xs text-slate-400">Recording…</span>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+              <div className="flex flex-wrap items-center gap-3">
+                <EvalButton id="SP_speaking" kind="speaking" payload={{ recordingCount: speakingCount }} />
+                <span className="text-xs text-slate-400">Your spoken answer is recorded for fluency, pronunciation, confidence and grammar.</span>
+              </div>
+              <AiFeedback r={aiResults['SP_speaking']} />
+            </div>
+          )
+        }
+        if (sub === 2) {
+          return (
+            <div className="grid lg:grid-cols-2 gap-4">
+              <div className="panel p-4 h-fit">
+                <div className="text-xs font-bold text-indigo-600 mb-2">📖 Passage</div>
+                <p className="text-sm leading-relaxed text-slate-700">{bank.english.reading.passage}</p>
+              </div>
+              <div className="space-y-3">
+                <p className="text-xs text-slate-500">{bank.english.reading.instruction}</p>
+                {bank.english.reading.questions.map((q: any, i: number) => (
+                  <div key={q.id} className="panel p-3.5">
+                    <div className="text-sm font-semibold text-slate-800 mb-2.5">{i + 1}. {q.question}</div>
+                    <OptionList qid={q.id} options={q.options} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        }
+        const w = bank.english.writing
+        return (
+          <div className="space-y-3">
+            <p className="text-xs text-slate-500">{w.instruction}</p>
+            <div className="panel p-4">
+              <div className="text-sm font-bold text-slate-800">✍️ Writing — scenario</div>
+              <div className="mt-2 text-sm text-slate-600 p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-100">{w.scenario}</div>
+              <textarea value={answers['WRITING'] || ''} onChange={e => handleAnswer('WRITING', e.target.value)} placeholder="Dear [Client], ..." className="field mt-3 min-h-[180px] leading-relaxed" />
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+                <span>{(answers['WRITING'] || '').trim().split(/\s+/).filter(Boolean).length} words · target 150–300</span>
+                <EvalButton id="WRITING" kind="writing" payload={{ text: answers['WRITING'] || '', scenario: w.scenario }} />
+              </div>
+              <AiFeedback r={aiResults['WRITING']} />
             </div>
           </div>
         )
-      case 'english_speaking':
+
+      case 'problem':
         return (
-          <div className="space-y-4">
-            {[
-              {id:'SPEAK1', prompt:'Describe a challenge you overcame in a team project. (60-90s, evaluated: Fluency, Pronunciation, Confidence, Grammar)'},
-              {id:'SPEAK2', prompt:'Explain an AI tool you use and how you verify its output. (60-90s)'},
-            ].map(sp=>(
-              <div key={sp.id} className="rounded-2xl bg-white/5 border border-white/10 p-4">
-                <div className="text-sm font-bold">{sp.id === 'SPEAK1' ? 'Speaking Task 1' : 'Speaking Task 2'}</div>
-                <div className="text-sm text-white/70 mt-1">{sp.prompt}</div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button onClick={()=>{
-                    if(recording===sp.id){ setRecording(null); handleAnswer(sp.id+'_audio','mock_audio_'+sp.id+'_'+Date.now()) }
-                    else setRecording(sp.id)
-                  }} className={`px-4 py-2 rounded-full text-xs font-bold ${recording===sp.id ? 'bg-red-500 text-white animate-pulse' : answers[sp.id+'_audio'] ? 'bg-emerald-500 text-white' : 'bg-white text-navy-900'}`}>
-                    {recording===sp.id ? '● Recording… (click to stop)' : answers[sp.id+'_audio'] ? '✓ Recorded — click to re-record' : '● Start Recording'}
-                  </button>
-                  {answers[sp.id+'_audio'] && <span className="text-xs text-emerald-300 self-center">Uploaded to MinIO: audio/{sp.id}.webm • Whisper queued</span>}
-                </div>
-                {recording===sp.id && <div className="mt-3 h-8 rounded-full bg-white/5 border border-white/10 flex items-center px-3"><div className="flex gap-1">{Array.from({length:24}).map((_,i)=><div key={i} className="w-1 bg-sky-400 rounded-full" style={{height: `${8+Math.random()*20}px`}} />)}</div><span className="ml-3 text-xs text-white/50">Waveform • self-hosted Whisper Large v3 (CTranslate2) will transcribe</span></div>}
+          <div className="space-y-3">
+            <p className="text-xs text-slate-500">Logic, approach, correctness and data interpretation. Options are shuffled for your session.</p>
+            {bank.problem.map((q: any, i: number) => (
+              <div key={q.id} className="panel p-3.5">
+                <div className="text-sm font-semibold text-slate-800 mb-2.5">{i + 1}. {q.q}</div>
+                <OptionList qid={q.id} options={q.options} />
               </div>
             ))}
-            <div className="text-xs text-white/40">Audio stored on MinIO, transcribed by self-hosted Whisper fleet (autoscaling, batched, GPU). No external API.</div>
           </div>
         )
-      case 'english_reading':
+
+      case 'debugging':
         return (
-          <div className="grid lg:grid-cols-2 gap-4">
-            <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
-              <div className="text-xs font-bold text-sky-300">Passage — AI-Augmented Hiring Signals</div>
-              <p className="mt-2 text-sm leading-relaxed text-white/80">{englishReadingPassage}</p>
+          <div className="space-y-4">
+            <p className="text-xs text-slate-500">You may use any AI assistant — you're assessed on finding the root cause, fixing it correctly and handling edge cases.</p>
+            {bank.debugging.map((d: any) => (
+              <div key={d.id} className="panel p-4">
+                <div className="text-sm font-bold text-slate-800">{d.title} <span className="text-slate-400 font-normal">· {d.tests} hidden tests</span></div>
+                <pre className="mt-2 code-panel p-3.5 text-xs overflow-x-auto whitespace-pre-wrap">{d.buggy}</pre>
+                <div className="text-xs text-slate-500 mt-2">{d.prompt}</div>
+                <button onClick={() => setShowHint(h => ({ ...h, [d.id]: !h[d.id] }))} className="mt-1 text-[11px] text-indigo-600 font-semibold">{showHint[d.id] ? 'Hide hint' : '💡 Show hint'}</button>
+                {showHint[d.id] && <div className="mt-1 text-[11px] text-indigo-700 bg-indigo-50 rounded-lg p-2">{d.hint}</div>}
+                <textarea value={answers[d.id + '_fix'] || ''} onChange={e => handleAnswer(d.id + '_fix', e.target.value)} placeholder="Paste your fixed code here…" className="field mt-3 min-h-[130px] font-mono !text-xs" />
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button onClick={() => { suppressRef.current = true; setTimeout(() => (suppressRef.current = false), 400); showToast(`Sandbox (mock): ${(answers[d.id + '_fix'] || '').length > 60 ? Math.max(2, d.tests - 1) : Math.floor(d.tests / 2)}/${d.tests} hidden tests passed.`) }}
+                    className="btn-soft !py-2 !px-4 !text-xs font-bold">▶ Run hidden tests</button>
+                  <EvalButton id={d.id} kind="debugging" payload={{ taskId: d.id, buggy: d.buggy, prompt: d.prompt, fix: answers[d.id + '_fix'] || '' }} />
+                </div>
+                <AiFeedback r={aiResults[d.id]} />
+              </div>
+            ))}
+          </div>
+        )
+
+      case 'feature': {
+        const f = bank.feature
+        return (
+          <div className="panel p-4 space-y-3">
+            <p className="text-xs text-slate-500">Build a feature in an existing codebase. You may use AI. Assessed on requirement understanding, code quality, correctness and testing.</p>
+            <div className="text-sm font-bold text-slate-800">{f.title} <span className="text-slate-400 font-normal">· {f.tests} tests</span></div>
+            <div className="text-sm text-slate-600">{f.spec}</div>
+            <div className="code-panel p-3 text-xs overflow-x-auto">{f.sample}</div>
+            <button onClick={() => setShowHint(h => ({ ...h, AF1: !h.AF1 }))} className="text-[11px] text-indigo-600 font-semibold">{showHint.AF1 ? 'Hide hint' : '💡 Show hint'}</button>
+            {showHint.AF1 && <div className="text-[11px] text-indigo-700 bg-indigo-50 rounded-lg p-2">{f.hint}</div>}
+            <textarea value={answers['AF1_code'] || ''} onChange={e => handleAnswer('AF1_code', e.target.value)} placeholder="function isAllowed(userId){ ... }&#10;// plus Express middleware → 429 + Retry-After" className="field min-h-[220px] font-mono !text-xs" />
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => { suppressRef.current = true; setTimeout(() => (suppressRef.current = false), 400); showToast(`Test harness (mock): ${(answers['AF1_code'] || '').length > 120 ? 4 : 2}/${f.tests} tests passed.`) }}
+                className="btn-soft !py-2 !px-4 !text-xs font-bold">▶ Run feature tests</button>
+              <EvalButton id="AF1" kind="feature" payload={{ spec: f.spec, code: answers['AF1_code'] || '' }} />
             </div>
-            <div>
-              {englishReading.map((q,i)=>(
-                <div key={q.id} className="mb-3 rounded-xl bg-white/5 border border-white/10 p-3">
-                  <div className="text-sm font-semibold">{i+1}. {q.question}</div>
-                  <div className="mt-2 space-y-1">
-                    {q.options.map((opt,oi)=>(
-                      <label key={opt} className={`flex gap-2 p-2 rounded-lg cursor-pointer text-sm border ${answers[q.id]===String.fromCharCode(65+oi) ? 'bg-sky-500 text-white border-sky-400' : 'bg-white/5 border-transparent'}`}>
-                        <input type="radio" name={q.id} checked={answers[q.id]===String.fromCharCode(65+oi)} onChange={()=>handleAnswer(q.id, String.fromCharCode(65+oi))} />
-                        <span>{String.fromCharCode(65+oi)}. {opt}</span>
+            <AiFeedback r={aiResults['AF1']} />
+          </div>
+        )
+      }
+
+      case 'prompt':
+        return (
+          <div className="space-y-4">
+            <p className="text-xs text-slate-500">Write a prompt that makes an AI solve the task. Graded on role, context, constraints, output format and specificity.</p>
+            {bank.prompt.map((t: any) => (
+              <div key={t.id} className="panel p-4">
+                <div className="text-sm font-bold text-slate-800">{t.id} — Prompt Engineering</div>
+                <div className="mt-1 text-sm text-slate-600">{t.task}</div>
+                <div className="text-xs text-slate-400">Hint: {t.hint}</div>
+                <textarea value={answers[t.id] || ''} onChange={e => handleAnswer(t.id, e.target.value)} placeholder="Act as… Your task is… Constraints:… Output format:…" className="field mt-3 min-h-[110px]" />
+                <div className="mt-2"><EvalButton id={t.id} kind="prompt" payload={{ task: t.task, hint: t.hint, prompt: answers[t.id] || '' }} /></div>
+                <AiFeedback r={aiResults[t.id]} />
+              </div>
+            ))}
+          </div>
+        )
+
+      case 'cognitive':
+        if (sub === 0) {
+          return (
+            <div className="panel p-5">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="text-sm font-bold text-slate-800">🧩 Motion & Grid Challenge — Round {gridRound + 1} / {gridCfg.rounds}</div>
+                <div className="text-xs text-slate-400">{gridShow ? 'Memorise the pattern…' : 'Now reproduce it'}</div>
+              </div>
+              <p className="mt-1 text-xs text-slate-400">{gridCfg.note}</p>
+              <div className="mt-4 grid gap-2 max-w-[320px] mx-auto" style={{ gridTemplateColumns: `repeat(${Math.sqrt(gridCfg.gridCells)}, 1fr)` }}>
+                {Array.from({ length: gridCfg.gridCells }).map((_, i) => {
+                  const active = gridShow ? gridPattern.includes(i) : gridSelected.includes(i)
+                  return (
+                    <button key={i} disabled={gridShow} onClick={() => setGridSelected(s => s.includes(i) ? s.filter(x => x !== i) : [...s, i])}
+                      className={`aspect-square rounded-xl border text-xs font-bold transition ${active ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-300 scale-105' : 'bg-white/70 border-slate-200 text-slate-500 hover:bg-white'}`}>{i}</button>
+                  )
+                })}
+              </div>
+              <div className="mt-5 flex gap-2 justify-center">
+                <button disabled={gridShow} onClick={() => {
+                  const hits = gridPattern.filter(p => gridSelected.includes(p)).length
+                  const acc = clamp01(hits / Math.max(1, gridPattern.length) - gridSelected.filter(s => !gridPattern.includes(s)).length * 0.2)
+                  const secs = (Date.now() - gridHideAt.current) / 1000
+                  const speed = clamp01(1 - Math.max(0, secs - 1.5) / 8)
+                  const score = acc * 0.7 + speed * 0.3
+                  const scores = [...gridScores, score]
+                  setGridScores(scores)
+                  if (gridRound < gridCfg.rounds - 1) setGridRound(r => r + 1)
+                  else {
+                    handleAnswer('GRID', scores.reduce((a, b) => a + b, 0) / scores.length)
+                    showToast(`Grid complete! Average accuracy/speed ${Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 100)}%. Continue to Logical Reasoning →`)
+                  }
+                }} className="btn-primary !py-2.5 disabled:opacity-40">Submit pattern</button>
+                <button onClick={() => { setGridRound(0); setGridScores([]) }} className="btn-soft !py-2.5">Reset</button>
+              </div>
+            </div>
+          )
+        }
+        if (sub === 1) {
+          return (
+            <div className="space-y-3">
+              <p className="text-xs text-slate-500">Sequences, patterns, syllogisms, pseudocode and data interpretation.</p>
+              {bank.cognitive.logical.map((q: any, i: number) => (
+                <div key={q.id} className="panel p-3.5">
+                  <div className="text-sm font-semibold text-slate-800 mb-2.5">{i + 1}. {q.q}</div>
+                  <OptionList qid={q.id} options={q.options} />
+                </div>
+              ))}
+            </div>
+          )
+        }
+        return (
+          <div className="space-y-3">
+            <p className="text-xs text-slate-500">No right or wrong — real workplace scenarios. Answer honestly; they build your behavioural profile.</p>
+            {bank.cognitive.behavioral.map((b: any, i: number) => {
+              const opts = shuffledChoiceOptions(b.options, seed, b.id)
+              return (
+                <div key={b.id} className="panel p-3.5">
+                  <div className="text-sm font-semibold text-slate-800">{i + 1}. {b.q} <span className="text-xs text-slate-400 font-normal">({b.trait.replace(/_/g, ' ')})</span></div>
+                  <div className="mt-2.5 space-y-2">
+                    {opts.map((opt: any) => (
+                      <label key={opt.text} className={`flex gap-2.5 p-3 rounded-xl text-sm border cursor-pointer transition ${answers[b.id] === opt.score ? 'bg-violet-600 text-white border-violet-500 shadow-md' : 'bg-white/70 border-slate-200 hover:bg-white'}`}>
+                        <input type="radio" name={b.id} checked={answers[b.id] === opt.score} onChange={() => handleAnswer(b.id, opt.score)} className="accent-violet-600 mt-0.5" />
+                        <span>{opt.text}</span>
                       </label>
                     ))}
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        )
-      case 'english_writing':
-        return (
-          <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
-            <div className="text-sm font-bold">Writing — Scenario</div>
-            <div className="mt-2 text-sm text-white/70 p-3 rounded-xl bg-navy-800 border border-white/10">You are a junior developer. Your team’s feature delivery is delayed by 3 days due to an upstream API outage. Write an email (150–300 words) to the client explaining the delay, impact, mitigation, and revised timeline. Tone: professional, accountable, solution-oriented.</div>
-            <textarea value={answers['WRITING']||''} onChange={e=>handleAnswer('WRITING', e.target.value)} placeholder="Dear [Client], ..." className="mt-3 w-full min-h-[180px] rounded-xl bg-navy-900 border border-white/10 p-3 text-sm outline-none focus:border-sky-500" />
-            <div className="mt-2 flex justify-between text-xs text-white/50">
-              <span>{(answers['WRITING']||'').split(/\s+/).filter(Boolean).length} words • Target 150–300</span>
-              <span>AI rubric: Clarity 25 • Grammar 25 • Structure 25 • Professional tone 25 (LLaMA 8B)</span>
-            </div>
-          </div>
-        )
-      case 'problem':
-        return (
-          <div>
-            {problemSolving.map((q,i)=>(
-              <div key={q.id} className="mb-3 rounded-xl bg-white/5 border border-white/10 p-3">
-                <div className="text-sm font-semibold">{i+1}. {q.q}</div>
-                <div className="mt-2 grid sm:grid-cols-2 gap-2">
-                  {q.options.map((opt,oi)=>(
-                    <label key={opt} className={`flex gap-2 p-2 rounded-xl cursor-pointer text-sm border ${answers[q.id]===String.fromCharCode(65+oi) ? 'bg-sky-500 text-white border-sky-400' : 'bg-white/5 border-white/10'}`}>
-                      <input type="radio" name={q.id} checked={answers[q.id]===String.fromCharCode(65+oi)} onChange={()=>handleAnswer(q.id, String.fromCharCode(65+oi))} />
-                      <span>{String.fromCharCode(65+oi)}. {opt}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )
-      case 'debugging':
-        return (
-          <div className="space-y-4">
-            {aiDebugging.map(d=>(
-              <div key={d.id} className="rounded-2xl bg-white/5 border border-white/10 p-4">
-                <div className="text-sm font-bold">{d.title}</div>
-                <pre className="mt-2 text-xs font-mono bg-navy-900 p-3 rounded-xl border border-white/10 overflow-x-auto">{d.buggy}</pre>
-                <div className="text-xs text-white/60 mt-2">{d.prompt} • Hidden tests: {d.tests}</div>
-                <textarea value={answers[d.id+'_fix']||''} onChange={e=>handleAnswer(d.id+'_fix', e.target.value)} placeholder="Paste fixed code here..." className="mt-3 w-full min-h-[120px] rounded-xl bg-navy-900 border border-white/10 p-3 text-xs font-mono outline-none focus:border-sky-500" />
-                <button onClick={()=>alert('Mock run: 3/4 hidden tests passed (sandboxed gVisor microVM). In prod: dynamic + LLM quality.')} className="mt-2 px-3 py-1.5 rounded-full bg-white text-navy-900 text-xs font-bold">▶ Run hidden tests (mock)</button>
-              </div>
-            ))}
-          </div>
-        )
-      case 'feature':
-        return (
-          <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
-            <div className="text-sm font-bold">{aiFeature.title}</div>
-            <div className="mt-2 text-sm text-white/70">{aiFeature.spec}</div>
-            <div className="mt-2 text-xs font-mono bg-navy-900 p-2 rounded border border-white/10">{aiFeature.sample}</div>
-            <textarea value={answers['AF1_code']||''} onChange={e=>handleAnswer('AF1_code', e.target.value)} placeholder="function isAllowed(userId){ ... }" className="mt-3 w-full min-h-[180px] rounded-xl bg-navy-900 border border-white/10 p-3 text-xs font-mono outline-none focus:border-sky-500" />
-            <button onClick={()=>alert('Mock harness: 4/5 tests passed (functional + edge + perf).')} className="mt-2 px-3 py-1.5 rounded-full bg-white text-navy-900 text-xs font-bold">▶ Run feature tests</button>
-            <div className="mt-2 text-xs text-white/40">Evaluation: functional 40% + design 30% + edge handling 30% (vLLM LLaMA 8B + sandbox)</div>
-          </div>
-        )
-      case 'prompt':
-        return (
-          <div className="space-y-4">
-            {promptTasks.map(t=>(
-              <div key={t.id} className="rounded-2xl bg-white/5 border border-white/10 p-4">
-                <div className="text-sm font-bold">{t.id} — Prompt Engineering</div>
-                <div className="mt-1 text-sm text-white/70">{t.task}</div>
-                <div className="text-xs text-white/40">Hint: {t.hint}</div>
-                <textarea value={answers[t.id]||''} onChange={e=>handleAnswer(t.id, e.target.value)} placeholder="Act as... Your prompt here. Include role, constraints, audience, output format." className="mt-3 w-full min-h-[100px] rounded-xl bg-navy-900 border border-white/10 p-3 text-sm outline-none focus:border-sky-500" />
-                <div className="text-xs text-white/40 mt-1">Rubric: Specificity 25 • Context 25 • Constraints 25 • Output quality 25</div>
-              </div>
-            ))}
-          </div>
-        )
-      case 'cognitive_grid':
-        return (
-          <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-bold">Motion & Grid Challenge — Round {gridRound+1} / 5 • Memorize, then reproduce</div>
-              <div className="text-xs text-white/50">{gridShow ? 'Memorizing…' : 'Reproduce pattern'}</div>
-            </div>
-            <div className="mt-4 grid grid-cols-4 gap-2 max-w-[320px] mx-auto">
-              {Array.from({length:16}).map((_,i)=>{
-                const active = gridShow ? gridPattern.includes(i) : gridSelected.includes(i)
-                return (
-                  <button key={i} onClick={()=>{
-                    if(gridShow) return
-                    setGridSelected(s=> s.includes(i) ? s.filter(x=>x!==i) : [...s,i])
-                  }} className={`aspect-square rounded-xl border flex items-center justify-center text-xs font-bold ${active ? 'bg-sky-500 border-sky-400 text-white shadow-lg' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
-                    {i}
-                  </button>
-                )
-              })}
-            </div>
-            <div className="mt-4 flex gap-2 justify-center">
-              <button disabled={gridShow} onClick={()=>{
-                const acc = gridPattern.filter(p=>gridSelected.includes(p)).length / Math.max(1,gridPattern.length) - (gridSelected.filter(s=>!gridPattern.includes(s)).length*0.2)
-                const bounded = Math.max(0, Math.min(1, acc))
-                setGridScores(s=>[...s, bounded])
-                if(gridRound<4){ setGridRound(r=>r+1)} else {
-                  handleAnswer('GRID', gridScores.concat(bounded).reduce((a,b)=>a+b,0)/(gridScores.length+1))
-                  alert(`Grid done! Avg accuracy ${(bounded*100).toFixed(0)}% (mock). You can proceed to next module.`)
-                }
-              }} className="px-4 py-2 rounded-full bg-white text-navy-900 text-xs font-bold disabled:opacity-40">Submit pattern</button>
-              <button onClick={()=>{ setGridRound(0); setGridScores([])}} className="px-4 py-2 rounded-full bg-white/10 text-xs">Reset</button>
-            </div>
-            <div className="mt-2 text-xs text-white/40 text-center">Accuracy 70% + speed 30% • Tracked per move timing</div>
-          </div>
-        )
-      case 'cognitive_logical':
-        return (
-          <div>
-            {cognitiveLogical.map((q,i)=>(
-              <div key={q.id} className="mb-3 rounded-xl bg-white/5 border border-white/10 p-3">
-                <div className="text-sm font-semibold">{i+1}. {q.q}</div>
-                <div className="mt-2 grid sm:grid-cols-2 gap-2">
-                  {q.options.map((opt,oi)=>(
-                    <label key={opt} className={`flex gap-2 p-2 rounded-xl text-sm border cursor-pointer ${answers[q.id]===String.fromCharCode(65+oi) ? 'bg-sky-500 text-white border-sky-400' : 'bg-white/5 border-white/10'}`}>
-                      <input type="radio" name={q.id} checked={answers[q.id]===String.fromCharCode(65+oi)} onChange={()=>handleAnswer(q.id,String.fromCharCode(65+oi))} />
-                      <span>{String.fromCharCode(65+oi)}. {opt}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )
-      case 'behavioral':
-        return (
-          <div>
-            <div className="text-xs text-white/60 mb-3">No correct answers — maps to Adaptability, Teamwork, Accountability, Decision-making, Learning mindset, Responsible AI usage.</div>
-            {behavioralScenarios.map((q,i)=>(
-              <div key={q.id} className="mb-3 rounded-xl bg-white/5 border border-white/10 p-3">
-                <div className="text-sm font-semibold">{i+1}. {q.q} <span className="text-xs text-white/40">({q.trait})</span></div>
-                <div className="mt-2 space-y-1">
-                  {q.options.map((opt,oi)=>(
-                    <label key={opt} className={`flex gap-2 p-2 rounded-xl text-sm border cursor-pointer ${answers[q.id]===String.fromCharCode(65+oi) ? 'bg-violet-500 text-white border-violet-400' : 'bg-white/5 border-white/10'}`}>
-                      <input type="radio" name={q.id} checked={answers[q.id]===String.fromCharCode(65+oi)} onChange={()=>handleAnswer(q.id,String.fromCharCode(65+oi))} />
-                      <span>{String.fromCharCode(65+oi)}. {opt}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )
       default: return null
     }
   }
 
-  // Progress
-  const totalQuestionsEstimate = 5+2+5+1+10+2+1+3+5+6+6 // ~46
-  const answeredCount = Object.keys(answers).length
+  const subs = STAGES[stage].sub
 
   return (
-    <div className="min-h-screen bg-navy-900 text-white">
-      {/* Sticky header with tamper-proof timer */}
-      <div className="sticky top-0 z-30 backdrop-blur bg-navy-900/90 border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
+    <div className="min-h-screen text-slate-800">
+      {/* Header */}
+      <div className="sticky top-0 z-30 border-b border-white/60 bg-white/70 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded-lg calibiai-gradient flex items-center justify-center font-black text-xs">C</div>
-            <span className="hidden sm:inline font-bold text-sm">Assessment</span>
-            <span className="hidden md:inline text-xs text-white/40">Session {session.id} • {session.status}</span>
+            <div className="w-8 h-8 rounded-lg calibiai-gradient flex items-center justify-center font-black text-white text-sm">C</div>
+            <span className="hidden sm:inline font-extrabold text-slate-900 text-sm">Calibiai Assessment</span>
+            <span className="hidden md:inline text-[11px] text-slate-400 font-mono">{String(sid).slice(0, 13)}…</span>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-2 text-xs text-white/60">
-              <span>Tab switches:</span><span className={`px-2 py-0.5 rounded-full font-bold ${tabSwitches>=3 ? 'bg-red-500 text-white' : tabSwitches>=1 ? 'bg-amber-500 text-navy-900' : 'bg-white/10'}`}>{tabSwitches}/3</span>
-            </div>
-            <div className={`px-4 py-1.5 rounded-full font-mono font-black text-sm flex items-center gap-2 ${isTimerCritical ? 'bg-red-500 text-white timer-pulse' : 'bg-white text-navy-900'}`}>
-              <span className="hidden sm:inline">⏱</span> {formatTime(remaining)}
-            </div>
-            <button onClick={()=>handleSubmit(false)} className="px-4 py-2 rounded-full calibiai-gradient text-xs font-bold">Submit</button>
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <span className="hidden sm:flex items-center gap-1.5 text-xs text-slate-500">
+              Warnings
+              <span className={`px-2 py-0.5 rounded-full font-bold ${strikes >= 3 ? 'bg-rose-500 text-white' : strikes >= 1 ? 'bg-amber-400 text-slate-900' : 'bg-slate-100 text-slate-500'}`}>{strikes}/3</span>
+            </span>
+            <div className={`px-4 py-1.5 rounded-full font-mono font-black text-sm border ${critical ? 'bg-rose-500 text-white border-rose-400 timer-pulse' : 'bg-white text-slate-800 border-slate-200'}`}>⏱ {fmt(remaining)}</div>
+            <button onClick={() => handleSubmit(false)} className="btn-primary !px-4 !py-2 !text-xs">Submit</button>
           </div>
         </div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-2">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-2.5">
           <div className="flex gap-1.5 overflow-x-auto py-1">
-            {MODULES.map((m,i)=>(
-              <button key={m.id} onClick={()=>{ setModIdx(i); setQIdx(0)}} className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border ${i===modIdx ? 'bg-white text-navy-900 border-white' : answers[m.id] || Object.keys(answers).some(k=>k.startsWith(m.id)) ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-white/5 text-white/60 border-white/10'}`}>
-                {m.label}
+            {STAGES.map((s, i) => (
+              <button key={s.id} onClick={() => { setStage(i); setSub(0) }}
+                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border transition ${i === stage ? 'calibiai-gradient text-white border-transparent shadow-md shadow-indigo-200' : 'bg-white/70 text-slate-600 border-slate-200 hover:bg-white'}`}>
+                {i + 1}. {s.label}
               </button>
             ))}
           </div>
@@ -383,62 +552,111 @@ function AssessmentInner(){
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 grid lg:grid-cols-12 gap-6">
-        {/* Left palette */}
+        {/* Sidebar */}
         <div className="lg:col-span-3">
-          <div className="rounded-2xl glass p-4 sticky top-[96px]">
-            <div className="text-sm font-bold">Question Palette</div>
-            <div className="text-xs text-white/50">{answeredCount} answered • stream to Kafka</div>
-            <div className="mt-3 grid grid-cols-6 lg:grid-cols-4 gap-2">
-              {MODULES.map((m,i)=>(
-                <button key={m.id} onClick={()=>{setModIdx(i); setQIdx(0)}} className={`w-8 h-8 rounded-xl text-xs font-bold border ${i===modIdx?'bg-sky-500 text-white border-sky-400': Object.keys(answers).some(k=>k.includes(m.id)) || answers[m.id] ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-white/5 border-white/10 text-white/60'}`}>{i+1}</button>
-              ))}
+          <div className="glass-card !p-4 sticky top-[120px] space-y-3 animate-fade-up">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-black text-slate-800">Live Preview</span>
+                <span className="flex items-center gap-1 text-[10px] text-rose-500 font-bold"><span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" /> LIVE</span>
+              </div>
+              <div className="mt-2 relative rounded-xl overflow-hidden border border-slate-700 bg-slate-900 aspect-video">
+                {videoOn ? <video ref={videoRef} muted playsInline autoPlay className="w-full h-full object-cover" />
+                  : <div className="absolute inset-0 flex items-center justify-center text-center text-[10px] text-slate-400 p-2">Camera preview off<br />focus monitoring still active</div>}
+                <div className="absolute bottom-1 left-1 flex items-center gap-1 bg-black/50 rounded-full px-2 py-0.5 text-[9px] text-white">🎤 mic on</div>
+              </div>
+              <div className="mt-1.5 text-[10px] text-slate-400 leading-snug">Live view only — video/audio are <b className="text-slate-600">not recorded or stored</b>. Leaving this tab counts as a warning (3 auto-submits).</div>
             </div>
-            <div className="mt-4 space-y-2 text-xs">
-              <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-emerald-500" /> Answered</div>
-              <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-white/10 border border-white/20" /> Not answered</div>
-              <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-sky-500" /> Current</div>
-            </div>
-            <div className="mt-4 rounded-xl bg-white/5 p-3 text-xs">
-              <div className="font-bold">Anomaly detection</div>
-              <div className="text-white/60">Velocity & accuracy tracked. Extremely fast correct answers flagged for review (Isolation Forest on owned data, sidecar on assessment service).</div>
-            </div>
-            <div className="mt-3 rounded-xl bg-navy-800 border border-white/10 p-3 text-xs font-mono">
-              <div className="text-white/50">Timer sync</div>
-              <div>remaining = expires_at - Date.now()</div>
-              <div className="text-white/40">Poll /assessment/timer every 5s • drift snap if {'>'}2s</div>
-            </div>
+
+            <div className="text-sm font-black text-slate-800 pt-1 border-t border-slate-200/70">Sections</div>
+            {STAGES.map((s, i) => (
+              <button key={s.id} onClick={() => { setStage(i); setSub(0) }}
+                className={`w-full text-left px-3 py-2 rounded-xl text-xs border transition ${i === stage ? 'bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-200' : 'bg-white/70 border-slate-200 text-slate-600 hover:bg-white'}`}>
+                <div className="font-bold">{i + 1}. {s.label}</div>
+                <div className={`text-[10px] ${i === stage ? 'text-indigo-100' : 'text-slate-400'}`}>Suggested {s.min} min</div>
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Center */}
+        {/* Main */}
         <div className="lg:col-span-9">
-          <div className="rounded-[20px] glass p-4 sm:p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="font-black">{currentMod.label} <span className="text-white/40 font-normal text-sm">• {currentMod.max} marks</span></h2>
-              <span className="text-xs px-2 py-1 rounded-full bg-white/10">{modIdx+1} / {MODULES.length}</span>
+          <div className="glass-card animate-fade-up">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <h2 className="text-lg font-black text-slate-900">{STAGES[stage].label} <span className="text-slate-400 font-normal text-sm">· suggested {STAGES[stage].min} min</span></h2>
+              <span className="text-xs px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 font-bold">Section {stage + 1} / {STAGES.length}</span>
             </div>
-            <div className="mt-4">
-              {renderModule()}
-            </div>
-            <div className="mt-6 flex justify-between">
-              <button onClick={()=>{ if(modIdx>0){ setModIdx(m=>m-1); setQIdx(0)}}} disabled={modIdx===0} className="px-4 py-2 rounded-full bg-white/10 text-xs font-semibold disabled:opacity-30">← Previous Module</button>
-              {modIdx < MODULES.length-1 ? (
-                <button onClick={()=>{ setModIdx(m=>m+1); setQIdx(0)}} className="px-4 py-2 rounded-full bg-white text-navy-900 text-xs font-bold">Next Module →</button>
-              ) : (
-                <button onClick={()=>handleSubmit(false)} className="px-6 py-2.5 rounded-full calibiai-gradient text-xs font-black">Submit Assessment</button>
-              )}
+
+            {subs.length > 0 && (
+              <div className="mt-3 flex gap-2 flex-wrap">
+                {subs.map((label, i) => (
+                  <button key={label} onClick={() => setSub(i)}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold border transition ${i === sub ? 'bg-indigo-600 text-white border-indigo-500 shadow-sm' : 'bg-white/70 text-slate-600 border-slate-200 hover:bg-white'}`}>{label}</button>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-5">{renderStage()}</div>
+
+            <div className="mt-7 flex justify-between pt-2">
+              <button disabled={stage === 0} onClick={() => { setStage(s => Math.max(0, s - 1)); setSub(0) }} className="btn-soft disabled:opacity-30">← Previous section</button>
+              {stage < STAGES.length - 1
+                ? <button onClick={() => { setStage(s => s + 1); setSub(0); window.scrollTo({ top: 0, behavior: 'smooth' }) }} className="btn-primary">Next section →</button>
+                : <button onClick={() => handleSubmit(false)} className="btn-primary !px-7">Submit assessment →</button>}
             </div>
           </div>
 
-          <div className="mt-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 p-3 text-xs text-amber-200">
-            Server-controlled: submission after expiry returns 409. All answers audited to <span className="font-mono">audit_log</span> Kafka → ClickHouse (7-year retention).
+          <div className="mt-4 rounded-2xl bg-amber-50 border border-amber-200 p-3.5 text-xs text-amber-800">
+            Keep this tab focused — the 120-minute timer keeps running. Leaving the window shows a warning; after <b>3 warnings your test is submitted automatically</b> with the answers you've completed.
           </div>
         </div>
       </div>
+
+      {/* Toast */}
+      {toast && <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-md px-5 py-3 rounded-2xl bg-white/90 backdrop-blur border border-indigo-200 shadow-2xl text-sm text-slate-800 animate-pop">{toast}</div>}
+
+      {/* Camera/mic gate */}
+      {!mediaReady && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="glass-card max-w-md w-full text-center !p-8 animate-pop">
+            <div className="text-5xl">🎥</div>
+            <h3 className="mt-4 text-xl font-black text-slate-900">Enable camera & microphone</h3>
+            <p className="mt-2 text-sm text-slate-500">A live proctoring preview appears on the left while you take the assessment. It's <b className="text-slate-700">never recorded or stored</b> — it only verifies you're present. Your screen focus is also monitored.</p>
+            <button onClick={enableMedia} className="btn-primary mt-6 w-full">Turn on camera & mic →</button>
+            {mediaError && <div className="mt-3 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl p-2">{mediaError}</div>}
+            <button onClick={() => { setMediaReady(true); mediaReadyRef.current = true }} className="mt-3 text-xs text-indigo-600 font-semibold">Continue without camera (focus monitoring still active)</button>
+          </div>
+        </div>
+      )}
+
+      {/* Violation warning */}
+      {showViolation && !terminated && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="max-w-sm w-full rounded-3xl border-2 border-amber-300 bg-white p-7 text-center shadow-2xl animate-pop">
+            <div className="text-5xl">⚠️</div>
+            <h3 className="mt-3 text-xl font-black text-amber-600">Warning {strikes} of 3</h3>
+            <p className="mt-2 text-sm text-slate-600">You left the assessment window. Switching away is recorded as a proctoring violation.
+              {strikes >= 2 && <b className="text-rose-600"> One more warning and your assessment will be submitted automatically.</b>}</p>
+            <button onClick={() => { setShowViolation(false); awayRef.current = false }} className="btn-primary mt-6 w-full">I'm back — resume</button>
+          </div>
+        </div>
+      )}
+
+      {/* Terminated */}
+      {terminated && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="max-w-sm w-full rounded-3xl border-2 border-rose-300 bg-white p-7 text-center shadow-2xl animate-pop">
+            <div className="text-5xl">⛔</div>
+            <h3 className="mt-3 text-xl font-black text-rose-600">Assessment submitted</h3>
+            <p className="mt-2 text-sm text-slate-600">You reached 3 focus warnings. Your answers up to this point have been submitted for evaluation.</p>
+            <div className="mt-4 inline-block text-xs px-3 py-1.5 rounded-full bg-slate-100 text-slate-500">Redirecting to your results…</div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-export default function Page(){
-  return <StoreProvider><AssessmentInner/></StoreProvider>
+export default function Page() {
+  return <StoreProvider><AssessmentInner /></StoreProvider>
 }

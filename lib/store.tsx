@@ -40,6 +40,27 @@ export function StoreProvider({children}:{children:React.ReactNode}){
     if(u) localStorage.setItem('calibiai_user', JSON.stringify(u))
     else localStorage.removeItem('calibiai_user')
   }
+  // Persist synchronously inside the setters too. Relying only on the
+  // useEffect-based persistence below is unsafe: callers can navigate away
+  // (window.location.href) in the same tick, unloading the page before React
+  // flushes the effect — the value then never reaches localStorage.
+  const setProfileSafe = (p:any)=>{
+    setProfile(p)
+    if(p) localStorage.setItem('calibiai_profile', JSON.stringify(p))
+  }
+  const setResumeSafe = (r:any)=>{
+    setResume(r)
+    if(r) localStorage.setItem('calibiai_resume', JSON.stringify(r))
+  }
+  const setSessionSafe = (s:any)=>{
+    setSession(s)
+    if(s) localStorage.setItem('calibiai_session', JSON.stringify(s))
+    else localStorage.removeItem('calibiai_session')
+  }
+  const setScoresSafe = (s:any)=>{
+    setScores(s)
+    if(s) localStorage.setItem('calibiai_scores', JSON.stringify(s))
+  }
   useEffect(()=>{ if(profile) localStorage.setItem('calibiai_profile', JSON.stringify(profile)) },[profile])
   useEffect(()=>{ if(resume) localStorage.setItem('calibiai_resume', JSON.stringify(resume)) },[resume])
   useEffect(()=>{ localStorage.setItem('calibiai_tracking', JSON.stringify(tracking)) },[tracking])
@@ -52,7 +73,7 @@ export function StoreProvider({children}:{children:React.ReactNode}){
     window.location.href='/login'
   }
 
-  return <Ctx.Provider value={{user,setUser,profile,setProfile,resume,setResume,tracking,setTracking,session,setSession,scores,setScores,logout}}>{children}</Ctx.Provider>
+  return <Ctx.Provider value={{user,setUser,profile,setProfile:setProfileSafe,resume,setResume:setResumeSafe,tracking,setTracking,session,setSession:setSessionSafe,scores,setScores:setScoresSafe,logout}}>{children}</Ctx.Provider>
 }
 
 export const useStore = ()=> useContext(Ctx)

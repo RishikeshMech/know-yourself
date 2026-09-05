@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Navbar } from '@/components/Navbar'
 import { StoreProvider, useStore } from '@/lib/store'
 import { Stepper } from '@/components/Stepper'
+import { getSupabase } from '@/lib/supabase'
 
 function ResumeInner(){
   const {resume, setResume} = useStore()
@@ -10,87 +11,113 @@ function ResumeInner(){
   const [analyzing,setAnalyzing] = useState(false)
   const [done,setDone] = useState<any>(resume)
 
-  const onUpload = (e:any)=>{
+  const onUpload = async (e:any)=>{
     const f = e.target.files?.[0]
     if(!f) return
     setFileName(f.name)
     setAnalyzing(true)
-    // Simulate MinIO presigned upload + queue -> LLaMA 8B parsing
-    setTimeout(()=>{
+    const sb = getSupabase()
+    let storageKey = `resume_${Date.now()}.pdf`
+    try{
+      if(sb){
+        const { data:{ user } } = await sb.auth.getUser()
+        if(user){
+          const path = `${user.id}/${Date.now()}_${f.name}`
+          const up = await sb.storage.from('resumes').upload(path, f, { upsert:true, contentType: f.type })
+          if(!up.error) storageKey = path
+        }
+      }
+    }catch{ /* demo mode */ }
+    setTimeout(async ()=>{
       const mock = {
         resume_score: 78,
-        parsed:{ name:'Priya Sharma', skills:['Python','React','SQL','Docker'], experience_years:1.2, projects:2 },
+        parsed:{ name:'Your Name', skills:['Python','React','SQL','Docker'], experience_years:1.2, projects:2 },
         feedback:{
           strengths:['Strong project section','Clear formatting','Good skill coverage'],
           gaps:['Missing quantified impact','No certifications listed','Experience descriptions could be more concise'],
-          suggestions:['Add metrics: “Improved API latency by 30%”','Include GitHub links for projects','Add AWS certification if any']
+          suggestions:['Add metrics, e.g. “Improved API latency by 30%”','Include GitHub links for projects','Add certifications if any'],
         },
-        storage_key: `minio://resumes/${Date.now()}.pdf`
+        storage_key: storageKey
       }
       setDone(mock); setResume(mock); setAnalyzing(false)
+      try{
+        if(sb){
+          const { data:{ user } } = await sb.auth.getUser()
+          if(user) await sb.from('resume_analyses').insert({ student_id: user.id, storage_key: storageKey, resume_score: mock.resume_score, parsed: mock.parsed, feedback: mock.feedback })
+        }
+      }catch{ /* demo mode */ }
     }, 1800)
   }
 
   return (
     <div>
       <Navbar />
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
         <Stepper step={3} />
         <div className="mt-6 grid lg:grid-cols-2 gap-6">
-          <div className="rounded-[24px] glass p-6">
-            <h1 className="text-xl font-black">Resume Upload</h1>
-            <p className="text-sm text-white/60">Direct to MinIO via presigned POST • queue → self-hosted LLaMA 8B LoRA • no external API</p>
+          {/* Upload */}
+          <div className="glass-card animate-fade-up">
+            <h1 className="text-2xl font-black text-slate-900">Upload your resume</h1>
+            <p className="text-sm text-slate-500 mt-1">We'll analyse it and give you an instant score with personalised tips.</p>
 
-            <label className="mt-6 block rounded-2xl border-2 border-dashed border-white/15 bg-white/5 p-8 text-center cursor-pointer hover:bg-white/10">
+            <label className="mt-6 block rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/40 p-10 text-center cursor-pointer hover:bg-indigo-50 transition">
               <input type="file" accept=".pdf,.docx" className="hidden" onChange={onUpload} />
-              <div className="text-3xl">📄</div>
-              <div className="mt-2 text-sm font-bold">{fileName || 'Drag & drop or browse (PDF/DOCX, <5MB)'}</div>
-              <div className="text-xs text-white/50 mt-1">Owned S3-compatible storage (MinIO erasure 8+4) • CDN-fronted</div>
+              <div className="text-4xl">📄</div>
+              <div className="mt-3 text-sm font-bold text-slate-700">{fileName || 'Drag & drop or browse'}</div>
+              <div className="text-xs text-slate-400 mt-1">PDF or DOCX · up to 5 MB</div>
             </label>
 
             {analyzing && (
-              <div className="mt-4 rounded-xl bg-sky-500/10 border border-sky-500/20 p-3 text-sm flex items-center gap-3">
-                <div className="w-4 h-4 border-2 border-sky-400 border-t-transparent rounded-full animate-spin" />
-                Analyzing with self-hosted LLaMA 8B (resume LoRA)… (~2s batch)
+              <div className="mt-4 rounded-2xl bg-indigo-50 border border-indigo-200 p-4 text-sm flex items-center gap-3 text-indigo-700 animate-fade-in">
+                <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                Analysing your resume…
               </div>
             )}
 
-            <div className="mt-4 flex gap-3">
-              <button disabled={!done} onClick={()=>window.location.href='/tracking/whatsapp'} className={`px-6 py-3 rounded-full font-bold text-sm ${done ? 'calibiai-gradient text-white' : 'bg-white/10 text-white/40 cursor-not-allowed'}`}>Continue →</button>
-              <a href="/profile" className="px-6 py-3 rounded-full bg-white/10 text-sm">Back</a>
+            <div className="mt-6 flex gap-3">
+              <a href="/tracking/whatsapp" className={`btn-primary ${!done ? 'pointer-events-none opacity-40' : ''}`}>Continue →</a>
+              <a href="/profile" className="btn-soft">Back</a>
             </div>
           </div>
 
-          <div className="rounded-[24px] glass p-6">
-            <h3 className="font-bold">Resume Analysis (AI-based parsing + scoring)</h3>
-            {!done && !analyzing && <div className="mt-6 text-sm text-white/50">Upload a resume to see parsing, scoring and feedback.</div>}
+          {/* Analysis */}
+          <div className="glass-card animate-fade-up" style={{animationDelay:'.1s'}}>
+            <h3 className="font-black text-slate-900 text-lg">Resume analysis</h3>
+            {!done && !analyzing && <p className="mt-6 text-sm text-slate-400">Upload a resume to see your score, strengths and tips.</p>}
             {done && (
-              <div className="mt-4">
+              <div className="mt-5 animate-fade-in">
                 <div className="flex items-center gap-4">
-                  <div className="w-20 h-20 rounded-full border-4 border-sky-500 flex items-center justify-center text-xl font-black">{done.resume_score}<span className="text-xs">/100</span></div>
+                  <div className="relative w-24 h-24">
+                    <svg viewBox="0 0 36 36" className="w-24 h-24 -rotate-90">
+                      <circle cx="18" cy="18" r="16" fill="none" stroke="#e2e8f0" strokeWidth="3" />
+                      <circle cx="18" cy="18" r="16" fill="none" stroke="url(#g)" strokeWidth="3" strokeLinecap="round"
+                        strokeDasharray={`${done.resume_score} ${100-done.resume_score}`} pathLength={100} />
+                      <defs><linearGradient id="g"><stop offset="0%" stopColor="#6366f1"/><stop offset="100%" stopColor="#a855f7"/></linearGradient></defs>
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center font-black text-xl text-slate-800">{done.resume_score}</div>
+                  </div>
                   <div className="text-sm">
-                    <div className="font-bold">{done.parsed.name} • {done.parsed.experience_years} yrs</div>
-                    <div className="text-white/60">Skills: {done.parsed.skills.join(', ')}</div>
-                    <div className="text-white/40 text-xs">{done.storage_key}</div>
+                    <div className="font-bold text-slate-800">{done.parsed.name}</div>
+                    <div className="text-slate-500">{done.parsed.experience_years} yrs exp · {done.parsed.projects} projects</div>
+                    <div className="text-slate-400 text-xs mt-1">Skills: {done.parsed.skills.join(', ')}</div>
                   </div>
                 </div>
-                <div className="mt-4 grid sm:grid-cols-2 gap-3 text-xs">
-                  <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3">
-                    <div className="font-bold text-emerald-300">Strengths</div>
-                    <ul className="mt-1 list-disc ml-4 space-y-1 text-white/70">{done.feedback.strengths.map((s:string)=><li key={s}>{s}</li>)}</ul>
+                <div className="mt-5 grid sm:grid-cols-2 gap-3 text-xs">
+                  <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-3">
+                    <div className="font-bold text-emerald-700">Strengths</div>
+                    <ul className="mt-1 list-disc ml-4 space-y-0.5 text-slate-600">{done.feedback.strengths.map((s:string)=><li key={s}>{s}</li>)}</ul>
                   </div>
-                  <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-3">
-                    <div className="font-bold text-amber-300">Gaps</div>
-                    <ul className="mt-1 list-disc ml-4 space-y-1 text-white/70">{done.feedback.gaps.map((s:string)=><li key={s}>{s}</li>)}</ul>
+                  <div className="rounded-2xl bg-amber-50 border border-amber-200 p-3">
+                    <div className="font-bold text-amber-700">Gaps</div>
+                    <ul className="mt-1 list-disc ml-4 space-y-0.5 text-slate-600">{done.feedback.gaps.map((s:string)=><li key={s}>{s}</li>)}</ul>
                   </div>
                 </div>
-                <div className="mt-3 rounded-xl bg-white/5 p-3 text-xs">
-                  <div className="font-bold">Suggestions</div>
-                  <ul className="mt-1 list-disc ml-4 text-white/70">{done.feedback.suggestions.map((s:string)=><li key={s}>{s}</li>)}</ul>
+                <div className="mt-3 rounded-2xl panel p-3 text-xs">
+                  <div className="font-bold text-indigo-700">💡 Suggestions</div>
+                  <ul className="mt-1 list-disc ml-4 space-y-0.5 text-slate-600">{done.feedback.suggestions.map((s:string)=><li key={s}>{s}</li>)}</ul>
                 </div>
               </div>
             )}
-            <div className="mt-4 text-xs font-mono text-white/30">POST /api/v1/resume/presign → MinIO → queue resume.jobs → vLLM LLaMA 8B → JSON</div>
           </div>
         </div>
       </main>

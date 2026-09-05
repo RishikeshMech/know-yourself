@@ -1,84 +1,108 @@
 'use client'
 import { useState } from 'react'
-import { Navbar } from '@/components/Navbar'
 import { StoreProvider, useStore } from '@/lib/store'
-import { Stepper } from '@/components/Stepper'
+import { getSupabase } from '@/lib/supabase'
 
 function LoginInner(){
   const {setUser} = useStore()
   const [email,setEmail] = useState('priya@iitm.ac.in')
   const [password,setPassword] = useState('password123')
-  const [role,setRole] = useState('student')
+  const [mode,setMode] = useState<'signin'|'signup'>('signin')
   const [err,setErr] = useState('')
+  const [busy,setBusy] = useState(false)
 
-  const submit = (e:any)=>{
+  const submit = async (e:any)=>{
     e.preventDefault()
     setErr('')
-    if(!email.includes('@')) return setErr('Enter valid email')
-    if(password.length<6) return setErr('Password min 6 chars')
-    // custom JWT simulation — store user, no external IdP
-    const user = { id: 'u_'+Math.random().toString(16).slice(2,8), email, role, institution_id:'inst_iitm', name: email.split('@')[0] }
-    setUser(user)
-    // audit log simulation
-    localStorage.setItem('calibiai_jwt', 'mock.jwt.'+btoa(email).slice(0,12))
-    window.location.href='/profile'
+    if(!email.includes('@')) return setErr('Please enter a valid email address.')
+    if(password.length<6) return setErr('Password must be at least 6 characters.')
+    setBusy(true)
+    try{
+      const sb = getSupabase()
+      if(sb){
+        const { data, error } = mode === 'signup'
+          ? await sb.auth.signUp({ email, password, options: { data: { role: 'student', full_name: email.split('@')[0] } } })
+          : await sb.auth.signInWithPassword({ email, password })
+        if(error) throw new Error(error.message)
+        const u = data.user
+        if(!u && mode==='signup'){ setErr('Account created — check your email to confirm, then sign in.'); return }
+        if(u){
+          setUser({ id: u.id, email: u.email || email, role: 'student', institution_id: '', name: (u.user_metadata as any)?.full_name || email.split('@')[0] })
+          window.location.href = '/profile'
+          return
+        }
+      }
+      // Demo mode (no backend configured) — local account
+      const user = { id: 'u_'+Math.random().toString(16).slice(2,8), email, role: 'student', institution_id:'', name: email.split('@')[0] }
+      setUser(user)
+      window.location.href='/profile'
+    }catch(e:any){
+      setErr(e?.message || 'Sign in failed. Please try again.')
+    }finally{ setBusy(false) }
   }
 
   return (
-    <div>
-      <Navbar />
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-        <Stepper step={1} />
-        <div className="mt-6 grid md:grid-cols-2 gap-6 items-start">
-          <div className="rounded-[24px] glass p-6 sm:p-8">
-            <h1 className="text-2xl font-black">Sign in to Calibiai</h1>
-            <p className="text-sm text-white/60 mt-1">Custom JWT auth — no Auth0, no Firebase. Institution SSO federation supported.</p>
+    <div className="min-h-screen">
+      <header className="max-w-7xl mx-auto px-6 h-16 flex items-center">
+        <a href="/" className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl calibiai-gradient flex items-center justify-center font-black text-white shadow-lg shadow-indigo-300/50">C</div>
+          <span className="font-extrabold tracking-tight text-slate-900 text-lg">CALIBIAI<span className="text-indigo-600"> SCORE</span></span>
+        </a>
+      </header>
 
-            <div className="mt-4 flex gap-2">
-              {['student','faculty','institution'].map(r=>(
-                <button key={r} onClick={()=>setRole(r)} className={`px-3 py-1.5 rounded-full text-xs font-bold capitalize ${role===r ? 'bg-white text-navy-900' : 'bg-white/10 text-white/70'}`}>{r}</button>
-              ))}
+      <main className="max-w-6xl mx-auto px-6 pt-6 pb-16 grid lg:grid-cols-2 gap-10 items-center min-h-[calc(100vh-4rem)]">
+        {/* Left — value prop */}
+        <div className="animate-fade-up hidden lg:block">
+          <span className="chip text-indigo-700 border-indigo-200 bg-indigo-50/70">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" /> Trusted employability assessment
+          </span>
+          <h1 className="mt-6 text-5xl font-black leading-[1.08] tracking-tight text-slate-900">
+            Your skills. One verified score. A clearer path forward.
+          </h1>
+          <p className="mt-5 text-lg text-slate-500 leading-relaxed">
+            Complete a focused, evidence-based assessment and receive your Calibiai Score out of 1000.
+          </p>
+          <div className="mt-8 flex gap-6 text-sm text-slate-500 font-medium">
+            <span className="flex items-center gap-2">✓ 120 minutes</span>
+            <span className="flex items-center gap-2">✓ 6 skill modules</span>
+            <span className="flex items-center gap-2">✓ PDF credential</span>
+          </div>
+        </div>
+
+        {/* Right — card */}
+        <div className="animate-fade-up" style={{animationDelay:'.1s'}}>
+          <div className="glass-card hover-lift !p-7 sm:!p-9 max-w-md lg:ml-auto">
+            <div className="text-xs font-bold tracking-widest text-indigo-600 uppercase">
+              {mode==='signin' ? 'Welcome back' : 'Create account'}
             </div>
+            <h2 className="mt-2 text-2xl font-black text-slate-900">
+              {mode==='signin' ? 'Sign in to continue' : 'Get started'}
+            </h2>
+            <p className="mt-1.5 text-sm text-slate-500">Use your institution email to access your assessment.</p>
 
             <form onSubmit={submit} className="mt-6 space-y-4">
               <div>
-                <label className="text-xs text-white/60">Email</label>
-                <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@university.edu" className="mt-1 w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-sky-500" />
+                <label className="text-xs font-semibold text-slate-600">Email address</label>
+                <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@university.edu" className="field mt-1.5" />
               </div>
               <div>
-                <label className="text-xs text-white/60">Password (Argon2id on server)</label>
-                <input type="password" value={password} onChange={e=>setPassword(e.target.value)} className="mt-1 w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2.5 text-sm outline-none focus:border-sky-500" />
+                <label className="text-xs font-semibold text-slate-600">Password</label>
+                <input type="password" value={password} onChange={e=>setPassword(e.target.value)} className="field mt-1.5" />
               </div>
-              {err && <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">{err}</div>}
-              <button type="submit" className="w-full py-3 rounded-full calibiai-gradient font-bold text-sm">Continue →</button>
-              <div className="text-xs text-white/40 text-center">Demo: any email works. JWT stored in httpOnly in prod, localStorage for demo.</div>
+              {err && <div className="text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">{err}</div>}
+              <div className="flex items-center justify-between pt-1">
+                <button type="button" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">Forgot password?</button>
+                <button type="submit" disabled={busy} className="btn-primary !px-7 !py-2.5">{busy ? 'Please wait…' : <>Continue →</>}</button>
+              </div>
             </form>
 
-            <div className="mt-6 rounded-xl bg-white/5 border border-white/10 p-3 text-xs leading-relaxed">
-              <div className="font-bold text-white/80">Security note</div>
-              <div className="text-white/50">Passwords hashed with Argon2id. JWT RS256, 15m access + 7d refresh, rotated via Vault. Rate-limited at Kong + Redis.</div>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="rounded-[24px] calibiai-gradient p-6 text-white">
-              <div className="text-sm font-bold">Why this is defensible IP</div>
-              <ul className="mt-3 text-sm space-y-2 opacity-90">
-                <li>• No wrapper around OpenAI — self-hosted LLaMA + Whisper on owned GPU fleet</li>
-                <li>• Unit economics hold at 100M users (no per-token SaaS margin)</li>
-                <li>• Every layer scales independently & survives regional failover</li>
-              </ul>
-            </div>
-            <div className="rounded-2xl glass p-5">
-              <div className="text-sm font-bold">Institution SSO</div>
-              <div className="text-xs text-white/60 mt-1">We broker SAML/OIDC as SP. Institutions federate to us; runtime never depends on external IdP (cached assertions). Works for national rollouts.</div>
-              <button onClick={()=>alert('SSO demo: redirect to institution IdP → SAML assertion → JWT minted')} className="mt-3 px-3 py-2 rounded-full bg-white text-navy-900 text-xs font-bold">Simulate SSO Login</button>
-            </div>
-            <div className="rounded-2xl glass p-5">
-              <div className="text-xs font-mono text-white/50">Architecture • Multi-region</div>
-              <div className="mt-2 font-mono text-xs leading-relaxed text-white/70">
-                GeoDNS (Anycast) → Kong Gateway → Auth Service (JWT) → Assessment Service → Redpanda → GPU Workers (Triton/vLLM) → Postgres (sharded) + MinIO + Redis
-              </div>
+            <div className="mt-6 text-center text-xs text-slate-500">
+              {mode==='signin' ? (
+                <>New here? <button type="button" onClick={()=>setMode('signup')} className="font-bold text-indigo-600 hover:text-indigo-700">Create an account</button></>
+              ) : (
+                <>Already have an account? <button type="button" onClick={()=>setMode('signin')} className="font-bold text-indigo-600 hover:text-indigo-700">Sign in</button></>
+              )}
+              <span className="block mt-2 text-slate-400">Institution SSO is also supported.</span>
             </div>
           </div>
         </div>

@@ -16,7 +16,25 @@ npm run dev   # http://localhost:3000  (binds 0.0.0.0, preview at https://3000-*
 
 **Demo flow:** `/login` → Profile → Resume (mock LLaMA analysis) → WhatsApp → LinkedIn → Confirmation → Instructions → **Start 120-min timer** → 6 modules → Submit → **Calibiai Score /1000** → PDF Report → Dashboards
 
-No external keys required. All AI mocked but architected as self-hosted vLLM + Whisper interfaces (see `docs/AI_EVALUATION.md`).
+No external keys required. With no keys set the app runs in **fully local demo mode** (localStorage + built-in rule-based scoring); add keys to switch on real persistence and AI grading.
+
+### Optional configuration (`.env.local`)
+
+Copy `.env.example` → `.env.local`:
+
+| Variable | Purpose |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Auth + Postgres (sessions, profiles, results) + Storage (resumes, speaking audio). Run `supabase/schema.sql` in the Supabase SQL editor first. |
+| `DEEPSEEK_API_KEY` | DeepSeek grading of writing / speaking transcript / debugging / feature / prompts. **Server-side only** (`/api/ai/evaluate`); falls back to a rule engine when absent. |
+
+When Supabase is configured: login uses real Auth (sign-in / create-account), **each student gets their own isolated assessment session** (server-side row, one active session per student, RLS-protected), answers + results persist to Postgres and recordings/resumes go to Storage buckets. When DeepSeek is configured, every subjective section shows an "✨ Evaluate with AI" button that returns a rubric score, strengths and improvement notes (otherwise a deterministic heuristic runs).
+
+### Assessment content & anti-cheating
+
+- All questions live in **`data/questions.json`** (the database seed source) — medium-to-hard, organized in the 6 stages / suggested allocation 15+20+20+25+15+25 = 120 min.
+- **Listening** uses real, playable audio (`public/audio/`) with a **2-play limit** per clip.
+- **Speaking** records the microphone (MediaRecorder) and uploads to Supabase Storage; production pipeline is recording → Whisper transcript → DeepSeek rubric.
+- **MCQ options are shuffled per session**: every session gets a random `question_seed`; option order is derived deterministically from that seed (stable for the student, different across students, re-render safe). Answers are stored as the option *text*, so shuffling never affects scoring.
 
 ---
 
