@@ -1,0 +1,10 @@
+node_modules
+.next
+out
+dist
+.env
+.env.local
+coverage
+.DS_Store
+storage/minio-data
+storage/pgdata
