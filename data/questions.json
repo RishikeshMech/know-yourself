@@ -1,0 +1,165 @@
+{
+  "version": 3,
+  "totalDurationMin": 120,
+  "sections": [
+    { "id": "english", "label": "English Communication", "suggestedMin": 15, "maxScore": 200 },
+    { "id": "problem", "label": "Problem Solving", "suggestedMin": 20, "maxScore": 200 },
+    { "id": "debugging", "label": "AI-Assisted Debugging", "suggestedMin": 20, "maxScore": 150 },
+    { "id": "feature", "label": "AI-Assisted Feature Development", "suggestedMin": 25, "maxScore": 150 },
+    { "id": "prompt", "label": "Prompt Engineering", "suggestedMin": 15, "maxScore": 100 },
+    { "id": "cognitive", "label": "Cognitive Assessment", "suggestedMin": 25, "maxScore": 200 }
+  ],
+  "english": {
+    "listening": {
+      "instruction": "You may play each clip at most 2 times. Listen, then answer all questions for that clip.",
+      "clips": [
+        {
+          "id": "LC1",
+          "audio": "/audio/listening-1.mp3",
+          "title": "Clip 1 — Release Retrospective (~75s)",
+          "questions": [
+            { "id": "EL1", "question": "Why did the checkout failures go unnoticed for nearly three hours?", "options": ["The migration was rolled back silently", "The alert went to a channel nobody monitored overnight", "Synthetic tests were disabled on Android", "The on-call engineer was paged but ignored it"], "answer": "The alert went to a channel nobody monitored overnight", "weight": 1 },
+            { "id": "EL2", "question": "What is the immediate change being made to paging alerts?", "options": ["Disable them during night shifts", "Route them directly to the on-call engineer", "Send them only to the team lead", "Post them to the release notes"], "answer": "Route them directly to the on-call engineer", "weight": 1 },
+            { "id": "EL3", "question": "According to the speaker, what was the main reason rollback took ninety minutes?", "options": ["The database backup was corrupted", "The schema change was not backward compatible", "Two engineers were unavailable", "The CDN cache had to be flushed"], "answer": "The schema change was not backward compatible", "weight": 1 },
+            { "id": "EL4", "question": "What practice does the speaker mandate for future migrations?", "options": ["Deploy on weekends only", "Freeze all schema changes", "Expand-and-contract pattern reviewed by two engineers", "Single-engineer ownership of releases"], "answer": "Expand-and-contract pattern reviewed by two engineers", "weight": 1 }
+          ]
+        },
+        {
+          "id": "LC2",
+          "audio": "/audio/listening-2.mp3",
+          "title": "Clip 2 — Incident Triage: Latency Spike (~70s)",
+          "questions": [
+            { "id": "EL5", "question": "Where did the distributed trace show requests queuing?", "options": ["At the database storage layer", "At the API gateway / connection pool", "In the client browser", "In the CDN edge nodes"], "answer": "At the API gateway / connection pool", "weight": 1 },
+            { "id": "EL6", "question": "What mismatch caused the saturation?", "options": ["Pods were scaled to 30 but the pool stayed at 50", "The pool was enlarged beyond capacity", "Database CPU was throttled", "The proxy was misconfigured to zero"], "answer": "Pods were scaled to 30 but the pool stayed at 50", "weight": 1 },
+            { "id": "EL7", "question": "Why set a two-hundred-millisecond queue timeout?", "options": ["To speed up the database", "So overloaded requests fail fast instead of hanging", "To reduce audio latency", "To force users to retry"], "answer": "So overloaded requests fail fast instead of hanging", "weight": 1 },
+            { "id": "EL8", "question": "What is the speaker's long-term fix, and at what utilization will alerts trigger?", "options": ["PgBouncer multiplexing; alerts at 70% pool utilization", "Bigger database instance; alerts at 50%", "Fewer application pods; alerts at 90%", "Static connection strings; alerts disabled"], "answer": "PgBouncer multiplexing; alerts at 70% pool utilization", "weight": 1 }
+          ]
+        }
+      ]
+    },
+    "speaking": {
+      "instruction": "Record 60–90 seconds for each task. You may re-record once. Audio is evaluated on Fluency, Pronunciation, Confidence and Grammar (AI rubric).",
+      "tasks": [
+        { "id": "SP1", "label": "Speaking Task 1", "prompt": "Describe a technical challenge you overcame in a team project. What was the problem, your role, the steps you took, and the outcome? Speak for 60–90 seconds." },
+        { "id": "SP2", "label": "Speaking Task 2", "prompt": "Explain an AI tool you use as a developer. How do you verify that its output is correct before using it? Speak for 60–90 seconds." }
+      ]
+    },
+    "reading": {
+      "instruction": "Read the passage carefully. Questions test inference, detail and vocabulary — not just keyword matching.",
+      "passage": "When AI coding assistants moved from novelty to daily tooling, many teams assumed engineer productivity would rise uniformly. Evidence has been less tidy. A twelve-month study across forty firms compared 2,200 engineers split by their verification behaviour. High verifiers, who routinely read generated code, wrote regression tests and traced edge cases before merging, shipped features 34% faster with a 24% lower defect escape rate than a control group without tooling. Low verifiers, by contrast, were 14% faster to first commit but 18% more likely to introduce post-release defects, and their work took longer to review because teammates could not distinguish reviewed from un-reviewed generated code. The authors argue that the bottleneck of software engineering has shifted from code production to code verification: the scarce skill is no longer producing plausible implementations, but judging whether they are correct, secure and appropriate. Firms that treated the tools as mere accelerators saw most gains erode within two quarters, while those that rewrote their review rituals, such as mandatory tests for generated blocks and an explain-before-merge rule, sustained gains and reported higher junior confidence. None of the firms eliminated human review; the strongest results came from pairing the assistant with tight, fast feedback loops.",
+      "questions": [
+        { "id": "ER1", "question": "What most accurately describes the study's overall finding?", "options": ["AI tools uniformly improved every team", "Productivity gains depended heavily on engineers' verification behaviour", "Juniors benefited most from skipping review", "Defect rates were identical across groups"], "answer": "Productivity gains depended heavily on engineers' verification behaviour", "weight": 1 },
+        { "id": "ER2", "question": "What characterised 'low verifiers'?", "options": ["Slow first commits and few defects", "Fast first commits but more post-release defects", "They never used AI tools", "They wrote the most regression tests"], "answer": "Fast first commits but more post-release defects", "weight": 1 },
+        { "id": "ER3", "question": "The phrase 'the bottleneck … shifted from code production to code verification' implies:", "options": ["Writing code is now impossible", "The key skill is judging correctness rather than generating code", "Verification should be automated entirely", "Code review is no longer needed"], "answer": "The key skill is judging correctness rather than generating code", "weight": 1 },
+        { "id": "ER4", "question": "Why did low verifiers' code take longer to review?", "options": ["Reviewers were inexperienced", "Teammates could not tell reviewed from un-reviewed generated code", "The code was written in unfamiliar languages", "Merge requests were deliberately delayed"], "answer": "Teammates could not tell reviewed from un-reviewed generated code", "weight": 1 },
+        { "id": "ER5", "question": "Which practice was part of the firms that sustained gains?", "options": ["Removing human review", "Mandatory tests for generated blocks and explain-before-merge", "Sharing one assistant login per team", "Freezing the tooling version"], "answer": "Mandatory tests for generated blocks and explain-before-merge", "weight": 1 },
+        { "id": "ER6", "question": "What can be inferred about human review in the strongest-performing firms?", "options": ["It was removed in favour of the assistant", "It was paired with tight, fast feedback loops alongside the assistant", "It occurred only quarterly", "It was done by external auditors"], "answer": "It was paired with tight, fast feedback loops alongside the assistant", "weight": 1 }
+      ]
+    },
+    "writing": {
+      "instruction": "Write 150–300 words. You are assessed on Clarity, Grammar, Structure and Professional tone by an AI rubric.",
+      "scenario": "You are a junior developer. A third-party payments API your product depends on suffered an outage, delaying a committed feature by 3 days. Write an email to the client explaining the delay, its impact, what your team is doing about it (mitigation), and the revised, realistic timeline. Tone: professional, accountable, solution-oriented — not defensive."
+    }
+  },
+  "problem": [
+    { "id": "PS1", "q": "Some rectangles are squares. All squares are parallelograms. Some parallelograms are rhombuses. Which conclusion must be true?", "options": ["Some rectangles are parallelograms", "Some rhombuses are rectangles", "All parallelograms are squares", "Some squares are rhombuses"], "answer": "Some rectangles are parallelograms", "weight": 1 },
+    { "id": "PS2", "q": "Sequence: 3, 4, 7, 12, 19, ?", "options": ["26", "28", "30", "31"], "answer": "28", "weight": 1 },
+    { "id": "PS3", "q": "Pseudocode: s=0; for i in 1..5: s = s + (i % 2 == 0 ? i : 0). What is printed?", "options": ["4", "6", "9", "15"], "answer": "6", "weight": 1 },
+    { "id": "PS4", "q": "Funnel: 2000 visits → 800 sign-ups → 320 activated → 96 paid. Where is the LARGEST proportional drop-off?", "options": ["Visits → sign-ups (-60%)", "Sign-ups → activated (-60%)", "Activated → paid (-70%)", "All steps are equal"], "answer": "Activated → paid (-70%)", "weight": 1 },
+    { "id": "PS5", "q": "nested loops: for i in 1..n: for j in i..n: constant work. Complexity?", "options": ["O(n)", "O(n log n)", "O(n²)", "O(n³)"], "answer": "O(n²)", "weight": 1 },
+    { "id": "PS6", "q": "Two fair dice are rolled. Probability the sum is exactly 8?", "options": ["1/9", "5/36", "1/6", "7/36"], "answer": "5/36", "weight": 1 },
+    { "id": "PS7", "q": "Cache hit ratio 80%; a hit costs 1 unit, a miss costs 11 units. Effective average cost?", "options": ["2.0", "2.8", "3.0", "11.0"], "answer": "3.0", "weight": 1 },
+    { "id": "PS8", "q": "An A/B test shows a 12% lift, p = 0.03, with 90 users per variant. Most defensible decision?", "options": ["Ship immediately to 100% of users", "Treat as promising but confirm with a larger sample", "Reject the variant because p is small", "Run the test forever"], "answer": "Treat as promising but confirm with a larger sample", "weight": 1 },
+    { "id": "PS9", "q": "Sprint backlog: 40 points. Team velocity is 13 points/2-week sprint. Bugs consume ~25% of capacity. How many sprints to complete?", "options": ["2", "3", "4", "5"], "answer": "4", "weight": 1 },
+    { "id": "PS10", "q": "A train leaves at 09:00 at 60 km/h. A second train leaves at 09:30 at 80 km/h on the same line. When does it catch up?", "options": ["10:30", "11:00", "11:30", "12:00"], "answer": "11:00", "weight": 1 }
+  ],
+  "debugging": [
+    {
+      "id": "AD1",
+      "title": "Python — Off-by-one in pagination",
+      "buggy": "def paginate(items, page, size):\n    start = page * size\n    end = start + size\n    return items[start:end]  # page=1 should return the FIRST page\n\n# paginate(list(range(20)), 1, 5) currently returns [5,6,7,8,9]",
+      "prompt": "Fix pagination so page=1 returns the first page. Also handle page < 1, size <= 0, and requests beyond the last page without crashing. You may use AI — write the corrected function.",
+      "hint": "Consider zero-based indexing and input validation.",
+      "tests": 4
+    },
+    {
+      "id": "AD2",
+      "title": "JavaScript — Race condition / duplicate fetches",
+      "buggy": "const cache = {};\nasync function get(key, fetcher){\n  if(cache[key]) return cache[key];\n  const val = await fetcher();   // 5 concurrent callers -> fetcher runs 5 times\n  cache[key] = val;\n  return val;\n}",
+      "prompt": "Fix so concurrent calls with the same key trigger fetcher() exactly once and all callers receive the same value. Handle a failing fetch by removing the in-flight entry so a retry is possible.",
+      "hint": "Cache the in-flight Promise, not just the resolved value.",
+      "tests": 4
+    },
+    {
+      "id": "AD3",
+      "title": "Python — Mutating a list while iterating",
+      "buggy": "def remove_inactive(users):\n    for u in users:\n        if u['active'] is False:\n            users.remove(u)   # skips elements / RuntimeError risk\n    return users",
+      "prompt": "Rewrite so every inactive user is removed safely without skipping elements or raising. Preserve order of the remaining users. Explain the root cause in a comment.",
+      "hint": "Build a new list, or iterate over a copy / indices in reverse.",
+      "tests": 3
+    }
+  ],
+  "feature": {
+    "id": "AF1",
+    "title": "Feature: Build a sliding-window rate limiter",
+    "spec": "You are adding API protection to an existing Node/Express service. Implement an in-memory sliding-window rate limiter: function isAllowed(userId, maxRequests = 5, windowMs = 60000). It returns true if the user has made fewer than maxRequests within the last windowMs, and records the request; otherwise returns false. Old timestamps must be cleaned so memory does not grow unbounded. Then show how you would wire it as Express middleware and return HTTP 429 with a Retry-After header when blocked. You may use AI tools to build it.",
+    "sample": "isAllowed('u1') x5 within 60s -> true; 6th call -> false; after 60s window elapses -> true again",
+    "hint": "Store an array of timestamps per user; filter out entries older than windowMs on each call.",
+    "tests": 5
+  },
+  "prompt": [
+    { "id": "PE1", "task": "Write a prompt that instructs an AI assistant to summarize a 10-page technical research paper into exactly 3 bullets for a busy CEO — focusing on business impact and risk, not methodology. The model must not invent numbers.", "hint": "Specify role, audience, format, and a hallucination guardrail." },
+    { "id": "PE2", "task": "Write a prompt for an AI coding assistant to generate a Python script that de-duplicates a 10 million-row CSV on a composite key, running on a machine with only 1 GB of free RAM, without loading the whole file.", "hint": "Specify constraints, memory budget, acceptable libraries, and streaming/chunking behaviour." },
+    { "id": "PE3", "task": "Write a prompt that makes an AI critique a draft business email for tone, bias, and factual accuracy, returning a strict JSON object with fields {issues[], rewrittenEmail, confidence} and nothing else.", "hint": "Specify output format, role, and how to handle uncertainty." }
+  ],
+  "cognitive": {
+    "grid": { "rounds": 5, "patternSize": 4, "gridCells": 16, "showMs": 2800, "note": "Memorize the highlighted cells, then reproduce. Accuracy weighted 70%, speed 30%." },
+    "logical": [
+      { "id": "CL1", "q": "3×3 grid: 2,4,6 / 3,6,9 / 4,8,? — what completes it?", "options": ["10", "11", "12", "16"], "answer": "12", "weight": 1 },
+      { "id": "CL2", "q": "Pseudocode: s=0; for i in 1..4: s += i*i; print s", "options": ["20", "30", "25", "14"], "answer": "30", "weight": 1 },
+      { "id": "CL3", "q": "Which item does NOT belong? TCP, UDP, HTTP, IP, FTP", "options": ["TCP", "UDP", "HTTP", "FTP"], "answer": "HTTP", "weight": 1 },
+      { "id": "CL4", "q": "Pattern of letters: AB, DE, GH, JK, ?", "options": ["MN", "MP", "NO", "NM"], "answer": "MN", "weight": 1 },
+      { "id": "CL5", "q": "All engineers who learn SQL finish tasks faster. Some managers learn SQL. Therefore:", "options": ["All managers finish faster", "Some managers finish tasks faster", "No engineer is a manager", "Nothing about managers can be concluded"], "answer": "Some managers finish tasks faster", "weight": 1 },
+      { "id": "CL6", "q": "A clock shows 3:15. The angle between the hour and minute hands is:", "options": ["0°", "7.5°", "15°", "22.5°"], "answer": "7.5°", "weight": 1 },
+      { "id": "CL7", "q": "Data interpretation: of 500 applicants, 60% clear the aptitude test; of those, 25% clear interviews. How many receive offers?", "options": ["60", "75", "100", "125"], "answer": "75", "weight": 1 }
+    ],
+    "behavioral": [
+      { "id": "BE1", "trait": "teamwork", "q": "A teammate misses a deadline that blocks your work, for the second time. What do you do?", "options": [
+        { "text": "Escalate to the manager immediately without talking to them", "score": 35 },
+        { "text": "Offer help, re-plan together, and document the risk to the milestone", "score": 95 },
+        { "text": "Silently do their part so nothing slips", "score": 55 },
+        { "text": "Wait — it will probably resolve itself", "score": 25 }
+      ]},
+      { "id": "BE2", "trait": "accountability", "q": "You ship a change that causes a short production outage. What do you do?", "options": [
+        { "text": "Fix it quietly and hope nobody notices", "score": 30 },
+        { "text": "Own it immediately, communicate status, and lead a blameless postmortem", "score": 97 },
+        { "text": "Point out that the reviewer approved it too", "score": 20 },
+        { "text": "Roll back and tell the team it was an unrelated issue", "score": 25 }
+      ]},
+      { "id": "BE3", "trait": "adaptability", "q": "A new framework is released mid-project and would clearly help. How do you respond?", "options": [
+        { "text": "Rewrite the whole project in it immediately", "score": 40 },
+        { "text": "Run a small time-boxed spike, evaluate trade-offs, and propose a decision to the team", "score": 95 },
+        { "text": "Ignore it — new things are risky", "score": 45 },
+        { "text": "Adopt it on every new task without discussion", "score": 35 }
+      ]},
+      { "id": "BE4", "trait": "responsible_ai", "q": "An AI assistant produces code that looks correct, but you cannot verify one of its claims. What do you do?", "options": [
+        { "text": "Ship it — the AI is usually right", "score": 20 },
+        { "text": "Review carefully, write tests, check sources, and only merge what you understand", "score": 97 },
+        { "text": "Reject all AI-generated code on principle", "score": 40 },
+        { "text": "Merge if existing tests still pass", "score": 60 }
+      ]},
+      { "id": "BE5", "trait": "decision_making", "q": "Two managers give you conflicting, equally urgent priorities. What is your first move?", "options": [
+        { "text": "Pick whichever one you like best", "score": 35 },
+        { "text": "Surface the conflict, clarify impact with both, and align on one prioritised plan in writing", "score": 95 },
+        { "text": "Escalate to leadership with no context", "score": 40 },
+        { "text": "Try to do both and deliver neither well", "score": 25 }
+      ]},
+      { "id": "BE6", "trait": "learning_mindset", "q": "You are assigned a task in a technology you have never used. What do you do?", "options": [
+        { "text": "Pretend you know it and figure it out in secret", "score": 35 },
+        { "text": "Say so, propose a short learning plan, and deliver incrementally with a mentor's check-ins", "score": 96 },
+        { "text": "Decline the task", "score": 25 },
+        { "text": "Copy a solution from the internet without understanding it", "score": 20 }
+      ]}
+    ]
+  }
+}

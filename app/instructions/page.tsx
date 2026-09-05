@@ -3,22 +3,55 @@ import { Navbar } from '@/components/Navbar'
 import { StoreProvider, useStore } from '@/lib/store'
 import { Stepper } from '@/components/Stepper'
 import { useState } from 'react'
+import { getSupabase } from '@/lib/supabase'
+
+const ALLOCATION = [
+  [1, 'English Communication', '15 min'],
+  [2, 'Problem Solving', '20 min'],
+  [3, 'AI-Assisted Debugging', '20 min'],
+  [4, 'AI-Assisted Feature Development', '25 min'],
+  [5, 'Prompt Engineering', '15 min'],
+  [6, 'Cognitive Assessment', '25 min'],
+]
+
+const MODULES = [
+  ['English Communication','200 pts · Listening, Speaking, Reading, Writing'],
+  ['Problem Solving','200 pts · Logic, correctness, data interpretation'],
+  ['AI-Assisted Debugging','150 pts · Fix buggy code (AI allowed)'],
+  ['AI-Assisted Feature Dev','150 pts · Build a feature from a spec'],
+  ['Prompt Engineering','100 pts · 3 tasks, AI-rubric scored'],
+  ['Cognitive Assessment','200 pts · Grid challenge, logical reasoning, behavioural'],
+]
 
 function Inner(){
   const {setSession} = useStore()
   const [checked,setChecked]=useState(false)
+  const [starting,setStarting]=useState(false)
 
-  const start = ()=>{
+  const start = async ()=>{
+    if(starting) return
+    setStarting(true)
     const now = Date.now()
-    const session = {
-      id: 'sess_'+Math.random().toString(16).slice(2,8),
-      started_at: new Date(now).toISOString(),
-      expires_at: new Date(now + 7200*1000).toISOString(),
-      duration_sec: 7200,
-      status:'in_progress'
+    const seed = Math.floor(Math.random()*1_000_000_000)
+    let session:any = null
+    const sb = getSupabase()
+    if(sb){
+      try{
+        const { data:{ user } } = await sb.auth.getUser()
+        if(user){
+          const { data, error } = await sb.from('assessment_sessions')
+            .insert({ student_id: user.id, question_seed: seed }).select().single()
+          if(!error && data){
+            session = { id: data.id, started_at: data.started_at, expires_at: data.expires_at, duration_sec: data.duration_sec, status: data.status, question_seed: data.question_seed }
+          }
+        }
+      }catch(e){ /* fall back to local */ }
+    }
+    if(!session){
+      session = { id: 'sess_'+Math.random().toString(16).slice(2,10), started_at: new Date(now).toISOString(), expires_at: new Date(now+7200*1000).toISOString(), duration_sec: 7200, status:'in_progress', question_seed: seed }
     }
     setSession(session)
-    // also store server time for timer skew handling
+    localStorage.setItem('calibiai_session', JSON.stringify(session))
     localStorage.setItem('calibiai_session_server_start', String(now))
     window.location.href='/assessment'
   }
@@ -26,69 +59,89 @@ function Inner(){
   return (
     <div>
       <Navbar />
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
         <Stepper step={7} />
         <div className="mt-6 grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 rounded-[24px] glass p-6 sm:p-8">
-            <h1 className="text-2xl font-black">Assessment Instructions</h1>
-            <p className="text-sm text-white/60">Server-controlled, tamper-proof, clock-skew-resistant across regions. 120 minutes.</p>
+          <div className="lg:col-span-2 glass-card animate-fade-up">
+            <h1 className="text-2xl font-black text-slate-900">Assessment instructions</h1>
+            <p className="text-sm text-slate-500 mt-1">120 minutes · 6 sections · 1000 points. Take it somewhere quiet with a working camera and microphone.</p>
 
             <div className="mt-6 grid sm:grid-cols-2 gap-3 text-sm">
-              <div className="rounded-xl bg-white/5 p-3"><div className="font-bold">Duration</div><div className="text-white/60">120 min • auto-submit at expiry • no pause</div></div>
-              <div className="rounded-xl bg-white/5 p-3"><div className="font-bold">Timer</div><div className="text-white/60">Server time authoritative • reconciled every 5s • HMAC-signed session token</div></div>
-              <div className="rounded-xl bg-white/5 p-3"><div className="font-bold">Proctoring</div><div className="text-white/60">Tab switches tracked (3+ flagged) • anomaly model • audit trail</div></div>
-              <div className="rounded-xl bg-white/5 p-3"><div className="font-bold">Failover</div><div className="text-white/60">Survives regional failover — session in Postgres, not just Redis</div></div>
-            </div>
-
-            <h3 className="mt-6 font-bold">6 Modules • Calibiai /1000</h3>
-            <div className="mt-3 grid sm:grid-cols-2 gap-3 text-xs">
               {[
-                ['English Communication','200 • Listening, Speaking, Reading, Writing'],
-                ['Problem Solving','200 • MCQ, pseudocode, data interpretation'],
-                ['AI-Assisted Debugging','150 • Fix buggy code (hidden tests)'],
-                ['AI-Assisted Feature Dev','150 • Build from spec (test harness)'],
-                ['Prompt Engineering','100 • 3 tasks, rubric-scored'],
-                ['Cognitive Assessment','200 • Motion Grid 30 + Logical 70 + Behavioral 100'],
+                ['⏱ Duration','120 min · auto-submits when time runs out · no pause'],
+                ['🎥 Proctoring','Live camera preview (not recorded) · staying on-screen keeps it fair'],
+                ['🎧 Listening','Two audio clips with questions — each plays up to 2 times'],
+                ['🎙 Speaking','Two short spoken answers recorded from your microphone'],
               ].map(([t,d])=>(
-                <div key={t} className="rounded-xl bg-white/5 border border-white/10 p-3"><div className="font-bold text-white">{t}</div><div className="text-white/60">{d}</div></div>
+                <div key={t} className="panel p-3"><div className="font-bold text-slate-800">{t}</div><div className="text-slate-500 text-xs mt-0.5">{d}</div></div>
               ))}
             </div>
 
-            <div className="mt-6 rounded-xl bg-amber-500/10 border border-amber-500/20 p-3 text-xs leading-relaxed">
-              <div className="font-bold text-amber-300">Rules</div>
-              <ul className="list-disc ml-4 text-white/70 mt-1">
-                <li>Do not refresh during assessment — state is persisted, but timer continues server-side.</li>
-                <li>Tab switching, copy/paste, and rapid answering are logged for anomaly detection.</li>
-                <li>Submission enqueues to Redpanda → GPU workers (rule + LLaMA/Whisper). Score in ~15s.</li>
+            <h3 className="mt-7 font-black text-slate-900">The 6 sections</h3>
+            <div className="mt-3 grid sm:grid-cols-2 gap-2.5">
+              {MODULES.map(([t,d])=>(
+                <div key={t} className="panel p-3"><div className="font-bold text-sm text-slate-800">{t}</div><div className="text-slate-500 text-xs mt-0.5">{d}</div></div>
+              ))}
+            </div>
+
+            <h3 className="mt-7 font-black text-slate-900">Suggested time allocation</h3>
+            <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white/60 text-sm">
+              <table className="w-full">
+                <thead className="bg-slate-50 text-slate-500 text-xs">
+                  <tr><th className="text-left px-4 py-2.5 w-14">Stage</th><th className="text-left px-4 py-2.5">Section</th><th className="text-right px-4 py-2.5 w-24">Time</th></tr>
+                </thead>
+                <tbody>
+                  {ALLOCATION.map(([n,t,time])=>(
+                    <tr key={n as number} className="border-t border-slate-100">
+                      <td className="px-4 py-2.5 text-slate-400 font-mono">{n}</td>
+                      <td className="px-4 py-2.5 font-medium text-slate-700">{t}</td>
+                      <td className="px-4 py-2.5 text-right text-slate-500 font-mono">{time}</td>
+                    </tr>
+                  ))}
+                  <tr className="border-t-2 border-slate-200 bg-indigo-50/60 font-bold text-indigo-700">
+                    <td className="px-4 py-2.5" colSpan={2}>TOTAL</td>
+                    <td className="px-4 py-2.5 text-right font-mono">120 min</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-6 rounded-2xl bg-amber-50 border border-amber-200 p-4 text-xs leading-relaxed text-slate-600">
+              <div className="font-bold text-amber-700 mb-1">Please note</div>
+              <ul className="list-disc ml-4 space-y-1">
+                <li>Keep this tab/window focused — leaving it 3 times submits your test automatically.</li>
+                <li>Your answers are saved automatically as you go.</li>
+                <li>Use AI assistants for the debugging, feature and prompt sections — that's the skill being tested.</li>
               </ul>
             </div>
 
-            <label className="mt-6 flex gap-2 text-sm"><input type="checkbox" checked={checked} onChange={e=>setChecked(e.target.checked)} /> I have read and understood the instructions.</label>
-
-            <button onClick={start} disabled={!checked} className={`mt-4 w-full sm:w-auto px-8 py-3 rounded-full font-black text-sm ${checked?'calibiai-gradient text-white shadow':'bg-white/10 text-white/30 cursor-not-allowed'}`}>START 120-MIN TIMER →</button>
-            <div className="mt-2 text-xs font-mono text-white/30">POST /api/v1/assessment/start → {'{session_id, started_at, expires_at, server_time}'} • HMAC signed</div>
+            <label className="mt-6 flex gap-2 text-sm text-slate-700 cursor-pointer">
+              <input type="checkbox" checked={checked} onChange={e=>setChecked(e.target.checked)} className="accent-indigo-600 mt-0.5 w-4 h-4" />
+              I have read and understood the instructions.
+            </label>
+            <button onClick={start} disabled={!checked || starting}
+              className={`mt-4 w-full sm:w-auto px-8 py-3.5 rounded-full font-black text-sm transition ${checked && !starting ? 'btn-primary !py-3.5' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
+              {starting ? 'Creating your session…' : 'START 120-MIN TIMER →'}
+            </button>
           </div>
 
           <div className="space-y-4">
-            <div className="rounded-2xl glass p-5">
-              <div className="text-sm font-bold">What happens next?</div>
-              <ol className="mt-2 text-xs space-y-1 text-white/60 list-decimal ml-4">
-                <li>Timer starts server-side, synced every 5s</li>
-                <li>Answer each module — answers streamed to Kafka</li>
-                <li>Submit → Evaluation queue (CPU rule + GPU LLM)</li>
-                <li>Calibiai Score /1000 + PDF report</li>
+            <div className="glass-card animate-fade-up !p-5" style={{animationDelay:'.1s'}}>
+              <div className="text-sm font-black text-slate-800">What happens next?</div>
+              <ol className="mt-3 text-xs space-y-2 text-slate-500 list-decimal ml-4">
+                <li>Your 120-minute timer starts</li>
+                <li>Answer each of the 6 sections</li>
+                <li>Submit when done (or it auto-submits)</li>
+                <li>Get your Calibiai Score out of 1000 + a PDF report</li>
               </ol>
             </div>
-            <div className="rounded-2xl bg-navy-800 border border-white/10 p-5">
-              <div className="text-xs font-mono text-white/50">Scoring preview</div>
-              <div className="mt-2 text-xs space-y-1 font-mono">
-                <div className="flex justify-between"><span>English</span><span>200</span></div>
-                <div className="flex justify-between"><span>Problem Solving</span><span>200</span></div>
-                <div className="flex justify-between"><span>AI Debugging</span><span>150</span></div>
-                <div className="flex justify-between"><span>AI Feature</span><span>150</span></div>
-                <div className="flex justify-between"><span>Prompt Eng</span><span>100</span></div>
-                <div className="flex justify-between"><span>Cognitive</span><span>200</span></div>
-                <div className="flex justify-between font-bold border-t border-white/10 pt-1"><span>Total</span><span>1000</span></div>
+            <div className="rounded-3xl calibiai-gradient p-5 text-white shadow-xl shadow-indigo-200 animate-fade-up" style={{animationDelay:'.18s'}}>
+              <div className="text-xs font-bold opacity-80">Score breakdown</div>
+              <div className="mt-3 text-xs space-y-1.5 font-mono">
+                {[['English','200'],['Problem Solving','200'],['AI Debugging','150'],['AI Feature','150'],['Prompt Eng','100'],['Cognitive','200']].map(([k,v])=>(
+                  <div key={k} className="flex justify-between"><span>{k}</span><span>{v}</span></div>
+                ))}
+                <div className="flex justify-between font-black border-t border-white/30 pt-1.5"><span>Total</span><span>1000</span></div>
               </div>
             </div>
           </div>
