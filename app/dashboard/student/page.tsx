@@ -10,18 +10,15 @@ function Inner(){
   const [profile,setProfile]=useState<any>(null)
   const [resume,setResume]=useState<any>(null)
   const { user, hydrated } = useStore()
+
   // Protect the student dashboard: a signed-out visitor is sent to /login.
   // Render nothing until the session is known so the page never flashes.
   useEffect(()=>{
     if (hydrated && !user) window.location.replace('/login')
   },[hydrated, user])
-  if (!hydrated) return null
-  if (!user) return null
-  const onboarded = isProfileComplete(profile)
-  // The right place to continue: finish onboarding if we never did, otherwise
-  // jump to the assessment instructions (which start/create the session). This
-  // never sends a signed-in user back to /login.
-  const startHref = onboarded ? '/instructions' : '/onboarding'
+
+  // Load any locally cached data, then enrich with DB data when signed in.
+  // All hooks must run before any conditional returns to keep the hook order stable.
   useEffect(()=>{
     const s=localStorage.getItem('calibiai_scores'); if(s) setScores(JSON.parse(s))
     const p=localStorage.getItem('calibiai_profile'); if(p) setProfile(JSON.parse(p))
@@ -63,6 +60,14 @@ function Inner(){
       }).catch(()=>{})
     }
   },[user])
+
+  if (!hydrated) return null
+  if (!user) return null
+  const onboarded = isProfileComplete(profile)
+  // The right place to continue: finish onboarding if we never did, otherwise
+  // jump to the assessment instructions (which start/create the session). This
+  // never sends a signed-in user back to /login.
+  const startHref = onboarded ? '/instructions' : '/onboarding'
 
   return (
     <div>
