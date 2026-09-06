@@ -4,12 +4,12 @@ import { useEffect, useState } from 'react'
 import { Navbar } from '@/components/Navbar'
 import { StoreProvider, useStore } from '@/lib/store'
 import { isProfileComplete } from '@/lib/validate'
+import { ReportModal } from '@/components/ReportModal'
 
 function Inner(){
-  const [scores,setScores]=useState<any>(null)
-  const [profile,setProfile]=useState<any>(null)
-  const [resume,setResume]=useState<any>(null)
-  const { user, hydrated } = useStore()
+  const { user, profile, setProfile, resume, setResume, scores, setScores, hydrated } = useStore()
+  const [showReport, setShowReport] = useState(false)
+  const [downloading, setDownloading] = useState(false)
 
   // Protect the student dashboard: a signed-out visitor is sent to /login.
   // Render nothing until the session is known so the page never flashes.
@@ -17,49 +17,37 @@ function Inner(){
     if (hydrated && !user) window.location.replace('/login')
   },[hydrated, user])
 
-  // Load any locally cached data, then enrich with DB data when signed in.
+  // Enrich the (locally hydrated) store with the latest DB data when signed in.
+  // Data is written through the store so the navbar and every other page sees
+  // the same profile — including the full name set on the profile page.
   // All hooks must run before any conditional returns to keep the hook order stable.
   useEffect(()=>{
-    const s=localStorage.getItem('calibiai_scores'); if(s) setScores(JSON.parse(s))
-    const p=localStorage.getItem('calibiai_profile'); if(p) setProfile(JSON.parse(p))
-    const r=localStorage.getItem('calibiai_resume'); if(r) setResume(JSON.parse(r))
-    // Load from DB if user is logged in
-    if(user?.id){
-      fetch('/api/user/profile?user_id='+user.id).then(r=>r.json()).then(data=>{
-        if(data.profile) setProfile(data.profile)
-      }).catch(()=>{})
-      fetch('/api/user/resume?student_id='+user.id).then(r=>r.json()).then(data=>{
-        if(data.analysis) setResume(data.analysis)
-      }).catch(()=>{})
-      fetch('/api/user/scores?student_id='+user.id).then(r=>r.json()).then(data=>{
-        if(data.result) {
-          const payload = {
-            session_id: data.result.session_id,
-            ...data.result.scores,
-            total: data.result.total,
-            grade: data.result.grade,
-            percentile: data.result.percentile,
-            verifiable_hash: data.result.verifiable_hash,
-            cognitive: data.result.scores?.cognitive,
-            english: data.result.scores?.english,
-            detail: data.result.scores?.detail,
-          }
-          setScores(payload)
-          localStorage.setItem('calibiai_scores', JSON.stringify(payload))
+    if(!user?.id) return
+    fetch('/api/user/profile?user_id='+user.id).then(r=>r.json()).then(data=>{
+      if(data.profile) setProfile(data.profile)
+    }).catch(()=>{})
+    fetch('/api/user/resume?student_id='+user.id).then(r=>r.json()).then(data=>{
+      if(data.analysis) setResume(data.analysis)
+    }).catch(()=>{})
+    fetch('/api/user/scores?student_id='+user.id).then(r=>r.json()).then(data=>{
+      if(data.result) {
+        const payload = {
+          session_id: data.result.session_id,
+          ...data.result.scores,
+          total: data.result.total,
+          grade: data.result.grade,
+          percentile: data.result.percentile,
+          verifiable_hash: data.result.verifiable_hash,
+          cognitive: data.result.scores?.cognitive,
+          english: data.result.scores?.english,
+          detail: data.result.scores?.detail,
+          ai_results: data.result.ai_feedback,
         }
-      }).catch(()=>{})
-      fetch('/api/user/tracking?user_id='+user.id).then(r=>r.json()).then(data=>{
-        if(data.tracking) {
-          const tracking = { whatsapp: false, linkedin: false }
-          data.tracking.forEach((e:any) => {
-            if(e.action === 'join_whatsapp') tracking.whatsapp = e.completed
-            if(e.action === 'follow_linkedin') tracking.linkedin = e.completed
-          })
-          // Could update store tracking here if needed
-        }
-      }).catch(()=>{})
-    }
-  },[user])
+        setScores(payload)
+      }
+    }).catch(()=>{})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[user?.id])
 
   if (!hydrated) return null
   if (!user) return null
@@ -102,8 +90,22 @@ function Inner(){
                   ))}
                 </div>
                 <div className="mt-5 flex flex-wrap gap-3">
-                  <a href="/result" onClick={() => { try { localStorage.setItem('calibiai_just_submitted', String(Date.now())) } catch { } }} className="btn-primary !py-2.5 text-xs">View full report</a>
-                  <button onClick={()=>window.print()} className="btn-soft !py-2.5 text-xs">⬇ Download PDF</button>
+                  <button onClick={() => setShowReport(true)} className="btn-primary !py-2.5 text-xs">View report</button>
+                  <button
+                    onClick={async () => {
+                      setDownloading(true)
+                      try {
+                        const { generateReportPdf } = await import('@/lib/reportPdf')
+                        const doc = await generateReportPdf({ scores, profile, user })
+                        doc.save(`CalibiAI_Report_${scores?.session_id || 'scorecard'}.pdf`)
+                      } catch (e) { console.warn('PDF generation failed:', e) }
+                      finally { setDownloading(false) }
+                    }}
+                    disabled={downloading}
+                    className="btn-soft !py-2.5 text-xs"
+                  >
+                    {downloading ? 'Preparing PDF…' : '⬇ Download PDF'}
+                  </button>
                 </div>
               </div>
             ) : (
@@ -142,6 +144,11 @@ function Inner(){
             </div>
           </div>
         </div>
+
+        {/* Report pop-up */}
+        {showReport && scores && (
+          <ReportModal scores={scores} onClose={() => setShowReport(false)} />
+        )}
 
         {/* Profile strip */}
         {profile && (
