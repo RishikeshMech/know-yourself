@@ -63,7 +63,7 @@ function Inner(){
         <div className="mt-6 grid lg:grid-cols-3 gap-6">
           {/* Score */}
           <div className="lg:col-span-2 glass-card animate-fade-up" style={{animationDelay:'.05s'}}>
-            <div className="text-sm font-bold text-slate-700">Latest Calibiai Score</div>
+            <div className="text-sm font-bold text-slate-700">Latest CalibiAI Score</div>
             {scores ? (
               <div className="mt-4">
                 <div className="flex items-baseline gap-3 flex-wrap">

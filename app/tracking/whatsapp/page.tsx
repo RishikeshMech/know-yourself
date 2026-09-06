@@ -29,7 +29,7 @@ function Inner(){
           <div className="mt-6 panel p-4 flex items-center gap-4 text-left max-w-md mx-auto">
             <div className="w-12 h-12 rounded-2xl bg-emerald-500 flex items-center justify-center text-white font-black shrink-0">WA</div>
             <div className="text-sm">
-              <div className="font-bold text-slate-800">Calibiai Students</div>
+              <div className="font-bold text-slate-800">CalibiAI Students</div>
               <div className="text-slate-500 text-xs">Placement updates, tips & jobs</div>
             </div>
           </div>

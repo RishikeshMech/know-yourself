@@ -24,12 +24,12 @@ function Inner(){
         <div className="mt-6 glass-card text-center animate-fade-up">
           <div className="w-16 h-16 rounded-2xl bg-sky-600 mx-auto flex items-center justify-center text-2xl font-black text-white shadow-lg shadow-sky-200">in</div>
           <h1 className="mt-4 text-2xl font-black text-slate-900">Showcase your score on LinkedIn</h1>
-          <p className="text-slate-500 mt-2 text-sm max-w-md mx-auto">Follow Calibiai and share your verified score as a credential employers can check.</p>
+          <p className="text-slate-500 mt-2 text-sm max-w-md mx-auto">Follow CalibiAI and share your verified score as a credential employers can check.</p>
 
           <div className="mt-6 panel p-4 flex items-center gap-4 text-left max-w-md mx-auto">
             <div className="w-12 h-12 rounded-2xl bg-sky-600 flex items-center justify-center text-white font-black shrink-0">C</div>
             <div className="text-sm">
-              <div className="font-bold text-slate-800">Calibiai — Employability Standard</div>
+              <div className="font-bold text-slate-800">CalibiAI — Employability Standard</div>
               <div className="text-slate-500 text-xs">Follow for hiring partner updates</div>
             </div>
           </div>

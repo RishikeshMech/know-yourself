@@ -146,7 +146,7 @@ function Inner(){
                 <li>Your 120-minute timer starts</li>
                 <li>Answer each of the 6 sections</li>
                 <li>Submit when done (or it auto-submits)</li>
-                <li>Get your Calibiai Score out of 1000 + a PDF report</li>
+                <li>Get your CalibiAI Score out of 1000 + a PDF report</li>
               </ol>
             </div>
             <div className="rounded-3xl calibiai-gradient p-5 text-white shadow-xl shadow-indigo-200 animate-fade-up" style={{animationDelay:'.18s'}}>

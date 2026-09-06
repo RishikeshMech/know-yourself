@@ -8,3 +8,4 @@ coverage
 .DS_Store
 storage/minio-data
 storage/pgdata
+tsconfig.tsbuildinfo

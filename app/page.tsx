@@ -17,7 +17,7 @@ function Landing(){
               Your skills. One <span className="text-gradient">verified score</span>. A clearer path forward.
             </h1>
             <p className="mt-4 text-slate-500 leading-relaxed text-lg">
-              Complete a focused, evidence-based assessment and get your <b className="text-slate-700">Calibiai Score out of 1000</b> — communication, problem solving, AI skills and cognition, in one credential you can share.
+              Complete a focused, evidence-based assessment and get your <b className="text-slate-700">CalibiAI Score out of 1000</b> — communication, problem solving, AI skills and cognition, in one credential you can share.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <a href="/login" className="btn-primary">Start your assessment →</a>
@@ -34,7 +34,7 @@ function Landing(){
           <div className="relative animate-fade-up" style={{animationDelay:'.12s'}}>
             <div className="glass-card hover-lift">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-slate-700">Your Calibiai Score</span>
+                <span className="text-sm font-bold text-slate-700">Your CalibiAI Score</span>
                 <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-500 text-white font-bold shadow shadow-emerald-300">✓ VERIFIED</span>
               </div>
               <div className="mt-5 flex items-baseline gap-2">

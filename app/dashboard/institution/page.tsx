@@ -35,7 +35,7 @@ function Inner(){
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             {l:'Total students', v:'2.4M', s:'+12% this month', sColor:'text-emerald-600'},
-            {l:'Average Calibiai', v:728, s:'National avg 702'},
+            {l:'Average CalibiAI', v:728, s:'National avg 702'},
             {l:'Placement-ready', v:'38%', s:'Grade S + A'},
           ].map((c,i)=>(
             <div key={i} className="glass-card !p-5 hover-lift animate-fade-up" style={{animationDelay:`${.05*i}s`}}>
