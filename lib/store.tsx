@@ -31,8 +31,22 @@ export function StoreProvider({children}:{children:React.ReactNode}){
 
   useEffect(()=>{
     try{
-      const u = localStorage.getItem('calibiai_user')
-      if(u) setUserState(JSON.parse(u))
+      const rawU = localStorage.getItem('calibiai_user')
+      const rawP = localStorage.getItem('calibiai_profile')
+      if(rawU){
+        const u = JSON.parse(rawU)
+        // The profile's full name is the display name the user chose — make
+        // sure a stale email-derived account name (e.g. "prajwalgulhane85")
+        // never wins over it after a refresh.
+        const full = rawP ? String(JSON.parse(rawP)?.full_name || '').trim() : ''
+        if(full && u?.name !== full){
+          const merged = { ...u, name: full }
+          setUserState(merged)
+          localStorage.setItem('calibiai_user', JSON.stringify(merged))
+        } else {
+          setUserState(u)
+        }
+      }
       const p = localStorage.getItem('calibiai_profile'); if(p) setProfile(JSON.parse(p))
       const r = localStorage.getItem('calibiai_resume'); if(r) setResume(JSON.parse(r))
       const t = localStorage.getItem('calibiai_tracking'); if(t) setTracking(JSON.parse(t))
@@ -54,7 +68,26 @@ export function StoreProvider({children}:{children:React.ReactNode}){
   const setProfileSafe = (p:any)=>{
     setProfile(p)
     if(p) localStorage.setItem('calibiai_profile', JSON.stringify(p))
+    // Mirror the profile's full name onto the signed-in account so the navbar
+    // circle / account menu show the name given on the profile page.
+    const full = typeof p?.full_name === 'string' ? p.full_name.trim() : ''
+    if(full && user && user.name !== full){
+      const merged = { ...user, name: full }
+      setUserState(merged)
+      localStorage.setItem('calibiai_user', JSON.stringify(merged))
+    }
   }
+  // Covers cases where the profile is stored before the user is known (e.g. a
+  // profile arriving mid-render) — reconcile once hydration completes.
+  useEffect(()=>{
+    if(!hydrated) return
+    const full = typeof profile?.full_name === 'string' ? profile.full_name.trim() : ''
+    if(!full || !user || user.name === full) return
+    const merged = { ...user, name: full }
+    setUserState(merged)
+    localStorage.setItem('calibiai_user', JSON.stringify(merged))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, profile?.full_name])
   const setResumeSafe = (r:any)=>{
     setResume(r)
     if(r) localStorage.setItem('calibiai_resume', JSON.stringify(r))

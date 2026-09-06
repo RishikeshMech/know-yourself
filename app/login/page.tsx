@@ -5,7 +5,7 @@ import { getSupabase } from '@/lib/supabase'
 import { Logo } from '@/components/Logo'
 
 function LoginInner() {
-  const { setUser, user, hydrated } = useStore()
+  const { setUser, setProfile, user, hydrated } = useStore()
   // Never pre-fill credentials — the form must start empty so one user's
   // details are never shown to the next person on a shared device.
   const [email, setEmail] = useState('')
@@ -39,8 +39,21 @@ function LoginInner() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || (mode === 'signup' ? 'Sign up failed.' : 'Sign in failed.'))
       const user = data.user
+      let name = user.name || user.email.split('@')[0]
+      // Returning users: pull their saved profile right away so the header
+      // shows the name they chose on the profile page (e.g. "Prajwal") instead
+      // of the email-derived username ("prajwalgulhane85") everywhere.
+      if (user.id && data.has_onboarding) {
+        try {
+          const pr = await fetch('/api/user/profile?user_id=' + user.id).then(r => r.json()).catch(() => ({}))
+          if (pr?.profile?.full_name?.trim()) {
+            name = pr.profile.full_name.trim()
+            setProfile(pr.profile)
+          }
+        } catch { /* keep server-provided name */ }
+      }
       // A brand new account is signed in immediately — no second sign-in step.
-      setUser({ id: user.id, email: user.email, role: user.role || 'student', institution_id: user.institution_id || 'inst_iitm', name: user.name || user.email.split('@')[0] })
+      setUser({ id: user.id, email: user.email, role: user.role || 'student', institution_id: user.institution_id || 'inst_iitm', name })
       // When Supabase is the backend, hand the session to supabase-js in the
       // browser so RLS policies and Storage uploads work client-side.
       try {

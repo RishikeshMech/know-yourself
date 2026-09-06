@@ -33,7 +33,9 @@ export async function POST(req: Request) {
             email: auth.user.email,
             role: 'student',
             institution_id: 'inst_iitm',
-            name: auth.user.name || profile?.full_name || auth.user.email.split('@')[0],
+            // The name the candidate set on their profile page is authoritative
+            // — never prefer the email-derived auth username over it.
+            name: profile?.full_name?.trim() || auth.user.name || auth.user.email.split('@')[0],
           },
           has_assessment: hasAssessment,
           // Onboarded = the user actually completed the onboarding form (full
@@ -66,7 +68,9 @@ export async function POST(req: Request) {
         email: user.email,
         role: user.role,
         institution_id: user.institution_id,
-        name: user.name || user.email.split('@')[0],
+        // Prefer the profile's full name (chosen on the profile page) over the
+        // account name seeded from the email at signup.
+        name: profile?.full_name?.trim() || user.name || user.email.split('@')[0],
       },
       has_assessment: !!getLatestAssessmentResultForStudent(user.id),
       has_onboarding: isProfileComplete(profile),
