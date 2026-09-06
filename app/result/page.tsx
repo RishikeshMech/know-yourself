@@ -198,11 +198,6 @@ function ResultInner() {
           </div>
         )}
 
-        <div className="flex flex-wrap gap-2 animate-fade-up">
-          <a href="/dashboard/student" className="btn-primary !py-2.5 text-xs">Student dashboard</a>
-          <a href="/dashboard/faculty" className="btn-soft !py-2.5 text-xs">Faculty dashboard</a>
-          <a href="/dashboard/institution" className="btn-soft !py-2.5 text-xs">Institution / Enterprise</a>
-        </div>
       </main>
     </div>
   )
