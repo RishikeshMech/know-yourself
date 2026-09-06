@@ -1,11 +1,11 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { StoreProvider, useStore } from '@/lib/store'
 import { getSupabase } from '@/lib/supabase'
 import { Logo } from '@/components/Logo'
 
 function LoginInner() {
-  const { setUser } = useStore()
+  const { setUser, user, hydrated } = useStore()
   // Never pre-fill credentials — the form must start empty so one user's
   // details are never shown to the next person on a shared device.
   const [email, setEmail] = useState('')
@@ -13,6 +13,15 @@ function LoginInner() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
+
+  // A candidate with a live session should never see the login screen (e.g.
+  // when they navigate back or hit /login directly). Send them to the
+  // dashboard, replacing the entry so the back button can't return to login.
+  useEffect(() => {
+    if (user && hydrated) window.location.replace('/dashboard/student')
+  }, [user, hydrated])
+  // Render nothing until the session is known; if already signed in, redirect.
+  if (!hydrated || user) return null
 
   const submit = async (e: any) => {
     e.preventDefault()
@@ -41,15 +50,16 @@ function LoginInner() {
         }
       } catch { /* demo mode / unreachable backend */ }
       if (mode === 'signup') {
-        // Straight into onboarding.
-        window.location.href = '/onboarding'
+        // Straight into onboarding. `replace` keeps the login screen out of the
+        // history stack so the browser back button can't bring it back.
+        window.location.replace('/onboarding')
         return
       }
       if (data.has_assessment || data.has_onboarding) {
         // Returning user — show dashboard (assessment results or profile overview).
-        window.location.href = '/dashboard/student'
+        window.location.replace('/dashboard/student')
       } else {
-        window.location.href = '/onboarding'
+        window.location.replace('/onboarding')
       }
     } catch (e: any) {
       setErr(e?.message || 'Sign in failed. Please try again.')

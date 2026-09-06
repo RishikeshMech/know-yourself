@@ -84,7 +84,8 @@ export function computeScores(answers: Answers, ai: AiResults = {}, meta: { grid
     const r = ai[t.id]
     let s = 0
     if (r) s = r.score
-    else {
+    else if (String(val).trim().length >= 100) {
+      // Matching the AI grader: a prompt under 100 chars earns nothing.
       const v = String(val).toLowerCase()
       const len = String(val).length
       let h = 30
@@ -93,7 +94,7 @@ export function computeScores(answers: Answers, ai: AiResults = {}, meta: { grid
       if (/constraint|must|only|without|limit/.test(v)) h += 14
       if (/json|format|bullet|exactly|return/.test(v)) h += 14
       if (/context|audience|given|scenario/.test(v)) h += 8
-      s = val ? clamp(h) : 0
+      s = clamp(h)
     }
     promptPer[t.id] = s
     promptPts += s

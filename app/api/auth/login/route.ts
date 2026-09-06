@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getUserByEmail, updateUserLogin, getLatestAssessmentResultForStudent, getProfileById } from '@/lib/db'
 import { verifyPassword } from '@/lib/auth'
+import { isProfileComplete } from '@/lib/validate'
 import { getServerClient } from '@/lib/supabaseServer'
 import { fetchProfile, hasAssessmentResult, supabaseSignIn } from '@/lib/persist'
 
@@ -35,9 +36,10 @@ export async function POST(req: Request) {
             name: auth.user.name || profile?.full_name || auth.user.email.split('@')[0],
           },
           has_assessment: hasAssessment,
-          // Onboarded = a profile row exists with the required details; lets the
-          // client send returners to /profile (edit) instead of /onboarding.
-          has_onboarding: !!(profile && profile.full_name),
+          // Onboarded = the user actually completed the onboarding form (full
+          // profile loaded, not just a signup-seeded name/email). Lets the
+          // client send true returners to the dashboard instead of /onboarding.
+          has_onboarding: isProfileComplete(profile),
           supabase: true,
         })
       } catch (e: any) {
@@ -67,7 +69,7 @@ export async function POST(req: Request) {
         name: user.name || user.email.split('@')[0],
       },
       has_assessment: !!getLatestAssessmentResultForStudent(user.id),
-      has_onboarding: !!(profile && profile.full_name),
+      has_onboarding: isProfileComplete(profile),
     })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'Sign in failed.' }, { status: 500 })

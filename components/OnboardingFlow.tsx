@@ -56,6 +56,16 @@ const STEPS = [
   { id: 3, title: 'Your presence', blurb: 'Links that prove the work.', icon: '🔗' },
 ]
 
+/**
+ * True when the user has actually added some presence content (skills or a
+ * link). Step 3 is optional, but it must never be shown as "complete / auto
+ * saved" while the fields are still empty — otherwise a candidate can't tell
+ * they still need to add their presence.
+ */
+function hasPresence(f: Form): boolean {
+  return Boolean(f.skills.trim() || f.linkedin_url.trim() || f.github_url.trim())
+}
+
 /** Validates a single step. Returns a map of field -> error message. */
 function validateStep(step: number, f: Form): Record<string, string> {
   const e: Record<string, string> = {}
@@ -343,7 +353,11 @@ export function OnboardingFlow({ variant = 'onboarding' }: { variant?: 'onboardi
     const weights = [4, 4, 2]
     let score = 0
     for (let i = 0; i < weights.length; i++) {
-      if (Object.keys(validateStep(i + 1, form)).length === 0) score += weights[i]
+      const s = i + 1
+      // Step 3 is optional but must be actively filled to count as complete —
+      // a blank "Your presence" is not "100% done".
+      const complete = s === 3 ? hasPresence(form) : Object.keys(validateStep(s, form)).length === 0
+      if (complete) score += weights[i]
     }
     return (score / weights.reduce((a, b) => a + b, 0)) * 100
   }, [form])
@@ -477,7 +491,8 @@ export function OnboardingFlow({ variant = 'onboarding' }: { variant?: 'onboardi
 
               <ol className="mt-5 space-y-1.5">
                 {STEPS.map((s) => {
-                  const done = s.id < step || Object.keys(validateStep(s.id, form)).length === 0
+                  const stepValid = s.id === 3 ? hasPresence(form) : Object.keys(validateStep(s.id, form)).length === 0
+                  const done = s.id < step || stepValid
                   const current = s.id === step
                   return (
                     <li key={s.id}>
