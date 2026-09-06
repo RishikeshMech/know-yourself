@@ -115,6 +115,7 @@ export async function persistProfile(client: SupabaseClient, p: any): Promise<bo
     skills: clean(p.skills),
     linkedin_url: clean(p.linkedin_url),
     github_url: clean(p.github_url),
+    ai_avatar: p.ai_avatar && typeof p.ai_avatar === 'object' ? p.ai_avatar : null,
     updated_at: new Date().toISOString(),
   }
   const { error } = await client
