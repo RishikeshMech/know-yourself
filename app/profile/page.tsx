@@ -557,11 +557,6 @@ function ProfileInner() {
                 )}
               </div>
             </div>
-
-            {/* Storage note */}
-            <div className="rounded-3xl border border-indigo-100 bg-indigo-50/60 p-4 text-[11px] leading-relaxed text-indigo-900/70 animate-fade-up" style={{ animationDelay: '.16s' }}>
-              <span className="font-bold text-indigo-700">🔒 Stored in Supabase.</span> Your name, phone, avatar, resume analysis and assessment results are saved in <code className="font-mono">public.profiles</code> and can be exported from the <code className="font-mono">student_profiles_full</code> view (table editor → Export CSV/JSON).
-            </div>
           </div>
         </div>
       </main>
