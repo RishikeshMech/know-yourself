@@ -4,9 +4,16 @@ import { StoreProvider, useStore } from '@/lib/store'
 import { Stepper } from '@/components/Stepper'
 
 function Inner(){
-  const {tracking,setTracking} = useStore()
-  const complete = ()=>{
+  const {tracking,setTracking,user} = useStore()
+  const complete = async ()=>{
     setTracking({...tracking, linkedin:true})
+    try {
+      await fetch('/api/user/tracking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: user?.id, action: 'follow_linkedin', completed: true }),
+      })
+    } catch { /* demo mode */ }
     setTimeout(()=> window.location.href='/confirmation', 450)
   }
   return (

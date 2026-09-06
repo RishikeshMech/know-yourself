@@ -18,7 +18,7 @@ const STAGES = [
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n))
 
 function AssessmentInner() {
-  const { session, setSession, setScores } = useStore()
+  const { session, setSession, setScores, user } = useStore()
   const [answers, setAnswers] = useState<Record<string, any>>({})
   const [aiResults, setAiResults] = useState<Record<string, any>>({})
   const [stage, setStage] = useState(0)
@@ -108,7 +108,18 @@ function AssessmentInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useEffect(() => { if (sid) localStorage.setItem('calibiai_answers_' + sid, JSON.stringify(answers)) }, [answers, sid])
+  useEffect(() => {
+    if (sid) {
+      localStorage.setItem('calibiai_answers_' + sid, JSON.stringify(answers))
+      try {
+        fetch('/api/user/assessment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sid, answers, status: 'in_progress' }),
+        })
+      } catch { /* demo mode */ }
+    }
+  }, [answers, sid])
   useEffect(() => { if (sid) localStorage.setItem('calibiai_ai_' + sid, JSON.stringify(aiResults)) }, [aiResults, sid])
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3200) }
@@ -229,12 +240,25 @@ function AssessmentInner() {
     localStorage.setItem('calibiai_scores', JSON.stringify(payload))
     setScores(payload)
     const sb = getSupabase()
+    // Save answers and results to DB
+    try {
+      await fetch('/api/user/assessment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sid, answers, status: auto ? 'expired' : 'submitted', tab_switches: strikes, submitted_at: new Date().toISOString() }),
+      })
+      await fetch('/api/user/assessment/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sid, student_id: user?.id || 'unknown', scores: payload, total: payload.total, grade: payload.grade, percentile: payload.percentile, verifiable_hash: payload.verifiable_hash, ai_feedback: aiResults }),
+      })
+    } catch (e) { /* demo mode */ }
     if (sb && sid) {
       try {
-        const { data: { user } } = await sb.auth.getUser()
-        if (user) {
+        const { data: { user: authUser } } = await sb.auth.getUser()
+        if (authUser) {
           await sb.from('assessment_sessions').update({ answers, status: auto ? 'expired' : 'submitted', submitted_at: new Date().toISOString(), tab_switches: strikes }).eq('id', sid)
-          await sb.from('assessment_results').upsert({ session_id: sid, student_id: user.id, scores, total: scores.total, grade: scores.grade, percentile: scores.percentile, verifiable_hash: scores.verifiable_hash, ai_feedback: aiResults })
+          await sb.from('assessment_results').upsert({ session_id: sid, student_id: authUser.id, scores: payload, total: payload.total, grade: payload.grade, percentile: payload.percentile, verifiable_hash: payload.verifiable_hash, ai_feedback: aiResults })
         }
       } catch (e) { /* demo mode */ }
     }
