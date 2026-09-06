@@ -115,3 +115,36 @@ export function isValidUrl(url: any): boolean {
     return false
   }
 }
+
+/**
+ * True only when the user has actually completed the onboarding form — i.e. the
+ * profile row carries the required details, not just a seeded `full_name` from
+ * signup-time metadata. Login uses this to route a genuinely-new user to
+ * /onboarding instead of the dashboard; a signup-created profile with only a
+ * name/email must NOT count as onboarded.
+ */
+export function isProfileComplete(p: any): boolean {
+  if (!p) return false
+  if (typeof p !== 'object') return false
+  const fullName = String(p.full_name ?? '').trim()
+  const phone = String(p.phone ?? '').trim()
+  const degree = String(p.degree ?? '').trim()
+  const college = String(p.college ?? '').trim()
+  const dob = String(p.dob ?? '').trim()
+  const gender = String(p.gender ?? '').trim()
+  const gradYear = Number(p.graduation_year)
+  const cgpa = Number(p.cgpa)
+  // Mirrors the required fields of the onboarding form (steps 1 & 2): name,
+  // phone, DOB, gender, degree, college, graduation year and CGPA. Optional
+  // fields (skills, links) are intentionally not required.
+  return Boolean(
+    fullName &&
+    phone &&
+    degree &&
+    college &&
+    dob &&
+    gender &&
+    Number.isFinite(gradYear) && gradYear > 0 &&
+    Number.isFinite(cgpa) && cgpa > 0,
+  )
+}

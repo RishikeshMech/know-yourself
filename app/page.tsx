@@ -1,7 +1,8 @@
 'use client'
+import { useEffect } from 'react'
 import { Navbar } from '@/components/Navbar'
 import { HeroMockup } from '@/components/HeroMockup'
-import { StoreProvider } from '@/lib/store'
+import { StoreProvider, useStore } from '@/lib/store'
 import { Typewriter } from '@/components/Typewriter'
 
 const MODULES = [
@@ -10,6 +11,20 @@ const MODULES = [
 ]
 
 function Landing() {
+  const { user, hydrated } = useStore()
+  // A signed-in candidate should never see the marketing home page (or the login
+  // screen). If they land here while authenticated — e.g. via the browser back
+  // button or a direct URL — send them straight to their dashboard. `replace`
+  // also clears this entry from history so the back button can't return here.
+  useEffect(() => {
+    if (user && hydrated) window.location.replace('/dashboard/student')
+  }, [user, hydrated])
+  // Render nothing until the session has been read and, if the visitor is
+  // signed in, redirect away — so the home page is never flashed to a candidate.
+  if (!hydrated || user) return null
+  // Signed-out visitors go to /login to start. Signed-in users are redirected
+  // above and never reach this marketing page.
+  const startHref = '/login'
   return (
     <div>
       <Navbar />
@@ -29,7 +44,7 @@ function Landing() {
               Communication, problem solving, AI skills &amp; cognition — one signal employers trust.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
-              <a href="/login" className="btn-primary">Start your assessment →</a>
+              <a href={startHref} className="btn-primary">Start your assessment →</a>
               <a href="/sample-report" className="btn-soft">See a sample report</a>
             </div>
             <div className="mt-8 flex flex-wrap gap-5 text-sm text-slate-500">
@@ -73,7 +88,7 @@ function Landing() {
                 </span>
               ))}
             </div>
-            <a href="/login" className="btn-primary mt-7">Start your assessment →</a>
+            <a href={startHref} className="btn-primary mt-7">Start your assessment →</a>
           </div>
         </section>
       </main>

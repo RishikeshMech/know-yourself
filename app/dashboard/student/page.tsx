@@ -3,12 +3,25 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState } from 'react'
 import { Navbar } from '@/components/Navbar'
 import { StoreProvider, useStore } from '@/lib/store'
+import { isProfileComplete } from '@/lib/validate'
 
 function Inner(){
   const [scores,setScores]=useState<any>(null)
   const [profile,setProfile]=useState<any>(null)
   const [resume,setResume]=useState<any>(null)
-  const { user } = useStore()
+  const { user, hydrated } = useStore()
+  // Protect the student dashboard: a signed-out visitor is sent to /login.
+  // Render nothing until the session is known so the page never flashes.
+  useEffect(()=>{
+    if (hydrated && !user) window.location.replace('/login')
+  },[hydrated, user])
+  if (!hydrated) return null
+  if (!user) return null
+  const onboarded = isProfileComplete(profile)
+  // The right place to continue: finish onboarding if we never did, otherwise
+  // jump to the assessment instructions (which start/create the session). This
+  // never sends a signed-in user back to /login.
+  const startHref = onboarded ? '/instructions' : '/onboarding'
   useEffect(()=>{
     const s=localStorage.getItem('calibiai_scores'); if(s) setScores(JSON.parse(s))
     const p=localStorage.getItem('calibiai_profile'); if(p) setProfile(JSON.parse(p))
@@ -92,7 +105,7 @@ function Inner(){
               <div className="mt-6 rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/40 p-8 text-center">
                 <div className="text-4xl">🎯</div>
                 <p className="mt-2 text-sm text-slate-500">You haven't taken the assessment yet.</p>
-                <a href="/login" className="btn-primary mt-4 inline-flex">Start your assessment →</a>
+                <a href={startHref} className="btn-primary mt-4 inline-flex">Start your assessment →</a>
               </div>
             )}
           </div>

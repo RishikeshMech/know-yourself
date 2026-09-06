@@ -10,6 +10,7 @@ type Store = {
   tracking: { whatsapp:boolean, linkedin:boolean }, setTracking: (t:any)=>void,
   session: any, setSession: (s:any)=>void,
   scores: any, setScores: (s:any)=>void,
+  hydrated: boolean,
   logout: ()=>void,
 }
 
@@ -82,7 +83,7 @@ export function StoreProvider({children}:{children:React.ReactNode}){
     window.location.href='/login'
   }
 
-  return <Ctx.Provider value={{user,setUser,profile,setProfile:setProfileSafe,resume,setResume:setResumeSafe,tracking,setTracking,session,setSession:setSessionSafe,scores,setScores:setScoresSafe,logout}}>{children}</Ctx.Provider>
+  return <Ctx.Provider value={{user,setUser,profile,setProfile:setProfileSafe,resume,setResume:setResumeSafe,tracking,setTracking,session,setSession:setSessionSafe,scores,setScores:setScoresSafe,hydrated,logout}}>{children}</Ctx.Provider>
 }
 
 export const useStore = ()=> useContext(Ctx)

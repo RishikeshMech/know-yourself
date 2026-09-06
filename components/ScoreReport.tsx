@@ -1,6 +1,8 @@
 'use client'
 import { useState } from 'react'
 import { Navbar } from '@/components/Navbar'
+import { useStore } from '@/lib/store'
+import { isProfileComplete } from '@/lib/validate'
 import { SAMPLE_PROFILE, SAMPLE_USER } from '@/lib/sample'
 import {
   ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
@@ -16,7 +18,11 @@ type Props = {
 }
 
 export function ScoreReport({ scores, sample = false }: Props) {
+  const { user, profile } = useStore()
   const [rendering, setRendering] = useState(false)
+  // "Take the real assessment" must never bounce a signed-in user back to
+  // /login — route them into the flow (or onboarding first).
+  const startHref = sample ? (user ? (isProfileComplete(profile) ? '/instructions' : '/onboarding') : '/login') : '/dashboard/student'
 
   const downloadPDF = async () => {
     setRendering(true)
@@ -100,7 +106,7 @@ export function ScoreReport({ scores, sample = false }: Props) {
             </div>
             <div className="flex gap-2 flex-wrap">
               <button onClick={downloadPDF} disabled={rendering} className="btn-primary disabled:opacity-50">{rendering ? 'Rendering…' : '⬇ Download PDF report'}</button>
-              <a href={sample ? '/login' : '/dashboard/student'} className="btn-soft">{sample ? 'Take the real assessment →' : 'My dashboard →'}</a>
+              <a href={startHref} className="btn-soft">{sample ? 'Take the real assessment →' : 'My dashboard →'}</a>
             </div>
           </div>
 

@@ -6,6 +6,7 @@ import { bank, shuffledOptions, shuffledChoiceOptions, mulberry32 } from '@/lib/
 import { computeScores } from '@/lib/scoring'
 import { getSupabase } from '@/lib/supabase'
 import { Logo } from '@/components/Logo'
+import type { TestRunResult } from '@/lib/runTests'
 
 const STAGES = [
   { id: 'english', label: 'English Communication', sub: ['Listening', 'Speaking', 'Reading', 'Writing'], min: 15 },
@@ -17,6 +18,96 @@ const STAGES = [
 ]
 
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n))
+
+// Minimum length a prompt submission must reach before the AI will even grade
+// it — anything shorter scores 0. Mirrors MIN_PROMPT_CHARS on the server.
+const MIN_PROMPT_CHARS = 100
+
+/* ------------------------------------------------------------------ */
+/* Presentational sub-components — hoisted OUTSIDE the assessment      */
+/* component. Defining them inline caused React to remount them on     */
+/* every render (e.g. each timer tick), which is what made the AI      */
+/* feedback box flicker. These are stable component types now.         */
+/* ------------------------------------------------------------------ */
+
+function OptionList({ qid, options, seed, value, onChange, accent = 'indigo' }: {
+  qid: string; options: string[]; seed: number; value?: string;
+  onChange: (v: string) => void; accent?: 'indigo' | 'violet'
+}) {
+  const opts = useMemo(() => shuffledOptions(options, seed, qid), [qid, options, seed])
+  const sel = accent === 'violet' ? 'bg-violet-600 text-white border-violet-500' : 'bg-indigo-600 text-white border-indigo-500'
+  return (
+    <div className="space-y-2">
+      {opts.map(opt => (
+        <label key={opt} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer border transition ${value === opt ? `${sel} shadow-md` : 'bg-white/70 border-slate-200 hover:bg-white hover:shadow-sm'}`}>
+          <input type="radio" name={qid} checked={value === opt} onChange={() => onChange(opt)} className={accent === 'violet' ? 'accent-violet-600' : 'accent-indigo-600'} />
+          <span className="text-sm">{opt}</span>
+        </label>
+      ))}
+    </div>
+  )
+}
+
+function AiFeedback({ r }: { r: any }) {
+  if (!r) return null
+  return (
+    <div className="mt-3 rounded-2xl bg-emerald-50/80 border border-emerald-200 p-3.5 text-sm">
+      <div className="flex items-center justify-between">
+        <span className="font-bold text-emerald-700">AI score: {r.score}/100</span>
+        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white text-emerald-700 border border-emerald-200">{r.engine === 'deepseek' ? 'DeepSeek' : 'rule engine'}</span>
+      </div>
+      {r.rubric && Object.keys(r.rubric).length > 0 && (
+        <div className="mt-2 space-y-1.5">
+          {Object.entries(r.rubric).map(([k, v]: any) => (
+            <div key={k} className="flex items-center gap-2 text-xs">
+              <span className="w-40 capitalize text-slate-500">{k.replace(/_/g, ' ')}</span>
+              <div className="flex-1 h-1.5 rounded-full bg-emerald-100 overflow-hidden"><div className="h-full bg-emerald-500" style={{ width: `${v}%` }} /></div>
+              <span className="w-8 text-right font-mono text-slate-600">{v}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {r.strengths?.length > 0 && <div className="mt-2 text-xs text-emerald-700"><b>Strengths:</b> {r.strengths.join(' • ')}</div>}
+      {r.improvements?.length > 0 && <div className="mt-1 text-xs text-amber-700"><b>Improve:</b> {r.improvements.join(' • ')}</div>}
+      {r.summary && <div className="mt-1 text-xs text-slate-500 italic">{r.summary}</div>}
+    </div>
+  )
+}
+
+function EvalButton({ id, busy, onRun }: { id: string; busy?: boolean; onRun: () => void }) {
+  return (
+    <button disabled={busy} onClick={onRun}
+      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold shadow-sm shadow-violet-300 disabled:opacity-50 transition">
+      {busy ? 'Evaluating…' : '✨ Evaluate with AI'}
+    </button>
+  )
+}
+
+function TestFeedback({ r, taskId }: { r?: TestRunResult; taskId: string }) {
+  if (!r) return null
+  const tone = r.passed === r.total && r.total > 0 ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+    : r.passed > 0 ? 'bg-amber-50 border-amber-200 text-amber-700'
+    : 'bg-rose-50 border-rose-200 text-rose-700'
+  return (
+    <div className={`mt-2 rounded-2xl border p-3.5 text-sm ${tone}`}>
+      <div className="flex items-center justify-between">
+        <span className="font-bold">{r.passed}/{r.total} tests passed</span>
+        {r.timedOut && <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white">timed out</span>}
+      </div>
+      {r.error && <div className="mt-1 text-xs opacity-90">⚠ {r.error}</div>}
+      {r.results.length > 0 && (
+        <ul className="mt-2 space-y-1">
+          {r.results.map((t, i) => (
+            <li key={i} className="flex items-center gap-2 text-xs">
+              <span className={t.passed ? 'text-emerald-600' : 'text-rose-500'}>{t.passed ? '✓' : '✗'}</span>
+              <span className={t.passed ? 'text-emerald-700' : 'text-rose-600'}>{t.name}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
 
 function AssessmentInner() {
   const { session, setSession, setScores, user } = useStore()
@@ -36,6 +127,7 @@ function AssessmentInner() {
   const [busy, setBusy] = useState<Record<string, boolean>>({})
   const [playCounts, setPlayCounts] = useState<Record<string, number>>({})
   const [showHint, setShowHint] = useState<Record<string, boolean>>({})
+  const [testResults, setTestResults] = useState<Record<string, TestRunResult | undefined>>({})
 
   const gridCfg = bank.cognitive.grid
   const [gridRound, setGridRound] = useState(0)
@@ -196,6 +288,24 @@ function AssessmentInner() {
     finally { setBusy(b => ({ ...b, [key]: false })) }
   }
 
+  // Real test-runner for the coding modules — actually executes the candidate's
+  // code against the hidden tests on the server.
+  const runTests = async (taskId: string, code: string) => {
+    const key = taskId + '_tests'
+    setBusy(b => ({ ...b, [key]: true }))
+    setTestResults(prev => ({ ...prev, [taskId]: undefined }))
+    try {
+      const res = await fetch('/api/user/assessment/runtests', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task_id: taskId, code }),
+      })
+      const data = await res.json()
+      if (data.ok) setTestResults(prev => ({ ...prev, [taskId]: data }))
+      else showToast(data.error || 'Could not run the tests.')
+    } catch { showToast('Test runner offline.') }
+    finally { setBusy(b => ({ ...b, [key]: false })) }
+  }
+
   const startRecording = async (id: string) => {
     try {
       const proctorAudio = proctorStreamRef.current?.getAudioTracks()[0]
@@ -277,51 +387,6 @@ function AssessmentInner() {
   const critical = remaining < 600
   if (!session) return <div className="p-16 text-center text-slate-500">Loading your session…</div>
 
-  const OptionList = ({ qid, options, accent = 'indigo' }: { qid: string; options: string[]; accent?: 'indigo' | 'violet' }) => {
-    const opts = useMemo(() => shuffledOptions(options, seed, qid), [qid, options])
-    const sel = accent === 'violet' ? 'bg-violet-600 text-white border-violet-500' : 'bg-indigo-600 text-white border-indigo-500'
-    return (
-      <div className="space-y-2">
-        {opts.map(opt => (
-          <label key={opt} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer border transition ${answers[qid] === opt ? `${sel} shadow-md` : 'bg-white/70 border-slate-200 hover:bg-white hover:shadow-sm'}`}>
-            <input type="radio" name={qid} checked={answers[qid] === opt} onChange={() => handleAnswer(qid, opt)} className={accent === 'violet' ? 'accent-violet-600' : 'accent-indigo-600'} />
-            <span className="text-sm">{opt}</span>
-          </label>
-        ))}
-      </div>
-    )
-  }
-
-  const AiFeedback = ({ r }: { r: any }) => !r ? null : (
-    <div className="mt-3 rounded-2xl bg-emerald-50/80 border border-emerald-200 p-3.5 text-sm animate-fade-in">
-      <div className="flex items-center justify-between">
-        <span className="font-bold text-emerald-700">AI score: {r.score}/100</span>
-        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white text-emerald-700 border border-emerald-200">{r.engine === 'deepseek' ? 'DeepSeek' : 'rule engine'}</span>
-      </div>
-      {r.rubric && (
-        <div className="mt-2 space-y-1.5">
-          {Object.entries(r.rubric).map(([k, v]: any) => (
-            <div key={k} className="flex items-center gap-2 text-xs">
-              <span className="w-40 capitalize text-slate-500">{k.replace(/_/g, ' ')}</span>
-              <div className="flex-1 h-1.5 rounded-full bg-emerald-100 overflow-hidden"><div className="h-full bg-emerald-500" style={{ width: `${v}%` }} /></div>
-              <span className="w-8 text-right font-mono text-slate-600">{v}</span>
-            </div>
-          ))}
-        </div>
-      )}
-      {r.strengths?.length > 0 && <div className="mt-2 text-xs text-emerald-700"><b>Strengths:</b> {r.strengths.join(' • ')}</div>}
-      {r.improvements?.length > 0 && <div className="mt-1 text-xs text-amber-700"><b>Improve:</b> {r.improvements.join(' • ')}</div>}
-      {r.summary && <div className="mt-1 text-xs text-slate-500 italic">{r.summary}</div>}
-    </div>
-  )
-
-  const EvalButton = ({ id, kind, payload }: any) => (
-    <button disabled={busy[id]} onClick={() => runAi(id, kind, payload)}
-      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold shadow-sm shadow-violet-300 disabled:opacity-50 transition">
-      {busy[id] ? 'Evaluating…' : '✨ Evaluate with AI'}
-    </button>
-  )
-
   const renderStage = () => {
     switch (STAGES[stage].id) {
       case 'english':
@@ -344,7 +409,7 @@ function AssessmentInner() {
                       {c.questions.map((q: any) => (
                         <div key={q.id} className="p-3.5 rounded-xl bg-white/70 border border-slate-200">
                           <div className="text-sm font-semibold text-slate-800 mb-2.5">{q.question}</div>
-                          <OptionList qid={q.id} options={q.options} />
+                          <OptionList qid={q.id} options={q.options} seed={seed} value={answers[q.id]} onChange={(v) => handleAnswer(q.id, v)} />
                         </div>
                       ))}
                     </div>
@@ -373,7 +438,7 @@ function AssessmentInner() {
                     </div>
                     {recording === t.id && (
                       <div className="mt-3 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center px-3 gap-1">
-                        {Array.from({ length: 28 }).map((_, i) => <div key={i} className="w-1 bg-indigo-400 rounded-full" style={{ height: `${8 + Math.random() * 22}px` }} />)}
+                        {Array.from({ length: 28 }).map((_, i) => <div key={i} className="w-1 bg-indigo-400 rounded-full" style={{ height: `${8 + ((i * 37) % 22)}px` }} />)}
                         <span className="ml-2 text-xs text-slate-400">Recording…</span>
                       </div>
                     )}
@@ -381,9 +446,12 @@ function AssessmentInner() {
                 )
               })}
               <div className="flex flex-wrap items-center gap-3">
-                <EvalButton id="SP_speaking" kind="speaking" payload={{ recordingCount: speakingCount }} />
+                <EvalButton id="SP_speaking" busy={busy['SP_speaking']} onRun={() => runAi('SP_speaking', 'speaking', { recordingCount: speakingCount })} />
                 <span className="text-xs text-slate-400">Your spoken answer is recorded for fluency, pronunciation, confidence and grammar.</span>
               </div>
+              {speakingCount === 0 && (
+                <div className="mt-1 text-xs font-semibold text-amber-600">⚠ No audio recorded yet — the AI will score this 0 until you record a task.</div>
+              )}
               <AiFeedback r={aiResults['SP_speaking']} />
             </div>
           )
@@ -400,7 +468,7 @@ function AssessmentInner() {
                 {bank.english.reading.questions.map((q: any, i: number) => (
                   <div key={q.id} className="panel p-3.5">
                     <div className="text-sm font-semibold text-slate-800 mb-2.5">{i + 1}. {q.question}</div>
-                    <OptionList qid={q.id} options={q.options} />
+                    <OptionList qid={q.id} options={q.options} seed={seed} value={answers[q.id]} onChange={(v) => handleAnswer(q.id, v)} />
                   </div>
                 ))}
               </div>
@@ -417,7 +485,7 @@ function AssessmentInner() {
               <textarea value={answers['WRITING'] || ''} onChange={e => handleAnswer('WRITING', e.target.value)} placeholder="Dear [Client], ..." className="field mt-3 min-h-[180px] leading-relaxed" />
               <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
                 <span>{(answers['WRITING'] || '').trim().split(/\s+/).filter(Boolean).length} words · target 150–300</span>
-                <EvalButton id="WRITING" kind="writing" payload={{ text: answers['WRITING'] || '', scenario: w.scenario }} />
+                <EvalButton id="WRITING" busy={busy['WRITING']} onRun={() => runAi('WRITING', 'writing', { text: answers['WRITING'] || '', scenario: w.scenario })} />
               </div>
               <AiFeedback r={aiResults['WRITING']} />
             </div>
@@ -431,7 +499,7 @@ function AssessmentInner() {
             {bank.problem.map((q: any, i: number) => (
               <div key={q.id} className="panel p-3.5">
                 <div className="text-sm font-semibold text-slate-800 mb-2.5">{i + 1}. {q.q}</div>
-                <OptionList qid={q.id} options={q.options} />
+                <OptionList qid={q.id} options={q.options} seed={seed} value={answers[q.id]} onChange={(v) => handleAnswer(q.id, v)} />
               </div>
             ))}
           </div>
@@ -450,10 +518,13 @@ function AssessmentInner() {
                 {showHint[d.id] && <div className="mt-1 text-[11px] text-indigo-700 bg-indigo-50 rounded-lg p-2">{d.hint}</div>}
                 <textarea value={answers[d.id + '_fix'] || ''} onChange={e => handleAnswer(d.id + '_fix', e.target.value)} placeholder="Paste your fixed code here…" className="field mt-3 min-h-[130px] font-mono !text-xs" />
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <button onClick={() => { suppressRef.current = true; setTimeout(() => (suppressRef.current = false), 400); showToast(`Sandbox (mock): ${(answers[d.id + '_fix'] || '').length > 60 ? Math.max(2, d.tests - 1) : Math.floor(d.tests / 2)}/${d.tests} hidden tests passed.`) }}
-                    className="btn-soft !py-2 !px-4 !text-xs font-bold">▶ Run hidden tests</button>
-                  <EvalButton id={d.id} kind="debugging" payload={{ taskId: d.id, buggy: d.buggy, prompt: d.prompt, fix: answers[d.id + '_fix'] || '' }} />
+                  <button onClick={() => runTests(d.id, answers[d.id + '_fix'] || '')} disabled={busy[d.id + '_tests']}
+                    className="btn-soft !py-2 !px-4 !text-xs font-bold disabled:opacity-50">
+                    {busy[d.id + '_tests'] ? 'Running tests…' : '▶ Run hidden tests'}
+                  </button>
+                  <EvalButton id={d.id} busy={busy[d.id]} onRun={() => runAi(d.id, 'debugging', { taskId: d.id, buggy: d.buggy, prompt: d.prompt, fix: answers[d.id + '_fix'] || '' })} />
                 </div>
+                <TestFeedback r={testResults[d.id]} taskId={d.id} />
                 <AiFeedback r={aiResults[d.id]} />
               </div>
             ))}
@@ -472,10 +543,13 @@ function AssessmentInner() {
             {showHint.AF1 && <div className="text-[11px] text-indigo-700 bg-indigo-50 rounded-lg p-2">{f.hint}</div>}
             <textarea value={answers['AF1_code'] || ''} onChange={e => handleAnswer('AF1_code', e.target.value)} placeholder="function isAllowed(userId){ ... }&#10;// plus Express middleware → 429 + Retry-After" className="field min-h-[220px] font-mono !text-xs" />
             <div className="flex flex-wrap gap-2">
-              <button onClick={() => { suppressRef.current = true; setTimeout(() => (suppressRef.current = false), 400); showToast(`Test harness (mock): ${(answers['AF1_code'] || '').length > 120 ? 4 : 2}/${f.tests} tests passed.`) }}
-                className="btn-soft !py-2 !px-4 !text-xs font-bold">▶ Run feature tests</button>
-              <EvalButton id="AF1" kind="feature" payload={{ spec: f.spec, code: answers['AF1_code'] || '' }} />
+              <button onClick={() => runTests('AF1', answers['AF1_code'] || '')} disabled={busy['AF1_tests']}
+                className="btn-soft !py-2 !px-4 !text-xs font-bold disabled:opacity-50">
+                {busy['AF1_tests'] ? 'Running tests…' : '▶ Run feature tests'}
+              </button>
+              <EvalButton id="AF1" busy={busy['AF1']} onRun={() => runAi('AF1', 'feature', { spec: f.spec, code: answers['AF1_code'] || '' })} />
             </div>
+            <TestFeedback r={testResults['AF1']} taskId="AF1" />
             <AiFeedback r={aiResults['AF1']} />
           </div>
         )
@@ -491,7 +565,15 @@ function AssessmentInner() {
                 <div className="mt-1 text-sm text-slate-600">{t.task}</div>
                 <div className="text-xs text-slate-400">Hint: {t.hint}</div>
                 <textarea value={answers[t.id] || ''} onChange={e => handleAnswer(t.id, e.target.value)} placeholder="Act as… Your task is… Constraints:… Output format:…" className="field mt-3 min-h-[110px]" />
-                <div className="mt-2"><EvalButton id={t.id} kind="prompt" payload={{ task: t.task, hint: t.hint, prompt: answers[t.id] || '' }} /></div>
+                <div className="mt-1 flex items-center justify-between text-xs">
+                  <span className={`font-semibold ${(answers[t.id] || '').length >= MIN_PROMPT_CHARS ? 'text-emerald-600' : (answers[t.id] || '').length > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
+                    {(answers[t.id] || '').length} / {MIN_PROMPT_CHARS} chars min
+                  </span>
+                  {answers[t.id] && (answers[t.id] as string).length < MIN_PROMPT_CHARS && (
+                    <span className="font-semibold text-amber-600">Keep writing — too short scores 0</span>
+                  )}
+                </div>
+                <div className="mt-2"><EvalButton id={t.id} busy={busy[t.id]} onRun={() => runAi(t.id, 'prompt', { task: t.task, hint: t.hint, prompt: answers[t.id] || '' })} /></div>
                 <AiFeedback r={aiResults[t.id]} />
               </div>
             ))}
@@ -543,7 +625,7 @@ function AssessmentInner() {
               {bank.cognitive.logical.map((q: any, i: number) => (
                 <div key={q.id} className="panel p-3.5">
                   <div className="text-sm font-semibold text-slate-800 mb-2.5">{i + 1}. {q.q}</div>
-                  <OptionList qid={q.id} options={q.options} />
+                  <OptionList qid={q.id} options={q.options} seed={seed} value={answers[q.id]} onChange={(v) => handleAnswer(q.id, v)} />
                 </div>
               ))}
             </div>
