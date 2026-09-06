@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getUserByEmail, updateUserLogin, getLatestAssessmentResultForStudent } from '@/lib/db'
+import { getUserByEmail, updateUserLogin, getLatestAssessmentResultForStudent, getProfileById } from '@/lib/db'
 import { verifyPassword } from '@/lib/auth'
 import { getServerClient } from '@/lib/supabaseServer'
 import { fetchProfile, hasAssessmentResult, supabaseSignIn } from '@/lib/persist'
@@ -54,6 +54,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid password.' }, { status: 401 })
     }
     updateUserLogin(user.id)
+    const profile = getProfileById(user.id)
     return NextResponse.json({
       access_token: 'jwt_' + user.id,
       refresh_token: 'refresh_' + user.id,
@@ -66,6 +67,7 @@ export async function POST(req: Request) {
         name: user.name || user.email.split('@')[0],
       },
       has_assessment: !!getLatestAssessmentResultForStudent(user.id),
+      has_onboarding: !!(profile && profile.full_name),
     })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'Sign in failed.' }, { status: 500 })
