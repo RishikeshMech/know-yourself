@@ -26,44 +26,16 @@ export function ScoreReport({ scores, sample = false }: Props) {
 
   const downloadPDF = async () => {
     setRendering(true)
-    const { default: jsPDF } = await import('jspdf')
-    const doc = new jsPDF()
-    doc.setFillColor(11, 18, 32); doc.rect(0, 0, 210, 24, 'F')
-    doc.setTextColor(255, 255, 255); doc.setFontSize(14); doc.setFont('helvetica', 'bold')
-    doc.text('CALIBIAI SCORE', 12, 15)
-    doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.text('Global Employability Standard  •  Verified  •  /1000', 12, 19)
-    doc.setTextColor(0, 0, 0)
-    const profile = sample ? SAMPLE_PROFILE : JSON.parse(localStorage.getItem('calibiai_profile') || '{}')
-    const user = sample ? SAMPLE_USER : JSON.parse(localStorage.getItem('calibiai_user') || '{}')
-    doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.text(`Candidate: ${profile.full_name || user.name || 'Student'}`, 12, 32)
-    doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.text(`Email: ${user.email || ''}  •  Institution: ${profile.college || '—'}  •  Date: ${new Date().toLocaleDateString()}`, 12, 37)
-    doc.text(`Session: ${scores.session_id}  •  Hash: ${scores.verifiable_hash}`, 12, 42)
-    doc.setFillColor(99, 102, 241); doc.roundedRect(12, 48, 186, 28, 3, 3, 'F')
-    doc.setTextColor(255, 255, 255); doc.setFontSize(22); doc.setFont('helvetica', 'bold'); doc.text(`${scores.total} / 1000`, 16, 65)
-    doc.setFontSize(10); doc.text(`Grade ${scores.grade}  •  ${scores.percentile} percentile`, 16, 70)
-    doc.setTextColor(0, 0, 0)
-    let y = 84
-    doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.text('Section-wise Breakdown', 12, y); y += 6
-    doc.setFontSize(8); doc.setFont('helvetica', 'normal')
-    const rows = [
-      ['English Communication', `${scores.english.total}/200`, `L${scores.english.listening} S${scores.english.speaking} R${scores.english.reading} W${scores.english.writing}`],
-      ['Problem Solving', `${scores.problem_solving}/200`, `${scores.detail.problemCorrect}/${scores.detail.problemTotal} correct`],
-      ['AI Debugging', `${scores.ai_debugging}/150`, 'hidden tests + AI quality'],
-      ['AI Feature Dev', `${scores.ai_feature}/150`, 'functional + design'],
-      ['Prompt Engineering', `${scores.prompt_engineering}/100`, 'rubric-scored'],
-      ['Cognitive', `${scores.cognitive.total}/200`, `Grid ${scores.cognitive.grid} + Logical ${scores.cognitive.logical} + Beh ${scores.cognitive.behavioral_total}`],
-    ]
-    rows.forEach(r => { doc.setFont('helvetica', 'bold'); doc.text(r[0], 12, y); doc.setFont('helvetica', 'normal'); doc.text(r[1], 95, y); doc.text(r[2], 125, y); y += 5 })
-    y += 2; doc.setFont('helvetica', 'bold'); doc.text(`CALIBIAI TOTAL: ${scores.total}/1000`, 12, y)
-    y += 8; doc.setFontSize(9); doc.text('Behavioural Profile', 12, y); y += 5
-    doc.setFontSize(7); doc.setFont('helvetica', 'normal')
-    Object.entries(scores.cognitive.behavioral as Record<string, number>).forEach(([k, v]) => { doc.text(`${(scores.cognitive.traitLabels?.[k] || k)}: ${v}`, 12, y); y += 4; if (y > 270) { doc.addPage(); y = 14 } })
-    doc.setFontSize(7); doc.setTextColor(120, 120, 120)
-    doc.text('Verifiable CalibiAI Score  •  Shareable credential  •  Encrypted at rest & in transit', 12, 287)
-    if (sample) doc.text('SAMPLE REPORT — for preview purposes only', 12, 292)
-    doc.save(`CalibiAI_Report_${scores.session_id}.pdf`)
-    setRendering(false)
-    if (!sample) localStorage.setItem('calibiai_report_ready', 'true')
+    try {
+      const { generateReportPdf } = await import('@/lib/reportPdf')
+      const profileData = sample ? SAMPLE_PROFILE : (profile || JSON.parse(localStorage.getItem('calibiai_profile') || '{}'))
+      const userData = sample ? SAMPLE_USER : (user || JSON.parse(localStorage.getItem('calibiai_user') || '{}'))
+      const doc = await generateReportPdf({ scores, profile: profileData, user: userData, sample })
+      doc.save(`CalibiAI_Report_${scores?.session_id || 'scorecard'}.pdf`)
+      if (!sample) localStorage.setItem('calibiai_report_ready', 'true')
+    } catch (e) {
+      console.warn('PDF generation failed:', e)
+    } finally { setRendering(false) }
   }
 
   const sectionData = [
