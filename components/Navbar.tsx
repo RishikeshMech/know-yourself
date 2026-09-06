@@ -7,7 +7,7 @@ export function Navbar(){
     <header className="sticky top-0 z-40 border-b border-white/50 bg-white/55 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         <a href="/" className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl calibiai-gradient flex items-center justify-center font-black text-white shadow-lg shadow-indigo-300/50">C</div>
+          <img src="/icon-512.png" alt="CalibiAI logo" className="h-9 w-9 drop-shadow-lg" />
           <span className="font-extrabold tracking-tight text-slate-900 text-lg">CALIBIAI<span className="text-indigo-600"> SCORE</span></span>
         </a>
         <div className="flex items-center gap-3 text-sm">

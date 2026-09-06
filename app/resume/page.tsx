@@ -1,77 +1,112 @@
 'use client'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Navbar } from '@/components/Navbar'
 import { StoreProvider, useStore } from '@/lib/store'
 import { Stepper } from '@/components/Stepper'
-import { getSupabase } from '@/lib/supabase'
 
-function ResumeInner(){
-  const {resume, setResume, user} = useStore()
-  const [fileName,setFileName] = useState('')
-  const [analyzing,setAnalyzing] = useState(false)
-  const [done,setDone] = useState<any>(resume)
+function ScoreRing({ score }: { score: number }) {
+  const tone = score >= 75 ? '#10b981' : score >= 50 ? '#f59e0b' : '#f43f5e'
+  return (
+    <div className="relative h-24 w-24 shrink-0">
+      <svg viewBox="0 0 36 36" className="h-24 w-24 -rotate-90">
+        <circle cx="18" cy="18" r="16" fill="none" stroke="#e2e8f0" strokeWidth="3" />
+        <circle
+          cx="18" cy="18" r="16" fill="none" stroke={tone} strokeWidth="3" strokeLinecap="round"
+          strokeDasharray={`${score} ${100 - score}`} pathLength={100}
+          style={{ transition: 'stroke-dasharray .6s cubic-bezier(.22,.8,.32,1)' }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="font-black text-2xl text-slate-800 tabular-nums">{score}</span>
+        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">/100</span>
+      </div>
+    </div>
+  )
+}
 
-  const onUpload = async (e:any)=>{
-    const f = e.target.files?.[0]
-    if(!f) return
+const FLAG_ICON = { error: '🔴', warn: '🟡', ok: '🟢' } as const
+
+function ResumeInner() {
+  const { resume, setResume, user, profile } = useStore()
+  const [fileName, setFileName] = useState('')
+  const [analyzing, setAnalyzing] = useState(false)
+  const [error, setError] = useState('')
+  const [done, setDone] = useState<any>(resume)
+  const [dragOver, setDragOver] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const analyze = async (f: File) => {
+    setError('')
     setFileName(f.name)
+    if (f.size > 5 * 1024 * 1024) { setError('Resume is larger than 5 MB.'); return }
     setAnalyzing(true)
-    const sb = getSupabase()
-    let storageKey = `resume_${Date.now()}.pdf`
-    try{
-      if(sb){
-        const { data:{ user } } = await sb.auth.getUser()
-        if(user){
-          const path = `${user.id}/${Date.now()}_${f.name}`
-          const up = await sb.storage.from('resumes').upload(path, f, { upsert:true, contentType: f.type })
-          if(!up.error) storageKey = path
-        }
-      }
-    }catch{ /* demo mode */ }
-    setTimeout(async ()=>{
-      const mock = {
-        resume_score: 78,
-        parsed:{ name:'Your Name', skills:['Python','React','SQL','Docker'], experience_years:1.2, projects:2 },
-        feedback:{
-          strengths:['Strong project section','Clear formatting','Good skill coverage'],
-          gaps:['Missing quantified impact','No certifications listed','Experience descriptions could be more concise'],
-          suggestions:['Add metrics, e.g. “Improved API latency by 30%”','Include GitHub links for projects','Add certifications if any'],
-        },
-        storage_key: storageKey
-      }
-      setDone(mock); setResume(mock); setAnalyzing(false)
-      try {
-        await fetch('/api/user/resume', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...mock, student_id: user?.id || 'unknown' }),
-        })
-      } catch { /* demo mode fallback */ }
-    }, 1800)
+    setDone(null)
+    try {
+      const fd = new FormData()
+      fd.append('file', f)
+      fd.append('user_id', user?.id || '')
+      fd.append('email', user?.email || '')
+      fd.append('full_name', profile?.full_name || user?.name || '')
+      fd.append('degree', profile?.degree || '')
+      fd.append('skills', profile?.skills || '')
+      const res = await fetch('/api/user/resume/analyze', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Analysis failed.')
+      setDone(data.analysis)
+      setResume(data.analysis)
+    } catch (e: any) {
+      setError(e?.message || 'Analysis failed — please try again.')
+    } finally {
+      setAnalyzing(false)
+    }
+  }
+
+  const onPick = (e: any) => {
+    const f = e.target.files?.[0]
+    if (f) analyze(f)
   }
 
   return (
     <div>
       <Navbar />
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      <main className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
         <Stepper step={3} />
-        <div className="mt-6 grid lg:grid-cols-2 gap-6">
+        <div className="mt-6 grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-6 items-start">
           {/* Upload */}
           <div className="glass-card animate-fade-up">
             <h1 className="text-2xl font-black text-slate-900">Upload your resume</h1>
-            <p className="text-sm text-slate-500 mt-1">We'll analyse it and give you an instant score with personalised tips.</p>
+            <p className="mt-1 text-sm text-slate-500">
+              Our AI reads the whole document like a recruiter — name check, professionalism,
+              experience, skills and impact.
+            </p>
 
-            <label className="mt-6 block rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/40 p-10 text-center cursor-pointer hover:bg-indigo-50 transition">
-              <input type="file" accept=".pdf,.docx" className="hidden" onChange={onUpload} />
+            <label
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault(); setDragOver(false)
+                const f = e.dataTransfer.files?.[0]
+                if (f) analyze(f)
+              }}
+              className={`mt-6 block cursor-pointer rounded-3xl border-2 border-dashed p-10 text-center transition ${
+                dragOver ? 'border-indigo-400 bg-indigo-100/60 scale-[1.01]' : 'border-indigo-200 bg-indigo-50/40 hover:bg-indigo-50'
+              }`}
+            >
+              <input ref={fileRef} type="file" accept=".pdf,.docx,.txt" className="hidden" onChange={onPick} />
               <div className="text-4xl">📄</div>
               <div className="mt-3 text-sm font-bold text-slate-700">{fileName || 'Drag & drop or browse'}</div>
-              <div className="text-xs text-slate-400 mt-1">PDF or DOCX · up to 5 MB</div>
+              <div className="mt-1 text-xs text-slate-400">PDF, DOCX or TXT · up to 5 MB</div>
             </label>
 
             {analyzing && (
-              <div className="mt-4 rounded-2xl bg-indigo-50 border border-indigo-200 p-4 text-sm flex items-center gap-3 text-indigo-700 animate-fade-in">
-                <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                Analysing your resume…
+              <div className="animate-fade-in mt-4 flex items-center gap-3 rounded-2xl border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-700">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+                <span>Reading your resume end-to-end and analysing it against industry standards…</span>
+              </div>
+            )}
+            {error && (
+              <div className="animate-fade-in mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+                ⚠ {error}
               </div>
             )}
 
@@ -82,40 +117,112 @@ function ResumeInner(){
           </div>
 
           {/* Analysis */}
-          <div className="glass-card animate-fade-up" style={{animationDelay:'.1s'}}>
-            <h3 className="font-black text-slate-900 text-lg">Resume analysis</h3>
-            {!done && !analyzing && <p className="mt-6 text-sm text-slate-400">Upload a resume to see your score, strengths and tips.</p>}
+          <div className="glass-card animate-fade-up" style={{ animationDelay: '.1s' }}>
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-lg font-black text-slate-900">Resume analysis</h3>
+              {done && (
+                <span className={`chip ${done.engine === 'deepseek' ? 'border-violet-200 bg-violet-50/80 text-violet-700' : 'border-slate-200 bg-white/70 text-slate-500'}`}>
+                  {done.engine === 'deepseek' ? '✨ DeepSeek AI' : '⚙️ Rule-based engine'}
+                </span>
+              )}
+            </div>
+
+            {!done && !analyzing && (
+              <p className="mt-6 text-sm text-slate-400">
+                Upload a resume to see your score, recruiter-style flags and a full summary of
+                experience, education and skills.
+              </p>
+            )}
+
             {done && (
-              <div className="mt-5 animate-fade-in">
-                <div className="flex items-center gap-4">
-                  <div className="relative w-24 h-24">
-                    <svg viewBox="0 0 36 36" className="w-24 h-24 -rotate-90">
-                      <circle cx="18" cy="18" r="16" fill="none" stroke="#e2e8f0" strokeWidth="3" />
-                      <circle cx="18" cy="18" r="16" fill="none" stroke="url(#g)" strokeWidth="3" strokeLinecap="round"
-                        strokeDasharray={`${done.resume_score} ${100-done.resume_score}`} pathLength={100} />
-                      <defs><linearGradient id="g"><stop offset="0%" stopColor="#6366f1"/><stop offset="100%" stopColor="#a855f7"/></linearGradient></defs>
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center font-black text-xl text-slate-800">{done.resume_score}</div>
-                  </div>
-                  <div className="text-sm">
-                    <div className="font-bold text-slate-800">{done.parsed.name}</div>
-                    <div className="text-slate-500">{done.parsed.experience_years} yrs exp · {done.parsed.projects} projects</div>
-                    <div className="text-slate-400 text-xs mt-1">Skills: {done.parsed.skills.join(', ')}</div>
+              <div className="animate-fade-in mt-5 space-y-4">
+                <div className="flex items-center gap-5 rounded-2xl border border-slate-200/70 bg-white/60 p-4">
+                  <ScoreRing score={done.resume_score} />
+                  <div className="min-w-0 text-sm">
+                    <div className="font-bold text-slate-800">{done.parsed?.name}</div>
+                    <div className="text-slate-500">
+                      {done.experience?.years ?? 0} yr(s) experience · {done.parsed?.projects ?? 0} project(s) · {done.word_count} words
+                    </div>
+                    <div className="mt-1 text-xs text-slate-400">Professionalism {done.professionalism}/100</div>
                   </div>
                 </div>
-                <div className="mt-5 grid sm:grid-cols-2 gap-3 text-xs">
-                  <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-3">
-                    <div className="font-bold text-emerald-700">Strengths</div>
-                    <ul className="mt-1 list-disc ml-4 space-y-0.5 text-slate-600">{done.feedback.strengths.map((s:string)=><li key={s}>{s}</li>)}</ul>
+
+                {!done.name_match && (
+                  <div className="animate-pop rounded-2xl border border-rose-300 bg-rose-50 p-4 text-sm font-semibold text-rose-700">
+                    🚫 Wrong resume? The name on this document{done.detected_name ? ` (“${done.detected_name}”)` : ''} doesn’t
+                    match your profile. Please upload your own resume.
                   </div>
-                  <div className="rounded-2xl bg-amber-50 border border-amber-200 p-3">
-                    <div className="font-bold text-amber-700">Gaps</div>
-                    <ul className="mt-1 list-disc ml-4 space-y-0.5 text-slate-600">{done.feedback.gaps.map((s:string)=><li key={s}>{s}</li>)}</ul>
+                )}
+
+                <div className="rounded-2xl panel p-4">
+                  <div className="text-xs font-bold uppercase tracking-widest text-slate-400">AI summary</div>
+                  <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{done.summary}</p>
+                </div>
+
+                <ul className="space-y-1.5">
+                  {(done.flags || []).map((f: any, i: number) => (
+                    <li
+                      key={i}
+                      className={`flex items-start gap-2.5 rounded-xl px-3.5 py-2.5 text-xs font-semibold ${
+                        f.level === 'error' ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                          : f.level === 'ok' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-amber-50 text-amber-700 border border-amber-200'
+                      }`}
+                    >
+                      <span aria-hidden>{FLAG_ICON[f.level as keyof typeof FLAG_ICON] || '🟡'}</span>
+                      <span>{f.text}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl panel p-3.5">
+                    <div className="text-xs font-bold uppercase tracking-widest text-slate-400">Experience</div>
+                    {done.experience?.entries?.length ? (
+                      <ul className="mt-1.5 list-disc ml-4 space-y-0.5 text-xs text-slate-600">
+                        {done.experience.entries.map((x: string, i: number) => <li key={i}>{x}</li>)}
+                      </ul>
+                    ) : <p className="mt-1.5 text-xs text-slate-400">No experience entries detected.</p>}
+                  </div>
+                  <div className="rounded-2xl panel p-3.5">
+                    <div className="text-xs font-bold uppercase tracking-widest text-slate-400">Education</div>
+                    {done.education?.length ? (
+                      <ul className="mt-1.5 list-disc ml-4 space-y-0.5 text-xs text-slate-600">
+                        {done.education.map((x: string, i: number) => <li key={i}>{x}</li>)}
+                      </ul>
+                    ) : <p className="mt-1.5 text-xs text-slate-400">No education entries detected.</p>}
                   </div>
                 </div>
-                <div className="mt-3 rounded-2xl panel p-3 text-xs">
+
+                <div className="rounded-2xl panel p-3.5">
+                  <div className="text-xs font-bold uppercase tracking-widest text-slate-400">Detected skills</div>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {done.skills?.length ? done.skills.map((s: string) => (
+                      <span key={s} className="rounded-full border border-indigo-200 bg-indigo-50/80 px-2.5 py-1 text-[11px] font-semibold text-indigo-700">{s}</span>
+                    )) : <span className="text-xs text-slate-400">No recognizable skills found.</span>}
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3.5">
+                    <div className="text-xs font-bold text-emerald-700">Strengths</div>
+                    <ul className="mt-1.5 list-disc ml-4 space-y-0.5 text-xs text-slate-600">
+                      {(done.feedback?.strengths || []).map((s: string, i: number) => <li key={i}>{s}</li>)}
+                    </ul>
+                  </div>
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3.5">
+                    <div className="text-xs font-bold text-amber-700">Gaps</div>
+                    <ul className="mt-1.5 list-disc ml-4 space-y-0.5 text-xs text-slate-600">
+                      {(done.feedback?.gaps || []).map((s: string, i: number) => <li key={i}>{s}</li>)}
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl panel p-3.5 text-xs">
                   <div className="font-bold text-indigo-700">💡 Suggestions</div>
-                  <ul className="mt-1 list-disc ml-4 space-y-0.5 text-slate-600">{done.feedback.suggestions.map((s:string)=><li key={s}>{s}</li>)}</ul>
+                  <ul className="mt-1.5 list-disc ml-4 space-y-0.5 text-slate-600">
+                    {(done.feedback?.suggestions || []).map((s: string, i: number) => <li key={i}>{s}</li>)}
+                  </ul>
                 </div>
               </div>
             )}
@@ -125,4 +232,7 @@ function ResumeInner(){
     </div>
   )
 }
-export default function Page(){ return <StoreProvider><ResumeInner/></StoreProvider> }
+
+export default function Page() {
+  return <StoreProvider><ResumeInner /></StoreProvider>
+}

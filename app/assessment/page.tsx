@@ -578,8 +578,8 @@ function AssessmentInner() {
       <div className="sticky top-0 z-30 border-b border-white/60 bg-white/70 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg calibiai-gradient flex items-center justify-center font-black text-white text-sm">C</div>
-            <span className="hidden sm:inline font-extrabold text-slate-900 text-sm">Calibiai Assessment</span>
+            <img src="/icon-512.png" alt="CalibiAI logo" className="h-8 w-8" />
+            <span className="hidden sm:inline font-extrabold text-slate-900 text-sm">CalibiAI Assessment</span>
             <span className="hidden md:inline text-[11px] text-slate-400 font-mono">{String(sid).slice(0, 13)}…</span>
           </div>
           <div className="flex items-center gap-2.5 sm:gap-3">

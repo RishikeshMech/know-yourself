@@ -14,7 +14,7 @@ npm install
 npm run dev   # http://localhost:3000  (binds 0.0.0.0, preview at https://3000-*.e2b.app)
 ```
 
-**Demo flow:** `/login` → Profile → Resume (mock LLaMA analysis) → WhatsApp → LinkedIn → Confirmation → Instructions → **Start 120-min timer** → 6 modules → Submit → **Calibiai Score /1000** → PDF Report → Dashboards
+**Demo flow:** `/login` → (new account: signed in and sent straight to `/onboarding`) → Profile → Resume (mock LLaMA analysis) → WhatsApp → LinkedIn → Confirmation → Instructions → **Start 120-min timer** → 6 modules → Submit → **CalibiAI Score /1000** → PDF Report → Dashboards
 
 No external keys required. With no keys set the app runs in **fully local demo mode** (localStorage + built-in rule-based scoring); add keys to switch on real persistence and AI grading.
 
@@ -25,9 +25,10 @@ Copy `.env.example` → `.env.local`:
 | Variable | Purpose |
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Auth + Postgres (sessions, profiles, results) + Storage (resumes, speaking audio). Run `supabase/schema.sql` in the Supabase SQL editor first. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Optional, server-side only. Lets the API routes create confirmed users and mirror onboarding (mobile, gender, degree…), resume analyses and tracking events into Postgres bypassing RLS. Never expose it client-side. |
 | `DEEPSEEK_API_KEY` | DeepSeek grading of writing / speaking transcript / debugging / feature / prompts. **Server-side only** (`/api/ai/evaluate`); falls back to a rule engine when absent. |
 
-When Supabase is configured: login uses real Auth (sign-in / create-account), **each student gets their own isolated assessment session** (server-side row, one active session per student, RLS-protected), answers + results persist to Postgres and recordings/resumes go to Storage buckets. When DeepSeek is configured, every subjective section shows an "✨ Evaluate with AI" button that returns a rubric score, strengths and improvement notes (otherwise a deterministic heuristic runs).
+When Supabase is configured: email + password live in **Supabase Auth** (`auth.users`), a `profiles` row is auto-created on sign-up and every onboarding field (mobile number, gender, degree, college, CGPA, skills, links), resume analysis and WhatsApp/LinkedIn tracking event is mirrored to Postgres by the API routes (service-role writes when `SUPABASE_SERVICE_ROLE_KEY` is set). The browser session is handed to supabase-js after login so RLS and Storage uploads work client-side. **Each student gets their own isolated assessment session** (server-side row, one active session per student, RLS-protected), answers + results persist to Postgres and recordings/resumes go to Storage buckets. When DeepSeek is configured, every subjective section shows an "✨ Evaluate with AI" button that returns a rubric score, strengths and improvement notes (otherwise a deterministic heuristic runs).
 
 ### Assessment content & anti-cheating
 

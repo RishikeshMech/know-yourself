@@ -55,8 +55,8 @@ function ResultInner() {
     doc.setFontSize(7); doc.setFont('helvetica', 'normal')
     Object.entries(scores.cognitive.behavioral as Record<string, number>).forEach(([k, v]) => { doc.text(`${(scores.cognitive.traitLabels?.[k] || k)}: ${v}`, 12, y); y += 4; if (y > 270) { doc.addPage(); y = 14 } })
     doc.setFontSize(7); doc.setTextColor(120, 120, 120)
-    doc.text('Verifiable Calibiai Score  •  Shareable credential  •  Encrypted at rest & in transit', 12, 287)
-    doc.save(`Calibiai_Report_${scores.session_id}.pdf`)
+    doc.text('Verifiable CalibiAI Score  •  Shareable credential  •  Encrypted at rest & in transit', 12, 287)
+    doc.save(`CalibiAI_Report_${scores.session_id}.pdf`)
     setRendering(false)
     localStorage.setItem('calibiai_report_ready', 'true')
   }
@@ -92,7 +92,7 @@ function ResultInner() {
         <div className="glass-card animate-fade-up">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <div className="text-xs font-bold tracking-widest text-indigo-600 uppercase">Your Calibiai Score</div>
+              <div className="text-xs font-bold tracking-widest text-indigo-600 uppercase">Your CalibiAI Score</div>
               <div className="mt-2 flex items-baseline gap-3 flex-wrap">
                 <span className="text-6xl font-black text-gradient leading-none">{scores.total}</span>
                 <span className="text-slate-400 text-2xl font-bold">/ 1000</span>

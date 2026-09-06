@@ -2,8 +2,8 @@ import './globals.css'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Calibiai Score — Your verified employability score',
-  description: 'One 1000-point Calibiai Score: communication, problem solving, AI skills and cognition — assessed and verified.',
+  title: 'CalibiAI Score — Your verified employability score',
+  description: 'One 1000-point CalibiAI Score: communication, problem solving, AI skills and cognition — assessed and verified.',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
