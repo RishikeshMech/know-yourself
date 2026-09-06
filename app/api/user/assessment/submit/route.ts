@@ -1,13 +1,21 @@
+import { randomUUID } from 'crypto'
 import { NextResponse } from 'next/server'
-import { saveAssessmentResult, saveAssessmentSession, getAssessmentSession } from '@/lib/db'
+import { saveAssessmentResult, saveAssessmentSession, getAssessmentSession, type AssessmentSession } from '@/lib/db'
+import { getServerClient } from '@/lib/supabaseServer'
+import { persistAssessmentResult, persistAssessmentSession, toUuid } from '@/lib/persist'
 
 export async function POST(req: Request) {
   try {
     const body = await req.json()
+    // Local demo ids ("sess_xyz") are not valid Postgres uuids — map them so
+    // the result row actually lands in Supabase (the row-level mirror silently
+    // failed before, so returners looked like they never took the assessment).
+    const sessionId = toUuid(body.session_id) || randomUUID()
+    const studentId = body.student_id || body.user_id || (body.result?.student_id) || ''
     const result = {
-      id: body.id || 'res_' + Math.random().toString(16).slice(2, 10),
-      session_id: body.session_id,
-      student_id: body.student_id || body.user_id,
+      id: toUuid(body.id) || 'res_' + Math.random().toString(16).slice(2, 10),
+      session_id: sessionId,
+      student_id: studentId,
       scores: body.scores || {},
       total: body.total || 0,
       grade: body.grade || 'D',
@@ -16,14 +24,40 @@ export async function POST(req: Request) {
       ai_feedback: body.ai_feedback || {},
       created_at: new Date().toISOString(),
     }
-    saveAssessmentResult(result)
-    const s = getAssessmentSession(body.session_id || '')
-    if (s) {
-      s.status = 'submitted'
-      s.submitted_at = new Date().toISOString()
-      saveAssessmentSession(s)
+    // Keep the local JSON store in sync under the same uuid.
+    let s: AssessmentSession | undefined = getAssessmentSession(body.session_id || '') || getAssessmentSession(sessionId)
+    if (!s) {
+      s = {
+        id: sessionId,
+        student_id: studentId,
+        status: 'submitted',
+        started_at: body.started_at || new Date().toISOString(),
+        expires_at: body.expires_at || new Date(Date.now() + 7200 * 1000).toISOString(),
+        duration_sec: body.duration_sec || 7200,
+        answers: body.answers || {},
+        submitted_at: new Date().toISOString(),
+        tab_switches: body.tab_switches || 0,
+        question_seed: body.question_seed,
+        created_at: new Date().toISOString(),
+      }
     }
-    return NextResponse.json({ result, saved: true })
+    s.id = sessionId
+    s.status = 'submitted'
+    s.submitted_at = new Date().toISOString()
+    saveAssessmentSession(s)
+    saveAssessmentResult(result)
+    // Mirror to Supabase: session status first (FK for the result row), then
+    // the result — this is what makes the score survive a re-login.
+    let supabase = false
+    const sb = getServerClient()
+    if (sb) {
+      const sessionOk = await persistAssessmentSession(sb, { ...s, ...body, answers: body.answers || s.answers })
+      supabase = await persistAssessmentResult(sb, result)
+      if (!supabase && sessionOk) {
+        console.warn('[supabase] result persist failed for session', sessionId)
+      }
+    }
+    return NextResponse.json({ result, saved: true, supabase })
   } catch (e: any) {
     return NextResponse.json({ error: e.message || 'Failed to submit assessment' }, { status: 500 })
   }

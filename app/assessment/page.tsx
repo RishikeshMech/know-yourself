@@ -259,7 +259,10 @@ function AssessmentInner() {
         const { data: { user: authUser } } = await sb.auth.getUser()
         if (authUser) {
           await sb.from('assessment_sessions').update({ answers, status: auto ? 'expired' : 'submitted', submitted_at: new Date().toISOString(), tab_switches: strikes }).eq('id', sid)
-          await sb.from('assessment_results').upsert({ session_id: sid, student_id: authUser.id, scores: payload, total: payload.total, grade: payload.grade, percentile: payload.percentile, verifiable_hash: payload.verifiable_hash, ai_feedback: aiResults })
+          await sb.from('assessment_results').upsert(
+            { session_id: sid, student_id: authUser.id, scores: payload, total: payload.total, grade: payload.grade, percentile: payload.percentile, verifiable_hash: payload.verifiable_hash, ai_feedback: aiResults },
+            { onConflict: 'session_id' },
+          )
         }
       } catch (e) { /* demo mode */ }
     }

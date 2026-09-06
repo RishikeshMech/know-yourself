@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getUserByEmail, updateUserLogin, getLatestAssessmentResultForStudent } from '@/lib/db'
 import { verifyPassword } from '@/lib/auth'
 import { getServerClient } from '@/lib/supabaseServer'
-import { hasAssessmentResult, supabaseSignIn } from '@/lib/persist'
+import { fetchProfile, hasAssessmentResult, supabaseSignIn } from '@/lib/persist'
 
 export async function POST(req: Request) {
   try {
@@ -22,6 +22,7 @@ export async function POST(req: Request) {
       try {
         const auth = await supabaseSignIn(sb, { email, password })
         const hasAssessment = await hasAssessmentResult(sb, auth.user.id)
+        const profile = await fetchProfile(sb, auth.user.id)
         return NextResponse.json({
           access_token: auth.access_token,
           refresh_token: auth.refresh_token,
@@ -31,9 +32,12 @@ export async function POST(req: Request) {
             email: auth.user.email,
             role: 'student',
             institution_id: 'inst_iitm',
-            name: auth.user.name || auth.user.email.split('@')[0],
+            name: auth.user.name || profile?.full_name || auth.user.email.split('@')[0],
           },
           has_assessment: hasAssessment,
+          // Onboarded = a profile row exists with the required details; lets the
+          // client send returners to /profile (edit) instead of /onboarding.
+          has_onboarding: !!(profile && profile.full_name),
           supabase: true,
         })
       } catch (e: any) {

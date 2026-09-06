@@ -42,6 +42,7 @@ export interface AssessmentSession {
   answers?: any
   submitted_at?: string
   tab_switches: number
+  question_seed?: number
   created_at: string
 }
 

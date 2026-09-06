@@ -1,11 +1,26 @@
+import { randomUUID } from 'crypto'
 import { NextResponse } from 'next/server'
-import { saveAssessmentSession, getActiveSessionForStudent, getAssessmentSession } from '@/lib/db'
+import { saveAssessmentSession, getActiveSessionForStudent, getAssessmentSession, type AssessmentSession } from '@/lib/db'
+import { getServerClient } from '@/lib/supabaseServer'
+import { fetchActiveAssessmentSession, fetchAssessmentSession, persistAssessmentSession, toUuid } from '@/lib/persist'
 
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url)
     const sessionId = url.searchParams.get('session_id') || ''
     const studentId = url.searchParams.get('student_id') || ''
+    // Supabase may hold the session even when the local JSON store lost it
+    // (serverless instance / fresh deploy) — check it first when configured.
+    const sb = getServerClient()
+    if (sb) {
+      if (sessionId) {
+        const data = await fetchAssessmentSession(sb, sessionId)
+        if (data) return NextResponse.json({ session: data, supabase: true })
+      } else if (studentId) {
+        const data = await fetchActiveAssessmentSession(sb, studentId)
+        if (data) return NextResponse.json({ session: data, supabase: true })
+      }
+    }
     if (sessionId) {
       const session = getAssessmentSession(sessionId)
       return NextResponse.json({ session })
@@ -23,8 +38,14 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const session = {
-      id: body.id || 'sess_' + Math.random().toString(16).slice(2, 10),
+    // Session ids must be uuids everywhere: Supabase's `id uuid` column rejects
+    // the old "sess_…" demo ids, silently dropping the row and making returning
+    // students look like they never took the assessment. A stable id is also
+    // required — remapping a demo id on every request would create a new row
+    // per save instead of updating the same session.
+    const id = toUuid(body.id) || toUuid(body.session_id) || randomUUID()
+    const session: AssessmentSession = {
+      id,
       student_id: body.student_id || body.user_id || '',
       status: body.status || 'in_progress',
       started_at: body.started_at || new Date().toISOString(),
@@ -33,10 +54,14 @@ export async function POST(req: Request) {
       answers: body.answers || {},
       submitted_at: body.submitted_at || null,
       tab_switches: body.tab_switches || 0,
-      created_at: new Date().toISOString(),
+      question_seed: body.question_seed || Math.floor(Date.now() / 1000),
+      created_at: body.created_at || new Date().toISOString(),
     }
     saveAssessmentSession(session)
-    return NextResponse.json({ session })
+    const sb = getServerClient()
+    let supabase = false
+    if (sb) supabase = await persistAssessmentSession(sb, session)
+    return NextResponse.json({ session, saved: true, supabase })
   } catch (e: any) {
     return NextResponse.json({ error: e.message || 'Failed to save session' }, { status: 500 })
   }
