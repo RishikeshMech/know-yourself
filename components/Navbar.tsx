@@ -2,15 +2,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { useStore } from '@/lib/store'
 import { Logo } from '@/components/Logo'
-import { User, LogOut, ChevronDown, Sparkles } from 'lucide-react'
-
-function initials(name?: string, email?: string): string {
-  const source = (name || email || '?').trim()
-  const parts = source.split(/[\s@.]+/).filter(Boolean)
-  if (parts.length === 0) return '?'
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return (parts[0][0] + parts[1][0]).toUpperCase()
-}
+import { AiAvatar } from '@/components/AiAvatar'
+import { User, LogOut, ChevronDown } from 'lucide-react'
 
 /** The name the user chose on their profile page wins over the account /
  *  email-derived username (e.g. "Prajwal" over "prajwalgulhane85"). */
@@ -44,9 +37,6 @@ export function Navbar() {
   // The name from the saved profile (what the user typed on the profile page)
   // takes priority over the account username derived from the email at signup.
   const displayName = displayNameFor(profile, user)
-  // Initials follow the same source of truth — never fall back to the raw
-  // email address when we already have a name to show.
-  const initialName = profile?.full_name?.trim?.() || user?.name?.trim?.()
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/50 bg-white/55 backdrop-blur-xl">
@@ -65,12 +55,11 @@ export function Navbar() {
                 aria-label="Account menu"
                 className="group flex items-center gap-1.5 rounded-full border border-white/60 bg-white/70 py-1 pl-1 pr-2 shadow-sm backdrop-blur transition hover:bg-white hover:shadow-md"
               >
-                {/* Circular AI avatar — initials on the brand gradient with a sparkle badge */}
-                <span className="relative flex h-9 w-9 items-center justify-center rounded-full calibiai-gradient text-sm font-black text-white select-none shadow-inner ring-2 ring-white/70">
-                  {initials(initialName, user.email)}
-                  <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-white text-indigo-600 shadow ring-1 ring-indigo-100">
-                    <Sparkles className="h-2.5 w-2.5" fill="currentColor" />
-                  </span>
+                {/* Circular AI avatar — the same generated avatar the user set up
+                    on the profile page (falls back to a default face if none is
+                    saved yet). */}
+                <span className="relative flex h-9 w-9 items-center justify-center rounded-full select-none shadow-inner ring-2 ring-white/70">
+                  <AiAvatar name={displayName} config={profile?.ai_avatar} size={36} className="block" />
                 </span>
                 <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
               </button>
