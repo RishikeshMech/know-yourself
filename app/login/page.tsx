@@ -45,12 +45,9 @@ function LoginInner() {
         window.location.href = '/onboarding'
         return
       }
-      if (data.has_assessment) {
+      if (data.has_assessment || data.has_onboarding) {
+        // Returning user — show dashboard (assessment results or profile overview).
         window.location.href = '/dashboard/student'
-      } else if (data.has_onboarding) {
-        // Completed onboarding but no result yet — continue the flow at
-        // the edit entry point instead of re-running onboarding.
-        window.location.href = '/profile'
       } else {
         window.location.href = '/onboarding'
       }
