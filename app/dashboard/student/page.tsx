@@ -97,7 +97,7 @@ function Inner(){
                   ))}
                 </div>
                 <div className="mt-5 flex flex-wrap gap-3">
-                  <a href="/result" className="btn-primary !py-2.5 text-xs">View full report</a>
+                  <a href="/result" onClick={() => { try { localStorage.setItem('calibiai_just_submitted', String(Date.now())) } catch { } }} className="btn-primary !py-2.5 text-xs">View full report</a>
                   <button onClick={()=>window.print()} className="btn-soft !py-2.5 text-xs">⬇ Download PDF</button>
                 </div>
               </div>
@@ -147,7 +147,8 @@ function Inner(){
               <div>🎓 {profile.college || '—'}</div>
               <div>🛠 {profile.skills || '—'}</div>
             </div>
-            <a href="/profile" className="mt-3 inline-block text-xs font-semibold text-indigo-600">Edit profile →</a>
+            <a href="/profile" className="mt-3 inline-block text-xs font-semibold text-indigo-600">See my profile →</a>
+            <a href="/edit-profile" className="mt-3 ml-3 inline-block text-xs font-semibold text-indigo-600">Edit profile →</a>
           </div>
         )}
       </main>

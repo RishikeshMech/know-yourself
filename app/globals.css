@@ -158,3 +158,36 @@ body {
 ::-webkit-scrollbar { height: 8px; width: 8px; }
 ::-webkit-scrollbar-thumb { background: rgba(100,116,139,.35); border-radius: 999px; }
 ::-webkit-scrollbar-track { background: transparent; }
+
+/* ---------- AI avatar animations ---------- */
+@keyframes ai-avatar-float-kf {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+@keyframes ai-avatar-blink-kf {
+  0%, 91%, 100% { transform: scaleY(1); }
+  94% { transform: scaleY(0.08); }
+}
+@keyframes ai-avatar-aurora-kf {
+  0%, 100% { opacity: .22; transform: translate(0, 0); }
+  50% { opacity: .5; transform: translate(7px, 5px); }
+}
+@keyframes ai-avatar-aurora-kf2 {
+  0%, 100% { opacity: .4; transform: translate(0, 0); }
+  50% { opacity: .7; transform: translate(-8px, -6px); }
+}
+@keyframes ai-avatar-twinkle-kf {
+  0%, 100% { opacity: .55; transform: scale(.92) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1.12) rotate(20deg); }
+}
+.ai-avatar-float {
+  animation: ai-avatar-float-kf 5s ease-in-out infinite;
+  transform-box: fill-box; transform-origin: center;
+}
+.ai-avatar-blink {
+  animation: ai-avatar-blink-kf 4.4s ease-in-out infinite;
+  transform-box: fill-box; transform-origin: center;
+}
+.ai-avatar-aurora { animation: ai-avatar-aurora-kf 9s ease-in-out infinite; }
+.ai-avatar-aurora-2 { animation: ai-avatar-aurora-kf2 11s ease-in-out infinite; }
+.ai-avatar-twinkle { animation: ai-avatar-twinkle-kf 2.6s ease-in-out infinite; }

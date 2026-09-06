@@ -2,7 +2,7 @@
 import { Navbar } from '@/components/Navbar'
 import { StoreProvider, useStore } from '@/lib/store'
 import { Stepper } from '@/components/Stepper'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { getSupabase } from '@/lib/supabase'
 
 const ALLOCATION = [
@@ -27,6 +27,28 @@ function Inner(){
   const {setSession, user} = useStore()
   const [checked,setChecked]=useState(false)
   const [starting,setStarting]=useState(false)
+
+  // One-time assessment: users who already have a result (local or DB) are
+  // sent to their profile instead of being able to start another attempt.
+  // A user mid-attempt is sent straight back to the in-progress assessment
+  // (starting again here would reset their 120-minute timer).
+  useEffect(() => {
+    try {
+      if (localStorage.getItem('calibiai_scores')) { window.location.replace('/profile'); return }
+      const raw = localStorage.getItem('calibiai_session')
+      if (raw) {
+        const s = JSON.parse(raw)
+        if (s?.status === 'submitted' || s?.status === 'expired') { window.location.replace('/profile'); return }
+        if (s?.status === 'in_progress') { window.location.replace('/assessment'); return }
+      }
+    } catch { }
+    if (user?.id) {
+      fetch('/api/user/scores?student_id=' + user.id)
+        .then(r => r.json())
+        .then(d => { if (d.result) window.location.replace('/profile') })
+        .catch(() => { })
+    }
+  }, [user?.id])
 
   const start = async ()=>{
     if(starting) return
@@ -126,6 +148,7 @@ function Inner(){
                 <li>Keep this tab/window focused — leaving it 3 times submits your test automatically.</li>
                 <li>Your answers are saved automatically as you go.</li>
                 <li>Use AI assistants for the debugging, feature and prompt sections — that's the skill being tested.</li>
+                <li>This is a one-time attempt — once submitted you can't retake it. Your report stays available on your profile.</li>
               </ul>
             </div>
 

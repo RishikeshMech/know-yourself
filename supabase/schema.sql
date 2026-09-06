@@ -34,6 +34,7 @@ create table if not exists public.profiles (
   skills           text,
   linkedin_url     text,
   github_url       text,
+  ai_avatar        jsonb,                 -- generated AI avatar config {seed, style, version, generated_at}
   created_at       timestamptz not null default now(),
   updated_at       timestamptz not null default now()
 );
@@ -205,3 +206,62 @@ create policy "own files" on storage.objects for all using (
   bucket_id in ('resumes','speaking','reports')
   and (storage.foldername(name))[1] = auth.uid()::text
 );
+
+-- ============================================================================
+-- Download view — one row per student: profile + latest resume analysis +
+-- latest assessment result. Export from the Supabase table editor
+-- (CSV / Excel / JSON) to download all data in one click.
+-- (Also provided as a standalone migration: migrations/0002_profile_avatar_and_full_view.sql)
+-- ============================================================================
+create or replace view public.student_profiles_full
+with (security_invoker = on)   -- RLS of the underlying tables still applies
+as
+select
+  p.id                    as student_id,
+  p.email,
+  p.role,
+  p.full_name,
+  p.phone,
+  p.dob,
+  p.gender,
+  p.degree,
+  p.college,
+  p.institution_id,
+  p.graduation_year,
+  p.cgpa,
+  p.skills,
+  p.linkedin_url,
+  p.github_url,
+  p.ai_avatar,
+  p.created_at            as profile_created_at,
+  p.updated_at            as profile_updated_at,
+  r.id                    as resume_id,
+  r.storage_key           as resume_storage_key,
+  r.resume_score,
+  r.parsed                as resume_parsed,
+  r.feedback              as resume_feedback,
+  r.created_at            as resume_created_at,
+  a.session_id            as assessment_session_id,
+  a.total                 as talent_score,
+  a.grade,
+  a.percentile,
+  a.scores                as assessment_scores,
+  a.ai_feedback           as assessment_ai_feedback,
+  a.verifiable_hash,
+  a.report_storage_key    as report_storage_key,
+  a.created_at            as assessment_created_at
+from public.profiles p
+left join lateral (
+  select ra.*
+  from public.resume_analyses ra
+  where ra.student_id = p.id
+  order by ra.created_at desc
+  limit 1
+) r on true
+left join lateral (
+  select ar.*
+  from public.assessment_results ar
+  where ar.student_id = p.id
+  order by ar.created_at desc
+  limit 1
+) a on true;
