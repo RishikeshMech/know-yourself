@@ -17,29 +17,47 @@
 
 - Email + password, role tabs (Student / Faculty / Institution)
 - "New user? Register" -> modal with institution selector
+- Sign-up signs the user straight in and routes to `/onboarding` (no second sign-in step)
+- Distraction-less glassmorphism: single centred glass card on an animated gradient,
+  segmented Sign in / Create account toggle, no hero or side copy
 - JWT stored httpOnly+secure (implemented as localStorage for demo, httpOnly in prod)
 - SSO button (institution SSO federation) — mocked, routes to same flow
 - Error: invalid credentials, institution inactive
 
 ---
 
-## 2. STUDENT PROFILE (`/profile`)
+## 2. ONBOARDING / STUDENT PROFILE (`/onboarding`, `/profile`)
 
-Fields: full name, phone, DOB, gender, degree, college, graduation year, CGPA, skills (chips), LinkedIn, GitHub, avatar upload
-- Validation: CGPA 0-10, phone E.164, graduation year 2020-2030
-- CTA: Save & Continue
-- Progress stepper shows 60% complete
+One shared 3-step wizard (`components/OnboardingFlow.tsx`): `/onboarding` for new
+accounts (where sign-up routes to), `/profile` as the same form in edit mode.
+
+- **Step 1 — About you:** full name, mobile number, gender, DOB
+- **Step 2 — Academics:** degree, college, graduation year, CGPA
+- **Step 3 — Your presence:** skills (comma separated), LinkedIn, GitHub + a review panel
+- **Mobile number:** fixed `+91` prefix, digits only, **exactly 10 digits** (`maxLength=10`,
+  numeric keyboard, live `n/10` counter and `+91 XXXXX XXXXX` preview). Country code and
+  trunk prefix are stripped on input, so `+91 98765 43210` / `09876543210` normalise to `9876543210`.
+- **Gender:** dropdown (listbox) with exactly **Male / Female / Other** — no free text
+- Validation (client *and* `POST /api/user/profile`): CGPA 0-10, mobile 10 digits,
+  gender one of Male/Female/Other, graduation year 2020-2035, DOB age 15-100, https URLs
+- Progress rail with a completion ring, per-step validation, segmented progress bar
+- CTA: Continue → … → Complete onboarding (then `/resume`)
 
 ---
 
 ## 3. RESUME UPLOAD (`/resume`)
 
-- Drag & drop + browse (PDF/DOCX, <5MB)
-- MinIO presigned upload indicator
-- On upload: shows file name, size, "Analyzing..." spinner
-- **Resume Analysis (AI)** — radial score /100, strengths (green chips), gaps (amber), suggestions list
+- Drag & drop + browse (PDF/DOCX/TXT, <5MB)
+- On upload: file is sent to `POST /api/user/resume/analyze`; text is extracted
+  server-side (pdf-parse for PDF, mammoth for DOCX) and analysed by DeepSeek when
+  `DEEPSEEK_API_KEY` is set, else a deterministic rule-based engine
+- **Resume Analysis (AI)** — score ring /100 + professionalism, AI summary, recruiter
+  flags (🔴/🟡/), detected skills/education/experience/contact chips,
+  strengths/gaps/suggestions
+- **Wrong-resume detection** — name-mismatch vs the profile and unprofessional
+  language/contact/section checks surface as red/amber flags; mismatch blocks with a banner
 - CTA: Continue (disabled until analysis done)
-- Edge: retry, re-upload
+- Edge: retry, re-upload, >5MB and unreadable-file errors
 
 ---
 
@@ -55,7 +73,7 @@ Fields: full name, phone, DOB, gender, degree, college, graduation year, CGPA, s
 
 ## 5. FOLLOW LINKEDIN (`/tracking/linkedin`)
 
-- LinkedIn card, Calibiai LinkedIn page preview
+- LinkedIn card, CalibiAI LinkedIn page preview
 - "Follow" button -> opens linkedin.com/company/calibiai (mock)
 - Same tracking pattern: POST /tracking/complete {follow_linkedin}
 - CTA: Continue
@@ -83,7 +101,7 @@ Fields: full name, phone, DOB, gender, degree, college, graduation year, CGPA, s
 ## 8. ASSESSMENT (`/assessment`) — Core
 
 **Layout:**
-- Top: sticky header — Calibiai logo, **tamper-proof timer** (MM:SS, server-synced, red <10m, pulse), module stepper, Submit button (confirm modal)
+- Top: sticky header — CalibiAI logo, **tamper-proof timer** (MM:SS, server-synced, red <10m, pulse), module stepper, Submit button (confirm modal)
 - Left: module nav (collapsible), question palette (1..N, color: answered/skipped/flagged)
 - Center: question area
 - Right: (desktop) code editor / audio player as needed
@@ -158,7 +176,7 @@ Fields: full name, phone, DOB, gender, degree, college, graduation year, CGPA, s
 ## 10. PDF REPORT (Generated)
 
 One-page + detail:
-- Header: Calibiai logo, student name, ID, date, verifiable hash QR
+- Header: CalibiAI logo, student name, ID, date, verifiable hash QR
 - Section scores table + bars
 - Cognitive radar (image)
 - Behavioral insights paragraph (LLM-generated)

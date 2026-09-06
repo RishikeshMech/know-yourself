@@ -37,6 +37,8 @@ const nextConfig = {
   },
   experimental: {
     serverActions: { allowedOrigins: ['*'] },
+    // pdf-parse/mammoth ship CJS that must not be webpack-bundled for API routes.
+    serverComponentsExternalPackages: ['pdf-parse', 'mammoth'],
   },
   webpack: (config) => {
     // Apply only when the real package is missing from node_modules.

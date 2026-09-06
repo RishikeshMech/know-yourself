@@ -30,7 +30,7 @@ create table if not exists public.profiles (
   college          text,
   institution_id   uuid references public.institutions(id),
   graduation_year  int,
-  cgpa             numeric(3,2),
+  cgpa             numeric(4,2),
   skills           text,
   linkedin_url     text,
   github_url       text,
@@ -66,6 +66,20 @@ create table if not exists public.resume_analyses (
   feedback      jsonb,
   created_at    timestamptz not null default now()
 );
+
+-- ---------------------------------------------------------------------------
+-- Tracking events (WhatsApp community / LinkedIn follow steps)
+-- ---------------------------------------------------------------------------
+create table if not exists public.tracking_events (
+  id            text primary key,
+  user_id       uuid not null references public.profiles(id) on delete cascade,
+  action        text not null,
+  completed     boolean not null default false,
+  completed_at  timestamptz,
+  created_at    timestamptz not null default now()
+);
+create index if not exists tracking_events_user_idx on public.tracking_events (user_id);
+create index if not exists resume_analyses_student_idx on public.resume_analyses (student_id);
 
 -- ---------------------------------------------------------------------------
 -- Assessment sessions — one per attempt, per student
@@ -127,16 +141,21 @@ create table if not exists public.ai_evaluation_jobs (
 -- ============================================================================
 alter table public.profiles           enable row level security;
 alter table public.resume_analyses    enable row level security;
+alter table public.tracking_events    enable row level security;
 alter table public.assessment_sessions enable row level security;
 alter table public.assessment_results enable row level security;
 alter table public.ai_evaluation_jobs enable row level security;
 
--- Profiles: a user reads/updates their own row; faculty/institution can read their tenant
+-- Profiles: a user reads/updates their own row (the sign-up trigger inserts it);
+-- the insert policy also covers re-creates and server-side onboarding upserts
+-- made with the user's own access token.
 create policy "own profile read"   on public.profiles for select using (auth.uid() = id);
+create policy "own profile insert" on public.profiles for insert with check (auth.uid() = id);
 create policy "own profile update" on public.profiles for update using (auth.uid() = id);
 
 -- Students own their rows
 create policy "own resumes"   on public.resume_analyses    for all using (auth.uid() = student_id);
+create policy "own tracking"  on public.tracking_events    for all using (auth.uid() = user_id);
 create policy "own sessions"  on public.assessment_sessions for all using (auth.uid() = student_id);
 create policy "own results"   on public.assessment_results  for all using (auth.uid() = student_id);
 create policy "own ai jobs"   on public.ai_evaluation_jobs  for all using (

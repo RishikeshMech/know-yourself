@@ -7,9 +7,10 @@ calibiai-score/
 ├── app/                          # Next.js 14 App Router (self-hosted, edge-cached)
 │   ├── layout.tsx                # Root layout + fonts
 │   ├── globals.css
-│   ├── page.tsx                  # Landing (hero Calibiai Score, dashboards)
-│   ├── login/page.tsx            # Auth (custom JWT)
-│   ├── profile/page.tsx          # Student profile (tenant-sharded)
+│   ├── page.tsx                  # Landing (hero CalibiAI Score, dashboards)
+│   ├── login/page.tsx            # Auth (custom JWT) — sign-up lands on /onboarding
+│   ├── onboarding/page.tsx       # 3-step onboarding wizard (new accounts)
+│   ├── profile/page.tsx          # Same form in edit mode (tenant-sharded)
 │   ├── resume/page.tsx           # Resume upload → MinIO presign → LLaMA analysis
 │   ├── tracking/
 │   │   ├── whatsapp/page.tsx     # Join WhatsApp (tracking)
@@ -17,7 +18,7 @@ calibiai-score/
 │   ├── confirmation/page.tsx     # Pre-assessment confirmation
 │   ├── instructions/page.tsx     # Assessment instructions + start timer
 │   ├── assessment/page.tsx       # 120-min assessment (6 modules, server timer)
-│   ├── result/page.tsx           # Calibiai Score + PDF generation
+│   ├── result/page.tsx           # CalibiAI Score + PDF generation
 │   ├── dashboard/
 │   │   ├── student/page.tsx      # Student dashboard
 │   │   ├── faculty/page.tsx      # Faculty dashboard
@@ -34,9 +35,11 @@ calibiai-score/
 │       └── reports/route.ts
 ├── components/
 │   ├── Navbar.tsx
-│   └── Stepper.tsx
+│   ├── Stepper.tsx
+│   └── OnboardingFlow.tsx        # 3-step onboarding wizard (used by /onboarding + /profile)
 ├── lib/
 │   ├── store.tsx                 # Global store (JWT, profile, session, scores) — Context + localStorage (prod: httpOnly)
+│   ├── validate.ts               # Shared field rules (10-digit mobile, gender dropdown, CGPA, grad year)
 │   ├── mockData.ts               # Question banks (deterministic, versioned)
 │   └── scoring.ts                # Scoring engine (mirrors server, auditable)
 ├── services/                     # Production microservices (each Docker + K8s Helm)
