@@ -1,7 +1,8 @@
 'use client'
 import { Navbar } from '@/components/Navbar'
 import { HeroMockup } from '@/components/HeroMockup'
-import { StoreProvider } from '@/lib/store'
+import { StoreProvider, useStore } from '@/lib/store'
+import { isProfileComplete } from '@/lib/validate'
 import { Typewriter } from '@/components/Typewriter'
 
 const MODULES = [
@@ -10,6 +11,10 @@ const MODULES = [
 ]
 
 function Landing() {
+  const { user, profile } = useStore()
+  // Signed-in users should never be bounced back to /login for "start your
+  // assessment" — route them into the flow (or finish onboarding first).
+  const startHref = user ? (isProfileComplete(profile) ? '/instructions' : '/onboarding') : '/login'
   return (
     <div>
       <Navbar />
@@ -29,7 +34,7 @@ function Landing() {
               Communication, problem solving, AI skills &amp; cognition — one signal employers trust.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
-              <a href="/login" className="btn-primary">Start your assessment →</a>
+              <a href={startHref} className="btn-primary">Start your assessment →</a>
               <a href="/sample-report" className="btn-soft">See a sample report</a>
             </div>
             <div className="mt-8 flex flex-wrap gap-5 text-sm text-slate-500">
@@ -73,7 +78,7 @@ function Landing() {
                 </span>
               ))}
             </div>
-            <a href="/login" className="btn-primary mt-7">Start your assessment →</a>
+            <a href={startHref} className="btn-primary mt-7">Start your assessment →</a>
           </div>
         </section>
       </main>
