@@ -9,7 +9,14 @@ function Inner(){
   const [scores,setScores]=useState<any>(null)
   const [profile,setProfile]=useState<any>(null)
   const [resume,setResume]=useState<any>(null)
-  const { user } = useStore()
+  const { user, hydrated } = useStore()
+  // Protect the student dashboard: a signed-out visitor is sent to /login.
+  // Render nothing until the session is known so the page never flashes.
+  useEffect(()=>{
+    if (hydrated && !user) window.location.replace('/login')
+  },[hydrated, user])
+  if (!hydrated) return null
+  if (!user) return null
   const onboarded = isProfileComplete(profile)
   // The right place to continue: finish onboarding if we never did, otherwise
   // jump to the assessment instructions (which start/create the session). This

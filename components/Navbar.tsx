@@ -17,6 +17,11 @@ export function Navbar() {
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
+  // The brand links to the student dashboard when signed in, and to the
+  // marketing home page when signed out. A signed-in user should never land on
+  // the public home page by clicking the logo.
+  const homeHref = user ? '/dashboard/student' : '/'
+
   // Close the dropdown when clicking outside.
   useEffect(() => {
     function onClick(e: MouseEvent) {
@@ -31,7 +36,7 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-white/50 bg-white/55 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-        <a href="/" className="flex items-center gap-2.5">
+        <a href={homeHref} className="flex items-center gap-2.5">
           <Logo className="drop-shadow-lg" />
           <span className="font-extrabold tracking-tight text-slate-900 text-lg">CALIBIAI<span className="text-indigo-600"> SCORE</span></span>
         </a>

@@ -1,8 +1,8 @@
 'use client'
+import { useEffect } from 'react'
 import { Navbar } from '@/components/Navbar'
 import { HeroMockup } from '@/components/HeroMockup'
 import { StoreProvider, useStore } from '@/lib/store'
-import { isProfileComplete } from '@/lib/validate'
 import { Typewriter } from '@/components/Typewriter'
 
 const MODULES = [
@@ -11,10 +11,20 @@ const MODULES = [
 ]
 
 function Landing() {
-  const { user, profile } = useStore()
-  // Signed-in users should never be bounced back to /login for "start your
-  // assessment" — route them into the flow (or finish onboarding first).
-  const startHref = user ? (isProfileComplete(profile) ? '/instructions' : '/onboarding') : '/login'
+  const { user, hydrated } = useStore()
+  // A signed-in candidate should never see the marketing home page (or the login
+  // screen). If they land here while authenticated — e.g. via the browser back
+  // button or a direct URL — send them straight to their dashboard. `replace`
+  // also clears this entry from history so the back button can't return here.
+  useEffect(() => {
+    if (user && hydrated) window.location.replace('/dashboard/student')
+  }, [user, hydrated])
+  // Render nothing until the session has been read and, if the visitor is
+  // signed in, redirect away — so the home page is never flashed to a candidate.
+  if (!hydrated || user) return null
+  // Signed-out visitors go to /login to start. Signed-in users are redirected
+  // above and never reach this marketing page.
+  const startHref = '/login'
   return (
     <div>
       <Navbar />
