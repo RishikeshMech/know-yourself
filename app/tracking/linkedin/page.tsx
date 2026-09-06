@@ -35,7 +35,7 @@ function Inner(){
           </div>
 
           <div className="mt-7 flex justify-center gap-3">
-            <a href="https://linkedin.com/company/calibiai" target="_blank" rel="noreferrer" onClick={complete} className="btn-primary !bg-none bg-sky-600 !shadow-sky-300/50 hover:bg-sky-700">Follow on LinkedIn →</a>
+            <a href="https://www.linkedin.com/company/calibiai-academy" target="_blank" rel="noreferrer" onClick={complete} className="btn-primary !bg-none bg-sky-600 !shadow-sky-300/50 hover:bg-sky-700">Follow on LinkedIn →</a>
             <button onClick={complete} className="btn-soft">I followed ✓</button>
           </div>
           <button onClick={()=>window.location.href='/confirmation'} className="mt-4 text-xs font-semibold text-slate-400 hover:text-slate-600">Continue →</button>

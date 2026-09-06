@@ -6,8 +6,10 @@ import { Logo } from '@/components/Logo'
 
 function LoginInner() {
   const { setUser } = useStore()
-  const [email, setEmail] = useState('priya@iitm.ac.in')
-  const [password, setPassword] = useState('password123')
+  // Never pre-fill credentials — the form must start empty so one user's
+  // details are never shown to the next person on a shared device.
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
@@ -45,19 +47,22 @@ function LoginInner() {
       }
       if (data.has_assessment) {
         window.location.href = '/dashboard/student'
-      } else {
+      } else if (data.has_onboarding) {
+        // Completed onboarding but no result yet — continue the flow at
+        // the edit entry point instead of re-running onboarding.
         window.location.href = '/profile'
+      } else {
+        window.location.href = '/onboarding'
       }
     } catch (e: any) {
       setErr(e?.message || 'Sign in failed. Please try again.')
     } finally { setBusy(false) }
   }
 
-  // Swap modes without dragging the demo credentials into the sign-up form.
+  // Swap modes, keeping the form clean (no auto-filled credentials).
   const switchMode = (next: 'signin' | 'signup') => {
     setMode(next)
     setErr('')
-    if (next === 'signup' && email === 'priya@iitm.ac.in') { setEmail(''); setPassword('') }
   }
 
   return (

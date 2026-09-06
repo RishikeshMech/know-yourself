@@ -100,6 +100,50 @@ body {
   0% { opacity: 0; transform: scale(.94); }
   100% { opacity: 1; transform: scale(1); }
 }
+/* ---------- Hero mockup (MacBook report + graph) ---------- */
+@keyframes draw-line {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes dot-in {
+  from { opacity: 0; transform: scale(.4); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes blink {
+  0%, 45% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+@keyframes scan {
+  0%   { transform: translateY(-130%); }
+  100% { transform: translateY(560%); }
+}
+@keyframes glow-pulse {
+  0%, 100% { opacity: .5; }
+  50%      { opacity: .95; }
+}
+@keyframes float-tilt {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-10px); }
+}
+
+.graph-draw      { stroke-dasharray: 1400; stroke-dashoffset: 1400; animation: draw-line 2.4s cubic-bezier(.4,0,.2,1) .1s forwards; }
+.graph-draw-slow { stroke-dasharray: 2200; stroke-dashoffset: 2200; animation: draw-line 5.5s cubic-bezier(.4,0,.2,1) forwards; }
+.graph-fill      { opacity: 0; animation: fade-in 1s ease .9s both; }
+.dot-in          { transform-box: fill-box; transform-origin: center; animation: dot-in .35s ease both; }
+.cursor-blink    { animation: blink 1.1s steps(1) infinite; }
+.scan-line       { animation: scan 7s linear infinite; }
+.animate-glow    { animation: glow-pulse 6s ease-in-out infinite; }
+.animate-float-slow   { animation: float-tilt 7s ease-in-out infinite; }
+.animate-float-slower { animation: float-tilt 9s ease-in-out 1.2s infinite; }
+
+/* Respect users who prefer less motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+  .cursor-blink { animation: none; }
+}
 
 .animate-fade-up { animation: fade-up .6s cubic-bezier(.22,.8,.32,1) both; }
 .animate-fade-in { animation: fade-in .5s ease both; }

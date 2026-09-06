@@ -74,7 +74,7 @@ accounts (where sign-up routes to), `/profile` as the same form in edit mode.
 ## 5. FOLLOW LINKEDIN (`/tracking/linkedin`)
 
 - LinkedIn card, CalibiAI LinkedIn page preview
-- "Follow" button -> opens linkedin.com/company/calibiai (mock)
+- "Follow" button -> opens https://www.linkedin.com/company/calibiai-academy (mock)
 - Same tracking pattern: POST /tracking/complete {follow_linkedin}
 - CTA: Continue
 

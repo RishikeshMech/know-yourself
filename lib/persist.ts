@@ -2,6 +2,7 @@
 // Every function receives the server client explicitly and degrades to a
 // logged no-op on failure — the local JSON store remains the source of truth
 // in demo mode, Supabase mirrors everything when configured.
+import { randomUUID } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export interface AuthResult {
@@ -10,9 +11,27 @@ export interface AuthResult {
   refresh_token: string | null
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
 function clean(v: any): string | null {
   const s = String(v ?? '').trim()
   return s ? s : null
+}
+
+/**
+ * Postgres `uuid` columns reject the short local-demo ids the client used to
+ * send ("sess_abc123"), which made every assessment row mirror fail silently
+ * ("invalid input syntax for type uuid") — so results never reached Supabase
+ * and returning students were treated as first-timers.
+ * Map any invalid id to a fresh uuid so Supabase writes always succeed; API
+ * routes use the same value for the local JSON store so the two stay in sync.
+ * A malformed user id is also rejected (FK constraint) by returning null.
+ */
+export function toUuid(value: any): string | null {
+  const s = String(value ?? '').trim()
+  if (!s) return null
+  if (UUID_RE.test(s)) return s
+  return randomUUID()
 }
 
 /** Email + password live in Supabase Auth (auth.users); metadata seeds the profile row. */
@@ -108,6 +127,20 @@ export async function persistProfile(client: SupabaseClient, p: any): Promise<bo
   return true
 }
 
+/** Latest profile row for a user (used by login to route returners correctly). */
+export async function fetchProfile(client: SupabaseClient, userId: string): Promise<any | null> {
+  try {
+    const { data } = await client
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle()
+    return data || null
+  } catch {
+    return null
+  }
+}
+
 export async function persistResumeAnalysis(client: SupabaseClient, rec: any): Promise<boolean> {
   const { error } = await client.from('resume_analyses').insert({
     student_id: rec.student_id,
@@ -152,6 +185,138 @@ export async function persistTrackingEvent(client: SupabaseClient, ev: any): Pro
     return false
   }
   return true
+}
+
+/** Closes any active session for the student (before creating a new one). */
+export async function expireActiveAssessmentSessions(
+  client: SupabaseClient,
+  studentId: string,
+  exceptId?: string,
+): Promise<void> {
+  try {
+    let q = client
+      .from('assessment_sessions')
+      .update({ status: 'expired' })
+      .eq('student_id', studentId)
+      .eq('status', 'in_progress')
+    if (exceptId) q = q.neq('id', exceptId)
+    await q
+  } catch (e) {
+    console.warn('[supabase] session expiry failed:', (e as Error)?.message || e)
+  }
+}
+
+/**
+ * Mirrors an assessment session (start / progress save / submit status).
+ * The local demo ids ("sess_…") are mapped to a real uuid up front, and the
+ * partial unique index (one active session per student) is handled by expiring
+ * any older active session before retrying.
+ */
+export async function persistAssessmentSession(client: SupabaseClient, s: any): Promise<boolean> {
+  const studentId = toUuid(s.student_id)
+  if (!studentId) {
+    console.warn('[supabase] session persist skipped: invalid student_id')
+    return false
+  }
+  const row = {
+    id: toUuid(s.id) || randomUUID(),
+    student_id: studentId,
+    started_at: s.started_at ? new Date(s.started_at).toISOString() : new Date().toISOString(),
+    expires_at: s.expires_at ? new Date(s.expires_at).toISOString() : new Date(Date.now() + 7200 * 1000).toISOString(),
+    duration_sec: Number(s.duration_sec) || 7200,
+    status: s.status || 'in_progress',
+    question_seed: s.question_seed ? Number(s.question_seed) : undefined,
+    tab_switches: Number(s.tab_switches) || 0,
+    answers: s.answers || {},
+    submitted_at: s.submitted_at ? new Date(s.submitted_at).toISOString() : null,
+  }
+  const { error } = await client.from('assessment_sessions').upsert(row, { onConflict: 'id' })
+  if (error) {
+    if ((error as any).code === '23505') {
+      await expireActiveAssessmentSessions(client, studentId, row.id)
+      const retry = await client.from('assessment_sessions').upsert(row, { onConflict: 'id' })
+      if (!retry.error) return true
+    }
+    console.warn('[supabase] session persist failed:', error.message)
+    return false
+  }
+  return true
+}
+
+/** Mirrors the final evaluation result (scores) into public.assessment_results. */
+export async function persistAssessmentResult(client: SupabaseClient, r: any): Promise<boolean> {
+  const studentId = toUuid(r.student_id)
+  const sessionId = toUuid(r.session_id)
+  if (!studentId || !sessionId) {
+    console.warn('[supabase] result persist skipped: invalid student_id/session_id')
+    return false
+  }
+  const { error } = await client.from('assessment_results').upsert(
+    {
+      session_id: sessionId,
+      student_id: studentId,
+      scores: r.scores || {},
+      total: Number(r.total) || 0,
+      grade: clean(r.grade) || undefined,
+      percentile: r.percentile != null ? Number(r.percentile) : undefined,
+      verifiable_hash: clean(r.verifiable_hash) || undefined,
+      ai_feedback: r.ai_feedback || {},
+      created_at: r.created_at ? new Date(r.created_at).toISOString() : undefined,
+    },
+    { onConflict: 'session_id' },
+  )
+  if (error) {
+    console.warn('[supabase] result persist failed:', error.message)
+    return false
+  }
+  return true
+}
+
+/** Loads an assessment session by id from Supabase (service-role read). */
+export async function fetchAssessmentSession(client: SupabaseClient, sessionId: string): Promise<any | null> {
+  try {
+    const { data } = await client
+      .from('assessment_sessions')
+      .select('*')
+      .eq('id', sessionId)
+      .maybeSingle()
+    return data || null
+  } catch {
+    return null
+  }
+}
+
+/** Loads the student's active (in-progress) session from Supabase. */
+export async function fetchActiveAssessmentSession(client: SupabaseClient, studentId: string): Promise<any | null> {
+  try {
+    const { data } = await client
+      .from('assessment_sessions')
+      .select('*')
+      .eq('student_id', studentId)
+      .eq('status', 'in_progress')
+      .order('started_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    return data || null
+  } catch {
+    return null
+  }
+}
+
+/** Latest assessment result for a student from Supabase. */
+export async function fetchLatestAssessmentResult(client: SupabaseClient, studentId: string): Promise<any | null> {
+  try {
+    const { data } = await client
+      .from('assessment_results')
+      .select('*')
+      .eq('student_id', studentId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    return data || null
+  } catch {
+    return null
+  }
 }
 
 export async function hasAssessmentResult(client: SupabaseClient, userId: string): Promise<boolean> {
