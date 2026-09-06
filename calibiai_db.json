@@ -19,6 +19,26 @@
       "name": "testuser",
       "created_at": "2026-09-06T10:04:48.339Z",
       "last_login_at": "2026-09-06T10:04:52.305Z"
+    },
+    {
+      "id": "u_84368932",
+      "email": "Prajwal@gmail.com",
+      "password_hash": "aa40e601a6f98ed3831a29cfdbb496c9242aa00528d132a459a7768f2b1411d3",
+      "role": "student",
+      "institution_id": "inst_iitm",
+      "name": "Prajwal",
+      "created_at": "2026-09-06T10:10:13.520Z",
+      "last_login_at": "2026-09-06T10:12:37.232Z"
+    },
+    {
+      "id": "u_dcb106d7",
+      "email": "priya@iitm.ac.in",
+      "password_hash": "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f",
+      "role": "student",
+      "institution_id": "inst_iitm",
+      "name": "priya",
+      "created_at": "2026-09-06T10:16:59.954Z",
+      "last_login_at": "2026-09-06T12:00:10.476Z"
     }
   ],
   "profiles": [
@@ -37,10 +57,241 @@
       "linkedin_url": "",
       "github_url": "",
       "updated_at": "2026-09-06T10:04:54.776Z"
+    },
+    {
+      "id": "u_84368932",
+      "email": "Prajwal@gmail.com",
+      "full_name": "Prajwal",
+      "phone": "+91 9121989122",
+      "dob": "2003-04-12",
+      "gender": "Male",
+      "degree": "B.Tech CSE",
+      "college": "IIT Madras",
+      "graduation_year": 2026,
+      "cgpa": 8.7,
+      "skills": "Python, React, SQL",
+      "linkedin_url": "https://linkedin.com/in/you",
+      "github_url": "https://github.com/you",
+      "updated_at": "2026-09-06T10:10:30.468Z"
+    },
+    {
+      "id": "u_dcb106d7",
+      "email": "priya@iitm.ac.in",
+      "full_name": "priya",
+      "phone": "+91 ",
+      "dob": "2003-04-12",
+      "gender": "Female",
+      "degree": "B.Tech CSE",
+      "college": "IIT Madras",
+      "graduation_year": 2026,
+      "cgpa": 8.7,
+      "skills": "Python, React, SQL",
+      "linkedin_url": "https://linkedin.com/in/you",
+      "github_url": "https://github.com/you",
+      "updated_at": "2026-09-06T10:47:55.162Z"
     }
   ],
-  "assessment_sessions": [],
-  "assessment_results": [],
-  "resume_analyses": [],
-  "tracking_events": []
+  "assessment_sessions": [
+    {
+      "id": "sess_da8ea53d",
+      "student_id": "u_84368932",
+      "status": "submitted",
+      "started_at": "2026-09-06T10:10:52.779Z",
+      "expires_at": "2026-09-06T12:10:52.779Z",
+      "duration_sec": 7200,
+      "answers": {
+        "EL1": "The alert went to a channel nobody monitored overnight",
+        "EL2": "Send them only to the team lead",
+        "EL3": "The CDN cache had to be flushed",
+        "EL4": "Expand-and-contract pattern reviewed by two engineers",
+        "EL5": "In the client browser",
+        "EL6": "Pods were scaled to 30 but the pool stayed at 50",
+        "EL7": "To reduce audio latency",
+        "EL8": "PgBouncer multiplexing; alerts at 70% pool utilization",
+        "PS1": "Some rhombuses are rectangles",
+        "PS2": "31",
+        "PS3": "4",
+        "PS4": "All steps are equal",
+        "PS5": "O(n)",
+        "PS6": "5/36",
+        "PS7": "11.0",
+        "PS8": "Run the test forever",
+        "PS9": "2",
+        "PS10": "11:00"
+      },
+      "submitted_at": "2026-09-06T10:11:55.315Z",
+      "tab_switches": 0,
+      "created_at": "2026-09-06T10:10:52.779Z"
+    }
+  ],
+  "assessment_results": [
+    {
+      "id": "res_e8867909",
+      "session_id": "sess_da8ea53d",
+      "student_id": "u_84368932",
+      "scores": {
+        "session_id": "sess_da8ea53d",
+        "english": {
+          "listening": 25,
+          "speaking": 0,
+          "reading": 0,
+          "writing": 0,
+          "total": 25,
+          "max": 200
+        },
+        "problem_solving": 40,
+        "ai_debugging": 0,
+        "ai_feature": 0,
+        "prompt_engineering": 0,
+        "cognitive": {
+          "grid": 0,
+          "logical": 0,
+          "cognitive_score": 0,
+          "behavioral_total": 40,
+          "total": 40,
+          "max": 200,
+          "behavioral": {
+            "teamwork": 40,
+            "accountability": 40,
+            "adaptability": 40,
+            "responsible_ai": 40,
+            "decision_making": 40,
+            "learning_mindset": 40
+          },
+          "traitLabels": {
+            "teamwork": "Teamwork",
+            "accountability": "Accountability",
+            "adaptability": "Adaptability",
+            "responsible_ai": "Responsible AI",
+            "decision_making": "Decision Making",
+            "learning_mindset": "Learning Mindset"
+          }
+        },
+        "detail": {
+          "listeningCorrect": 4,
+          "listeningTotal": 8,
+          "readingCorrect": 0,
+          "readingTotal": 6,
+          "problemCorrect": 2,
+          "problemTotal": 10,
+          "logicalCorrect": 0,
+          "logicalTotal": 7,
+          "debugPer": {
+            "AD1": 0,
+            "AD2": 0,
+            "AD3": 0
+          },
+          "promptPer": {
+            "PE1": 0,
+            "PE2": 0,
+            "PE3": 0
+          },
+          "featureScore100": 0,
+          "speakingCount": 0
+        },
+        "total": 105,
+        "grade": "D",
+        "percentile": 41,
+        "ai_results": {},
+        "verifiable_hash": "sha256:f06699-0763402b",
+        "tab_switches": 0,
+        "auto_submitted": false,
+        "submitted_at": "2026-09-06T10:11:55.188Z"
+      },
+      "total": 105,
+      "grade": "D",
+      "percentile": 41,
+      "verifiable_hash": "sha256:f06699-0763402b",
+      "ai_feedback": {},
+      "created_at": "2026-09-06T10:11:55.315Z"
+    }
+  ],
+  "resume_analyses": [
+    {
+      "id": "res_1788689439891",
+      "student_id": "u_84368932",
+      "storage_key": "resume_1788689438008.pdf",
+      "resume_score": 78,
+      "parsed": {
+        "name": "Your Name",
+        "skills": [
+          "Python",
+          "React",
+          "SQL",
+          "Docker"
+        ],
+        "experience_years": 1.2,
+        "projects": 2
+      },
+      "feedback": {
+        "strengths": [
+          "Strong project section",
+          "Clear formatting",
+          "Good skill coverage"
+        ],
+        "gaps": [
+          "Missing quantified impact",
+          "No certifications listed",
+          "Experience descriptions could be more concise"
+        ],
+        "suggestions": [
+          "Add metrics, e.g. “Improved API latency by 30%”",
+          "Include GitHub links for projects",
+          "Add certifications if any"
+        ]
+      },
+      "created_at": "2026-09-06T10:10:39.891Z"
+    },
+    {
+      "id": "res_1788691797718",
+      "student_id": "u_dcb106d7",
+      "storage_key": "resume_1788691795811.pdf",
+      "resume_score": 78,
+      "parsed": {
+        "name": "Your Name",
+        "skills": [
+          "Python",
+          "React",
+          "SQL",
+          "Docker"
+        ],
+        "experience_years": 1.2,
+        "projects": 2
+      },
+      "feedback": {
+        "strengths": [
+          "Strong project section",
+          "Clear formatting",
+          "Good skill coverage"
+        ],
+        "gaps": [
+          "Missing quantified impact",
+          "No certifications listed",
+          "Experience descriptions could be more concise"
+        ],
+        "suggestions": [
+          "Add metrics, e.g. “Improved API latency by 30%”",
+          "Include GitHub links for projects",
+          "Add certifications if any"
+        ]
+      },
+      "created_at": "2026-09-06T10:49:57.718Z"
+    }
+  ],
+  "tracking_events": [
+    {
+      "id": "track_1788689445184",
+      "user_id": "u_84368932",
+      "action": "join_whatsapp",
+      "completed": true,
+      "completed_at": "2026-09-06T10:10:45.184Z"
+    },
+    {
+      "id": "track_1788689446830",
+      "user_id": "u_84368932",
+      "action": "follow_linkedin",
+      "completed": true,
+      "completed_at": "2026-09-06T10:10:46.830Z"
+    }
+  ]
 }
