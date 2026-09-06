@@ -2,6 +2,7 @@
 import { Navbar } from '@/components/Navbar'
 import { HeroMockup } from '@/components/HeroMockup'
 import { StoreProvider } from '@/lib/store'
+import { Typewriter } from '@/components/Typewriter'
 
 const MODULES = [
   'English Communication', 'Problem Solving', 'AI Debugging',
@@ -20,7 +21,8 @@ function Landing() {
               <span className="w-2 h-2 rounded-full bg-emerald-500" /> Trusted employability assessment
             </span>
             <h1 className="mt-5 text-4xl sm:text-5xl lg:text-[3.4rem] font-black leading-[1.05] tracking-tight text-slate-900">
-              Your skills.<br />
+              <Typewriter text="Your skills." delay={90} />
+              <br />
               One <span className="text-gradient">verified score.</span>
             </h1>
             <p className="mt-4 text-slate-500 text-lg max-w-md">

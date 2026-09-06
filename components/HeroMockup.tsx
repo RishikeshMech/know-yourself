@@ -145,7 +145,7 @@ export function HeroMockup() {
         <span className="flex h-7 w-7 items-center justify-center rounded-xl calibiai-gradient text-xs text-white">🧠</span>
         <div>
           <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Evaluated by</div>
-          <div className="text-xs font-bold text-slate-800">DeepSeek AI</div>
+          <div className="text-xs font-bold text-slate-800">CalibiAI</div>
         </div>
       </div>
       <div aria-hidden className="absolute -right-4 bottom-14 z-20 hidden animate-float-slower lg:flex items-center gap-2 rounded-2xl border border-white/70 bg-white/80 px-3.5 py-2.5 shadow-xl shadow-violet-200/50 backdrop-blur">

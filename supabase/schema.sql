@@ -38,6 +38,9 @@ create table if not exists public.profiles (
   updated_at       timestamptz not null default now()
 );
 
+-- Index for fast login lookup by email (used by /api/auth/login)
+create index if not exists profiles_email_idx on public.profiles (email);
+
 -- Auto-create a profile row when a new auth user signs up
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
