@@ -152,11 +152,25 @@ alter table public.ai_evaluation_jobs enable row level security;
 -- Profiles: a user reads/updates their own row (the sign-up trigger inserts it);
 -- the insert policy also covers re-creates and server-side onboarding upserts
 -- made with the user's own access token.
+--
+-- PostgreSQL has no `create policy if not exists`, so remove only the policies
+-- owned by this schema before creating them. This keeps the script safe to run
+-- again in the Supabase SQL editor after a partial or previous setup.
+drop policy if exists "own profile read" on public.profiles;
+drop policy if exists "own profile insert" on public.profiles;
+drop policy if exists "own profile update" on public.profiles;
+
 create policy "own profile read"   on public.profiles for select using (auth.uid() = id);
 create policy "own profile insert" on public.profiles for insert with check (auth.uid() = id);
 create policy "own profile update" on public.profiles for update using (auth.uid() = id);
 
 -- Students own their rows
+drop policy if exists "own resumes" on public.resume_analyses;
+drop policy if exists "own tracking" on public.tracking_events;
+drop policy if exists "own sessions" on public.assessment_sessions;
+drop policy if exists "own results" on public.assessment_results;
+drop policy if exists "own ai jobs" on public.ai_evaluation_jobs;
+
 create policy "own resumes"   on public.resume_analyses    for all using (auth.uid() = student_id);
 create policy "own tracking"  on public.tracking_events    for all using (auth.uid() = user_id);
 create policy "own sessions"  on public.assessment_sessions for all using (auth.uid() = student_id);
@@ -167,6 +181,7 @@ create policy "own ai jobs"   on public.ai_evaluation_jobs  for all using (
 );
 
 -- Faculty/institution dashboards: read within the same institution
+drop policy if exists "tenant results read" on public.assessment_results;
 create policy "tenant results read" on public.assessment_results for select using (
   exists (select 1 from public.profiles p
           where p.id = assessment_results.student_id
@@ -183,6 +198,9 @@ values ('resumes','resumes', false),
 on conflict (id) do nothing;
 
 -- Users can upload/read only files whose path starts with their uid: "{uid}/..."
+-- Keep this schema rerunnable as well; `create policy` itself has no
+-- `if not exists` form.
+drop policy if exists "own files" on storage.objects;
 create policy "own files" on storage.objects for all using (
   bucket_id in ('resumes','speaking','reports')
   and (storage.foldername(name))[1] = auth.uid()::text
