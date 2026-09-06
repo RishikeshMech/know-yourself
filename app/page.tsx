@@ -21,7 +21,7 @@ function Landing(){
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <a href="/login" className="btn-primary">Start your assessment →</a>
-              <a href="/result" className="btn-soft">See a sample report</a>
+              <a href="/sample-report" className="btn-soft">See a sample report</a>
             </div>
             <div className="mt-8 flex flex-wrap gap-5 text-sm text-slate-500">
               {['⏱ 120 minutes','🧩 6 skill modules','📄 PDF credential'].map(t=>(
