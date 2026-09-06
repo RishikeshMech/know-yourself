@@ -93,18 +93,18 @@
     {
       "id": "53711d1a-b8e3-4cd8-b66a-3c7c1655bcec",
       "email": "prajwalen100@gmail.com",
-      "full_name": "Prajwal",
-      "phone": "9284364839",
-      "dob": "2002-04-16",
+      "full_name": "Prajwal Gulhane",
+      "phone": "3938498398",
+      "dob": "2003-06-11",
       "gender": "Male",
-      "degree": "B.Sc",
-      "college": "PPCORE",
-      "graduation_year": 2029,
+      "degree": "B.Tech CSE",
+      "college": "PPCOR",
+      "graduation_year": 2026,
       "cgpa": 9,
       "skills": "",
       "linkedin_url": "",
       "github_url": "",
-      "updated_at": "2026-09-06T14:43:53.290Z"
+      "updated_at": "2026-09-06T16:24:27.409Z"
     }
   ],
   "assessment_sessions": [
@@ -191,6 +191,28 @@
       "submitted_at": "2026-09-06T14:55:46.874Z",
       "tab_switches": 1,
       "created_at": "2026-09-06T14:44:51.679Z"
+    },
+    {
+      "id": "77c9d00f-a788-471e-9a40-1fd919dd2c26",
+      "student_id": "53711d1a-b8e3-4cd8-b66a-3c7c1655bcec",
+      "status": "submitted",
+      "started_at": "2026-09-06T16:25:08.207Z",
+      "expires_at": "2026-09-06T18:25:08.207Z",
+      "duration_sec": 7200,
+      "answers": {
+        "EL1": "Synthetic tests were disabled on Android",
+        "GRID": 0.6660145833333333,
+        "CL1": "12",
+        "CL2": "14",
+        "CL3": "HTTP",
+        "CL4": "MN",
+        "CL7": "100",
+        "CL6": "0°"
+      },
+      "submitted_at": "2026-09-06T16:29:21.645Z",
+      "tab_switches": 0,
+      "question_seed": 545452628,
+      "created_at": "2026-09-06T16:25:08.207Z"
     }
   ],
   "assessment_results": [
@@ -433,6 +455,86 @@
       "verifiable_hash": "sha256:3e560b6-07737e3c",
       "ai_feedback": {},
       "created_at": "2026-09-06T14:55:46.873Z"
+    },
+    {
+      "id": "res_9ac13624",
+      "session_id": "77c9d00f-a788-471e-9a40-1fd919dd2c26",
+      "student_id": "53711d1a-b8e3-4cd8-b66a-3c7c1655bcec",
+      "scores": {
+        "session_id": "77c9d00f-a788-471e-9a40-1fd919dd2c26",
+        "english": {
+          "listening": 0,
+          "speaking": 0,
+          "reading": 0,
+          "writing": 0,
+          "total": 0,
+          "max": 200
+        },
+        "problem_solving": 0,
+        "ai_debugging": 0,
+        "ai_feature": 0,
+        "prompt_engineering": 0,
+        "cognitive": {
+          "grid": 22,
+          "logical": 30,
+          "cognitive_score": 52,
+          "behavioral_total": 40,
+          "total": 92,
+          "max": 200,
+          "behavioral": {
+            "teamwork": 40,
+            "accountability": 40,
+            "adaptability": 40,
+            "responsible_ai": 40,
+            "decision_making": 40,
+            "learning_mindset": 40
+          },
+          "traitLabels": {
+            "teamwork": "Teamwork",
+            "accountability": "Accountability",
+            "adaptability": "Adaptability",
+            "responsible_ai": "Responsible AI",
+            "decision_making": "Decision Making",
+            "learning_mindset": "Learning Mindset"
+          }
+        },
+        "detail": {
+          "listeningCorrect": 0,
+          "listeningTotal": 8,
+          "readingCorrect": 0,
+          "readingTotal": 6,
+          "problemCorrect": 0,
+          "problemTotal": 10,
+          "logicalCorrect": 3,
+          "logicalTotal": 7,
+          "debugPer": {
+            "AD1": 0,
+            "AD2": 0,
+            "AD3": 0
+          },
+          "promptPer": {
+            "PE1": 0,
+            "PE2": 0,
+            "PE3": 0
+          },
+          "featureScore100": 0,
+          "speakingCount": 0
+        },
+        "total": 92,
+        "grade": "D",
+        "percentile": 41,
+        "ai_results": {},
+        "verifiable_hash": "sha256:7b719c-0778d8fd",
+        "tab_switches": 0,
+        "auto_submitted": false,
+        "submitted_at": "2026-09-06T16:29:21.245Z"
+      },
+      "total": 92,
+      "grade": "D",
+      "percentile": 41,
+      "verifiable_hash": "sha256:7b719c-0778d8fd",
+      "ai_feedback": {},
+      "created_at": "2026-09-06T16:29:21.645Z"
     }
   ],
   "resume_analyses": [
@@ -678,6 +780,107 @@
         ]
       },
       "word_count": 473
+    },
+    {
+      "id": "res_1788711881737",
+      "student_id": "53711d1a-b8e3-4cd8-b66a-3c7c1655bcec",
+      "storage_key": "",
+      "file_name": "Prajwal Gulhane Re.pdf",
+      "created_at": "2026-09-06T16:24:41.737Z",
+      "resume_score": 78,
+      "engine": "deepseek",
+      "name_match": true,
+      "detected_name": "Prajwal Gulhane",
+      "flags": [
+        {
+          "level": "ok",
+          "text": "Name matches candidate profile."
+        },
+        {
+          "level": "ok",
+          "text": "Contact information provided (email, phone, LinkedIn)."
+        },
+        {
+          "level": "warn",
+          "text": "No GitHub profile mentioned."
+        },
+        {
+          "level": "warn",
+          "text": "Experience duration is only 1.5+ years, which is relatively junior."
+        },
+        {
+          "level": "ok",
+          "text": "Quantified achievements present (e.g., 40% reduction, 99.5% uptime)."
+        }
+      ],
+      "professionalism": 92,
+      "summary": "Java Backend Developer with 1.5+ years of experience at Cognizant, specializing in Spring Boot, microservices, and cloud technologies. Demonstrates strong technical skills in building scalable RESTful APIs and integrating messaging systems like Kafka. Proven ability to improve system performance and reliability through quantified achievements. Holds multiple AWS certifications, indicating a commitment to cloud proficiency. Education in Computer Science with a high CGPA supports a solid technical foundation.",
+      "experience": {
+        "years": 1.5,
+        "entries": [
+          "Software Engineer – Cognizant Technology Solutions – Dec 2023 – Present"
+        ]
+      },
+      "education": [
+        "Bachelor of Engineering in Computer Science – Prof. Ram Meghe Institute of Technology and Research"
+      ],
+      "skills": [
+        "Java",
+        "Spring Boot",
+        "Spring MVC",
+        "Spring Security",
+        "Spring Data JPA",
+        "Hibernate",
+        "Apache Kafka",
+        "PostgreSQL",
+        "MySQL",
+        "MongoDB",
+        "Neo4j",
+        "Redis"
+      ],
+      "contact": {
+        "email": "prajwalen100@gmail.com",
+        "phone": "+91 9284364839",
+        "linkedin": "linkedin.com/in/prajwalg90"
+      },
+      "feedback": {
+        "strengths": [
+          "Strong backend development skills with Java and Spring Boot.",
+          "Quantified achievements demonstrating impact (e.g., reduced failures by 40%).",
+          "Multiple AWS certifications (Practitioner, Solutions Architect, AI Practitioner).",
+          "Experience with microservices, Kafka, and cloud deployment.",
+          "Solid educational background with high CGPA."
+        ],
+        "gaps": [
+          "Limited work experience (1.5 years) may be a concern for senior roles.",
+          "No GitHub profile or link to open-source contributions.",
+          "Projects listed are not clearly dated or detailed in terms of impact.",
+          "No mention of soft skills or leadership experiences."
+        ],
+        "suggestions": [
+          "Add a GitHub profile link and highlight any open-source contributions.",
+          "Quantify project outcomes more explicitly (e.g., number of users, performance metrics).",
+          "Include specific technologies used in each project with brief descriptions.",
+          "Consider adding a section for awards, recognitions, or extracurricular activities.",
+          "Tailor the resume for each job application by emphasizing relevant skills."
+        ]
+      },
+      "parsed": {
+        "name": "Prajwal Gulhane",
+        "experience_years": 1.5,
+        "projects": 2,
+        "skills": [
+          "Java",
+          "Spring Boot",
+          "Spring MVC",
+          "Spring Security",
+          "Spring Data JPA",
+          "Hibernate",
+          "Apache Kafka",
+          "PostgreSQL"
+        ]
+      },
+      "word_count": 473
     }
   ],
   "tracking_events": [
@@ -722,6 +925,27 @@
       "action": "follow_linkedin",
       "completed": true,
       "completed_at": "2026-09-06T14:44:37.263Z"
+    },
+    {
+      "id": "track_1788711888598",
+      "user_id": "53711d1a-b8e3-4cd8-b66a-3c7c1655bcec",
+      "action": "join_whatsapp",
+      "completed": true,
+      "completed_at": "2026-09-06T16:24:48.598Z"
+    },
+    {
+      "id": "track_1788711890210",
+      "user_id": "53711d1a-b8e3-4cd8-b66a-3c7c1655bcec",
+      "action": "follow_linkedin",
+      "completed": true,
+      "completed_at": "2026-09-06T16:24:50.210Z"
+    },
+    {
+      "id": "track_1788711895520",
+      "user_id": "53711d1a-b8e3-4cd8-b66a-3c7c1655bcec",
+      "action": "follow_linkedin",
+      "completed": true,
+      "completed_at": "2026-09-06T16:24:55.520Z"
     }
   ]
 }
