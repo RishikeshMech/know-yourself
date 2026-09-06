@@ -97,7 +97,7 @@ function Inner(){
                   ))}
                 </div>
                 <div className="mt-5 flex flex-wrap gap-3">
-                  <a href="/result" className="btn-primary !py-2.5 text-xs">View full report</a>
+                  <a href="/result" onClick={() => { try { localStorage.setItem('calibiai_just_submitted', String(Date.now())) } catch { } }} className="btn-primary !py-2.5 text-xs">View full report</a>
                   <button onClick={()=>window.print()} className="btn-soft !py-2.5 text-xs">⬇ Download PDF</button>
                 </div>
               </div>

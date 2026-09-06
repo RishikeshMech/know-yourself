@@ -416,8 +416,7 @@ function ProfileInner() {
                     ))}
                   </div>
                   <div className="mt-5 flex flex-wrap gap-3">
-                    <a href="/result" className="btn-primary !py-2.5 text-xs">View full report</a>
-                    <a href="/instructions" className="btn-soft !py-2.5 text-xs">Retake assessment →</a>
+                    <a href="/result" onClick={() => { try { localStorage.setItem('calibiai_just_submitted', String(Date.now())) } catch { } }} className="btn-primary !py-2.5 text-xs">View full report</a>
                   </div>
                 </>
               ) : (

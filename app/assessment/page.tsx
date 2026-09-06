@@ -163,8 +163,11 @@ function AssessmentInner() {
     const boot = (raw: string) => {
       if (cancelled) return
       let s: any
-      try { s = JSON.parse(raw) } catch { window.location.href = '/instructions'; return }
-      if (!s?.id || !s?.expires_at) { window.location.href = '/instructions'; return }
+      // One-time assessment: a completed (submitted/expired) session can
+      // never be re-entered — even via the browser back button.
+      if (s?.status === 'submitted' || s?.status === 'expired') { window.location.replace('/profile'); return }
+      if (localStorage.getItem('calibiai_scores')) { window.location.replace('/profile'); return }
+      if (!s?.id || !s?.expires_at) { window.location.href = localStorage.getItem('calibiai_scores') ? '/profile' : '/instructions'; return }
       if (!session) setSession(s)
       try {
         const a = localStorage.getItem('calibiai_answers_' + s.id); if (a) setAnswers(JSON.parse(a))
@@ -187,7 +190,7 @@ function AssessmentInner() {
       const raw = localStorage.getItem('calibiai_session')
       if (raw) { boot(raw); return }
       attempts += 1
-      if (attempts >= 8) { window.location.href = '/instructions'; return }
+      if (attempts >= 8) { window.location.replace(localStorage.getItem('calibiai_scores') ? '/profile' : '/instructions'); return }
       setTimeout(tryLoad, 50)
     }
     tryLoad()
@@ -379,6 +382,10 @@ function AssessmentInner() {
     const s = JSON.parse(localStorage.getItem('calibiai_session') || '{}')
     s.status = 'submitted'
     localStorage.setItem('calibiai_session', JSON.stringify(s))
+    // Fresh-submission ticket: lets /result show the report exactly once
+    // (right after submitting, or via "View full report"). Any other visit
+    // to /result (e.g. back button) is sent to the profile page.
+    try { localStorage.setItem('calibiai_just_submitted', String(Date.now())) } catch { }
     window.location.href = '/result'
   }
   useEffect(() => { submitRef.current = handleSubmit })
