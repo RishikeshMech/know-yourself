@@ -19,21 +19,13 @@ function ProfileInner(){
     e.preventDefault()
     setProfile(form)
     setSaved(true)
-    const sb = getSupabase()
-    if(sb){
-      try{
-        const { data:{ user: u } } = await sb.auth.getUser()
-        if(u){
-          await sb.from('profiles').update({
-            full_name: form.full_name, phone: form.phone, gender: form.gender,
-            degree: form.degree, college: form.college,
-            graduation_year: Number(form.graduation_year), cgpa: Number(form.cgpa),
-            skills: form.skills, linkedin_url: form.linkedin_url, github_url: form.github_url,
-            updated_at: new Date().toISOString(),
-          }).eq('id', u.id)
-        }
-      }catch(err){ /* demo mode */ }
-    }
+    try {
+      await fetch('/api/user/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, user_id: user?.id, email: user?.email }),
+      })
+    } catch (err) { /* demo mode fallback */ }
     setTimeout(()=> window.location.href='/resume', 550)
   }
 

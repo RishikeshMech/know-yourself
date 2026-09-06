@@ -17,28 +17,30 @@ function LoginInner(){
     if(!email.includes('@')) return setErr('Please enter a valid email address.')
     if(password.length<6) return setErr('Password must be at least 6 characters.')
     setBusy(true)
-    try{
-      const sb = getSupabase()
-      if(sb){
-        const { data, error } = mode === 'signup'
-          ? await sb.auth.signUp({ email, password, options: { data: { role: 'student', full_name: email.split('@')[0] } } })
-          : await sb.auth.signInWithPassword({ email, password })
-        if(error) throw new Error(error.message)
-        const u = data.user
-        if(!u && mode==='signup'){ setErr('Account created — check your email to confirm, then sign in.'); return }
-        if(u){
-          setUser({ id: u.id, email: u.email || email, role: 'student', institution_id: '', name: (u.user_metadata as any)?.full_name || email.split('@')[0] })
-          window.location.href = '/profile'
-          return
-        }
+    try {
+      const endpoint = mode === 'signup' ? '/api/auth/signup' : '/api/auth/login'
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, role: 'student', full_name: email.split('@')[0] }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || (mode === 'signup' ? 'Sign up failed.' : 'Sign in failed.'))
+      if (mode === 'signup') {
+        setErr('Account created — please sign in.')
+        setMode('signin')
+        return
       }
-      // Demo mode (no backend configured) — local account
-      const user = { id: 'u_'+Math.random().toString(16).slice(2,8), email, role: 'student', institution_id:'', name: email.split('@')[0] }
-      setUser(user)
-      window.location.href='/profile'
-    }catch(e:any){
+      const user = data.user
+      setUser({ id: user.id, email: user.email, role: user.role || 'student', institution_id: user.institution_id || 'inst_iitm', name: user.name || user.email.split('@')[0] })
+      if (data.has_assessment) {
+        window.location.href = '/dashboard/student'
+      } else {
+        window.location.href = '/profile'
+      }
+    } catch (e: any) {
       setErr(e?.message || 'Sign in failed. Please try again.')
-    }finally{ setBusy(false) }
+    } finally { setBusy(false) }
   }
 
   return (

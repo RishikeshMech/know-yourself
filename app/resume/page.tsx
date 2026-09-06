@@ -6,7 +6,7 @@ import { Stepper } from '@/components/Stepper'
 import { getSupabase } from '@/lib/supabase'
 
 function ResumeInner(){
-  const {resume, setResume} = useStore()
+  const {resume, setResume, user} = useStore()
   const [fileName,setFileName] = useState('')
   const [analyzing,setAnalyzing] = useState(false)
   const [done,setDone] = useState<any>(resume)
@@ -40,12 +40,13 @@ function ResumeInner(){
         storage_key: storageKey
       }
       setDone(mock); setResume(mock); setAnalyzing(false)
-      try{
-        if(sb){
-          const { data:{ user } } = await sb.auth.getUser()
-          if(user) await sb.from('resume_analyses').insert({ student_id: user.id, storage_key: storageKey, resume_score: mock.resume_score, parsed: mock.parsed, feedback: mock.feedback })
-        }
-      }catch{ /* demo mode */ }
+      try {
+        await fetch('/api/user/resume', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...mock, student_id: user?.id || 'unknown' }),
+        })
+      } catch { /* demo mode fallback */ }
     }, 1800)
   }
 
