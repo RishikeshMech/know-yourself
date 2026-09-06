@@ -1,12 +1,15 @@
 'use client'
 export const dynamic = 'force-dynamic'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Navbar } from '@/components/Navbar'
 import { StoreProvider, useStore } from '@/lib/store'
 import { isProfileComplete } from '@/lib/validate'
+import { ReportModal } from '@/components/ReportModal'
 
 function Inner(){
   const { user, profile, setProfile, resume, setResume, scores, setScores, hydrated } = useStore()
+  const [showReport, setShowReport] = useState(false)
+  const [downloading, setDownloading] = useState(false)
 
   // Protect the student dashboard: a signed-out visitor is sent to /login.
   // Render nothing until the session is known so the page never flashes.
@@ -87,8 +90,22 @@ function Inner(){
                   ))}
                 </div>
                 <div className="mt-5 flex flex-wrap gap-3">
-                  <a href="/result" onClick={() => { try { localStorage.setItem('calibiai_just_submitted', String(Date.now())) } catch { } }} className="btn-primary !py-2.5 text-xs">View full report</a>
-                  <button onClick={()=>window.print()} className="btn-soft !py-2.5 text-xs">⬇ Download PDF</button>
+                  <button onClick={() => setShowReport(true)} className="btn-primary !py-2.5 text-xs">View report</button>
+                  <button
+                    onClick={async () => {
+                      setDownloading(true)
+                      try {
+                        const { generateReportPdf } = await import('@/lib/reportPdf')
+                        const doc = await generateReportPdf({ scores, profile, user })
+                        doc.save(`CalibiAI_Report_${scores?.session_id || 'scorecard'}.pdf`)
+                      } catch (e) { console.warn('PDF generation failed:', e) }
+                      finally { setDownloading(false) }
+                    }}
+                    disabled={downloading}
+                    className="btn-soft !py-2.5 text-xs"
+                  >
+                    {downloading ? 'Preparing PDF…' : '⬇ Download PDF'}
+                  </button>
                 </div>
               </div>
             ) : (
@@ -127,6 +144,11 @@ function Inner(){
             </div>
           </div>
         </div>
+
+        {/* Report pop-up */}
+        {showReport && scores && (
+          <ReportModal scores={scores} onClose={() => setShowReport(false)} />
+        )}
 
         {/* Profile strip */}
         {profile && (

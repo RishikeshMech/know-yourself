@@ -6,6 +6,7 @@ import { Navbar } from '@/components/Navbar'
 import { isProfileComplete } from '@/lib/validate'
 import { AiAvatar, AVATAR_STYLES, makeAvatarConfig, type AvatarConfig, type AvatarStyle } from '@/components/AiAvatar'
 import { SkillGraph, type SkillDatum } from '@/components/SkillGraph'
+import { ReportModal } from '@/components/ReportModal'
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
@@ -109,6 +110,8 @@ function ProfileInner() {
   const [avatar, setAvatar] = useState<AvatarConfig | null>(null)
   const [style, setStyle] = useState<AvatarStyle>('aura')
   const [showWhy, setShowWhy] = useState(false)
+  const [showReport, setShowReport] = useState(false)
+  const [downloading, setDownloading] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const toastTimer = useRef<any>(null)
 
@@ -416,7 +419,22 @@ function ProfileInner() {
                     ))}
                   </div>
                   <div className="mt-5 flex flex-wrap gap-3">
-                    <a href="/result" onClick={() => { try { localStorage.setItem('calibiai_just_submitted', String(Date.now())) } catch { } }} className="btn-primary !py-2.5 text-xs">View full report</a>
+                    <button onClick={() => setShowReport(true)} className="btn-primary !py-2.5 text-xs">View report</button>
+                    <button
+                      onClick={async () => {
+                        setDownloading(true)
+                        try {
+                          const { generateReportPdf } = await import('@/lib/reportPdf')
+                          const doc = await generateReportPdf({ scores: activeScores, profile, user })
+                          doc.save(`CalibiAI_Report_${activeScores?.session_id || 'scorecard'}.pdf`)
+                        } catch (e) { console.warn('PDF generation failed:', e) }
+                        finally { setDownloading(false) }
+                      }}
+                      disabled={downloading}
+                      className="btn-soft !py-2.5 text-xs"
+                    >
+                      {downloading ? 'Preparing PDF…' : '⬇ Download PDF'}
+                    </button>
                   </div>
                 </>
               ) : (
@@ -560,6 +578,11 @@ function ProfileInner() {
           </div>
         </div>
       </main>
+
+      {/* Report pop-up */}
+      {showReport && activeScores && (
+        <ReportModal scores={activeScores} onClose={() => setShowReport(false)} />
+      )}
 
       {/* Toast */}
       {toast && (
