@@ -141,7 +141,7 @@
     {
       "id": "27b6a7a1-5204-4a71-ae0f-6d1a54b4c6ee",
       "email": "prajwalgulhane85@gmail.com",
-      "full_name": "prajwalgulhane85",
+      "full_name": "Prajwal",
       "phone": "9384858993",
       "dob": "2002-06-05",
       "gender": "Male",
@@ -152,7 +152,7 @@
       "skills": "",
       "linkedin_url": "",
       "github_url": "",
-      "updated_at": "2026-09-06T21:24:06.018Z"
+      "updated_at": "2026-09-06T22:17:30.191Z"
     }
   ],
   "assessment_sessions": [
@@ -342,9 +342,44 @@
       "started_at": "2026-09-06T21:27:17.520Z",
       "expires_at": "2026-09-06T23:27:17.520Z",
       "duration_sec": 7200,
-      "answers": {},
-      "submitted_at": null,
-      "tab_switches": 0,
+      "answers": {
+        "AD1_fix": "def paginate(items, page, size):\n    start = page * size\n    end = start + size\n    return items[start:end]  # page=1 should return the FIRST page\n\n# paginate(list(range(20)), 1, 5) currently returns [5,6,7,8,9]",
+        "PE2": "wfesdhjfkjdsnkjnkfndknvkkjcnvjknjkfnckvnbknc jkndkjnfndjlfkjkldsjlfldsj nv nfndlnflndslnfl nfndlsnfldksmfvkldnmldklfn",
+        "SP1_audio": {
+          "name": "SP1.webm",
+          "size": 571234,
+          "type": "audio/webm;codecs=opus",
+          "at": "2026-09-06T22:05:33.405Z",
+          "uploaded": true
+        },
+        "SP2_audio": {
+          "name": "SP2.webm",
+          "size": 516172,
+          "type": "audio/webm;codecs=opus",
+          "at": "2026-09-06T22:06:10.271Z",
+          "uploaded": true
+        },
+        "EL5": "At the API gateway / connection pool",
+        "EL6": "Pods were scaled to 30 but the pool stayed at 50",
+        "EL7": "To speed up the database",
+        "EL8": "PgBouncer multiplexing; alerts at 70% pool utilization",
+        "PS9": "2",
+        "PS8": "Ship immediately to 100% of users",
+        "PS7": "2.8",
+        "PS6": "7/36",
+        "PS5": "O(n log n)",
+        "PS4": "Visits → sign-ups (-60%)",
+        "PS3": "15",
+        "PS2": "30",
+        "PS1": "All parallelograms are squares",
+        "PS10": "10:30",
+        "EL1": "The alert went to a channel nobody monitored overnight",
+        "EL2": "Route them directly to the on-call engineer",
+        "EL3": "The CDN cache had to be flushed",
+        "EL4": "Deploy on weekends only"
+      },
+      "submitted_at": "2026-09-06T22:14:53.795Z",
+      "tab_switches": 2,
       "question_seed": 935599125,
       "created_at": "2026-09-06T21:27:17.520Z"
     }
@@ -913,6 +948,244 @@
         }
       },
       "created_at": "2026-09-06T19:15:37.007Z"
+    },
+    {
+      "id": "res_cec2feee",
+      "session_id": "5ea3ffcc-eaa8-4245-bb61-be9c5482fbb8",
+      "student_id": "27b6a7a1-5204-4a71-ae0f-6d1a54b4c6ee",
+      "scores": {
+        "session_id": "5ea3ffcc-eaa8-4245-bb61-be9c5482fbb8",
+        "english": {
+          "listening": 31,
+          "speaking": 31,
+          "reading": 0,
+          "writing": 0,
+          "total": 62,
+          "max": 200
+        },
+        "problem_solving": 0,
+        "ai_debugging": 3,
+        "ai_feature": 0,
+        "prompt_engineering": 1,
+        "cognitive": {
+          "grid": 0,
+          "logical": 0,
+          "cognitive_score": 0,
+          "behavioral_total": 40,
+          "total": 40,
+          "max": 200,
+          "behavioral": {
+            "teamwork": 40,
+            "accountability": 40,
+            "adaptability": 40,
+            "responsible_ai": 40,
+            "decision_making": 40,
+            "learning_mindset": 40
+          },
+          "traitLabels": {
+            "teamwork": "Teamwork",
+            "accountability": "Accountability",
+            "adaptability": "Adaptability",
+            "responsible_ai": "Responsible AI",
+            "decision_making": "Decision Making",
+            "learning_mindset": "Learning Mindset"
+          }
+        },
+        "detail": {
+          "listeningCorrect": 5,
+          "listeningTotal": 8,
+          "readingCorrect": 0,
+          "readingTotal": 6,
+          "problemCorrect": 0,
+          "problemTotal": 10,
+          "logicalCorrect": 0,
+          "logicalTotal": 7,
+          "debugPer": {
+            "AD1": 5,
+            "AD2": 0,
+            "AD3": 0
+          },
+          "promptPer": {
+            "PE1": 0,
+            "PE2": 3,
+            "PE3": 0
+          },
+          "featureScore100": 0,
+          "speakingCount": 2
+        },
+        "total": 106,
+        "grade": "D",
+        "percentile": 41,
+        "ai_results": {
+          "AD1": {
+            "score": 5,
+            "rubric": {
+              "correctness": 0,
+              "root_cause_understanding": 0,
+              "edge_cases": 0,
+              "code_quality": 10,
+              "test_awareness": 0
+            },
+            "strengths": [],
+            "improvements": [
+              "Implement the fix: adjust start index to (page-1)*size so page=1 returns the first page.",
+              "Add validation for page < 1 (e.g., default to 1) and size <= 0 (e.g., return empty list or raise ValueError).",
+              "Ensure slicing naturally handles requests beyond the last page without crashing; no extra guard needed for that.",
+              "Add or run tests to verify behavior for page=1, page=0, negative page, size=0, and out-of-range pages."
+            ],
+            "summary": "The submission is identical to the original buggy code and does not attempt any fix, so it scores near zero.",
+            "engine": "deepseek"
+          },
+          "PE1": {
+            "score": 0,
+            "rubric": {},
+            "strengths": [],
+            "improvements": [
+              "Write a real prompt — at least 100 characters — naming a role, giving context, constraints and an output format."
+            ],
+            "summary": "Prompt is below the 100-character minimum — scored 0.",
+            "engine": "heuristic"
+          },
+          "PE2": {
+            "score": 3,
+            "rubric": {
+              "role_definition": 0,
+              "context": 0,
+              "constraints": 0,
+              "output_format": 0,
+              "specificity": 0,
+              "task_decomposition": 0
+            },
+            "strengths": [],
+            "improvements": [
+              "Provide a clear role for the AI, e.g., 'You are an expert Python engineer.'",
+              "Describe the context: 10M-row CSV, composite key, 1GB RAM constraint.",
+              "Specify constraints: memory budget, streaming/chunking, acceptable libraries (e.g., pandas with chunksize, csv module, sqlite).",
+              "Define the expected output format: a Python script with functions, comments, and usage example.",
+              "Break down the task: reading in chunks, hashing composite key, tracking seen keys, writing unique rows to output."
+            ],
+            "summary": "The candidate's prompt is gibberish and completely fails to address the task, scoring near zero.",
+            "engine": "deepseek"
+          },
+          "SP_speaking": {
+            "score": 61,
+            "rubric": {
+              "fluency": 64,
+              "pronunciation": 58,
+              "confidence": 62,
+              "grammar": 59
+            },
+            "strengths": [
+              "Both speaking tasks recorded"
+            ],
+            "improvements": [
+              "Speak for the full 60–90 seconds",
+              "Structure answers: situation → action → result"
+            ],
+            "summary": "Recording captured. In production Whisper transcribes it and DeepSeek grades the transcript (heuristic score shown).",
+            "engine": "heuristic"
+          },
+          "WRITING": {
+            "score": 0,
+            "rubric": {},
+            "strengths": [],
+            "improvements": [
+              "Write a substantive email — aim for 150–300 words covering impact, mitigation and a revised timeline."
+            ],
+            "summary": "No meaningful answer submitted — scored 0.",
+            "engine": "heuristic"
+          }
+        },
+        "verifiable_hash": "sha256:42f064a-078c9e6e",
+        "tab_switches": 2,
+        "auto_submitted": true,
+        "submitted_at": "2026-09-06T22:14:52.900Z"
+      },
+      "total": 106,
+      "grade": "D",
+      "percentile": 41,
+      "verifiable_hash": "sha256:42f064a-078c9e6e",
+      "ai_feedback": {
+        "AD1": {
+          "score": 5,
+          "rubric": {
+            "correctness": 0,
+            "root_cause_understanding": 0,
+            "edge_cases": 0,
+            "code_quality": 10,
+            "test_awareness": 0
+          },
+          "strengths": [],
+          "improvements": [
+            "Implement the fix: adjust start index to (page-1)*size so page=1 returns the first page.",
+            "Add validation for page < 1 (e.g., default to 1) and size <= 0 (e.g., return empty list or raise ValueError).",
+            "Ensure slicing naturally handles requests beyond the last page without crashing; no extra guard needed for that.",
+            "Add or run tests to verify behavior for page=1, page=0, negative page, size=0, and out-of-range pages."
+          ],
+          "summary": "The submission is identical to the original buggy code and does not attempt any fix, so it scores near zero.",
+          "engine": "deepseek"
+        },
+        "PE1": {
+          "score": 0,
+          "rubric": {},
+          "strengths": [],
+          "improvements": [
+            "Write a real prompt — at least 100 characters — naming a role, giving context, constraints and an output format."
+          ],
+          "summary": "Prompt is below the 100-character minimum — scored 0.",
+          "engine": "heuristic"
+        },
+        "PE2": {
+          "score": 3,
+          "rubric": {
+            "role_definition": 0,
+            "context": 0,
+            "constraints": 0,
+            "output_format": 0,
+            "specificity": 0,
+            "task_decomposition": 0
+          },
+          "strengths": [],
+          "improvements": [
+            "Provide a clear role for the AI, e.g., 'You are an expert Python engineer.'",
+            "Describe the context: 10M-row CSV, composite key, 1GB RAM constraint.",
+            "Specify constraints: memory budget, streaming/chunking, acceptable libraries (e.g., pandas with chunksize, csv module, sqlite).",
+            "Define the expected output format: a Python script with functions, comments, and usage example.",
+            "Break down the task: reading in chunks, hashing composite key, tracking seen keys, writing unique rows to output."
+          ],
+          "summary": "The candidate's prompt is gibberish and completely fails to address the task, scoring near zero.",
+          "engine": "deepseek"
+        },
+        "SP_speaking": {
+          "score": 61,
+          "rubric": {
+            "fluency": 64,
+            "pronunciation": 58,
+            "confidence": 62,
+            "grammar": 59
+          },
+          "strengths": [
+            "Both speaking tasks recorded"
+          ],
+          "improvements": [
+            "Speak for the full 60–90 seconds",
+            "Structure answers: situation → action → result"
+          ],
+          "summary": "Recording captured. In production Whisper transcribes it and DeepSeek grades the transcript (heuristic score shown).",
+          "engine": "heuristic"
+        },
+        "WRITING": {
+          "score": 0,
+          "rubric": {},
+          "strengths": [],
+          "improvements": [
+            "Write a substantive email — aim for 150–300 words covering impact, mitigation and a revised timeline."
+          ],
+          "summary": "No meaningful answer submitted — scored 0.",
+          "engine": "heuristic"
+        }
+      },
+      "created_at": "2026-09-06T22:14:53.795Z"
     }
   ],
   "resume_analyses": [
