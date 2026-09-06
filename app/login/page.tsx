@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { StoreProvider, useStore } from '@/lib/store'
 import { getSupabase } from '@/lib/supabase'
+import { Logo } from '@/components/Logo'
 
 function LoginInner() {
   const { setUser } = useStore()
@@ -70,7 +71,7 @@ function LoginInner() {
 
       <div className="flex min-h-screen flex-col items-center justify-center px-4 py-10">
         <a href="/" className="flex items-center gap-2.5 animate-fade-up">
-          <img src="/icon-512.png" alt="CalibiAI logo" className="h-10 w-10 drop-shadow-lg" />
+          <Logo height={40} className="drop-shadow-lg" />
           <span className="text-lg font-extrabold tracking-tight text-slate-900">
             CALIBIAI<span className="text-indigo-600"> SCORE</span>
           </span>

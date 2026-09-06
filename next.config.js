@@ -24,8 +24,9 @@ try {
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Allow preview host
+  // Allow embedded development previews while protecting production pages.
   async headers() {
+    if (process.env.NODE_ENV !== 'production') return []
     return [
       {
         source: '/(.*)',
