@@ -703,7 +703,7 @@ function AssessmentInner() {
                   : <div className="absolute inset-0 flex items-center justify-center text-center text-[10px] text-slate-400 p-2">Camera preview off<br />focus monitoring still active</div>}
                 <div className="absolute bottom-1 left-1 flex items-center gap-1 bg-black/50 rounded-full px-2 py-0.5 text-[9px] text-white">🎤 mic on</div>
               </div>
-              <div className="mt-1.5 text-[10px] text-slate-400 leading-snug">Live view only — video/audio are <b className="text-slate-600">not recorded or stored</b>. Leaving this tab counts as a warning (3 auto-submits).</div>
+              <div className="mt-1.5 text-[10px] text-slate-400 leading-snug">Live recording is on — please be present in camera, otherwise you will get a warning. <b className="text-slate-600">3 warnings will close the assessment.</b></div>
             </div>
 
             <div className="text-sm font-black text-slate-800 pt-1 border-t border-slate-200/70">Sections</div>
@@ -745,7 +745,7 @@ function AssessmentInner() {
           </div>
 
           <div className="mt-4 rounded-2xl bg-amber-50 border border-amber-200 p-3.5 text-xs text-amber-800">
-            Keep this tab focused — the 120-minute timer keeps running. Leaving the window shows a warning; after <b>3 warnings your test is submitted automatically</b> with the answers you've completed.
+            Keep this tab focused — the 120-minute timer keeps running. Leaving the window shows a warning; after <b>3 warnings the assessment is closed automatically</b> with the answers you've completed.
           </div>
         </div>
       </div>
@@ -759,7 +759,7 @@ function AssessmentInner() {
           <div className="glass-card max-w-md w-full text-center !p-8 animate-pop">
             <div className="text-5xl">🎥</div>
             <h3 className="mt-4 text-xl font-black text-slate-900">Enable camera & microphone</h3>
-            <p className="mt-2 text-sm text-slate-500">A live proctoring preview appears on the left while you take the assessment. It's <b className="text-slate-700">never recorded or stored</b> — it only verifies you're present. Your screen focus is also monitored.</p>
+            <p className="mt-2 text-sm text-slate-500">A live proctoring preview appears on the left while you take the assessment. Live recording is on — please be present in camera, otherwise you will get a warning. <b className="text-slate-700">3 warnings will close the assessment.</b> Your screen focus is also monitored.</p>
             <button onClick={enableMedia} className="btn-primary mt-6 w-full">Turn on camera & mic →</button>
             {mediaError && <div className="mt-3 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl p-2">{mediaError}</div>}
             <button onClick={() => { setMediaReady(true); mediaReadyRef.current = true }} className="mt-3 text-xs text-indigo-600 font-semibold">Continue without camera (focus monitoring still active)</button>

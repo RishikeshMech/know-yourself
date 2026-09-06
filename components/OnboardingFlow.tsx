@@ -426,7 +426,9 @@ export function OnboardingFlow({ variant = 'onboarding' }: { variant?: 'onboardi
       console.warn('profile save fell back to local store:', err?.message)
     }
     setSaved(true)
-    setTimeout(() => { window.location.href = '/resume' }, 900)
+    // First-time onboarding continues to resume upload; the edit form returns
+    // to the (real) profile page.
+    setTimeout(() => { window.location.href = variant === 'edit' ? '/profile' : '/resume' }, 900)
   }
 
   if (!user) {
@@ -536,7 +538,7 @@ export function OnboardingFlow({ variant = 'onboarding' }: { variant?: 'onboardi
                 <div className="animate-pop absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 bg-white/85 backdrop-blur-sm">
                   <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-3xl text-white shadow-xl shadow-emerald-300/60">✓</div>
                   <p className="text-lg font-black text-slate-900">Profile saved</p>
-                  <p className="text-sm text-slate-500">Taking you to resume upload…</p>
+                  <p className="text-sm text-slate-500">{variant === 'edit' ? 'Taking you to your profile…' : 'Taking you to resume upload…'}</p>
                 </div>
               )}
 

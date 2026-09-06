@@ -147,7 +147,8 @@ function Inner(){
               <div>🎓 {profile.college || '—'}</div>
               <div>🛠 {profile.skills || '—'}</div>
             </div>
-            <a href="/profile" className="mt-3 inline-block text-xs font-semibold text-indigo-600">Edit profile →</a>
+            <a href="/profile" className="mt-3 inline-block text-xs font-semibold text-indigo-600">See my profile →</a>
+            <a href="/edit-profile" className="mt-3 ml-3 inline-block text-xs font-semibold text-indigo-600">Edit profile →</a>
           </div>
         )}
       </main>

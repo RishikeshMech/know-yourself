@@ -29,6 +29,7 @@ export interface Profile {
   skills?: string
   linkedin_url?: string
   github_url?: string
+  ai_avatar?: { seed: number; style: string; version: number; generated_at: string } | null
   updated_at: string
 }
 
