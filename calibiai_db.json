@@ -181,7 +181,7 @@
       "linkedin_url": "",
       "github_url": "",
       "ai_avatar": null,
-      "updated_at": "2026-09-07T15:52:13.391Z"
+      "updated_at": "2026-09-07T16:00:18.657Z"
     }
   ],
   "assessment_sessions": [
@@ -424,6 +424,30 @@
       "tab_switches": 0,
       "question_seed": 789397234,
       "created_at": "2026-09-07T07:43:45.257Z"
+    },
+    {
+      "id": "6bf092df-3c72-4ab4-9ca7-7a623bb9dc98",
+      "student_id": "",
+      "status": "expired",
+      "started_at": "2026-09-07T15:59:56.980Z",
+      "expires_at": "2026-09-07T17:59:56.980Z",
+      "duration_sec": 7200,
+      "answers": {},
+      "submitted_at": "2026-09-07T15:59:56.973Z",
+      "tab_switches": 0,
+      "created_at": "2026-09-07T15:59:56.980Z"
+    },
+    {
+      "id": "6343a7b7-629c-4609-8c5c-8b02ed64fab4",
+      "student_id": "unknown",
+      "status": "submitted",
+      "started_at": "2026-09-07T15:59:57.392Z",
+      "expires_at": "2026-09-07T17:59:57.392Z",
+      "duration_sec": 7200,
+      "answers": {},
+      "submitted_at": "2026-09-07T15:59:57.392Z",
+      "tab_switches": 0,
+      "created_at": "2026-09-07T15:59:57.392Z"
     }
   ],
   "assessment_results": [
@@ -1228,6 +1252,86 @@
         }
       },
       "created_at": "2026-09-06T22:14:53.795Z"
+    },
+    {
+      "id": "res_3e4bf2d0",
+      "session_id": "6343a7b7-629c-4609-8c5c-8b02ed64fab4",
+      "student_id": "unknown",
+      "scores": {
+        "session_id": "sess_demo",
+        "english": {
+          "listening": 0,
+          "speaking": 0,
+          "reading": 0,
+          "writing": 0,
+          "total": 0,
+          "max": 200
+        },
+        "problem_solving": 0,
+        "ai_debugging": 0,
+        "ai_feature": 0,
+        "prompt_engineering": 0,
+        "cognitive": {
+          "grid": 0,
+          "logical": 0,
+          "cognitive_score": 0,
+          "behavioral_total": 40,
+          "total": 40,
+          "max": 200,
+          "behavioral": {
+            "teamwork": 40,
+            "accountability": 40,
+            "adaptability": 40,
+            "responsible_ai": 40,
+            "decision_making": 40,
+            "learning_mindset": 40
+          },
+          "traitLabels": {
+            "teamwork": "Teamwork",
+            "accountability": "Accountability",
+            "adaptability": "Adaptability",
+            "responsible_ai": "Responsible AI",
+            "decision_making": "Decision Making",
+            "learning_mindset": "Learning Mindset"
+          }
+        },
+        "detail": {
+          "listeningCorrect": 0,
+          "listeningTotal": 8,
+          "readingCorrect": 0,
+          "readingTotal": 6,
+          "problemCorrect": 0,
+          "problemTotal": 10,
+          "logicalCorrect": 0,
+          "logicalTotal": 7,
+          "debugPer": {
+            "AD1": 0,
+            "AD2": 0,
+            "AD3": 0
+          },
+          "promptPer": {
+            "PE1": 0,
+            "PE2": 0,
+            "PE3": 0
+          },
+          "featureScore100": 0,
+          "speakingCount": 0
+        },
+        "total": 40,
+        "grade": "D",
+        "percentile": 37,
+        "ai_results": {},
+        "verifiable_hash": "sha256:49d7ea8-07c99002",
+        "tab_switches": 0,
+        "auto_submitted": true,
+        "submitted_at": "2026-09-07T15:59:56.969Z"
+      },
+      "total": 40,
+      "grade": "D",
+      "percentile": 37,
+      "verifiable_hash": "sha256:49d7ea8-07c99002",
+      "ai_feedback": {},
+      "created_at": "2026-09-07T15:59:57.392Z"
     }
   ],
   "resume_analyses": [
