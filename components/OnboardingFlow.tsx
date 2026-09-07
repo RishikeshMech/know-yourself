@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Navbar } from '@/components/Navbar'
 import { Stepper } from '@/components/Stepper'
 import { useStore } from '@/lib/store'
+import { normalizeOnboardingForm, type OnboardingForm as Form } from '@/lib/onboardingForm'
 import {
   DEGREE_OPTIONS,
   GENDER_OPTIONS,
@@ -21,34 +22,6 @@ import {
   isValidUrl,
   normalizePhone,
 } from '@/lib/validate'
-
-type Form = {
-  full_name: string
-  phone: string
-  dob: string
-  gender: string
-  degree: string
-  college: string
-  graduation_year: string
-  cgpa: string
-  skills: string
-  linkedin_url: string
-  github_url: string
-}
-
-const EMPTY: Form = {
-  full_name: '',
-  phone: '',
-  dob: '',
-  gender: '',
-  degree: '',
-  college: '',
-  graduation_year: '',
-  cgpa: '',
-  skills: '',
-  linkedin_url: '',
-  github_url: '',
-}
 
 const STEPS = [
   { id: 1, title: 'About you', blurb: 'The basics recruiters see first.', icon: '👤' },
@@ -313,7 +286,7 @@ function ProgressRing({ pct }: { pct: number }) {
 
 export function OnboardingFlow({ variant = 'onboarding' }: { variant?: 'onboarding' | 'edit' }) {
   const { user, profile, setProfile } = useStore()
-  const [form, setForm] = useState<Form>(EMPTY)
+  const [form, setForm] = useState<Form>(() => normalizeOnboardingForm())
   const [step, setStep] = useState(1)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [touched, setTouched] = useState(false)
@@ -325,13 +298,7 @@ export function OnboardingFlow({ variant = 'onboarding' }: { variant?: 'onboardi
   // name from the signed-in user.
   useEffect(() => {
     if (profile) {
-      setForm({
-        ...EMPTY,
-        ...profile,
-        phone: normalizePhone(profile.phone),
-        graduation_year: profile.graduation_year ? String(profile.graduation_year) : '',
-        cgpa: profile.cgpa ? String(profile.cgpa) : '',
-      })
+      setForm(normalizeOnboardingForm(profile))
     } else if (user) {
       setForm((f) => ({ ...f, full_name: user.name || f.full_name }))
     }
@@ -364,7 +331,9 @@ export function OnboardingFlow({ variant = 'onboarding' }: { variant?: 'onboardi
 
   const stepComplete = requiredOnStep.every((v) => v !== null && v !== undefined && String(v).trim() !== '')
 
-  const goNext = () => {
+  const goNext = (event: React.MouseEvent<HTMLButtonElement>) => {
+    // This button becomes a submit button on step 3; don't submit on the same click.
+    event.preventDefault()
     setTouched(true)
     const e = validateStep(step, form)
     setErrors(e)
