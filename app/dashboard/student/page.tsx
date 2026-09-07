@@ -6,6 +6,7 @@ import { StoreProvider, useStore } from '@/lib/store'
 import { isProfileComplete } from '@/lib/validate'
 import { consumeJustSubmittedTicket } from '@/lib/justSubmitted'
 import { ReportModal } from '@/components/ReportModal'
+import { SkillChips } from '@/components/SkillChips'
 
 function Inner(){
   const { user, profile, setProfile, resume, setResume, scores, setScores, hydrated } = useStore()
@@ -193,7 +194,7 @@ function Inner(){
             <div className="mt-2 text-sm text-slate-600 grid sm:grid-cols-3 gap-2">
               <div>👤 {profile.full_name || '—'}</div>
               <div>🎓 {profile.college || '—'}</div>
-              <div>🛠 {profile.skills || '—'}</div>
+              <div className="sm:col-span-3 min-w-0"><SkillChips skills={profile.skills} icon="🛠️" /></div>
             </div>
             <a href="/profile" className="mt-3 inline-block text-xs font-semibold text-indigo-600">See my profile →</a>
             <a href="/edit-profile" className="mt-3 ml-3 inline-block text-xs font-semibold text-indigo-600">Edit profile →</a>
