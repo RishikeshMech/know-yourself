@@ -69,6 +69,9 @@ body {
   }
 }
 
+/* Display font for headings — geometric, friendly, modern */
+.font-display { font-family: 'Plus Jakarta Sans', Inter, system-ui, sans-serif; }
+
 /* Legacy accent class kept + re-pointed to the new indigo/violet brand */
 .calibiai-gradient {
   background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 55%, #a855f7 100%);

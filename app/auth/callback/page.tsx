@@ -15,6 +15,17 @@ export default function AuthCallbackPage() {
       try {
         const sb = getSupabase()
         if (sb) {
+          // The shared client sets detectSessionInUrl: false, so exchange the
+          // OAuth `code` in the URL manually (PKCE flow).
+          const params = new URLSearchParams(window.location.search)
+          const code = params.get('code')
+          if (code) {
+            const { error: exchangeError } = await sb.auth.exchangeCodeForSession(code)
+            if (exchangeError) throw exchangeError
+            // Drop the single-use code from the URL.
+            window.history.replaceState({}, '', window.location.pathname)
+          }
+
           const { data: { session }, error } = await sb.auth.getSession()
           if (error) throw error
 
@@ -23,7 +34,6 @@ export default function AuthCallbackPage() {
             const email = user.email || ''
             const fullName = user.user_metadata?.full_name || user.user_metadata?.name || email.split('@')[0]
 
-            // Fetch profile and assessment status
             const res = await fetch('/api/user/profile?user_id=' + user.id).then(r => r.json()).catch(() => ({}))
             const profile = res.profile
 
@@ -44,13 +54,12 @@ export default function AuthCallbackPage() {
               has_onboarding: Boolean(profile && profile.degree && profile.college),
             })
 
-            setStatus('Authentication successful! Redirecting…')
+            setStatus('Signed in! Redirecting…')
             router.replace(dest)
             return
           }
         }
 
-        // Fallback if no Supabase session in callback
         router.replace('/login')
       } catch (err: any) {
         console.warn('OAuth callback error:', err?.message)
@@ -62,11 +71,10 @@ export default function AuthCallbackPage() {
   }, [router, setProfile, setUser])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-[#191834] to-[#241b4d] px-4">
-      <div className="glass-card animate-fade-up max-w-sm w-full p-8 text-center text-white space-y-4">
-        <div className="mx-auto w-12 h-12 rounded-full border-3 border-indigo-400 border-t-transparent animate-spin" />
-        <h2 className="text-xl font-black">Google Sign-In</h2>
-        <p className="text-xs text-indigo-200">{status}</p>
+    <div className="flex min-h-screen items-center justify-center px-4">
+      <div className="glass-card animate-fade-up flex max-w-sm items-center gap-3 px-6 py-4">
+        <span className="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
+        <span className="text-sm font-bold text-slate-700">{status}</span>
       </div>
     </div>
   )
