@@ -1,5 +1,6 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
+import Link from 'next/link'
 import { useStore } from '@/lib/store'
 import { Logo } from '@/components/Logo'
 import { AiAvatar } from '@/components/AiAvatar'
@@ -41,10 +42,10 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-white/50 bg-white/55 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-        <a href={homeHref} className="flex items-center gap-2.5">
+        <Link href={homeHref} className="flex items-center gap-2.5">
           <Logo className="drop-shadow-lg" />
           <span className="font-extrabold tracking-tight text-slate-900 text-lg">CALIBIAI<span className="text-indigo-600"> SCORE</span></span>
-        </a>
+        </Link>
         <div className="flex items-center gap-2 text-sm">
           {!hydrated ? (
             /* Not hydrated yet: hold a placeholder the same size as the account
@@ -91,7 +92,7 @@ export function Navbar() {
 
                   {/* Menu items */}
                   <div className="p-1.5">
-                    <a
+                    <Link
                       href="/profile"
                       role="menuitem"
                       onClick={() => setOpen(false)}
@@ -99,7 +100,7 @@ export function Navbar() {
                     >
                       <User className="h-4 w-4 text-slate-400" />
                       See My Profile
-                    </a>
+                    </Link>
                     <button
                       onClick={logout}
                       role="menuitem"
@@ -113,7 +114,7 @@ export function Navbar() {
               )}
             </div>
           ) : (
-            <a href="/login" className="btn-primary !px-5 !py-2 text-xs">Sign in</a>
+            <Link href="/login" className="btn-primary !px-5 !py-2 text-xs">Sign in</Link>
           )}
         </div>
       </div>

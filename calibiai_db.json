@@ -39,6 +39,16 @@
       "name": "priya",
       "created_at": "2026-09-06T10:16:59.954Z",
       "last_login_at": "2026-09-06T13:04:41.567Z"
+    },
+    {
+      "id": "u_1918a223",
+      "email": "priya.newstudent@iitm.ac.in",
+      "password_hash": "5e2ac7ed3534e182bd488c03f8acb930c0abdebd6b75ee337bf4ef5961f07523",
+      "role": "student",
+      "institution_id": "inst_iitm",
+      "name": "Priya Sharma",
+      "created_at": "2026-09-07T18:00:06.435Z",
+      "last_login_at": "2026-09-07T18:00:13.792Z"
     }
   ],
   "profiles": [
@@ -199,6 +209,24 @@
       "github_url": "",
       "ai_avatar": null,
       "updated_at": "2026-09-07T16:19:50.240Z"
+    },
+    {
+      "id": "u_1918a223",
+      "email": "priya.newstudent@iitm.ac.in",
+      "full_name": "Priya Sharma",
+      "prn": "",
+      "phone": "9876543210",
+      "dob": "2002-06-15",
+      "gender": "Female",
+      "degree": "B.Tech Computer Science",
+      "college": "IIT Madras",
+      "graduation_year": 2026,
+      "cgpa": 8.9,
+      "skills": "Python, React, Machine Learning",
+      "linkedin_url": "",
+      "github_url": "",
+      "ai_avatar": null,
+      "updated_at": "2026-09-07T18:00:10.534Z"
     }
   ],
   "assessment_sessions": [
@@ -2714,6 +2742,238 @@
         ]
       },
       "word_count": 473
+    },
+    {
+      "id": "res_1788802801285",
+      "student_id": "unknown",
+      "storage_key": "",
+      "file_name": "sample_resume.txt",
+      "created_at": "2026-09-07T17:40:01.285Z",
+      "resume_score": 25,
+      "engine": "heuristic",
+      "name_match": true,
+      "detected_name": "John Doe",
+      "flags": [
+        {
+          "level": "ok",
+          "text": "Candidate identity verified: Name matches profile (John Doe)."
+        },
+        {
+          "level": "warn",
+          "text": "No GitHub or LinkedIn profiles linked — technical recruiters cannot verify your code or history."
+        },
+        {
+          "level": "error",
+          "text": "❌ Zero quantified metrics detected. Bullets only state generic duties rather than measurable engineering impact."
+        },
+        {
+          "level": "error",
+          "text": "Resume is severely underdeveloped (20 words) — insufficient content for technical screening."
+        }
+      ],
+      "professionalism": 40,
+      "summary": "John Doe presents a 20-word resume. Honest Recruiter Assessment: Lacks any quantified metrics or measurable technical impact, resulting in a low ATS score. Missing code/GitHub repository links for verification.",
+      "experience": {
+        "years": 0,
+        "entries": []
+      },
+      "education": [
+        "B.Tech Computer Science"
+      ],
+      "skills": [
+        "python",
+        "java",
+        "javascript",
+        "react"
+      ],
+      "contact": {
+        "email": "john@example.com",
+        "phone": "9876543210"
+      },
+      "feedback": {
+        "strengths": [
+          "Document contains readable plain text"
+        ],
+        "gaps": [
+          "Zero quantified metrics — bullets fail to show scale, latency, or business results",
+          "No GitHub link to prove real code competence",
+          "Weak action verbs — avoid passive phrasing like \"responsible for\" or \"helped with\""
+        ],
+        "suggestions": [
+          "Rewrite every bullet point using Google’s XYZ formula: \"Accomplished [X], as measured by [Y], by doing [Z]\".",
+          "Add specific numbers (e.g. \"% reduction in latency\", \"X daily users\", \"Y ms query optimization\").",
+          "Add your GitHub profile with pinned repositories demonstrating clean commits and test suites.",
+          "Eliminate generic buzzwords and focus strictly on architecture, libraries, and measurable results."
+        ]
+      },
+      "parsed": {
+        "name": "John Doe",
+        "experience_years": 0,
+        "projects": 1,
+        "skills": [
+          "python",
+          "java",
+          "javascript",
+          "react"
+        ]
+      },
+      "word_count": 20
+    },
+    {
+      "id": "res_1788803556467",
+      "student_id": "unknown",
+      "storage_key": "",
+      "file_name": "resume.txt",
+      "created_at": "2026-09-07T17:52:36.467Z",
+      "resume_score": 100,
+      "engine": "heuristic",
+      "name_match": true,
+      "detected_name": "Rahul Sharma",
+      "flags": [
+        {
+          "level": "ok",
+          "text": "Candidate identity verified: Name matches profile (Rahul Sharma)."
+        },
+        {
+          "level": "error",
+          "text": "Resume is severely underdeveloped (90 words) — insufficient content for technical screening."
+        }
+      ],
+      "professionalism": 100,
+      "summary": "Rahul Sharma presents a 90-word resume. Includes 3 quantified metrics demonstrating engineering impact. Includes code links. ",
+      "experience": {
+        "years": 1,
+        "entries": []
+      },
+      "education": [
+        "B.Tech Computer Science",
+        "B.Tech Computer Science, IIT Madras, 2026, CGP"
+      ],
+      "skills": [
+        "python",
+        "typescript",
+        "react",
+        "sql",
+        "postgres",
+        "docker",
+        "git",
+        "github",
+        "rest api"
+      ],
+      "contact": {
+        "email": "rahul@example.com",
+        "phone": "+91 9876543210",
+        "github": "github.com/rahul"
+      },
+      "feedback": {
+        "strengths": [
+          "Quantified outcomes with 3 measurable engineering metric(s)",
+          "Solid technical keywords (python, typescript, react, sql, postgres)",
+          "Included GitHub profile for code verification",
+          "Structured with both Projects and Experience sections"
+        ],
+        "gaps": [
+          "Weak action verbs — avoid passive phrasing like \"responsible for\" or \"helped with\""
+        ],
+        "suggestions": [
+          "Rewrite every bullet point using Google’s XYZ formula: \"Accomplished [X], as measured by [Y], by doing [Z]\".",
+          "Eliminate generic buzzwords and focus strictly on architecture, libraries, and measurable results."
+        ]
+      },
+      "parsed": {
+        "name": "Rahul Sharma",
+        "experience_years": 1,
+        "projects": 1,
+        "skills": [
+          "python",
+          "typescript",
+          "react",
+          "sql",
+          "postgres",
+          "docker",
+          "git",
+          "github"
+        ]
+      },
+      "word_count": 90
+    },
+    {
+      "id": "res_1788803561249",
+      "student_id": "unknown",
+      "storage_key": "",
+      "file_name": "weak.txt",
+      "created_at": "2026-09-07T17:52:41.249Z",
+      "resume_score": 25,
+      "engine": "heuristic",
+      "name_match": false,
+      "detected_name": "John Doe",
+      "flags": [
+        {
+          "level": "error",
+          "text": "⛔ Name mismatch: Resume appears to belong to “John Doe”, but your application profile states “Rahul Sharma”. Upload your authentic resume."
+        },
+        {
+          "level": "error",
+          "text": "Missing essential contact details (Email or Phone) — ATS will discard this document."
+        },
+        {
+          "level": "warn",
+          "text": "No GitHub or LinkedIn profiles linked — technical recruiters cannot verify your code or history."
+        },
+        {
+          "level": "error",
+          "text": "No Experience or Projects section found — high risk of immediate rejection."
+        },
+        {
+          "level": "error",
+          "text": "❌ Zero quantified metrics detected. Bullets only state generic duties rather than measurable engineering impact."
+        },
+        {
+          "level": "error",
+          "text": "Resume is severely underdeveloped (11 words) — insufficient content for technical screening."
+        }
+      ],
+      "professionalism": 30,
+      "summary": "John Doe presents a 11-word resume. CRITICAL WARNING: The name on this resume does NOT match profile name \"Rahul Sharma\". Honest Recruiter Assessment: Lacks any quantified metrics or measurable technical impact, resulting in a low ATS score. Missing code/GitHub repository links for verification.",
+      "experience": {
+        "years": 0,
+        "entries": []
+      },
+      "education": [
+        "B.Tech Computer Science"
+      ],
+      "skills": [
+        "html"
+      ],
+      "contact": {},
+      "feedback": {
+        "strengths": [
+          "Document contains readable plain text"
+        ],
+        "gaps": [
+          "Critical identity discrepancy with profile name",
+          "Zero quantified metrics — bullets fail to show scale, latency, or business results",
+          "No GitHub link to prove real code competence",
+          "Missing portfolio/projects section for a junior/student developer",
+          "Weak action verbs — avoid passive phrasing like \"responsible for\" or \"helped with\""
+        ],
+        "suggestions": [
+          "Upload your own authentic resume matching your profile details.",
+          "Rewrite every bullet point using Google’s XYZ formula: \"Accomplished [X], as measured by [Y], by doing [Z]\".",
+          "Add specific numbers (e.g. \"% reduction in latency\", \"X daily users\", \"Y ms query optimization\").",
+          "Add your GitHub profile with pinned repositories demonstrating clean commits and test suites.",
+          "Eliminate generic buzzwords and focus strictly on architecture, libraries, and measurable results."
+        ]
+      },
+      "parsed": {
+        "name": "John Doe",
+        "experience_years": 0,
+        "projects": 0,
+        "skills": [
+          "html"
+        ]
+      },
+      "word_count": 11
     }
   ],
   "tracking_events": [

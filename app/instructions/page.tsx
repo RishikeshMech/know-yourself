@@ -1,6 +1,7 @@
 'use client'
+import { useRouter } from 'next/navigation'
 import { Navbar } from '@/components/Navbar'
-import { StoreProvider, useStore } from '@/lib/store'
+import { useStore } from '@/lib/store'
 import { Stepper } from '@/components/Stepper'
 import { useEffect, useRef, useState } from 'react'
 import { resolveInstructionsRedirect, safeRead } from '@/lib/attemptAccess'
@@ -18,8 +19,8 @@ const ALLOCATION = [
 const MODULES = [
   ['English Communication','200 pts · Listening, Speaking, Reading, Writing'],
   ['Problem Solving','200 pts · Logic, correctness, data interpretation'],
-  ['AI-Assisted Debugging','150 pts · Fix buggy code (AI allowed)'],
-  ['AI-Assisted Feature Dev','150 pts · Build a feature from a spec'],
+  ['AI-Assisted Debugging','150 pts · Fix buggy code (In-Exam AI Assistant provided)'],
+  ['AI-Assisted Feature Dev','150 pts · Build a feature (In-Exam AI Assistant provided)'],
   ['Prompt Engineering','100 pts · 3 tasks, AI-rubric scored'],
   ['Cognitive Assessment','200 pts · Grid challenge, logical reasoning, behavioural'],
 ]
@@ -39,6 +40,7 @@ function Spinner() {
 }
 
 function Inner(){
+  const router = useRouter()
   const {setSession, user, hydrated} = useStore()
   const [checked,setChecked]=useState(false)
   const [starting,setStarting]=useState(false)
@@ -55,7 +57,7 @@ function Inner(){
   const go = (to: string) => {
     if (navigatedRef.current) return
     navigatedRef.current = true
-    window.location.replace(to)
+    router.replace(to)
   }
 
   useEffect(() => {
@@ -197,9 +199,9 @@ function Inner(){
             <div className="mt-6 rounded-2xl bg-amber-50 border border-amber-200 p-4 text-xs leading-relaxed text-slate-600">
               <div className="font-bold text-amber-700 mb-1">Please note</div>
               <ul className="list-disc ml-4 space-y-1">
-                <li>Keep this tab/window focused — leaving it 3 times submits your test automatically.</li>
+                <li><b>No tab switching:</b> Keep this tab/window focused — switching windows/tabs 3 times terminates and submits your test automatically.</li>
+                <li><b>In-Exam AI Assistant:</b> For AI Debugging and AI Feature Dev (Stages 3 & 4), an interactive AI assistant is embedded right below each coding task. You can ask questions, get explanations, and review code without leaving the tab.</li>
                 <li>Your answers are saved automatically as you go.</li>
-                <li>Use AI assistants for the debugging, feature and prompt sections — that's the skill being tested.</li>
                 <li>This is a one-time attempt — once submitted you can't retake it. You land on your student dashboard, where the report and PDF stay available.</li>
               </ul>
             </div>
@@ -239,4 +241,4 @@ function Inner(){
     </div>
   )
 }
-export default function Page(){ return <StoreProvider><Inner/></StoreProvider> }
+export default function Page(){ return <Inner/> }

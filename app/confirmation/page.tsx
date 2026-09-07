@@ -1,9 +1,11 @@
 'use client'
+import { useRouter } from 'next/navigation'
 import { Navbar } from '@/components/Navbar'
-import { StoreProvider, useStore } from '@/lib/store'
+import { useStore } from '@/lib/store'
 import { Stepper } from '@/components/Stepper'
 
 function Inner(){
+  const router = useRouter()
   const {profile, resume, tracking} = useStore()
   const items = [
     {label:'Your profile', done: !!profile, detail: profile?.full_name || 'Not filled'},
@@ -37,7 +39,7 @@ function Inner(){
             I confirm my details are accurate and agree to the 120-minute assessment (focus is monitored to keep results fair).
           </label>
 
-          <button onClick={()=>window.location.href='/instructions'} className="btn-primary mt-6 w-full sm:w-auto">
+          <button onClick={()=>router.push('/instructions')} className="btn-primary mt-6 w-full sm:w-auto">
             Continue to instructions →
           </button>
         </div>
@@ -45,4 +47,4 @@ function Inner(){
     </div>
   )
 }
-export default function Page(){ return <StoreProvider><Inner/></StoreProvider> }
+export default function Page(){ return <Inner/> }

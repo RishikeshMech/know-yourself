@@ -1,5 +1,6 @@
 import './globals.css'
 import type { Metadata } from 'next'
+import { StoreProvider } from '@/lib/store'
 
 export const metadata: Metadata = {
   title: 'CalibiAI Score — Your verified employability score',
@@ -36,7 +37,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="blob-b absolute top-1/3 -right-28 h-[28rem] w-[28rem] rounded-full bg-fuchsia-300/30 blur-3xl" />
           <div className="blob-a absolute bottom-0 left-1/3 h-[22rem] w-[22rem] rounded-full bg-sky-300/30 blur-3xl" />
         </div>
-        {children}
+        <StoreProvider>
+          {children}
+        </StoreProvider>
       </body>
     </html>
   )

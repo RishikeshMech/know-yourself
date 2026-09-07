@@ -1,8 +1,10 @@
 'use client'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Navbar } from '@/components/Navbar'
 import { HeroMockup } from '@/components/HeroMockup'
-import { StoreProvider, useStore } from '@/lib/store'
+import { useStore } from '@/lib/store'
 import { Typewriter } from '@/components/Typewriter'
 import { signedInLandingRoute } from '@/lib/nextStep'
 
@@ -12,24 +14,36 @@ const MODULES = [
 ]
 
 function Landing() {
+  const router = useRouter()
   const { user, profile, hydrated } = useStore()
   const sentRef = useRef(false)
+  const [redirecting, setRedirecting] = useState(false)
+
   // A signed-in candidate should never see the marketing home page (or the login
   // screen). If they land here while authenticated — via the Supabase email
   // confirmation redirect, the browser back button or a direct URL — send them
-  // to their actual next step rather than always the dashboard: a brand-new
-  // account still has to fill in their profile. `replace` also clears this
-  // entry from history so the back button can't return here.
+  // smoothly to their actual next step (dashboard or onboarding).
   useEffect(() => {
     if (!hydrated || !user || sentRef.current) return
     sentRef.current = true
-    window.location.replace(signedInLandingRoute(profile))
-  }, [user, profile, hydrated])
-  // Render nothing until the session has been read and, if the visitor is
-  // signed in, redirect away — so the home page is never flashed to a candidate.
-  if (!hydrated || user) return null
-  // Signed-out visitors go to /login to start. Signed-in users are redirected
-  // above and never reach this marketing page.
+    setRedirecting(true)
+    router.replace(signedInLandingRoute(profile))
+  }, [user, profile, hydrated, router])
+
+  if (!hydrated || user || redirecting) {
+    if (user || redirecting) {
+      return (
+        <div className="flex min-h-screen items-center justify-center">
+          <div className="glass-card animate-fade-up flex items-center gap-3 px-6 py-4">
+            <span className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
+            <span className="text-sm font-bold text-slate-700">Connecting to your dashboard…</span>
+          </div>
+        </div>
+      )
+    }
+    return null
+  }
+
   const startHref = '/login'
   return (
     <div>
@@ -50,8 +64,8 @@ function Landing() {
               Communication, problem solving, AI skills &amp; cognition — one signal employers trust.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
-              <a href={startHref} className="btn-primary">Start your assessment →</a>
-              <a href="/sample-report" className="btn-soft">See a sample report</a>
+              <Link href={startHref} className="btn-primary">Start your assessment →</Link>
+              <Link href="/sample-report" className="btn-soft">See a sample report</Link>
             </div>
             <div className="mt-8 flex flex-wrap gap-5 text-sm text-slate-500">
               {['⏱ 120 minutes', '🧩 6 skill modules', '📄 PDF credential'].map(t => (
@@ -94,7 +108,7 @@ function Landing() {
                 </span>
               ))}
             </div>
-            <a href={startHref} className="btn-primary mt-7">Start your assessment →</a>
+            <Link href={startHref} className="btn-primary mt-7">Start your assessment →</Link>
           </div>
         </section>
       </main>
@@ -103,5 +117,5 @@ function Landing() {
 }
 
 export default function Page() {
-  return <StoreProvider><Landing /></StoreProvider>
+  return <Landing />
 }

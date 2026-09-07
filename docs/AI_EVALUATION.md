@@ -146,6 +146,9 @@ def evaluate_debugging(question, buggy_code, student_fix):
     return {"total":int(total), "tests_passed":tests_passed, "llm":llm_scores}
 ```
 
+### 4.4.1 In-Exam AI Assistant (Stage 3 & 4)
+During Stage 3 (AI Debugging) and Stage 4 (AI Feature Development), candidates are permitted to use AI assistance, but cannot switch browser tabs due to anti-cheating focus proctoring. CalibiAI provides an embedded **In-Exam AI Assistant** directly below each coding task. It supports interactive queries, root cause explanations, edge case hints, and draft code reviews via `POST /api/ai/assistant`.
+
 ### 4.5 Feature Development
 ```python
 def evaluate_feature(spec, student_code):

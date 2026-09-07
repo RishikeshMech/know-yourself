@@ -1,7 +1,7 @@
 'use client'
 export const dynamic = 'force-dynamic'
 import { useEffect, useRef, useState } from 'react'
-import { StoreProvider } from '@/lib/store'
+import { useRouter } from 'next/navigation'
 import { ScoreReport } from '@/components/ScoreReport'
 import { AFTER_ASSESSMENT_ROUTE } from '@/lib/nextStep'
 import { consumeJustSubmittedTicket } from '@/lib/justSubmitted'
@@ -17,11 +17,8 @@ import { consumeJustSubmittedTicket } from '@/lib/justSubmitted'
  * available through "View report". The ticket is single-use.
  */
 function ResultInner() {
+  const router = useRouter()
   const [scores, setScores] = useState<any>(null)
-  // `reactStrictMode: true` runs mount effects twice in development. The
-  // ticket is single-use, so the second pass used to find it already cleared
-  // and bounce a just-submitted candidate off their own report — landing them
-  // on a page they never asked for. Decide exactly once per page load.
   const decided = useRef(false)
 
   useEffect(() => {
@@ -29,9 +26,9 @@ function ResultInner() {
     decided.current = true
     const fresh = consumeJustSubmittedTicket()
     const s = localStorage.getItem('calibiai_scores')
-    if (!s || !fresh) { window.location.replace(AFTER_ASSESSMENT_ROUTE); return }
-    try { setScores(JSON.parse(s)) } catch { window.location.replace(AFTER_ASSESSMENT_ROUTE) }
-  }, [])
+    if (!s || !fresh) { router.replace(AFTER_ASSESSMENT_ROUTE); return }
+    try { setScores(JSON.parse(s)) } catch { router.replace(AFTER_ASSESSMENT_ROUTE) }
+  }, [router])
 
   if (!scores) return (
     <div className="min-h-screen flex items-center justify-center text-slate-500">
@@ -43,5 +40,5 @@ function ResultInner() {
 }
 
 export default function Page() {
-  return <StoreProvider><ResultInner /></StoreProvider>
+  return <ResultInner />
 }

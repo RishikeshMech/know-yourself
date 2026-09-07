@@ -133,13 +133,15 @@ accounts (where sign-up routes to), `/profile` as the same form in edit mode.
 - MCQ + pseudocode: "What does this pseudocode output?" + data interpretation chart
 - Example: sequence, syllogism, pseudocode with loops
 
-### 8.6 AI-Assisted Debugging (2 tasks)
+### 8.6 AI-Assisted Debugging (3 tasks)
 - Buggy code pane (Python/JS) + description + hidden tests indicator
-- Editor (Monaco) for fix + Run (mock tests) + Submit fix
+- Editor (Monaco/code textarea) for fix + Run (real hidden tests) + Submit fix
+- **In-Exam AI Assistant Panel** docked directly below the task: allows candidate to ask questions about root causes, edge cases, syntax, and review draft code without switching tabs (prevents tab-switch proctoring violations)
 
 ### 8.7 AI-Assisted Feature Development (1 task)
 - Spec: "Build a function to ... + requirements + sample I/O"
-- Editor + Run tests
+- Editor + Run tests + AI Evaluation
+- **In-Exam AI Assistant Panel**: provides architecture guidance, sliding-window algorithms, Express 429 middleware snippets, and code review in-tab
 
 ### 8.8 Prompt Engineering (3 tasks)
 - Task card + textarea for prompt

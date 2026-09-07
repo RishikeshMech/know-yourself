@@ -1,5 +1,7 @@
 'use client'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Navbar } from '@/components/Navbar'
 import { Stepper } from '@/components/Stepper'
 import { useStore } from '@/lib/store'
@@ -293,6 +295,7 @@ function ProgressRing({ pct }: { pct: number }) {
 /* ------------------------------------------------------------------ */
 
 export function OnboardingFlow({ variant = 'onboarding' }: { variant?: 'onboarding' | 'edit' }) {
+  const router = useRouter()
   const { user, profile, setProfile } = useStore()
   const [form, setForm] = useState<Form>(() => normalizeOnboardingForm())
   const [step, setStep] = useState(1)
@@ -406,7 +409,10 @@ export function OnboardingFlow({ variant = 'onboarding' }: { variant?: 'onboardi
     setSaved(true)
     // First-time onboarding continues to resume upload; the edit form returns
     // to the (real) profile page.
-    setTimeout(() => { window.location.href = variant === 'edit' ? '/profile' : '/resume' }, 900)
+    setTimeout(() => {
+      if (variant === 'edit') router.push('/profile')
+      else router.push('/resume')
+    }, 900)
   }
 
   if (!user) {
@@ -418,7 +424,7 @@ export function OnboardingFlow({ variant = 'onboarding' }: { variant?: 'onboardi
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl calibiai-gradient text-2xl text-white shadow-lg shadow-indigo-300/50">🔐</div>
             <h1 className="mt-4 text-2xl font-black text-slate-900">Sign in to continue</h1>
             <p className="mt-2 text-sm text-slate-500">Your onboarding details are tied to your account.</p>
-            <a href="/login" className="btn-primary mt-6">Sign in →</a>
+            <Link href="/login" className="btn-primary mt-6">Sign in →</Link>
           </div>
         </main>
       </div>
