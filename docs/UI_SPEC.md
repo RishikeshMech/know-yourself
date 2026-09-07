@@ -32,14 +32,16 @@ One shared 3-step wizard (`components/OnboardingFlow.tsx`): `/onboarding` for ne
 accounts (where sign-up routes to), `/profile` as the same form in edit mode.
 
 - **Step 1 — About you:** full name, mobile number, gender, DOB
-- **Step 2 — Academics:** degree, college, graduation year, CGPA
+- **Step 2 — Academics:** degree, college, PRN No. (optional), graduation year, CGPA
 - **Step 3 — Your presence:** skills (comma separated), LinkedIn, GitHub + a review panel
 - **Mobile number:** fixed `+91` prefix, digits only, **exactly 10 digits** (`maxLength=10`,
   numeric keyboard, live `n/10` counter and `+91 XXXXX XXXXX` preview). Country code and
   trunk prefix are stripped on input, so `+91 98765 43210` / `09876543210` normalise to `9876543210`.
 - **Gender:** dropdown (listbox) with exactly **Male / Female / Other** — no free text
 - Validation (client *and* `POST /api/user/profile`): CGPA 0-10, mobile 10 digits,
-  gender one of Male/Female/Other, graduation year 2020-2035, DOB age 15-100, https URLs
+  gender one of Male/Female/Other, graduation year 2020-2035, DOB age 15-100, https URLs,
+  PRN blank **or** 4-20 letters/numbers (upper-cased, unique per student — colleges match
+  their register by PRN, so it is collected but never required)
 - Progress rail with a completion ring, per-step validation, segmented progress bar
 - CTA: Continue → … → Complete onboarding (then `/resume`)
 
@@ -162,6 +164,11 @@ accounts (where sign-up routes to), `/profile` as the same form in edit mode.
 ---
 
 ## 9. RESULT (`/result/:session_id`)
+
+> Submitting the assessment lands the student on `/dashboard/student` — their score,
+> report and PDF all live there. `/result` only renders when a fresh-submission ticket is
+> still valid; every other visit (back button, reload later) is redirected to the
+> student dashboard, never to `/profile`.
 
 - Hero: **CALIBIAI SCORE 842 / 1000** large gradient number, Grade A, percentile 92.4
 - Breakdown bars: English 172/200, PS 168/200, etc. (animated)

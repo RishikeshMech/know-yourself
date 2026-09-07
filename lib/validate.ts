@@ -117,6 +117,38 @@ export function isValidUrl(url: any): boolean {
 }
 
 /**
+ * PRN — the Permanent Registration Number a university issues to a student
+ * (Maharashtra colleges; elsewhere "enrolment / roll number"). Colleges use it
+ * to match a CalibiAI record with their own student database, so it is worth
+ * collecting — but formats differ wildly between universities, so the field is
+ * OPTIONAL everywhere and a blank PRN must never block a save.
+ */
+export const PRN_MIN_LENGTH = 4
+export const PRN_MAX_LENGTH = 20
+
+/**
+ * Canonical form: no surrounding/inner whitespace, upper case. PRNs are
+ * conventionally written in capitals ("2021coep001", "CS21B1023"), and keeping
+ * one canonical form is what makes the uniqueness check meaningful.
+ */
+export function normalizePrn(raw: any): string {
+  return String(raw ?? '').replace(/\s+/g, '').toUpperCase()
+}
+
+/**
+ * Optional-but-validated: blank passes. Anything else must be 4–20 characters
+ * of letters, digits, hyphen, underscore or slash, starting with a letter or a
+ * digit — which covers "21CS1042", "EN20CS101", "2021/COEP/001" and friends
+ * while rejecting stray punctuation.
+ */
+export function isValidPrn(raw: any): boolean {
+  const prn = normalizePrn(raw)
+  if (!prn) return true
+  if (prn.length < PRN_MIN_LENGTH || prn.length > PRN_MAX_LENGTH) return false
+  return /^[A-Z0-9][A-Z0-9/_-]*$/.test(prn)
+}
+
+/**
  * True only when the user has actually completed the onboarding form — i.e. the
  * profile row carries the required details, not just a seeded `full_name` from
  * signup-time metadata. Login uses this to route a genuinely-new user to

@@ -5,6 +5,7 @@ import { normalizeOnboardingForm, type OnboardingForm } from '../onboardingForm.
 
 const emptyForm: OnboardingForm = {
   full_name: '',
+  prn: '',
   phone: '',
   dob: '',
   gender: '',
@@ -65,6 +66,7 @@ test('populated profiles retain text and normalize phone and numeric inputs', ()
     graduation_year: 2026,
     cgpa: 8.7,
     skills: 'Python, React, SQL',
+    prn: ' 21cs1042 ',
     linkedin_url: 'https://linkedin.com/in/priya',
     github_url: 'https://github.com/priya',
   }
@@ -72,6 +74,7 @@ test('populated profiles retain text and normalize phone and numeric inputs', ()
 
   assert.deepEqual(form, {
     ...profile,
+    prn: '21CS1042',
     phone: '9876543210',
     graduation_year: '2026',
     cgpa: '8.7',
@@ -97,4 +100,14 @@ test('profile metadata is preserved for edit-form saves', () => {
   }
 
   assert.deepEqual(normalizeOnboardingForm(metadata), { ...emptyForm, ...metadata })
+})
+
+test('a null PRN loads as blank and a real one is canonicalized', () => {
+  // Optional field: a signup-seeded row must not put "null" in the input.
+  assert.equal(normalizeOnboardingForm({ prn: null }).prn, '')
+  assert.equal(normalizeOnboardingForm({ prn: undefined }).prn, '')
+  // Canonical form is upper case with no whitespace, so re-normalizing is stable.
+  assert.equal(normalizeOnboardingForm({ prn: ' 21cs 1042 ' }).prn, '21CS1042')
+  const once = normalizeOnboardingForm({ prn: 'en20cs101' })
+  assert.deepEqual(normalizeOnboardingForm(once), once)
 })

@@ -11,10 +11,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <head>
         {/* Favicon: .ico (classic) + SVG (sharp) + PNG (retina/Apple). Next also
-            auto-serves app/icon.png, so the tab icon is always present. */}
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="icon" type="image/svg+xml" href="/icon.svg" />
-        <link rel="apple-touch-icon" href="/icon-512.png" sizes="512x512" />
+            auto-serves app/icon.png, so the tab icon is always present.
+            All four assets are generated FROM public/logo.svg (see the brand
+            mark in the navbar) — they used to be an unrelated purple "C"
+            placeholder, which is why the tab icon never "reflected" the logo.
+            The `?v=` suffix busts the aggressive favicon cache of browsers that
+            still hold the old placeholder. */}
+        <link rel="icon" href="/favicon.ico?v=2" sizes="any" />
+        <link rel="icon" type="image/svg+xml" href="/icon.svg?v=2" />
+        <link rel="apple-touch-icon" href="/icon-512.png?v=2" sizes="512x512" />
         {/* Inter is applied to every element (`* { font-family: Inter, … }`), so
             the webfont arriving late repaints the whole page — a visible flash
             on arrival. Start the TLS handshakes immediately so the stylesheet

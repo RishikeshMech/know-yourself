@@ -39,7 +39,9 @@ calibiai-score/
 │   └── OnboardingFlow.tsx        # 3-step onboarding wizard (used by /onboarding + /profile)
 ├── lib/
 │   ├── store.tsx                 # Global store (JWT, profile, session, scores) — Context + localStorage (prod: httpOnly)
-│   ├── validate.ts               # Shared field rules (10-digit mobile, gender dropdown, CGPA, grad year)
+│   ├── validate.ts               # Shared field rules (10-digit mobile, gender dropdown, CGPA, grad year, optional PRN)
+│   ├── nextStep.ts               # Where a student belongs next (onboarding / dashboard) — single source of truth
+│   ├── justSubmitted.ts          # Single-use "assessment just submitted" ticket (dashboard banner, /result)
 │   ├── mockData.ts               # Question banks (deterministic, versioned)
 │   └── scoring.ts                # Scoring engine (mirrors server, auditable)
 ├── services/                     # Production microservices (each Docker + K8s Helm)
@@ -95,7 +97,7 @@ calibiai-score/
 
 - `app/resume` → `services/resume-service` (presign) → MinIO → `resume-service` worker → `evaluation-worker` (LLaMA)
 - `app/assessment` → `services/assessment-service` (timer + answers) → Redpanda `assessment.events` → `evaluation-worker`
-- `app/result` → `services/report-service` (async PDF) → MinIO → CDN
+- `app/assessment` (submit) → `/dashboard/student` (score + report + PDF); `app/result` → `services/report-service` (async PDF) → MinIO → CDN
 
 ## Why Next.js API Routes in `app/api`
 
