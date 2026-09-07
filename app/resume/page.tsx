@@ -1,5 +1,5 @@
 'use client'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Navbar } from '@/components/Navbar'
 import { useStore } from '@/lib/store'
@@ -34,7 +34,22 @@ function ResumeInner() {
   const [error, setError] = useState('')
   const [done, setDone] = useState<any>(resume)
   const [dragOver, setDragOver] = useState(false)
+  // `?edit=1` switches this page into the standalone "update your resume" view
+  // (used from the student dashboard / profile). Without it the page is part of
+  // the one-time onboarding flow (stepper + continue → WhatsApp).
+  const [editMode, setEditMode] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    setEditMode(new URLSearchParams(window.location.search).get('edit') === '1')
+  }, [])
+
+  // Show the previously saved resume analysis (score, skills, flags) by default
+  // when revisiting in edit mode — the user sees their current score before
+  // replacing the document.
+  useEffect(() => {
+    if (resume && !done) setDone(resume)
+  }, [resume, done])
 
   const analyze = async (f: File) => {
     setError('')
@@ -71,11 +86,11 @@ function ResumeInner() {
     <div>
       <Navbar />
       <main className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
-        <Stepper step={3} />
+        {!editMode && <Stepper step={3} />}
         <div className="mt-6 grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-6 items-start">
           {/* Upload */}
           <div className="glass-card animate-fade-up">
-            <h1 className="text-2xl font-black text-slate-900">Upload your resume</h1>
+            <h1 className="text-2xl font-black text-slate-900">{editMode ? 'Update your resume' : 'Upload your resume'}</h1>
             <p className="mt-1 text-sm text-slate-500">
               Our AI reads the whole document like a recruiter — name check, professionalism,
               experience, skills and impact.
@@ -112,8 +127,19 @@ function ResumeInner() {
             )}
 
             <div className="mt-6 flex gap-3">
-              <Link href="/tracking/whatsapp" className={`btn-primary ${!done ? 'pointer-events-none opacity-40' : ''}`}>Continue →</Link>
-              <Link href="/profile" className="btn-soft">Back</Link>
+              {editMode ? (
+                <>
+                  <Link href="/dashboard/student" className="btn-soft">← Back to dashboard</Link>
+                  {done && (
+                    <Link href="/dashboard/student" className={`btn-primary ${!done ? 'pointer-events-none opacity-40' : ''}`}>Done</Link>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Link href="/tracking/whatsapp" className={`btn-primary ${!done ? 'pointer-events-none opacity-40' : ''}`}>Continue →</Link>
+                  <Link href="/profile" className="btn-soft">Back</Link>
+                </>
+              )}
             </div>
           </div>
 

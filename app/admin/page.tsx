@@ -24,6 +24,11 @@ import { downloadCsv, downloadFilename, rowsToCsv } from '@/lib/csv'
 
 type AuthState = 'checking' | 'guest' | 'authed'
 type SortKey = 'score' | 'name'
+type DataSource = 'supabase' | 'local' | ''
+
+/** How often the dashboard re-fetches from the server so it stays live.
+ *  Override with NEXT_PUBLIC_ADMIN_REFRESH_MS (e.g. 5000 for 5s). */
+const REFRESH_MS = Number(process.env.NEXT_PUBLIC_ADMIN_REFRESH_MS) || 15000
 
 const n = (v: string) => (v === '' || v === null || v === undefined ? '—' : v)
 const gradeChip = (g: string) => g === 'S' ? 'bg-emerald-100 text-emerald-700' : g === 'A' ? 'bg-indigo-100 text-indigo-700' : g === 'B' ? 'bg-violet-100 text-violet-700' : g === 'C' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
@@ -32,6 +37,24 @@ const fmtDate = (iso: string) => {
   const d = new Date(iso)
   if (isNaN(d.getTime())) return iso
   return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+const fmtTime = (iso: string | null) => {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ''
+  return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+}
+
+/** Small live badge that pulses while an auto-refresh is active. */
+function LiveBadge({ lastUpdated }: { lastUpdated: string | null }) {
+  return (
+    <span className="flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-bold text-emerald-700">
+      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+      Live
+      {lastUpdated && <span className="hidden font-semibold text-emerald-600/80 md:inline">· {fmtTime(lastUpdated)}</span>}
+    </span>
+  )
 }
 
 /** True on localhost / 127.0.0.1 — used only to show the demo credential hint. */
@@ -273,6 +296,9 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const [students, setStudents] = useState<AdminStudentRow[] | null>(null)
   const [loadError, setLoadError] = useState('')
   const [refreshing, setRefreshing] = useState(false)
+  const [dataSource, setDataSource] = useState<DataSource>('')
+  const [warning, setWarning] = useState('')
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null)
 
   const [college, setCollege] = useState('all')
   const [q, setQ] = useState('')
@@ -294,6 +320,9 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to load students.')
       setStudents(data.students || [])
+      setDataSource((data.source as DataSource) || '')
+      setWarning(data.warning || '')
+      setLastUpdated(data.updated_at || new Date().toISOString())
     } catch (e: any) {
       setLoadError(e?.message || 'Failed to load students.')
     } finally {
@@ -303,6 +332,41 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
 
   useEffect(() => {
     load()
+  }, [load])
+
+  // Keep the dashboard live: re-fetch on an interval while the tab is visible,
+  // and immediately on tab focus. Pauses when the tab is hidden to save calls.
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval> | undefined
+    const start = () => {
+      if (timer) return
+      timer = setInterval(() => {
+        if (document.visibilityState === 'visible') load()
+      }, REFRESH_MS)
+    }
+    const stop = () => {
+      if (timer) {
+        clearInterval(timer)
+        timer = undefined
+      }
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        load()
+        start()
+      } else {
+        stop()
+      }
+    }
+    const onFocus = () => load()
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('focus', onFocus)
+    start()
+    return () => {
+      stop()
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('focus', onFocus)
+    }
   }, [load])
 
   const colleges = useMemo(() => {
@@ -382,6 +446,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
             <span className="ml-1 rounded-full bg-indigo-600/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-indigo-600">Admin</span>
           </Link>
           <div className="flex items-center gap-2 text-sm">
+            {students && <LiveBadge lastUpdated={lastUpdated} />}
             <button
               onClick={load}
               disabled={refreshing}
@@ -418,6 +483,24 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         {exported && (
           <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 text-sm font-semibold text-emerald-700 animate-fade-up">
             <CheckCircle2 className="h-4 w-4" /> CSV downloaded — open it in Excel / Google Sheets. It includes name, PRN, mobile number, college, skills, resume score and every CalibiAI module score.
+          </div>
+        )}
+
+        {/* Data source / degraded-read banner */}
+        {students && (warning || dataSource === 'local') && (
+          <div
+            className={`flex items-start gap-2 rounded-2xl border px-4 py-3 text-xs font-semibold animate-fade-up ${
+              dataSource === 'local'
+                ? 'border-amber-200 bg-amber-50/80 text-amber-700'
+                : 'border-rose-200 bg-rose-50/80 text-rose-600'
+            }`}
+          >
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              {dataSource === 'local'
+                ? 'Showing local demo data. Connect Supabase (set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY on the host) to pull every live student record.'
+                : warning}
+            </span>
           </div>
         )}
 

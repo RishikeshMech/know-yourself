@@ -521,13 +521,13 @@ function ProfileInner() {
                       </div>
                     </div>
                   )}
-                  <Link href="/resume" className="mt-4 inline-block text-xs font-semibold text-indigo-600 hover:text-indigo-700">Update resume →</Link>
+                  <Link href="/resume?edit=1" className="mt-4 inline-block text-xs font-semibold text-indigo-600 hover:text-indigo-700">Update resume →</Link>
                 </div>
               ) : (
                 <div className="mt-5 rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/40 p-8 text-center">
                   <div className="text-4xl">📄</div>
                   <p className="mt-2 text-sm text-slate-500">Upload your resume — the AI extracts your skills, projects and experience.</p>
-                  <Link href="/resume" className="btn-primary mt-4 inline-flex">Upload resume →</Link>
+                  <Link href="/resume?edit=1" className="btn-primary mt-4 inline-flex">Upload resume →</Link>
                 </div>
               )}
             </div>
