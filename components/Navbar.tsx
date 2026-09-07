@@ -1,10 +1,12 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useStore } from '@/lib/store'
 import { Logo } from '@/components/Logo'
 import { AiAvatar } from '@/components/AiAvatar'
-import { User, LogOut, ChevronDown } from 'lucide-react'
+import { User, LogOut, ChevronDown, Users } from 'lucide-react'
+import { COMMUNITY_APP_URL, COMMUNITY_NAV_ROUTES } from '@/lib/community'
 
 /** The name the user chose on their profile page wins over the account /
  *  email-derived username (e.g. "Prajwal" over "prajwalgulhane85"). */
@@ -20,6 +22,12 @@ export function Navbar() {
   const { user, profile, logout, hydrated } = useStore()
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const pathname = usePathname()
+
+  // The CalibiAI Community link is intentionally limited to the home page, the
+  // student dashboard and the profile — it must never appear on /assessment or
+  // any other flow (see COMMUNITY_NAV_ROUTES).
+  const showCommunity = COMMUNITY_NAV_ROUTES.includes(pathname ?? '')
 
   // The brand links to the student dashboard when signed in, and to the
   // marketing home page when signed out. A signed-in user should never land on
@@ -47,6 +55,18 @@ export function Navbar() {
           <span className="font-extrabold tracking-tight text-slate-900 text-lg">CALIBIAI<span className="text-indigo-600"> SCORE</span></span>
         </Link>
         <div className="flex items-center gap-2 text-sm">
+          {showCommunity && (
+            <a
+              href={COMMUNITY_APP_URL}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Open CalibiAI Community in a new tab"
+              className="flex items-center gap-1.5 rounded-full border border-indigo-100 bg-indigo-50/80 px-3 py-2 text-xs font-bold text-indigo-600 transition hover:bg-indigo-100 hover:text-indigo-700"
+            >
+              <Users className="h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline">CalibiAI Community</span>
+            </a>
+          )}
           {!hydrated ? (
             /* Not hydrated yet: hold a placeholder the same size as the account
                control. Without it the top-right corner renders "Sign in" on the
