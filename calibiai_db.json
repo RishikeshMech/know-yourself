@@ -165,6 +165,23 @@
         "version": 1,
         "generated_at": "2026-09-06T23:04:47.055Z"
       }
+    },
+    {
+      "id": "f16beb3a-3592-4333-bac5-0b435b62b46b",
+      "email": "prajwalgu16@gmail.com",
+      "full_name": "Prajwal",
+      "phone": "8989892948",
+      "dob": "2000-06-07",
+      "gender": "Male",
+      "degree": "B.Tech Civil",
+      "college": "pccor",
+      "graduation_year": 2029,
+      "cgpa": 9,
+      "skills": "",
+      "linkedin_url": "",
+      "github_url": "",
+      "ai_avatar": null,
+      "updated_at": "2026-09-07T15:52:13.391Z"
     }
   ],
   "assessment_sessions": [
@@ -2163,6 +2180,103 @@
         ]
       },
       "word_count": 473
+    },
+    {
+      "id": "res_1788796346689",
+      "student_id": "f16beb3a-3592-4333-bac5-0b435b62b46b",
+      "storage_key": "",
+      "file_name": "Prajwal Gulhane Re.pdf",
+      "created_at": "2026-09-07T15:52:26.689Z",
+      "resume_score": 78,
+      "engine": "deepseek",
+      "name_match": true,
+      "detected_name": "Prajwal Gulhane",
+      "flags": [
+        {
+          "level": "warn",
+          "text": "Email mismatch: resume uses prajwalen100@gmail.com, profile has prajwalgu16@gmail.com"
+        },
+        {
+          "level": "ok",
+          "text": "Contact details present (phone, email, LinkedIn)"
+        },
+        {
+          "level": "ok",
+          "text": "Quantified achievements included (e.g., 40% reduction, 99.5% uptime)"
+        },
+        {
+          "level": "warn",
+          "text": "Education degree mismatch: profile says B.Tech Civil, resume says B.E. Computer Science"
+        }
+      ],
+      "professionalism": 90,
+      "summary": "Java Backend Developer with 1.5+ years of experience at Cognizant, specializing in Spring Boot, microservices, and cloud technologies. Proven track record of improving system reliability and performance through API development, Kafka integration, and database optimization. Holds multiple AWS certifications and has hands-on experience with AI/ML technologies. Strong educational background in Computer Science with a high CGPA. Demonstrates solid engineering skills and a focus on scalable solutions.",
+      "experience": {
+        "years": 1.5,
+        "entries": [
+          "Software Engineer – Cognizant Technology Solutions – Dec 2023 – Present"
+        ]
+      },
+      "education": [
+        "Bachelor of Engineering in Computer Science – Prof. Ram Meghe Institute of Technology and Research"
+      ],
+      "skills": [
+        "Java",
+        "Spring Boot",
+        "Spring Cloud",
+        "Spring Security",
+        "Spring Data JPA",
+        "Hibernate",
+        "Apache Kafka",
+        "PostgreSQL",
+        "MySQL",
+        "MongoDB",
+        "Neo4j",
+        "Redis"
+      ],
+      "contact": {
+        "email": "prajwalen100@gmail.com",
+        "phone": "+91 9284364839",
+        "linkedin": "linkedin.com/in/prajwalg90"
+      },
+      "feedback": {
+        "strengths": [
+          "Strong backend development skills with Java and Spring Boot",
+          "Experience with microservices architecture and messaging systems like Kafka",
+          "AWS certified with multiple certifications",
+          "Quantified achievements in reducing failures and improving performance",
+          "Solid understanding of Agile methodologies and CI/CD practices"
+        ],
+        "gaps": [
+          "No GitHub profile or link to code repositories",
+          "Only one work experience entry; limited duration (1.5 years)",
+          "Education degree mismatch with profile (B.Tech Civil vs B.E. Computer Science)",
+          "No mention of soft skills or leadership experiences"
+        ],
+        "suggestions": [
+          "Add GitHub profile link to showcase code samples and projects",
+          "Ensure email consistency across resume and profile",
+          "Clarify education details to avoid confusion (B.Tech vs B.E.)",
+          "Include more details on project outcomes and metrics for each project",
+          "Consider adding a section for soft skills or teamwork examples"
+        ]
+      },
+      "parsed": {
+        "name": "Prajwal Gulhane",
+        "experience_years": 1.5,
+        "projects": 2,
+        "skills": [
+          "Java",
+          "Spring Boot",
+          "Spring Cloud",
+          "Spring Security",
+          "Spring Data JPA",
+          "Hibernate",
+          "Apache Kafka",
+          "PostgreSQL"
+        ]
+      },
+      "word_count": 473
     }
   ],
   "tracking_events": [
@@ -2298,6 +2412,20 @@
       "action": "follow_linkedin",
       "completed": true,
       "completed_at": "2026-09-07T08:10:03.139Z"
+    },
+    {
+      "id": "track_1788796352079",
+      "user_id": "f16beb3a-3592-4333-bac5-0b435b62b46b",
+      "action": "join_whatsapp",
+      "completed": true,
+      "completed_at": "2026-09-07T15:52:32.079Z"
+    },
+    {
+      "id": "track_1788796353848",
+      "user_id": "f16beb3a-3592-4333-bac5-0b435b62b46b",
+      "action": "follow_linkedin",
+      "completed": true,
+      "completed_at": "2026-09-07T15:52:33.848Z"
     }
   ]
 }
