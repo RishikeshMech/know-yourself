@@ -6,6 +6,7 @@ import { Navbar } from '@/components/Navbar'
 import { HeroMockup } from '@/components/HeroMockup'
 import { useStore } from '@/lib/store'
 import { Typewriter } from '@/components/Typewriter'
+import { WhatsAppLink } from '@/components/WhatsAppCommunity'
 import { signedInLandingRoute } from '@/lib/nextStep'
 
 const MODULES = [
@@ -109,6 +110,10 @@ function Landing() {
               ))}
             </div>
             <Link href={startHref} className="btn-primary mt-7">Start your assessment →</Link>
+            <div className="mt-4 text-sm">
+              <WhatsAppLink className="text-sm" />
+              <span className="ml-2 text-xs text-slate-400">· placement alerts & peer prep</span>
+            </div>
           </div>
         </section>
       </main>
