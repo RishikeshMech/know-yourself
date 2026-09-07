@@ -263,6 +263,29 @@
       "github_url": "",
       "ai_avatar": null,
       "updated_at": "2026-09-07T20:00:49.018Z"
+    },
+    {
+      "id": "c631223c-b1c6-44f6-919b-4f41ee806053",
+      "email": "prajwalen100@gmail.com",
+      "full_name": "Prajwal Gulhane",
+      "prn": "76868576",
+      "phone": "9284364839",
+      "dob": "2002-03-08",
+      "gender": "Male",
+      "degree": "B.Tech CSE",
+      "college": "Ram megh college",
+      "graduation_year": 2023,
+      "cgpa": 9,
+      "skills": "Python",
+      "linkedin_url": "https://linkedin.com/in/prajwalgulhane",
+      "github_url": "",
+      "ai_avatar": {
+        "seed": 896676746,
+        "style": "aura",
+        "version": 1,
+        "generated_at": "2026-09-07T20:50:01.487Z"
+      },
+      "updated_at": "2026-09-07T20:50:01.808Z"
     }
   ],
   "assessment_sessions": [
@@ -667,6 +690,58 @@
       "tab_switches": 2,
       "question_seed": 598652163,
       "created_at": "2026-09-07T20:01:52.800Z"
+    },
+    {
+      "id": "affde295-6550-47f0-8d22-39876c4625ab",
+      "student_id": "c631223c-b1c6-44f6-919b-4f41ee806053",
+      "status": "submitted",
+      "started_at": "2026-09-07T20:44:45.652Z",
+      "expires_at": "2026-09-07T22:44:45.652Z",
+      "duration_sec": 7200,
+      "answers": {
+        "EL1": "The on-call engineer was paged but ignored it",
+        "EL2": "Route them directly to the on-call engineer",
+        "EL3": "The database backup was corrupted",
+        "EL4": "Single-engineer ownership of releases",
+        "EL5": "In the client browser",
+        "EL6": "The pool was enlarged beyond capacity",
+        "EL7": "To speed up the database",
+        "EL8": "Bigger database instance; alerts at 50%",
+        "ER1": "Productivity gains depended heavily on engineers' verification behaviour",
+        "ER2": "Slow first commits and few defects",
+        "ER3": "Code review is no longer needed",
+        "ER4": "Merge requests were deliberately delayed",
+        "ER5": "Freezing the tooling version",
+        "ER6": "It was removed in favour of the assistant",
+        "PS1": "All parallelograms are squares",
+        "PS2": "31",
+        "PS3": "4",
+        "PS4": "Sign-ups → activated (-60%)",
+        "PS5": "O(n³)",
+        "PS6": "1/6",
+        "PS7": "2.8",
+        "PS8": "Reject the variant because p is small",
+        "PS9": "5",
+        "PS10": "11:30",
+        "GRID": 0.7825675,
+        "CL1": "10",
+        "CL2": "20",
+        "CL3": "TCP",
+        "CL4": "NM",
+        "CL5": "Nothing about managers can be concluded",
+        "CL6": "0°",
+        "CL7": "125",
+        "BE1": 55,
+        "BE2": 20,
+        "BE3": 40,
+        "BE4": 97,
+        "BE5": 40,
+        "BE6": 96
+      },
+      "submitted_at": "2026-09-07T20:48:38.886Z",
+      "tab_switches": 2,
+      "question_seed": 316328849,
+      "created_at": "2026-09-07T20:44:45.652Z"
     }
   ],
   "assessment_results": [
@@ -1971,6 +2046,86 @@
       "verifiable_hash": "sha256:67c9f-07d7889d",
       "ai_feedback": {},
       "created_at": "2026-09-07T20:04:07.695Z"
+    },
+    {
+      "id": "res_45afde4e",
+      "session_id": "affde295-6550-47f0-8d22-39876c4625ab",
+      "student_id": "c631223c-b1c6-44f6-919b-4f41ee806053",
+      "scores": {
+        "session_id": "affde295-6550-47f0-8d22-39876c4625ab",
+        "english": {
+          "listening": 6,
+          "speaking": 0,
+          "reading": 8,
+          "writing": 0,
+          "total": 14,
+          "max": 200
+        },
+        "problem_solving": 0,
+        "ai_debugging": 0,
+        "ai_feature": 0,
+        "prompt_engineering": 0,
+        "cognitive": {
+          "grid": 24,
+          "logical": 0,
+          "cognitive_score": 24,
+          "behavioral_total": 58,
+          "total": 82,
+          "max": 200,
+          "behavioral": {
+            "teamwork": 55,
+            "accountability": 20,
+            "adaptability": 40,
+            "responsible_ai": 97,
+            "decision_making": 40,
+            "learning_mindset": 96
+          },
+          "traitLabels": {
+            "teamwork": "Teamwork",
+            "accountability": "Accountability",
+            "adaptability": "Adaptability",
+            "responsible_ai": "Responsible AI",
+            "decision_making": "Decision Making",
+            "learning_mindset": "Learning Mindset"
+          }
+        },
+        "detail": {
+          "listeningCorrect": 1,
+          "listeningTotal": 8,
+          "readingCorrect": 1,
+          "readingTotal": 6,
+          "problemCorrect": 0,
+          "problemTotal": 10,
+          "logicalCorrect": 0,
+          "logicalTotal": 7,
+          "debugPer": {
+            "AD1": 0,
+            "AD2": 0,
+            "AD3": 0
+          },
+          "promptPer": {
+            "PE1": 0,
+            "PE2": 0,
+            "PE3": 0
+          },
+          "featureScore100": 0,
+          "speakingCount": 0
+        },
+        "total": 96,
+        "grade": "D",
+        "percentile": 41,
+        "ai_results": {},
+        "verifiable_hash": "sha256:18a2e60-07da148e",
+        "tab_switches": 2,
+        "auto_submitted": true,
+        "submitted_at": "2026-09-07T20:48:37.103Z"
+      },
+      "total": 96,
+      "grade": "D",
+      "percentile": 41,
+      "verifiable_hash": "sha256:18a2e60-07da148e",
+      "ai_feedback": {},
+      "created_at": "2026-09-07T20:48:38.884Z"
     }
   ],
   "resume_analyses": [
@@ -3507,6 +3662,103 @@
         ]
       },
       "word_count": 473
+    },
+    {
+      "id": "res_1788813863293",
+      "student_id": "c631223c-b1c6-44f6-919b-4f41ee806053",
+      "storage_key": "",
+      "file_name": "Prajwal Gulhane Re.pdf",
+      "created_at": "2026-09-07T20:44:23.293Z",
+      "resume_score": 78,
+      "engine": "deepseek",
+      "name_match": true,
+      "detected_name": "Prajwal Gulhane",
+      "flags": [
+        {
+          "level": "ok",
+          "text": "Name matches candidate profile."
+        },
+        {
+          "level": "warn",
+          "text": "Missing GitHub or live project URLs for developer roles."
+        },
+        {
+          "level": "ok",
+          "text": "Strong quantified achievements in work experience."
+        },
+        {
+          "level": "warn",
+          "text": "Projects lack quantified outcomes and links."
+        }
+      ],
+      "professionalism": 85,
+      "summary": "Prajwal is a backend developer with 1.5+ years at Cognizant, demonstrating solid microservices and Spring Boot experience with impressive metrics. However, the resume lacks verifiable project links and has some vague project descriptions. Overall, he is a competitive candidate for mid-level backend roles, but needs to strengthen project impact and provide proof of work.",
+      "experience": {
+        "years": 1.5,
+        "entries": [
+          "Software Engineer – Cognizant Technology Solutions (Dec 2023 – Present)"
+        ]
+      },
+      "education": [
+        "Bachelor of Engineering in Computer Science – Prof. Ram Meghe Institute of Technology and Research"
+      ],
+      "skills": [
+        "Java",
+        "Spring Boot",
+        "Spring MVC",
+        "Spring Security",
+        "Apache Kafka",
+        "PostgreSQL",
+        "Microservices",
+        "RESTful APIs",
+        "AWS",
+        "Docker",
+        "Kubernetes",
+        "Hibernate"
+      ],
+      "contact": {
+        "email": "prajwalen100@gmail.com",
+        "phone": "+91 9284364839",
+        "linkedin": "linkedin.com/in/prajwalg90"
+      },
+      "feedback": {
+        "strengths": [
+          "Quantified achievements in work experience (e.g., reduced invoice processing failures by 40%, improved query performance by 35%).",
+          "Strong technical stack relevant to backend development.",
+          "Multiple AWS certifications demonstrating cloud proficiency.",
+          "Clear, ATS-friendly formatting with consistent structure.",
+          "Solid educational background with high CGPA."
+        ],
+        "gaps": [
+          "No GitHub or live project URLs provided, limiting verifiability.",
+          "Projects lack quantified outcomes and specific metrics.",
+          "No mention of open-source contributions or personal projects beyond coursework.",
+          "Professional summary is somewhat generic and could be more tailored."
+        ],
+        "suggestions": [
+          "Add GitHub and live demo links for each project, especially for the AI Fitness App and Linklytics.",
+          "Rewrite project bullets using the XYZ formula: 'Accomplished [X] as measured by [Y], by doing [Z]' (e.g., 'Reduced URL redirect latency by 30% by implementing caching strategies').",
+          "Quantify project impact: mention number of users, performance improvements, or scale handled.",
+          "Tailor the professional summary to highlight specific achievements and technologies relevant to target roles.",
+          "Include a link to your LinkedIn profile and ensure it is up-to-date."
+        ]
+      },
+      "parsed": {
+        "name": "Prajwal Gulhane",
+        "experience_years": 1.5,
+        "projects": 2,
+        "skills": [
+          "Java",
+          "Spring Boot",
+          "Spring MVC",
+          "Spring Security",
+          "Apache Kafka",
+          "PostgreSQL",
+          "Microservices",
+          "RESTful APIs"
+        ]
+      },
+      "word_count": 473
     }
   ],
   "tracking_events": [
@@ -3698,6 +3950,34 @@
       "action": "follow_linkedin",
       "completed": true,
       "completed_at": "2026-09-07T20:01:34.420Z"
+    },
+    {
+      "id": "track_1788813872634",
+      "user_id": "c631223c-b1c6-44f6-919b-4f41ee806053",
+      "action": "join_whatsapp",
+      "completed": true,
+      "completed_at": "2026-09-07T20:44:32.634Z"
+    },
+    {
+      "id": "track_1788813875598",
+      "user_id": "c631223c-b1c6-44f6-919b-4f41ee806053",
+      "action": "follow_linkedin",
+      "completed": true,
+      "completed_at": "2026-09-07T20:44:35.598Z"
+    },
+    {
+      "id": "track_1788814153664",
+      "user_id": "c631223c-b1c6-44f6-919b-4f41ee806053",
+      "action": "join_whatsapp",
+      "completed": true,
+      "completed_at": "2026-09-07T20:49:13.664Z"
+    },
+    {
+      "id": "track_1788814156188",
+      "user_id": "c631223c-b1c6-44f6-919b-4f41ee806053",
+      "action": "follow_linkedin",
+      "completed": true,
+      "completed_at": "2026-09-07T20:49:16.188Z"
     }
   ]
 }
