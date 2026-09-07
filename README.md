@@ -30,6 +30,12 @@ Admin-only view of **every student** (works on any domain — `http://localhost:
 - Raw data is also served at `GET /api/admin/export?scope=all|filtered&college=&q=` (cookie-protected).
 - Set `ADMIN_SECRET` (any long random string) in production to sign admin sessions.
 
+### Student self-service (`/dashboard/student` → Edit / Resume)
+
+- **Edit profile →** `/edit-profile` is a dedicated, one-page editor (not the onboarding wizard). Returning users edit any field, it saves to the same backend, and they land back on their dashboard. Onboarding stays a **one-time** step: the routing logic (`lib/nextStep.ts`, `/register` login/Google paths, and the `/onboarding` guard) never sends a user whose profile is already complete back into the onboarding flow.
+- **Update resume →** `/resume?edit=1` is the standalone "update your resume" view (no onboarding stepper, no WhatsApp continue step). The `?edit=1` flag keeps the linear onboarding flow (`/onboarding` → `/resume` → WhatsApp) intact for new users while giving returning users a focused update page.
+- Scores are live: the student dashboard re-fetches profile / resume / scores on window focus (and on mount), and the edit/update pages write through the shared store, so a change shows up immediately.
+
 ### Optional configuration (`.env.local`)
 
 Copy `.env.example` → `.env.local`:
