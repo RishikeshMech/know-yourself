@@ -15,6 +15,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" type="image/svg+xml" href="/icon.svg" />
         <link rel="apple-touch-icon" href="/icon-512.png" sizes="512x512" />
+        {/* Inter is applied to every element (`* { font-family: Inter, … }`), so
+            the webfont arriving late repaints the whole page — a visible flash
+            on arrival. Start the TLS handshakes immediately so the stylesheet
+            and the font files are on their way before the HTML finishes
+            parsing, shrinking the fallback→Inter swap window. */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
       </head>
       <body className="min-h-screen text-slate-800 antialiased">

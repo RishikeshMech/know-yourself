@@ -148,6 +148,17 @@ body {
 .animate-fade-up { animation: fade-up .6s cubic-bezier(.22,.8,.32,1) both; }
 .animate-fade-in { animation: fade-in .5s ease both; }
 .animate-pop     { animation: pop .35s cubic-bezier(.22,.8,.32,1.2) both; }
+/* The ambient blobs drift forever underneath the frosted-glass surfaces (the
+   sticky navbar and the cards both use backdrop-filter). Left on the normal
+   paint path the browser re-rasterises those huge blurs every frame, which
+   shows up as the whole page shimmering — worst on /instructions, which stacks
+   the most glass. Promoting them to their own compositor layer keeps the
+   animation off the paint path. */
+.blob-a, .blob-b {
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
 .blob-a { animation: float-slow 16s ease-in-out infinite; }
 .blob-b { animation: float-slower 20s ease-in-out infinite; }
 

@@ -1,9 +1,10 @@
 'use client'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Navbar } from '@/components/Navbar'
 import { HeroMockup } from '@/components/HeroMockup'
 import { StoreProvider, useStore } from '@/lib/store'
 import { Typewriter } from '@/components/Typewriter'
+import { signedInLandingRoute } from '@/lib/nextStep'
 
 const MODULES = [
   'English Communication', 'Problem Solving', 'AI Debugging',
@@ -11,14 +12,19 @@ const MODULES = [
 ]
 
 function Landing() {
-  const { user, hydrated } = useStore()
+  const { user, profile, hydrated } = useStore()
+  const sentRef = useRef(false)
   // A signed-in candidate should never see the marketing home page (or the login
-  // screen). If they land here while authenticated — e.g. via the browser back
-  // button or a direct URL — send them straight to their dashboard. `replace`
-  // also clears this entry from history so the back button can't return here.
+  // screen). If they land here while authenticated — via the Supabase email
+  // confirmation redirect, the browser back button or a direct URL — send them
+  // to their actual next step rather than always the dashboard: a brand-new
+  // account still has to fill in their profile. `replace` also clears this
+  // entry from history so the back button can't return here.
   useEffect(() => {
-    if (user && hydrated) window.location.replace('/dashboard/student')
-  }, [user, hydrated])
+    if (!hydrated || !user || sentRef.current) return
+    sentRef.current = true
+    window.location.replace(signedInLandingRoute(profile))
+  }, [user, profile, hydrated])
   // Render nothing until the session has been read and, if the visitor is
   // signed in, redirect away — so the home page is never flashed to a candidate.
   if (!hydrated || user) return null
