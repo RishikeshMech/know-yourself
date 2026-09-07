@@ -245,6 +245,24 @@
       "github_url": "",
       "ai_avatar": null,
       "updated_at": "2026-09-07T18:04:34.803Z"
+    },
+    {
+      "id": "859df134-28d1-4b59-94dc-1b4d9f5b0637",
+      "email": "prajwalen100@gmail.com",
+      "full_name": "Prajwal Gulhane",
+      "prn": "87877686",
+      "phone": "7877888089",
+      "dob": "2002-08-07",
+      "gender": "Male",
+      "degree": "BCA",
+      "college": "788",
+      "graduation_year": 2023,
+      "cgpa": 9,
+      "skills": "Python , react , sql",
+      "linkedin_url": "",
+      "github_url": "",
+      "ai_avatar": null,
+      "updated_at": "2026-09-07T20:00:49.018Z"
     }
   ],
   "assessment_sessions": [
@@ -617,6 +635,38 @@
       "tab_switches": 0,
       "question_seed": 578115425,
       "created_at": "2026-09-07T18:04:59.991Z"
+    },
+    {
+      "id": "9df074a0-16b8-4de2-b6dd-3d10b51ca19b",
+      "student_id": "859df134-28d1-4b59-94dc-1b4d9f5b0637",
+      "status": "submitted",
+      "started_at": "2026-09-07T20:01:52.800Z",
+      "expires_at": "2026-09-07T22:01:52.800Z",
+      "duration_sec": 7200,
+      "answers": {
+        "EL1": "The migration was rolled back silently",
+        "EL2": "Send them only to the team lead",
+        "EL3": "The database backup was corrupted",
+        "EL4": "Deploy on weekends only",
+        "EL5": "At the API gateway / connection pool",
+        "EL6": "Pods were scaled to 30 but the pool stayed at 50",
+        "EL7": "To force users to retry",
+        "EL8": "PgBouncer multiplexing; alerts at 70% pool utilization",
+        "PS1": "All parallelograms are squares",
+        "PS2": "31",
+        "PS3": "9",
+        "PS4": "Sign-ups → activated (-60%)",
+        "PS5": "O(n log n)",
+        "PS6": "1/6",
+        "PS7": "2.8",
+        "PS8": "Treat as promising but confirm with a larger sample",
+        "PS9": "2",
+        "PS10": "12:00"
+      },
+      "submitted_at": "2026-09-07T20:04:07.695Z",
+      "tab_switches": 2,
+      "question_seed": 598652163,
+      "created_at": "2026-09-07T20:01:52.800Z"
     }
   ],
   "assessment_results": [
@@ -1841,6 +1891,86 @@
         }
       },
       "created_at": "2026-09-07T18:34:37.287Z"
+    },
+    {
+      "id": "res_9215a9e3",
+      "session_id": "9df074a0-16b8-4de2-b6dd-3d10b51ca19b",
+      "student_id": "859df134-28d1-4b59-94dc-1b4d9f5b0637",
+      "scores": {
+        "session_id": "9df074a0-16b8-4de2-b6dd-3d10b51ca19b",
+        "english": {
+          "listening": 19,
+          "speaking": 0,
+          "reading": 0,
+          "writing": 0,
+          "total": 19,
+          "max": 200
+        },
+        "problem_solving": 20,
+        "ai_debugging": 0,
+        "ai_feature": 0,
+        "prompt_engineering": 0,
+        "cognitive": {
+          "grid": 0,
+          "logical": 0,
+          "cognitive_score": 0,
+          "behavioral_total": 40,
+          "total": 40,
+          "max": 200,
+          "behavioral": {
+            "teamwork": 40,
+            "accountability": 40,
+            "adaptability": 40,
+            "responsible_ai": 40,
+            "decision_making": 40,
+            "learning_mindset": 40
+          },
+          "traitLabels": {
+            "teamwork": "Teamwork",
+            "accountability": "Accountability",
+            "adaptability": "Adaptability",
+            "responsible_ai": "Responsible AI",
+            "decision_making": "Decision Making",
+            "learning_mindset": "Learning Mindset"
+          }
+        },
+        "detail": {
+          "listeningCorrect": 3,
+          "listeningTotal": 8,
+          "readingCorrect": 0,
+          "readingTotal": 6,
+          "problemCorrect": 1,
+          "problemTotal": 10,
+          "logicalCorrect": 0,
+          "logicalTotal": 7,
+          "debugPer": {
+            "AD1": 0,
+            "AD2": 0,
+            "AD3": 0
+          },
+          "promptPer": {
+            "PE1": 0,
+            "PE2": 0,
+            "PE3": 0
+          },
+          "featureScore100": 0,
+          "speakingCount": 0
+        },
+        "total": 79,
+        "grade": "D",
+        "percentile": 40,
+        "ai_results": {},
+        "verifiable_hash": "sha256:67c9f-07d7889d",
+        "tab_switches": 2,
+        "auto_submitted": true,
+        "submitted_at": "2026-09-07T20:04:06.742Z"
+      },
+      "total": 79,
+      "grade": "D",
+      "percentile": 40,
+      "verifiable_hash": "sha256:67c9f-07d7889d",
+      "ai_feedback": {},
+      "created_at": "2026-09-07T20:04:07.695Z"
     }
   ],
   "resume_analyses": [
@@ -3284,6 +3414,99 @@
         "skills": []
       },
       "word_count": 108
+    },
+    {
+      "id": "res_1788811277280",
+      "student_id": "859df134-28d1-4b59-94dc-1b4d9f5b0637",
+      "storage_key": "",
+      "file_name": "Prajwal Gulhane Re.pdf",
+      "created_at": "2026-09-07T20:01:17.280Z",
+      "resume_score": 82,
+      "engine": "deepseek",
+      "name_match": true,
+      "detected_name": "Prajwal Gulhane",
+      "flags": [
+        {
+          "level": "ok",
+          "text": "Name matches candidate profile."
+        },
+        {
+          "level": "warn",
+          "text": "GitHub profile not provided; include link to code repositories."
+        },
+        {
+          "level": "ok",
+          "text": "Strong quantified achievements present."
+        }
+      ],
+      "professionalism": 85,
+      "summary": "Prajwal is a Java backend developer with 1.5+ years at Cognizant, demonstrating solid microservices experience and measurable impact. The resume is well-structured with strong metrics, but lacks a GitHub link and some project details are vague. Overall, a competitive candidate for backend roles, though not yet at the top-tier bar.",
+      "experience": {
+        "years": 1.5,
+        "entries": [
+          "Software Engineer – Cognizant Technology Solutions – Dec 2023 – Present"
+        ]
+      },
+      "education": [
+        "Bachelor of Engineering in Computer Science – Prof. Ram Meghe Institute of Technology and Research"
+      ],
+      "skills": [
+        "Java",
+        "Spring Boot",
+        "Spring Security",
+        "Spring Data JPA",
+        "Hibernate",
+        "Apache Kafka",
+        "PostgreSQL",
+        "MySQL",
+        "MongoDB",
+        "Neo4j",
+        "Redis",
+        "AWS"
+      ],
+      "contact": {
+        "email": "prajwalen100@gmail.com",
+        "phone": "+91 9284364839",
+        "linkedin": "linkedin.com/in/prajwalg90"
+      },
+      "feedback": {
+        "strengths": [
+          "Quantified achievements: reduced invoice processing failures by 40%, improved query performance by 35%, reduced latency by 60%.",
+          "Handled 10,000+ daily transactions with 99.5% uptime.",
+          "Relevant AWS certifications (Cloud Practitioner, Solutions Architect Associate, AI Practitioner).",
+          "Solid understanding of microservices architecture and design patterns.",
+          "Clear, ATS-friendly formatting with consistent structure."
+        ],
+        "gaps": [
+          "No GitHub or live project links provided; essential for developer roles.",
+          "Project descriptions lack depth and measurable outcomes; e.g., 'AI-Powered Fitness App' has no metrics.",
+          "Only one work experience entry; limited duration may be a concern for senior roles.",
+          "Some skills listed (e.g., AI/ML) may be overstated without concrete project evidence."
+        ],
+        "suggestions": [
+          "Add GitHub and live demo links for each project; ensure repositories are public and well-documented.",
+          "Rewrite project bullets using the XYZ formula: 'Accomplished [X] as measured by [Y], by doing [Z]'—e.g., 'Reduced API response time by 30% (measured by load tests) by implementing caching and query optimization.'",
+          "Quantify project impact: mention user counts, performance improvements, or scale handled.",
+          "Expand work experience bullets to include more architectural decisions and team leadership examples.",
+          "Remove or substantiate AI/ML skills with specific projects or contributions."
+        ]
+      },
+      "parsed": {
+        "name": "Prajwal Gulhane",
+        "experience_years": 1.5,
+        "projects": 2,
+        "skills": [
+          "Java",
+          "Spring Boot",
+          "Spring Security",
+          "Spring Data JPA",
+          "Hibernate",
+          "Apache Kafka",
+          "PostgreSQL",
+          "MySQL"
+        ]
+      },
+      "word_count": 473
     }
   ],
   "tracking_events": [
@@ -3461,6 +3684,20 @@
       "action": "follow_linkedin",
       "completed": true,
       "completed_at": "2026-09-07T18:04:53.268Z"
+    },
+    {
+      "id": "track_1788811285076",
+      "user_id": "859df134-28d1-4b59-94dc-1b4d9f5b0637",
+      "action": "join_whatsapp",
+      "completed": true,
+      "completed_at": "2026-09-07T20:01:25.076Z"
+    },
+    {
+      "id": "track_1788811294420",
+      "user_id": "859df134-28d1-4b59-94dc-1b4d9f5b0637",
+      "action": "follow_linkedin",
+      "completed": true,
+      "completed_at": "2026-09-07T20:01:34.420Z"
     }
   ]
 }
