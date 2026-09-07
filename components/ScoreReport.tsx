@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { Navbar } from '@/components/Navbar'
+import { WhatsAppCommunityCard } from '@/components/WhatsAppCommunity'
 import { useStore } from '@/lib/store'
 import { isProfileComplete } from '@/lib/validate'
 import { SAMPLE_PROFILE, SAMPLE_USER } from '@/lib/sample'
@@ -147,6 +148,11 @@ export function ScoreReport({ scores, sample = false }: Props) {
               ))}
             </div>
           </div>
+        </div>
+
+        {/* Community — keep preparing with peers after the result */}
+        <div className="animate-fade-up" style={{ animationDelay: '.12s' }}>
+          <WhatsAppCommunityCard />
         </div>
 
         {/* AI feedback */}

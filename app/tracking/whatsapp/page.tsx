@@ -3,6 +3,8 @@ import { useRouter } from 'next/navigation'
 import { Navbar } from '@/components/Navbar'
 import { useStore } from '@/lib/store'
 import { Stepper } from '@/components/Stepper'
+import { WHATSAPP_COMMUNITY_URL } from '@/lib/community'
+import { WhatsAppGlyph } from '@/components/WhatsAppCommunity'
 
 function Inner(){
   const router = useRouter()
@@ -37,7 +39,7 @@ function Inner(){
           </div>
 
           <div className="mt-7 flex justify-center gap-3">
-            <a href="https://whatsapp.com" target="_blank" rel="noreferrer" onClick={complete} className="btn-primary !bg-none bg-emerald-500 !shadow-emerald-300/50 hover:bg-emerald-600">Join WhatsApp →</a>
+            <a href={WHATSAPP_COMMUNITY_URL} target="_blank" rel="noreferrer" onClick={complete} className="btn-primary !bg-none bg-emerald-500 !shadow-emerald-300/50 hover:bg-emerald-600 inline-flex items-center gap-2"><WhatsAppGlyph className="h-4 w-4" /> Join WhatsApp →</a>
             <button onClick={complete} className="btn-soft">I've joined ✓</button>
           </div>
           <button onClick={()=>router.push('/tracking/linkedin')} className="mt-4 text-xs font-semibold text-slate-400 hover:text-slate-600">Skip for now</button>

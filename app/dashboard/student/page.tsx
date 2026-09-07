@@ -9,6 +9,7 @@ import { isProfileComplete } from '@/lib/validate'
 import { consumeJustSubmittedTicket } from '@/lib/justSubmitted'
 import { ReportModal } from '@/components/ReportModal'
 import { SkillChips } from '@/components/SkillChips'
+import { WhatsAppCommunityCard } from '@/components/WhatsAppCommunity'
 
 function Inner(){
   const router = useRouter()
@@ -202,6 +203,10 @@ function Inner(){
                 <li>Practice prompt engineering with 3 daily drills</li>
                 <li>Add quantified impact to your resume projects</li>
               </ul>
+            </div>
+
+            <div className="animate-fade-up" style={{animationDelay:'.2s'}}>
+              <WhatsAppCommunityCard />
             </div>
           </div>
         </div>
