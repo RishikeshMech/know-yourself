@@ -227,6 +227,24 @@
       "github_url": "",
       "ai_avatar": null,
       "updated_at": "2026-09-07T18:00:10.534Z"
+    },
+    {
+      "id": "u_e3246197",
+      "email": "prajwalgulhane85@gmail.com",
+      "full_name": "Prajwal Gulhane",
+      "prn": "2333232",
+      "phone": "2321321321",
+      "dob": "2002-02-23",
+      "gender": "Male",
+      "degree": "B.Tech Civil",
+      "college": "2323",
+      "graduation_year": 2023,
+      "cgpa": 3,
+      "skills": "",
+      "linkedin_url": "",
+      "github_url": "",
+      "ai_avatar": null,
+      "updated_at": "2026-09-07T18:04:34.803Z"
     }
   ],
   "assessment_sessions": [
@@ -547,6 +565,22 @@
       "tab_switches": 0,
       "question_seed": 411053198,
       "created_at": "2026-09-07T16:20:26.466Z"
+    },
+    {
+      "id": "aa63f7da-19a3-498a-bf1f-3582e48ee34f",
+      "student_id": "u_e3246197",
+      "status": "in_progress",
+      "started_at": "2026-09-07T18:04:59.991Z",
+      "expires_at": "2026-09-07T20:04:59.991Z",
+      "duration_sec": 7200,
+      "answers": {
+        "AD1_fix": "def paginate(items, page, size):\n    # Input validation\n    if page < 1:\n        return []  # Invalid page number\n    if size <= 0:\n        return []  # Invalid page size\n    \n    # Convert to zero-based index for slicing\n    start = (page - 1) * size\n    end = start + size\n    \n    # Slice handles requests beyond the last page gracefully\n    return items[start:end]",
+        "AF1_code": "// rateLimiter.js\n\n// In-memory storage for request timestamps\nconst userRequests = new Map();\n\n/**\n * Check if a request is allowed and record it if so\n * @param {string} userId - Unique user identifier\n * @param {number} maxRequests - Max requests allowed in window (default: 5)\n * @param {number} windowMs - Window size in milliseconds (default: 60000)\n * @returns {boolean} - true if allowed, false if rate limited\n */\nfunction isAllowed(userId, maxRequests = 5, windowMs = 60000) {\n    const now = Date.now();\n    const cutoffTime = now - windowMs;\n    \n    // Get existing timestamps for this user\n    let timestamps = userRequests.get(userId) || [];\n    \n    // Clean old timestamps (outside the window)\n    timestamps = timestamps.filter(timestamp => timestamp > cutoffTime);\n    \n    // Check if user has exceeded limit\n    if (timestamps.length >= maxRequests) {\n        // Store cleaned timestamps even on rejection\n        userRequests.set(userId, timestamps);\n        return false;\n    }\n    \n    // Record this request\n    timestamps.push(now);\n    userRequests.set(userId, timestamps);\n    return true;\n}\n\n/**\n * Get time until next allowed request (for Retry-After header)\n * @param {string} userId - User identifier\n * @param {number} maxRequests - Max requests allowed\n * @param {number} windowMs - Window size in milliseconds\n * @returns {number} - Milliseconds until next allowed request\n */\nfunction getRetryAfterMs(userId, maxRequests = 5, windowMs = 60000) {\n    const now = Date.now();\n    const cutoffTime = now - windowMs;\n    const timestamps = (userRequests.get(userId) || [])\n        .filter(timestamp => timestamp > cutoffTime);\n    \n    if (timestamps.length < maxRequests) {\n        return 0; // Not rate limited\n    }\n    \n    // Find the oldest timestamp in the window\n    const oldestTimestamp = Math.min(...timestamps);\n    return Math.max(0, windowMs - (now - oldestTimestamp));\n}\n\n/**\n * Express middleware for rate limiting\n */\nfunction rateLimitMiddleware({\n    maxRequests = 5,\n    windowMs = 60000,\n    getUserId = (req) => req.ip\n} = {}) {\n    return (req, res, next) => {\n        const userId = getUserId(req);\n        \n        if (isAllowed(userId, maxRequests, windowMs)) {\n            next();\n        } else {\n            const retryAfterMs = getRetryAfterMs(userId, maxRequests, windowMs);\n            const retryAfterSeconds = Math.ceil(retryAfterMs / 1000);\n            \n            res.set('Retry-After', retryAfterSeconds.toString());\n            res.status(429).json({\n                error: 'Too Many Requests',\n                message: `Rate limit exceeded. Try again in ${retryAfterSeconds} seconds.`\n            });\n        }\n    };\n}\n\n// Export the functions directly\nmodule.exports = {\n    isAllowed,\n    getRetryAfterMs,\n    rateLimitMiddleware\n};"
+      },
+      "submitted_at": null,
+      "tab_switches": 0,
+      "question_seed": 578115425,
+      "created_at": "2026-09-07T18:04:59.991Z"
     }
   ],
   "assessment_results": [
@@ -2974,6 +3008,66 @@
         ]
       },
       "word_count": 11
+    },
+    {
+      "id": "res_1788804285144",
+      "student_id": "u_e3246197",
+      "storage_key": "",
+      "file_name": "CalibiAI_Report_77c9d00f-a788-471e-9a40-1fd919dd2c26 (1).pdf",
+      "created_at": "2026-09-07T18:04:45.144Z",
+      "resume_score": 12,
+      "engine": "deepseek",
+      "name_match": false,
+      "detected_name": "Prajwalen100",
+      "flags": [
+        {
+          "level": "error",
+          "text": "Candidate name mismatch: resume shows 'Prajwalen100' but application name is 'Prajwal Gulhane'."
+        },
+        {
+          "level": "error",
+          "text": "Resume content is not a resume; it is a CalibiAI score report with no work experience, education, skills, or contact details."
+        },
+        {
+          "level": "warn",
+          "text": "No contact information (email, phone, LinkedIn, GitHub) provided."
+        },
+        {
+          "level": "warn",
+          "text": "No quantified achievements or technical projects listed."
+        }
+      ],
+      "professionalism": 10,
+      "summary": "This submission is not a resume but a CalibiAI assessment report, lacking any professional experience, education, skills, or contact information. The candidate's name does not match the application, and the overall score is extremely low. This is an unacceptable submission for any technical role and will be immediately rejected.",
+      "experience": {
+        "years": 0,
+        "entries": []
+      },
+      "education": [],
+      "skills": [],
+      "contact": {},
+      "feedback": {
+        "strengths": [],
+        "gaps": [
+          "No resume content: missing professional summary, work experience, education, skills, and projects.",
+          "No contact information provided.",
+          "Name mismatch between resume and application.",
+          "No evidence of technical skills or engineering capabilities."
+        ],
+        "suggestions": [
+          "Submit a proper resume with your full legal name (Prajwal Gulhane) and accurate contact details.",
+          "Include a professional summary, relevant work experience, education, and technical skills.",
+          "Quantify achievements using metrics (e.g., 'Improved system performance by 30%').",
+          "Add links to GitHub, LinkedIn, or portfolio to demonstrate your work."
+        ]
+      },
+      "parsed": {
+        "name": "Prajwalen100",
+        "experience_years": 0,
+        "projects": 0,
+        "skills": []
+      },
+      "word_count": 108
     }
   ],
   "tracking_events": [
@@ -3137,6 +3231,20 @@
       "action": "follow_linkedin",
       "completed": true,
       "completed_at": "2026-09-07T16:20:17.325Z"
+    },
+    {
+      "id": "track_1788804291364",
+      "user_id": "u_e3246197",
+      "action": "join_whatsapp",
+      "completed": true,
+      "completed_at": "2026-09-07T18:04:51.364Z"
+    },
+    {
+      "id": "track_1788804293268",
+      "user_id": "u_e3246197",
+      "action": "follow_linkedin",
+      "completed": true,
+      "completed_at": "2026-09-07T18:04:53.268Z"
     }
   ]
 }
