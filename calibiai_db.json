@@ -569,15 +569,51 @@
     {
       "id": "aa63f7da-19a3-498a-bf1f-3582e48ee34f",
       "student_id": "u_e3246197",
-      "status": "in_progress",
+      "status": "submitted",
       "started_at": "2026-09-07T18:04:59.991Z",
       "expires_at": "2026-09-07T20:04:59.991Z",
       "duration_sec": 7200,
       "answers": {
         "AD1_fix": "def paginate(items, page, size):\n    # Input validation\n    if page < 1:\n        return []  # Invalid page number\n    if size <= 0:\n        return []  # Invalid page size\n    \n    # Convert to zero-based index for slicing\n    start = (page - 1) * size\n    end = start + size\n    \n    # Slice handles requests beyond the last page gracefully\n    return items[start:end]",
-        "AF1_code": "// rateLimiter.js\n\n// In-memory storage for request timestamps\nconst userRequests = new Map();\n\n/**\n * Check if a request is allowed and record it if so\n * @param {string} userId - Unique user identifier\n * @param {number} maxRequests - Max requests allowed in window (default: 5)\n * @param {number} windowMs - Window size in milliseconds (default: 60000)\n * @returns {boolean} - true if allowed, false if rate limited\n */\nfunction isAllowed(userId, maxRequests = 5, windowMs = 60000) {\n    const now = Date.now();\n    const cutoffTime = now - windowMs;\n    \n    // Get existing timestamps for this user\n    let timestamps = userRequests.get(userId) || [];\n    \n    // Clean old timestamps (outside the window)\n    timestamps = timestamps.filter(timestamp => timestamp > cutoffTime);\n    \n    // Check if user has exceeded limit\n    if (timestamps.length >= maxRequests) {\n        // Store cleaned timestamps even on rejection\n        userRequests.set(userId, timestamps);\n        return false;\n    }\n    \n    // Record this request\n    timestamps.push(now);\n    userRequests.set(userId, timestamps);\n    return true;\n}\n\n/**\n * Get time until next allowed request (for Retry-After header)\n * @param {string} userId - User identifier\n * @param {number} maxRequests - Max requests allowed\n * @param {number} windowMs - Window size in milliseconds\n * @returns {number} - Milliseconds until next allowed request\n */\nfunction getRetryAfterMs(userId, maxRequests = 5, windowMs = 60000) {\n    const now = Date.now();\n    const cutoffTime = now - windowMs;\n    const timestamps = (userRequests.get(userId) || [])\n        .filter(timestamp => timestamp > cutoffTime);\n    \n    if (timestamps.length < maxRequests) {\n        return 0; // Not rate limited\n    }\n    \n    // Find the oldest timestamp in the window\n    const oldestTimestamp = Math.min(...timestamps);\n    return Math.max(0, windowMs - (now - oldestTimestamp));\n}\n\n/**\n * Express middleware for rate limiting\n */\nfunction rateLimitMiddleware({\n    maxRequests = 5,\n    windowMs = 60000,\n    getUserId = (req) => req.ip\n} = {}) {\n    return (req, res, next) => {\n        const userId = getUserId(req);\n        \n        if (isAllowed(userId, maxRequests, windowMs)) {\n            next();\n        } else {\n            const retryAfterMs = getRetryAfterMs(userId, maxRequests, windowMs);\n            const retryAfterSeconds = Math.ceil(retryAfterMs / 1000);\n            \n            res.set('Retry-After', retryAfterSeconds.toString());\n            res.status(429).json({\n                error: 'Too Many Requests',\n                message: `Rate limit exceeded. Try again in ${retryAfterSeconds} seconds.`\n            });\n        }\n    };\n}\n\n// Export the functions directly\nmodule.exports = {\n    isAllowed,\n    getRetryAfterMs,\n    rateLimitMiddleware\n};"
+        "AF1_code": "// rateLimiter.js\n\n// In-memory storage for request timestamps\nconst userRequests = new Map();\n\n/**\n * Check if a request is allowed and record it if so\n * @param {string} userId - Unique user identifier\n * @param {number} maxRequests - Max requests allowed in window (default: 5)\n * @param {number} windowMs - Window size in milliseconds (default: 60000)\n * @returns {boolean} - true if allowed, false if rate limited\n */\nfunction isAllowed(userId, maxRequests = 5, windowMs = 60000) {\n    const now = Date.now();\n    const cutoffTime = now - windowMs;\n    \n    // Get existing timestamps for this user\n    let timestamps = userRequests.get(userId) || [];\n    \n    // Clean old timestamps (outside the window)\n    timestamps = timestamps.filter(timestamp => timestamp > cutoffTime);\n    \n    // Check if user has exceeded limit\n    if (timestamps.length >= maxRequests) {\n        // Store cleaned timestamps even on rejection\n        userRequests.set(userId, timestamps);\n        return false;\n    }\n    \n    // Record this request\n    timestamps.push(now);\n    userRequests.set(userId, timestamps);\n    return true;\n}\n\n/**\n * Get time until next allowed request (for Retry-After header)\n * @param {string} userId - User identifier\n * @param {number} maxRequests - Max requests allowed\n * @param {number} windowMs - Window size in milliseconds\n * @returns {number} - Milliseconds until next allowed request\n */\nfunction getRetryAfterMs(userId, maxRequests = 5, windowMs = 60000) {\n    const now = Date.now();\n    const cutoffTime = now - windowMs;\n    const timestamps = (userRequests.get(userId) || [])\n        .filter(timestamp => timestamp > cutoffTime);\n    \n    if (timestamps.length < maxRequests) {\n        return 0; // Not rate limited\n    }\n    \n    // Find the oldest timestamp in the window\n    const oldestTimestamp = Math.min(...timestamps);\n    return Math.max(0, windowMs - (now - oldestTimestamp));\n}\n\n/**\n * Express middleware for rate limiting\n */\nfunction rateLimitMiddleware({\n    maxRequests = 5,\n    windowMs = 60000,\n    getUserId = (req) => req.ip\n} = {}) {\n    return (req, res, next) => {\n        const userId = getUserId(req);\n        \n        if (isAllowed(userId, maxRequests, windowMs)) {\n            next();\n        } else {\n            const retryAfterMs = getRetryAfterMs(userId, maxRequests, windowMs);\n            const retryAfterSeconds = Math.ceil(retryAfterMs / 1000);\n            \n            res.set('Retry-After', retryAfterSeconds.toString());\n            res.status(429).json({\n                error: 'Too Many Requests',\n                message: `Rate limit exceeded. Try again in ${retryAfterSeconds} seconds.`\n            });\n        }\n    };\n}\n\n// Export the functions directly\nmodule.exports = {\n    isAllowed,\n    getRetryAfterMs,\n    rateLimitMiddleware\n};",
+        "EL1": "The migration was rolled back silently",
+        "EL2": "Route them directly to the on-call engineer",
+        "EL3": "Two engineers were unavailable",
+        "EL4": "Freeze all schema changes",
+        "EL5": "At the API gateway / connection pool",
+        "EL6": "Pods were scaled to 30 but the pool stayed at 50",
+        "EL7": "To reduce audio latency",
+        "EL8": "Fewer application pods; alerts at 90%",
+        "ER1": "AI tools uniformly improved every team",
+        "ER2": "They never used AI tools",
+        "ER3": "Writing code is now impossible",
+        "ER4": "Teammates could not tell reviewed from un-reviewed generated code",
+        "ER5": "Sharing one assistant login per team",
+        "ER6": "It was paired with tight, fast feedback loops alongside the assistant",
+        "GRID": 0.8308450000000001,
+        "CL1": "16",
+        "CL2": "25",
+        "CL3": "UDP",
+        "CL4": "NO",
+        "CL5": "All managers finish faster",
+        "CL6": "15°",
+        "CL7": "75",
+        "BE1": 95,
+        "BE3": 45,
+        "BE4": 97,
+        "BE5": 25,
+        "BE6": 35,
+        "BE2": 97,
+        "PS1": "Some rhombuses are rectangles",
+        "PS2": "30",
+        "PS3": "6",
+        "PS4": "Visits → sign-ups (-60%)",
+        "PS6": "1/6",
+        "PS7": "2.8",
+        "PS9": "3",
+        "PS10": "11:30"
       },
-      "submitted_at": null,
+      "submitted_at": "2026-09-07T18:34:37.288Z",
       "tab_switches": 0,
       "question_seed": 578115425,
       "created_at": "2026-09-07T18:04:59.991Z"
@@ -1625,6 +1661,186 @@
       "verifiable_hash": "sha256:690837-07cac9e9",
       "ai_feedback": {},
       "created_at": "2026-09-07T16:21:23.251Z"
+    },
+    {
+      "id": "res_4dfa20c2",
+      "session_id": "aa63f7da-19a3-498a-bf1f-3582e48ee34f",
+      "student_id": "u_e3246197",
+      "scores": {
+        "session_id": "aa63f7da-19a3-498a-bf1f-3582e48ee34f",
+        "english": {
+          "listening": 19,
+          "speaking": 0,
+          "reading": 17,
+          "writing": 0,
+          "total": 36,
+          "max": 200
+        },
+        "problem_solving": 20,
+        "ai_debugging": 43,
+        "ai_feature": 132,
+        "prompt_engineering": 0,
+        "cognitive": {
+          "grid": 25,
+          "logical": 10,
+          "cognitive_score": 35,
+          "behavioral_total": 66,
+          "total": 101,
+          "max": 200,
+          "behavioral": {
+            "teamwork": 95,
+            "accountability": 97,
+            "adaptability": 45,
+            "responsible_ai": 97,
+            "decision_making": 25,
+            "learning_mindset": 35
+          },
+          "traitLabels": {
+            "teamwork": "Teamwork",
+            "accountability": "Accountability",
+            "adaptability": "Adaptability",
+            "responsible_ai": "Responsible AI",
+            "decision_making": "Decision Making",
+            "learning_mindset": "Learning Mindset"
+          }
+        },
+        "detail": {
+          "listeningCorrect": 3,
+          "listeningTotal": 8,
+          "readingCorrect": 2,
+          "readingTotal": 6,
+          "problemCorrect": 1,
+          "problemTotal": 10,
+          "logicalCorrect": 1,
+          "logicalTotal": 7,
+          "debugPer": {
+            "AD1": 85,
+            "AD2": 0,
+            "AD3": 0
+          },
+          "promptPer": {
+            "PE1": 0,
+            "PE2": 0,
+            "PE3": 0
+          },
+          "featureScore100": 88,
+          "speakingCount": 0
+        },
+        "total": 332,
+        "grade": "D",
+        "percentile": 55,
+        "ai_results": {
+          "AD1": {
+            "score": 85,
+            "rubric": {
+              "correctness": 90,
+              "root_cause_understanding": 90,
+              "edge_cases": 80,
+              "code_quality": 90,
+              "test_awareness": 75
+            },
+            "strengths": [
+              "Correctly fixes the off-by-one error by using (page - 1) * size so page=1 returns the first page.",
+              "Adds explicit validation for page < 1 and size <= 0, returning empty lists as specified.",
+              "Relies on Python's slicing to gracefully handle requests beyond the last page without crashing.",
+              "Code is simple, readable, and well-commented."
+            ],
+            "improvements": [
+              "Consider whether returning [] for invalid inputs is the desired behavior; some APIs might raise ValueError or clamp to valid ranges.",
+              "Could add type checks or handle non-integer inputs, though not strictly required by the task.",
+              "Add unit tests to verify behavior for page=1, page=0, negative page, size=0, negative size, and page beyond last page.",
+              "If items is not a list but a generator, slicing would fail; consider converting to list or using itertools.islice for generality."
+            ],
+            "summary": "The fix correctly addresses the core pagination bug and handles the specified edge cases, with minor room for improvement in input handling and testing.",
+            "engine": "deepseek"
+          },
+          "AF1": {
+            "score": 88,
+            "rubric": {
+              "requirement_understanding": 95,
+              "functional_correctness": 90,
+              "edge_cases": 85,
+              "code_quality": 90,
+              "api_integration": 90
+            },
+            "strengths": [
+              "Correct sliding-window logic with timestamp cleanup on each call.",
+              "Properly returns 429 with Retry-After header in middleware.",
+              "Provides helper to compute retry-after time accurately.",
+              "Configurable middleware with custom user ID extractor.",
+              "Clean module exports and clear documentation."
+            ],
+            "improvements": [
+              "Add periodic cleanup to remove stale user entries entirely, preventing unbounded map growth for inactive users.",
+              "Handle edge case where maxRequests is 0 or negative (should always block or allow accordingly).",
+              "Consider using a more efficient data structure (e.g., queue) to avoid O(n) filtering on every request.",
+              "Add tests for boundary conditions (exact window edge, concurrent requests)."
+            ],
+            "summary": "A solid, functional implementation that meets the spec with correct middleware wiring and retry-after handling, though it could improve memory cleanup for inactive users and handle degenerate maxRequests values.",
+            "engine": "deepseek"
+          }
+        },
+        "verifiable_hash": "sha256:454e58c-07d26997",
+        "tab_switches": 0,
+        "auto_submitted": false,
+        "submitted_at": "2026-09-07T18:34:36.791Z"
+      },
+      "total": 332,
+      "grade": "D",
+      "percentile": 55,
+      "verifiable_hash": "sha256:454e58c-07d26997",
+      "ai_feedback": {
+        "AD1": {
+          "score": 85,
+          "rubric": {
+            "correctness": 90,
+            "root_cause_understanding": 90,
+            "edge_cases": 80,
+            "code_quality": 90,
+            "test_awareness": 75
+          },
+          "strengths": [
+            "Correctly fixes the off-by-one error by using (page - 1) * size so page=1 returns the first page.",
+            "Adds explicit validation for page < 1 and size <= 0, returning empty lists as specified.",
+            "Relies on Python's slicing to gracefully handle requests beyond the last page without crashing.",
+            "Code is simple, readable, and well-commented."
+          ],
+          "improvements": [
+            "Consider whether returning [] for invalid inputs is the desired behavior; some APIs might raise ValueError or clamp to valid ranges.",
+            "Could add type checks or handle non-integer inputs, though not strictly required by the task.",
+            "Add unit tests to verify behavior for page=1, page=0, negative page, size=0, negative size, and page beyond last page.",
+            "If items is not a list but a generator, slicing would fail; consider converting to list or using itertools.islice for generality."
+          ],
+          "summary": "The fix correctly addresses the core pagination bug and handles the specified edge cases, with minor room for improvement in input handling and testing.",
+          "engine": "deepseek"
+        },
+        "AF1": {
+          "score": 88,
+          "rubric": {
+            "requirement_understanding": 95,
+            "functional_correctness": 90,
+            "edge_cases": 85,
+            "code_quality": 90,
+            "api_integration": 90
+          },
+          "strengths": [
+            "Correct sliding-window logic with timestamp cleanup on each call.",
+            "Properly returns 429 with Retry-After header in middleware.",
+            "Provides helper to compute retry-after time accurately.",
+            "Configurable middleware with custom user ID extractor.",
+            "Clean module exports and clear documentation."
+          ],
+          "improvements": [
+            "Add periodic cleanup to remove stale user entries entirely, preventing unbounded map growth for inactive users.",
+            "Handle edge case where maxRequests is 0 or negative (should always block or allow accordingly).",
+            "Consider using a more efficient data structure (e.g., queue) to avoid O(n) filtering on every request.",
+            "Add tests for boundary conditions (exact window edge, concurrent requests)."
+          ],
+          "summary": "A solid, functional implementation that meets the spec with correct middleware wiring and retry-after handling, though it could improve memory cleanup for inactive users and handle degenerate maxRequests values.",
+          "engine": "deepseek"
+        }
+      },
+      "created_at": "2026-09-07T18:34:37.287Z"
     }
   ],
   "resume_analyses": [
