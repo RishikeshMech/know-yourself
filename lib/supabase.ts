@@ -44,7 +44,22 @@ export function getSupabase(): SupabaseClient | null {
   }
   try {
     client = createClient(url, key, {
-      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        // Keep URL auto-detection off: /auth/callback performs the exchange
+        // itself. If this were `true`, supabase-js would consume the single-use
+        // `?code=` first and the callback page's own exchangeCodeForSession()
+        // would then fail with "already used" and bounce the user to /login.
+        detectSessionInUrl: false,
+        // REQUIRED. supabase-js defaults `flowType` to 'implicit', which makes
+        // Supabase return the session in the URL *fragment*
+        // (#access_token=…) instead of a `?code=` query param. The callback
+        // page exchanges a `?code=`, so under the default the session was never
+        // picked up and every Google login ended back on /login. Pinning PKCE
+        // makes Supabase send `?code=` — and it is the safer flow anyway.
+        flowType: 'pkce',
+      },
     })
   } catch (e) {
     warnOnce(`Supabase client could not be created (${(e as Error)?.message || e}).`)
