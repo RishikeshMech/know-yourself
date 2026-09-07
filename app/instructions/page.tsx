@@ -2,8 +2,8 @@
 import { Navbar } from '@/components/Navbar'
 import { StoreProvider, useStore } from '@/lib/store'
 import { Stepper } from '@/components/Stepper'
-import { useEffect, useState } from 'react'
-import { getSupabase } from '@/lib/supabase'
+import { useEffect, useRef, useState } from 'react'
+import { resolveInstructionsRedirect, safeRead } from '@/lib/attemptAccess'
 
 const ALLOCATION = [
   [1, 'English Communication', '15 min'],
@@ -23,32 +23,65 @@ const MODULES = [
   ['Cognitive Assessment','200 pts · Grid challenge, logical reasoning, behavioural'],
 ]
 
+/** If the scores lookup stalls we still let the page through rather than
+ *  leaving the visitor staring at a spinner forever. */
+const SCORES_LOOKUP_TIMEOUT_MS = 2500
+
+function Spinner() {
+  return (
+    <span
+      className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600"
+      role="status"
+      aria-label="Loading"
+    />
+  )
+}
+
 function Inner(){
-  const {setSession, user} = useStore()
+  const {setSession, user, hydrated} = useStore()
   const [checked,setChecked]=useState(false)
   const [starting,setStarting]=useState(false)
+  // One-time assessment: users who already have a result (local or DB) are sent
+  // to their profile instead of being able to start another attempt, and a user
+  // mid-attempt goes straight back to the in-progress assessment.
+  //
+  // The page stays on `checking` until that decision is final, so the
+  // instructions are never painted just to be thrown away a moment later by a
+  // redirect (that paint-then-replace was the flicker).
+  const [gate,setGate]=useState<'checking'|'show'>('checking')
+  const navigatedRef = useRef(false)
 
-  // One-time assessment: users who already have a result (local or DB) are
-  // sent to their profile instead of being able to start another attempt.
-  // A user mid-attempt is sent straight back to the in-progress assessment
-  // (starting again here would reset their 120-minute timer).
+  const go = (to: string) => {
+    if (navigatedRef.current) return
+    navigatedRef.current = true
+    window.location.replace(to)
+  }
+
   useEffect(() => {
-    try {
-      if (localStorage.getItem('calibiai_scores')) { window.location.replace('/profile'); return }
-      const raw = localStorage.getItem('calibiai_session')
-      if (raw) {
-        const s = JSON.parse(raw)
-        if (s?.status === 'submitted' || s?.status === 'expired') { window.location.replace('/profile'); return }
-        if (s?.status === 'in_progress') { window.location.replace('/assessment'); return }
-      }
-    } catch { }
-    if (user?.id) {
-      fetch('/api/user/scores?student_id=' + user.id)
-        .then(r => r.json())
-        .then(d => { if (d.result) window.location.replace('/profile') })
-        .catch(() => { })
-    }
-  }, [user?.id])
+    // Nothing is known until the store has read localStorage once.
+    if (!hydrated) return
+
+    const target = resolveInstructionsRedirect(safeRead)
+    if (target) { go(target); return }
+
+    // Signed out → there is no stored result to check server-side; show now.
+    if (!user?.id) { setGate('show'); return }
+
+    // Signed in → wait for the stored result so the page never appears for a
+    // student who is then immediately sent to their report.
+    let cancelled = false
+    let settled = false
+    const finish = () => { if (cancelled || settled) return; settled = true; setGate('show') }
+    const timer = setTimeout(finish, SCORES_LOOKUP_TIMEOUT_MS)
+
+    fetch('/api/user/scores?student_id=' + user.id)
+      .then(r => r.json())
+      .then(d => { if (cancelled) return; clearTimeout(timer); if (d?.result) go('/profile'); else finish() })
+      .catch(() => { clearTimeout(timer); finish() })
+
+    return () => { cancelled = true; clearTimeout(timer) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, user?.id])
 
   const start = async ()=>{
     if(starting) return
@@ -90,6 +123,24 @@ function Inner(){
     }catch{ }
     setSession(session)
     window.location.assign('/assessment')
+  }
+
+  // Same chrome as the real page, so nothing jumps when the content arrives —
+  // only the card below the stepper swaps.
+  if (gate !== 'show') {
+    return (
+      <div>
+        <Navbar />
+        <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+          <Stepper step={7} />
+          <div className="mt-6 glass-card flex min-h-[22rem] flex-col items-center justify-center gap-3 text-center">
+            <Spinner />
+            <div className="text-sm font-bold text-slate-700">Checking your assessment status…</div>
+            <div className="text-xs text-slate-400">This is a one-time attempt — making sure you land in the right place.</div>
+          </div>
+        </main>
+      </div>
+    )
   }
 
   return (

@@ -16,7 +16,7 @@ function displayNameFor(profile: any, user: any): string {
 }
 
 export function Navbar() {
-  const { user, profile, logout } = useStore()
+  const { user, profile, logout, hydrated } = useStore()
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -46,7 +46,17 @@ export function Navbar() {
           <span className="font-extrabold tracking-tight text-slate-900 text-lg">CALIBIAI<span className="text-indigo-600"> SCORE</span></span>
         </a>
         <div className="flex items-center gap-2 text-sm">
-          {user ? (
+          {!hydrated ? (
+            /* Not hydrated yet: hold a placeholder the same size as the account
+               control. Without it the top-right corner renders "Sign in" on the
+               first paint and then swaps to the avatar + name once localStorage
+               has been read — a visible jump on every page, and part of the
+               flicker seen when arriving on /instructions. */
+            <span
+              aria-hidden
+              className="flex h-9 w-9 animate-pulse items-center justify-center rounded-full bg-slate-200/60"
+            />
+          ) : user ? (
             <div className="relative" ref={menuRef}>
               <button
                 onClick={() => setOpen(o => !o)}
