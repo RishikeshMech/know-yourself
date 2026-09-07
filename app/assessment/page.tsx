@@ -1,13 +1,15 @@
 'use client'
 export const dynamic = 'force-dynamic'
 import { useEffect, useState, useRef, useMemo } from 'react'
-import { StoreProvider, useStore } from '@/lib/store'
+import { useRouter } from 'next/navigation'
+import { useStore } from '@/lib/store'
 import { bank, shuffledOptions, shuffledChoiceOptions, mulberry32 } from '@/lib/questions'
 import { computeScores } from '@/lib/scoring'
 import { getSupabase } from '@/lib/supabase'
 import { AFTER_ASSESSMENT_ROUTE } from '@/lib/nextStep'
 import { markJustSubmitted } from '@/lib/justSubmitted'
 import { Logo } from '@/components/Logo'
+import { AiExamAssistant } from '@/components/AiExamAssistant'
 import type { TestRunResult } from '@/lib/runTests'
 
 const STAGES = [
@@ -53,7 +55,7 @@ function OptionList({ qid, options, seed, value, onChange, accent = 'indigo' }: 
 function AiFeedback({ r }: { r: any }) {
   if (!r) return null
   return (
-    <div className="mt-3 rounded-2xl bg-emerald-50/80 border border-emerald-200 p-3.5 text-sm">
+    <div className="mt-3 rounded-2xl bg-emerald-50/80 border border-emerald-200 p-3.5 text-sm animate-fade-up">
       <div className="flex items-center justify-between">
         <span className="font-bold text-emerald-700">AI score: {r.score}/100</span>
         <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white text-emerald-700 border border-emerald-200">{r.engine === 'deepseek' ? 'DeepSeek' : 'rule engine'}</span>
@@ -79,7 +81,7 @@ function AiFeedback({ r }: { r: any }) {
 function EvalButton({ id, busy, onRun }: { id: string; busy?: boolean; onRun: () => void }) {
   return (
     <button disabled={busy} onClick={onRun}
-      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold shadow-sm shadow-violet-300 disabled:opacity-50 transition">
+      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold shadow-sm shadow-violet-300 disabled:opacity-50 transition active:scale-95">
       {busy ? 'Evaluating…' : '✨ Evaluate with AI'}
     </button>
   )
@@ -91,7 +93,7 @@ function TestFeedback({ r, taskId }: { r?: TestRunResult; taskId: string }) {
     : r.passed > 0 ? 'bg-amber-50 border-amber-200 text-amber-700'
     : 'bg-rose-50 border-rose-200 text-rose-700'
   return (
-    <div className={`mt-2 rounded-2xl border p-3.5 text-sm ${tone}`}>
+    <div className={`mt-2 rounded-2xl border p-3.5 text-sm ${tone} animate-fade-up`}>
       <div className="flex items-center justify-between">
         <span className="font-bold">{r.passed}/{r.total} tests passed</span>
         {r.timedOut && <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white">timed out</span>}
@@ -101,7 +103,7 @@ function TestFeedback({ r, taskId }: { r?: TestRunResult; taskId: string }) {
         <ul className="mt-2 space-y-1">
           {r.results.map((t, i) => (
             <li key={i} className="flex items-center gap-2 text-xs">
-              <span className={t.passed ? 'text-emerald-600' : 'text-rose-500'}>{t.passed ? '✓' : '✗'}</span>
+              <span className={t.passed ? 'text-emerald-600 font-bold' : 'text-rose-500 font-bold'}>{t.passed ? '✓' : '✗'}</span>
               <span className={t.passed ? 'text-emerald-700' : 'text-rose-600'}>{t.name}</span>
             </li>
           ))}
@@ -112,11 +114,13 @@ function TestFeedback({ r, taskId }: { r?: TestRunResult; taskId: string }) {
 }
 
 function AssessmentInner() {
+  const router = useRouter()
   const { session, setSession, setScores, user } = useStore()
   const [answers, setAnswers] = useState<Record<string, any>>({})
   const [aiResults, setAiResults] = useState<Record<string, any>>({})
   const [stage, setStage] = useState(0)
   const [sub, setSub] = useState(0)
+  const [activeDebuggingTask, setActiveDebuggingTask] = useState(0)
   const [remaining, setRemaining] = useState(7200)
   const [strikes, setStrikes] = useState(0)
   const [showViolation, setShowViolation] = useState(false)
@@ -154,9 +158,7 @@ function AssessmentInner() {
   const sid = session?.id
 
   useEffect(() => {
-    // Read session from localStorage. A short retry covers the rare case where
-    // another effect hasn't finished writing yet right after navigation from
-    // /instructions (START 120-MIN TIMER).
+    // Read session from localStorage.
     let cancelled = false
     let intervalId: any = null
     let pollId: any = null
@@ -164,20 +166,11 @@ function AssessmentInner() {
 
     const boot = (raw: string) => {
       if (cancelled) return
-      // Parse the stored session BEFORE any of the checks below. `s` used to
-      // be left `undefined` here (the JSON.parse(raw) line was missing), so
-      // `!s?.id` was always true and /assessment bounced every in-progress
-      // visitor to /instructions — which then bounced them straight back,
-      // producing the visible flicker between the two pages.
       let s: any = null
       try { s = JSON.parse(raw) } catch { s = null }
-      // One-time assessment: a completed (submitted/expired) session can
-      // never be re-entered — even via the browser back button. Whoever is
-      // already done belongs on the student dashboard, where their score,
-      // report and PDF live.
-      if (s?.status === 'submitted' || s?.status === 'expired') { window.location.replace(AFTER_ASSESSMENT_ROUTE); return }
-      if (localStorage.getItem('calibiai_scores')) { window.location.replace(AFTER_ASSESSMENT_ROUTE); return }
-      if (!s?.id || !s?.expires_at) { window.location.href = localStorage.getItem('calibiai_scores') ? AFTER_ASSESSMENT_ROUTE : '/instructions'; return }
+      if (s?.status === 'submitted' || s?.status === 'expired') { router.replace(AFTER_ASSESSMENT_ROUTE); return }
+      if (localStorage.getItem('calibiai_scores')) { router.replace(AFTER_ASSESSMENT_ROUTE); return }
+      if (!s?.id || !s?.expires_at) { router.replace(localStorage.getItem('calibiai_scores') ? AFTER_ASSESSMENT_ROUTE : '/instructions'); return }
       if (!session) setSession(s)
       try {
         const a = localStorage.getItem('calibiai_answers_' + s.id); if (a) setAnswers(JSON.parse(a))
@@ -187,9 +180,6 @@ function AssessmentInner() {
       const tick = () => {
         const rem = Math.max(0, Math.floor((expires - Date.now()) / 1000))
         setRemaining(rem)
-        // submitRef.current — not the captured handleSubmit — so the
-        // auto-submit closes over the latest answers/aiResults/sid instead
-        // of the stale first-render ones (which were still empty/undefined).
         if (rem <= 0) submitRef.current(true)
       }
       tick()
@@ -203,7 +193,7 @@ function AssessmentInner() {
       const raw = localStorage.getItem('calibiai_session')
       if (raw) { boot(raw); return }
       attempts += 1
-      if (attempts >= 8) { window.location.replace(localStorage.getItem('calibiai_scores') ? AFTER_ASSESSMENT_ROUTE : '/instructions'); return }
+      if (attempts >= 8) { router.replace(localStorage.getItem('calibiai_scores') ? AFTER_ASSESSMENT_ROUTE : '/instructions'); return }
       setTimeout(tryLoad, 50)
     }
     tryLoad()
@@ -304,8 +294,7 @@ function AssessmentInner() {
     finally { setBusy(b => ({ ...b, [key]: false })) }
   }
 
-  // Real test-runner for the coding modules — actually executes the candidate's
-  // code against the hidden tests on the server.
+  // Real test-runner for the coding modules
   const runTests = async (taskId: string, code: string) => {
     const key = taskId + '_tests'
     setBusy(b => ({ ...b, [key]: true }))
@@ -367,7 +356,6 @@ function AssessmentInner() {
     localStorage.setItem('calibiai_scores', JSON.stringify(payload))
     setScores(payload)
     const sb = getSupabase()
-    // Save answers and results to DB
     try {
       await fetch('/api/user/assessment', {
         method: 'POST',
@@ -395,14 +383,8 @@ function AssessmentInner() {
     const s = JSON.parse(localStorage.getItem('calibiai_session') || '{}')
     s.status = 'submitted'
     localStorage.setItem('calibiai_session', JSON.stringify(s))
-    // Fresh-submission ticket: the student dashboard reads it to show the
-    // "assessment complete" banner (and /result uses it to allow one look at
-    // the full report). Single-use — whoever lands first clears it.
     markJustSubmitted()
-    // Submitting ends the attempt, so the candidate goes to their student
-    // dashboard — the page that holds the score, the full report, the PDF and
-    // the resume card — not to the profile details page.
-    window.location.href = AFTER_ASSESSMENT_ROUTE
+    router.replace(AFTER_ASSESSMENT_ROUTE)
   }
   useEffect(() => { submitRef.current = handleSubmit })
 
@@ -528,52 +510,332 @@ function AssessmentInner() {
           </div>
         )
 
-      case 'debugging':
+      case 'debugging': {
+        const d = bank.debugging[activeDebuggingTask] || bank.debugging[0]
+
         return (
           <div className="space-y-4">
-            <p className="text-xs text-slate-500">You may use any AI assistant — you're assessed on finding the root cause, fixing it correctly and handling edge cases.</p>
-            {bank.debugging.map((d: any) => (
-              <div key={d.id} className="panel p-4">
-                <div className="text-sm font-bold text-slate-800">{d.title} <span className="text-slate-400 font-normal">· {d.tests} hidden tests</span></div>
-                <pre className="mt-2 code-panel p-3.5 text-xs overflow-x-auto whitespace-pre-wrap">{d.buggy}</pre>
-                <div className="text-xs text-slate-500 mt-2">{d.prompt}</div>
-                <button onClick={() => setShowHint(h => ({ ...h, [d.id]: !h[d.id] }))} className="mt-1 text-[11px] text-indigo-600 font-semibold">{showHint[d.id] ? 'Hide hint' : '💡 Show hint'}</button>
-                {showHint[d.id] && <div className="mt-1 text-[11px] text-indigo-700 bg-indigo-50 rounded-lg p-2">{d.hint}</div>}
-                <textarea value={answers[d.id + '_fix'] || ''} onChange={e => handleAnswer(d.id + '_fix', e.target.value)} placeholder="Paste your fixed code here…" className="field mt-3 min-h-[130px] font-mono !text-xs" />
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <button onClick={() => runTests(d.id, answers[d.id + '_fix'] || '')} disabled={busy[d.id + '_tests']}
-                    className="btn-soft !py-2 !px-4 !text-xs font-bold disabled:opacity-50">
+            {/* Stage Banner */}
+            <div className="rounded-2xl p-4 bg-gradient-to-r from-indigo-900 via-indigo-800 to-violet-900 text-white shadow-md flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center text-lg">
+                  🤖
+                </div>
+                <div>
+                  <div className="text-xs font-black tracking-wide flex items-center gap-2">
+                    <span>AI-Assisted Debugging Stage</span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-300 text-[10px] font-bold border border-emerald-400/30">
+                      In-Exam Assistant Active
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-indigo-200 mt-0.5">
+                    Proctored assessment — do not switch browser tabs. Use the AI Assistant below to ask questions about bugs, edge cases, or review your code.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Task Sub-Navigation Tabs */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              {bank.debugging.map((task: any, idx: number) => {
+                const filled = !!answers[task.id + '_fix']
+                const testRes = testResults[task.id]
+                const isPassed = testRes && testRes.passed === testRes.total && testRes.total > 0
+                return (
+                  <button
+                    key={task.id}
+                    onClick={() => setActiveDebuggingTask(idx)}
+                    className={`shrink-0 px-4 py-2 rounded-2xl text-xs font-bold border transition-all duration-200 flex items-center gap-2 ${
+                      activeDebuggingTask === idx
+                        ? 'calibiai-gradient text-white border-transparent shadow-md shadow-indigo-200 scale-[1.02]'
+                        : 'bg-white/80 border-slate-200 text-slate-700 hover:bg-white hover:shadow-sm'
+                    }`}
+                  >
+                    <span>Task {idx + 1}: {task.title.split('—')[0].trim()}</span>
+                    {isPassed ? (
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-emerald-300/40" title="All tests passed" />
+                    ) : filled ? (
+                      <span className="w-2 h-2 rounded-full bg-indigo-300" title="Draft saved" />
+                    ) : null}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Active Debugging Task Panel */}
+            <div key={d.id} className="panel p-5 space-y-4 animate-fade-in">
+              <div className="flex items-center justify-between flex-wrap gap-2 border-b border-slate-200/70 pb-3">
+                <div>
+                  <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">
+                    Task {activeDebuggingTask + 1} of {bank.debugging.length}
+                  </span>
+                  <h3 className="text-base font-black text-slate-900 mt-0.5">{d.title}</h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-mono px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 font-semibold">
+                    {d.tests} hidden tests
+                  </span>
+                  <span className="text-[11px] font-mono px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                    {d.id.startsWith('AD2') ? 'JavaScript' : 'Python'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Buggy Code Box */}
+              <div>
+                <div className="flex items-center justify-between text-xs font-bold text-slate-700 mb-1.5">
+                  <span className="flex items-center gap-1.5">
+                    <span className="text-rose-500 font-mono font-bold">●</span> Buggy Code:
+                  </span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(d.buggy)
+                      showToast('Buggy code copied!')
+                    }}
+                    className="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold"
+                  >
+                    Copy buggy code
+                  </button>
+                </div>
+                <pre className="code-panel p-3.5 text-xs overflow-x-auto whitespace-pre-wrap leading-relaxed">{d.buggy}</pre>
+              </div>
+
+              {/* Requirement & Hint */}
+              <div className="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-200/80 text-xs text-slate-700 space-y-2">
+                <div className="font-bold text-slate-900">Task Requirement:</div>
+                <p className="leading-relaxed text-slate-600">{d.prompt}</p>
+                <div>
+                  <button
+                    onClick={() => setShowHint((h) => ({ ...h, [d.id]: !h[d.id] }))}
+                    className="text-[11px] text-indigo-600 font-bold hover:underline inline-flex items-center gap-1"
+                  >
+                    {showHint[d.id] ? '▲ Hide hint' : '💡 Show hint'}
+                  </button>
+                  {showHint[d.id] && (
+                    <div className="mt-1.5 text-[11px] text-indigo-800 bg-indigo-50/90 border border-indigo-100 rounded-xl p-2.5 animate-fade-in">
+                      {d.hint}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Code Editor */}
+              <div>
+                <div className="flex items-center justify-between text-xs font-bold text-slate-700 mb-1.5">
+                  <span className="flex items-center gap-1.5">
+                    <span className="text-emerald-500 font-mono font-bold">●</span> Your Corrected Solution:
+                  </span>
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-[11px] font-mono text-slate-400">
+                      {(answers[d.id + '_fix'] || '').length} chars
+                    </span>
+                    <button
+                      onClick={() => handleAnswer(d.id + '_fix', d.buggy)}
+                      className="text-[11px] text-slate-500 hover:text-slate-800 underline"
+                      title="Reset editor to original buggy code"
+                    >
+                      Reset to buggy
+                    </button>
+                  </div>
+                </div>
+                <textarea
+                  value={answers[d.id + '_fix'] || ''}
+                  onChange={(e) => handleAnswer(d.id + '_fix', e.target.value)}
+                  placeholder={`# Write or paste your corrected ${d.id.startsWith('AD2') ? 'JavaScript' : 'Python'} code here...\n# You can also use the AI assistant below to explain the bug, suggest approaches, or review your code.`}
+                  className="field min-h-[160px] font-mono !text-xs leading-relaxed shadow-sm"
+                  spellCheck={false}
+                />
+              </div>
+
+              {/* Action Buttons Toolbar */}
+              <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1">
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => runTests(d.id, answers[d.id + '_fix'] || '')}
+                    disabled={busy[d.id + '_tests']}
+                    className="btn-soft !py-2 !px-4 !text-xs font-bold disabled:opacity-50 inline-flex items-center gap-1.5 shadow-sm"
+                  >
                     {busy[d.id + '_tests'] ? 'Running tests…' : '▶ Run hidden tests'}
                   </button>
-                  <EvalButton id={d.id} busy={busy[d.id]} onRun={() => runAi(d.id, 'debugging', { taskId: d.id, buggy: d.buggy, prompt: d.prompt, fix: answers[d.id + '_fix'] || '' })} />
+                  <EvalButton
+                    id={d.id}
+                    busy={busy[d.id]}
+                    onRun={() =>
+                      runAi(d.id, 'debugging', {
+                        taskId: d.id,
+                        buggy: d.buggy,
+                        prompt: d.prompt,
+                        fix: answers[d.id + '_fix'] || '',
+                      })
+                    }
+                  />
                 </div>
-                <TestFeedback r={testResults[d.id]} taskId={d.id} />
-                <AiFeedback r={aiResults[d.id]} />
+
+                {/* Sub-task Switcher */}
+                <div className="flex items-center gap-2">
+                  <button
+                    disabled={activeDebuggingTask === 0}
+                    onClick={() => setActiveDebuggingTask((i) => Math.max(0, i - 1))}
+                    className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white/80 text-xs font-semibold hover:bg-white disabled:opacity-30 transition"
+                  >
+                    ← Prev Task
+                  </button>
+                  <span className="text-xs font-mono text-slate-400">
+                    {activeDebuggingTask + 1}/{bank.debugging.length}
+                  </span>
+                  <button
+                    disabled={activeDebuggingTask === bank.debugging.length - 1}
+                    onClick={() => setActiveDebuggingTask((i) => Math.min(bank.debugging.length - 1, i + 1))}
+                    className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white/80 text-xs font-semibold hover:bg-white disabled:opacity-30 transition"
+                  >
+                    Next Task →
+                  </button>
+                </div>
               </div>
-            ))}
+
+              {/* Real Test & AI Evaluation Feedback */}
+              <TestFeedback r={testResults[d.id]} taskId={d.id} />
+              <AiFeedback r={aiResults[d.id]} />
+
+              {/* Embedded In-Exam AI Assistant */}
+              <AiExamAssistant
+                taskId={d.id}
+                taskTitle={d.title}
+                taskPrompt={d.prompt}
+                buggyOrSpec={d.buggy}
+                currentCode={answers[d.id + '_fix'] || ''}
+                onApplyCode={(codeSnippet) => {
+                  handleAnswer(d.id + '_fix', codeSnippet)
+                  showToast('✨ Applied AI code to your editor!')
+                }}
+              />
+            </div>
           </div>
         )
+      }
 
       case 'feature': {
         const f = bank.feature
         return (
-          <div className="panel p-4 space-y-3">
-            <p className="text-xs text-slate-500">Build a feature in an existing codebase. You may use AI. Assessed on requirement understanding, code quality, correctness and testing.</p>
-            <div className="text-sm font-bold text-slate-800">{f.title} <span className="text-slate-400 font-normal">· {f.tests} tests</span></div>
-            <div className="text-sm text-slate-600">{f.spec}</div>
-            <div className="code-panel p-3 text-xs overflow-x-auto">{f.sample}</div>
-            <button onClick={() => setShowHint(h => ({ ...h, AF1: !h.AF1 }))} className="text-[11px] text-indigo-600 font-semibold">{showHint.AF1 ? 'Hide hint' : '💡 Show hint'}</button>
-            {showHint.AF1 && <div className="text-[11px] text-indigo-700 bg-indigo-50 rounded-lg p-2">{f.hint}</div>}
-            <textarea value={answers['AF1_code'] || ''} onChange={e => handleAnswer('AF1_code', e.target.value)} placeholder="function isAllowed(userId){ ... }&#10;// plus Express middleware → 429 + Retry-After" className="field min-h-[220px] font-mono !text-xs" />
-            <div className="flex flex-wrap gap-2">
-              <button onClick={() => runTests('AF1', answers['AF1_code'] || '')} disabled={busy['AF1_tests']}
-                className="btn-soft !py-2 !px-4 !text-xs font-bold disabled:opacity-50">
-                {busy['AF1_tests'] ? 'Running tests…' : '▶ Run feature tests'}
-              </button>
-              <EvalButton id="AF1" busy={busy['AF1']} onRun={() => runAi('AF1', 'feature', { spec: f.spec, code: answers['AF1_code'] || '' })} />
+          <div className="space-y-4">
+            {/* Stage Banner */}
+            <div className="rounded-2xl p-4 bg-gradient-to-r from-indigo-900 via-indigo-800 to-violet-900 text-white shadow-md flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center text-lg">
+                  🚀
+                </div>
+                <div>
+                  <div className="text-xs font-black tracking-wide flex items-center gap-2">
+                    <span>AI-Assisted Feature Development Stage</span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-300 text-[10px] font-bold border border-emerald-400/30">
+                      In-Exam Assistant Active
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-indigo-200 mt-0.5">
+                    Proctored mode active. Build the sliding-window rate limiter & Express middleware. Ask the AI assistant below for architecture, code examples, or reviews without switching tabs.
+                  </div>
+                </div>
+              </div>
             </div>
-            <TestFeedback r={testResults['AF1']} taskId="AF1" />
-            <AiFeedback r={aiResults['AF1']} />
+
+            <div className="panel p-5 space-y-4 animate-fade-in">
+              <div className="flex items-center justify-between flex-wrap gap-2 border-b border-slate-200/70 pb-3">
+                <div>
+                  <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">
+                    Feature Implementation
+                  </span>
+                  <h3 className="text-base font-black text-slate-900 mt-0.5">{f.title}</h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-mono px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 font-semibold">
+                    {f.tests} tests
+                  </span>
+                  <span className="text-[11px] font-mono px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                    Node.js + Express
+                  </span>
+                </div>
+              </div>
+
+              {/* Spec & Sample */}
+              <div className="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-200/80 text-xs text-slate-700 space-y-2.5">
+                <div className="font-bold text-slate-900">Specification:</div>
+                <p className="leading-relaxed text-slate-600">{f.spec}</p>
+                <div>
+                  <span className="font-semibold text-slate-900 block mb-1">Sample Behavior:</span>
+                  <div className="code-panel p-3 text-xs overflow-x-auto">{f.sample}</div>
+                </div>
+                <div>
+                  <button
+                    onClick={() => setShowHint((h) => ({ ...h, AF1: !h.AF1 }))}
+                    className="text-[11px] text-indigo-600 font-bold hover:underline inline-flex items-center gap-1"
+                  >
+                    {showHint.AF1 ? '▲ Hide hint' : '💡 Show hint'}
+                  </button>
+                  {showHint.AF1 && (
+                    <div className="mt-1.5 text-[11px] text-indigo-800 bg-indigo-50/90 border border-indigo-100 rounded-xl p-2.5 animate-fade-in">
+                      {f.hint}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Code Editor */}
+              <div>
+                <div className="flex items-center justify-between text-xs font-bold text-slate-700 mb-1.5">
+                  <span className="flex items-center gap-1.5">
+                    <span className="text-emerald-500 font-mono font-bold">●</span> Your Node / Express Implementation:
+                  </span>
+                  <span className="text-[11px] font-mono text-slate-400">
+                    {(answers['AF1_code'] || '').length} chars
+                  </span>
+                </div>
+                <textarea
+                  value={answers['AF1_code'] || ''}
+                  onChange={(e) => handleAnswer('AF1_code', e.target.value)}
+                  placeholder={`// Implement sliding-window rate limiter function:\nfunction isAllowed(userId, maxRequests = 5, windowMs = 60000) {\n  // Store and clean timestamps per user\n}\n\n// Express middleware wiring (return 429 + Retry-After header):\nfunction rateLimitMiddleware(req, res, next) {\n  // ...\n}`}
+                  className="field min-h-[220px] font-mono !text-xs leading-relaxed shadow-sm"
+                  spellCheck={false}
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap gap-2 pt-1">
+                <button
+                  onClick={() => runTests('AF1', answers['AF1_code'] || '')}
+                  disabled={busy['AF1_tests']}
+                  className="btn-soft !py-2 !px-4 !text-xs font-bold disabled:opacity-50 inline-flex items-center gap-1.5 shadow-sm"
+                >
+                  {busy['AF1_tests'] ? 'Running tests…' : '▶ Run feature tests'}
+                </button>
+                <EvalButton
+                  id="AF1"
+                  busy={busy['AF1']}
+                  onRun={() =>
+                    runAi('AF1', 'feature', {
+                      spec: f.spec,
+                      code: answers['AF1_code'] || '',
+                    })
+                  }
+                />
+              </div>
+
+              {/* Real Test & AI Evaluation Feedback */}
+              <TestFeedback r={testResults['AF1']} taskId="AF1" />
+              <AiFeedback r={aiResults['AF1']} />
+
+              {/* Embedded In-Exam AI Assistant */}
+              <AiExamAssistant
+                taskId="AF1"
+                taskTitle={f.title}
+                taskPrompt={f.spec}
+                buggyOrSpec={f.sample}
+                currentCode={answers['AF1_code'] || ''}
+                onApplyCode={(codeSnippet) => {
+                  handleAnswer('AF1_code', codeSnippet)
+                  showToast('✨ Applied AI implementation to your editor!')
+                }}
+              />
+            </div>
           </div>
         )
       }
@@ -733,7 +995,12 @@ function AssessmentInner() {
             {STAGES.map((s, i) => (
               <button key={s.id} onClick={() => { setStage(i); setSub(0) }}
                 className={`w-full text-left px-3 py-2 rounded-xl text-xs border transition ${i === stage ? 'bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-200' : 'bg-white/70 border-slate-200 text-slate-600 hover:bg-white'}`}>
-                <div className="font-bold">{i + 1}. {s.label}</div>
+                <div className="flex items-center justify-between">
+                  <span className="font-bold">{i + 1}. {s.label}</span>
+                  {(s.id === 'debugging' || s.id === 'feature') && (
+                    <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-600 border border-indigo-100 font-bold">AI</span>
+                  )}
+                </div>
                 <div className={`text-[10px] ${i === stage ? 'text-indigo-100' : 'text-slate-400'}`}>Suggested {s.min} min</div>
               </button>
             ))}
@@ -819,5 +1086,5 @@ function AssessmentInner() {
 }
 
 export default function Page() {
-  return <StoreProvider><AssessmentInner /></StoreProvider>
+  return <AssessmentInner />
 }

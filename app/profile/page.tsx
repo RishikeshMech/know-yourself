@@ -1,7 +1,9 @@
 'use client'
 export const dynamic = 'force-dynamic'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { StoreProvider, useStore } from '@/lib/store'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { useStore } from '@/lib/store'
 import { Navbar } from '@/components/Navbar'
 import { isProfileComplete } from '@/lib/validate'
 import { AiAvatar, AVATAR_STYLES, makeAvatarConfig, type AvatarConfig, type AvatarStyle } from '@/components/AiAvatar'
@@ -102,6 +104,7 @@ function PanelHead({ tag, title, right }: { tag: string; title: string; right?: 
 /* ------------------------------------------------------------------ */
 
 function ProfileInner() {
+  const router = useRouter()
   const { user, profile, setProfile, scores, resume, setUser, setScores, setResume, hydrated } = useStore()
   const [scoresPayload, setScoresPayload] = useState<any>(null)
   const [resumeLocal, setResumeLocal] = useState<any>(null)
@@ -122,10 +125,10 @@ function ProfileInner() {
     toastTimer.current = setTimeout(() => setToast(null), 3200)
   }
 
-  // Signed-out visitors go to login; render nothing until the session is known.
+  // Signed-out visitors go to login smoothly
   useEffect(() => {
-    if (hydrated && !user) window.location.replace('/login')
-  }, [hydrated, user])
+    if (hydrated && !user) router.replace('/login')
+  }, [hydrated, user, router])
 
   // Seed from localStorage instantly, then refresh from the DB so data saved
   // on another device (Supabase) shows up. Mirrors the dashboard behaviour.
@@ -277,7 +280,33 @@ function ProfileInner() {
     return out.slice(0, 9)
   }, [activeScores, activeResume])
 
-  if (!hydrated || !user) return null
+  if (!hydrated) {
+    return (
+      <div>
+        <Navbar />
+        <main className="mx-auto max-w-6xl px-4 sm:px-6 pt-8 space-y-6">
+          <div className="animate-pulse space-y-6">
+            <div className="h-44 rounded-[28px] bg-slate-800/60" />
+            <div className="grid lg:grid-cols-12 gap-6">
+              <div className="lg:col-span-7 glass-card h-80 bg-white/40" />
+              <div className="lg:col-span-5 glass-card h-80 bg-white/40" />
+            </div>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="glass-card animate-fade-up flex items-center gap-3 px-6 py-4">
+          <span className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
+          <span className="text-sm font-bold text-slate-700">Redirecting to login…</span>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen pb-16">
@@ -340,7 +369,7 @@ function ProfileInner() {
                         <svg viewBox="0 0 20 20" className="h-4 w-4" fill="currentColor"><path d="M13.6 3.2a2 2 0 0 1 2.83 0l.37.37a2 2 0 0 1 0 2.83L8 15.2 4.5 16l.8-3.5 8.3-8.3Z" /></svg>
                       </button>
                     ) : (
-                      <a href="/onboarding" className="rounded-full bg-amber-400/90 px-3 py-1 text-[11px] font-bold text-amber-950">Complete profile →</a>
+                      <Link href="/onboarding" className="rounded-full bg-amber-400/90 px-3 py-1 text-[11px] font-bold text-amber-950">Complete profile →</Link>
                     )}
                   </span>
                 )}
@@ -442,9 +471,9 @@ function ProfileInner() {
                 <div className="mt-5 rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/40 p-8 text-center">
                   <div className="text-4xl">🎯</div>
                   <p className="mt-2 text-sm text-slate-500">You haven't taken the assessment yet — it unlocks your score and skill graph.</p>
-                  <a href={onboarded ? '/instructions' : '/onboarding'} className="btn-primary mt-4 inline-flex">
+                  <Link href={onboarded ? '/instructions' : '/onboarding'} className="btn-primary mt-4 inline-flex">
                     {onboarded ? 'Start your assessment →' : 'Complete profile, then start →'}
-                  </a>
+                  </Link>
                 </div>
               )}
             </div>
@@ -492,13 +521,13 @@ function ProfileInner() {
                       </div>
                     </div>
                   )}
-                  <a href="/resume" className="mt-4 inline-block text-xs font-semibold text-indigo-600 hover:text-indigo-700">Update resume →</a>
+                  <Link href="/resume" className="mt-4 inline-block text-xs font-semibold text-indigo-600 hover:text-indigo-700">Update resume →</Link>
                 </div>
               ) : (
                 <div className="mt-5 rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/40 p-8 text-center">
                   <div className="text-4xl">📄</div>
                   <p className="mt-2 text-sm text-slate-500">Upload your resume — the AI extracts your skills, projects and experience.</p>
-                  <a href="/resume" className="btn-primary mt-4 inline-flex">Upload resume →</a>
+                  <Link href="/resume" className="btn-primary mt-4 inline-flex">Upload resume →</Link>
                 </div>
               )}
             </div>
@@ -549,7 +578,7 @@ function ProfileInner() {
               <PanelHead
                 tag="Profile"
                 title="Your details"
-                right={<a href="/edit-profile" className="rounded-full bg-indigo-50 border border-indigo-100 px-3 py-1 text-xs font-bold text-indigo-600 hover:bg-indigo-100">✎ Edit profile</a>}
+                right={<Link href="/edit-profile" className="rounded-full bg-indigo-50 border border-indigo-100 px-3 py-1 text-xs font-bold text-indigo-600 hover:bg-indigo-100">✎ Edit profile</Link>}
               />
               <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                 {[
@@ -600,9 +629,5 @@ function ProfileInner() {
 }
 
 export default function Page() {
-  return (
-    <StoreProvider>
-      <ProfileInner />
-    </StoreProvider>
-  )
+  return <ProfileInner />
 }

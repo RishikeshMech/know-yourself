@@ -2,7 +2,7 @@
 // Uses DeepSeek when DEEPSEEK_API_KEY is set; otherwise a deterministic
 // rule-based engine so the flow always works. Text is extracted from the
 // uploaded PDF/DOCX/TXT first so both engines analyse the REAL document —
-// which is what enables name-mismatch and professionalism checks.
+// which is what enables name-mismatch, recruiter flags, and professionalism checks.
 
 import mammoth from 'mammoth'
 import { PDFParse } from 'pdf-parse'
@@ -38,6 +38,10 @@ export interface CandidateContext {
   skills?: string
 }
 
+export function isDeepSeekConfigured(): boolean {
+  return !!process.env.DEEPSEEK_API_KEY
+}
+
 // ---------------------------------------------------------------------------
 // Text extraction
 // ---------------------------------------------------------------------------
@@ -63,30 +67,48 @@ export async function extractResumeText(buffer: Buffer, filename: string): Promi
 }
 
 // ---------------------------------------------------------------------------
-// DeepSeek
+// DeepSeek Integration — Brutal & Honest Technical Recruiter Evaluation
 // ---------------------------------------------------------------------------
 const DEEPSEEK_BASE = process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com'
 const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-chat'
 
-const CONTRACT = `Respond ONLY with a JSON object of exactly this shape:
+const BRUTAL_RECRUITER_CONTRACT = `Respond ONLY with a valid JSON object matching exactly this schema:
 {
-  "resume_score": <integer 0-100>,
-  "professionalism": <integer 0-100>,
-  "name_match": <true|false — does the resume belong to the candidate profile name provided?>,
-  "detected_name": "<name as written on the resume, or '' if none>",
-  "flags": [{"level": "error"|"warn"|"ok", "text": "<short reason>"}],
-  "summary": "<3-5 sentence professional summary of this resume>",
+  "resume_score": <integer 0-100, brutal ATS/recruiter overall rating>,
+  "professionalism": <integer 0-100, formatting, tone, structure, typography rating>,
+  "name_match": <boolean: true if resume belongs to candidate full_name in context, false otherwise>,
+  "detected_name": "<name found at the top of the resume, or '' if none>",
+  "flags": [
+    {"level": "error"|"warn"|"ok", "text": "<direct, candid recruiter feedback flag>"}
+  ],
+  "summary": "<3-5 sentence brutally honest executive summary of candidate readiness and resume strength>",
   "experience": {"years": <number>, "entries": ["<role — company — period>", ...]},
   "education": ["<degree — institution>", ...],
-  "skills": ["<skill>", ...],
+  "skills": ["<hard technical skill>", ...],
   "contact": {"email": "", "phone": "", "linkedin": "", "github": ""},
-  "strengths": ["<short bullet>", ...],
-  "gaps": ["<short bullet>", ...],
-  "suggestions": ["<actionable bullet>", ...]
+  "strengths": ["<clear, earned strength bullet>", ...],
+  "gaps": ["<critical, uncompromising gap or missing element bullet>", ...],
+  "suggestions": ["<sharp, highly actionable improvement instruction>", ...]
 }
-Be a strict industry resume reviewer (ATS + recruiter lens). Flag name mismatches,
-missing contact details, unprofessional language, vague bullets and missing
-quantified impact. Do not inflate scores.`
+
+EVALUATION PHILOSOPHY (BRUTAL, UNCOMPROMISING & HONEST):
+You are a senior hiring bar-raiser and Lead Technical Recruiter at a top-tier tech firm (FAANG/Tier-1).
+Your job is to provide honest, unfiltered, and constructive critique. DO NOT inflate scores. DO NOT give courtesy points.
+
+Scoring Calibration Scale:
+- 0-35 (Failing / Unacceptable): Name mismatch, stub/empty (<100 words), generic template text, missing contact info, unreadable format, or no projects.
+- 36-50 (Weak / High Rejection Risk): Has basic sections, but zero quantified metrics (e.g., 'worked on web app'), passive voice, missing GitHub/live links, generic fluff.
+- 51-65 (Below Average / Candidate Backlog): Lists tech stack and projects, but bullet points are task lists rather than measurable engineering impact.
+- 66-78 (Average / Standard Graduate): Decent structure, some metrics, readable, but lacks standout technical complexity, architectural depth, or verifiable proof of work.
+- 79-88 (Strong / Competitive): Consistent quantifiable achievements (e.g., 'reduced API response latency by 35%', 'handled 50k+ daily queries'), strong GitHub/demos, clean ATS formatting.
+- 89-100 (Exceptional / Top 2% Bar-Raiser): Outstanding open-source, production deployments, extraordinary quantified impact across every single bullet.
+
+Strict Rules:
+1. If the resume has ZERO numbers, percentages, or measurable engineering outcomes, the score MUST NOT exceed 55.
+2. If the resume is missing GitHub or live project URLs for developer roles, flag it as a warning and list it as a gap.
+3. If the detected name on the resume differs from candidate full_name, set "name_match": false, flag with level "error", and cap score below 30.
+4. Highlight vague buzzwords ('hardworking', 'enthusiastic', 'responsible for') as gaps.
+5. Provide actionable suggestions that tell the candidate exactly how to rewrite bullet points using the Google XYZ formula: 'Accomplished [X] as measured by [Y], by doing [Z]'.`
 
 async function callDeepSeek(text: string, ctx: CandidateContext): Promise<any | null> {
   const key = process.env.DEEPSEEK_API_KEY
@@ -97,32 +119,32 @@ async function callDeepSeek(text: string, ctx: CandidateContext): Promise<any | 
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
       body: JSON.stringify({
         model: DEEPSEEK_MODEL,
-        temperature: 0.2,
+        temperature: 0.15,
         response_format: { type: 'json_object' },
         messages: [
-          { role: 'system', content: CONTRACT },
+          { role: 'system', content: BRUTAL_RECRUITER_CONTRACT },
           {
             role: 'user',
-            content: `Candidate profile (for name/skill cross-check):\n${JSON.stringify(ctx)}\n\nResume text:\n"""\n${text.slice(0, 9000)}\n"""`,
+            content: `Candidate context from application profile:\n${JSON.stringify(ctx, null, 2)}\n\nActual Resume Text extracted from document:\n"""\n${text.slice(0, 10000)}\n"""`,
           },
         ],
       }),
     })
     if (!res.ok) {
-      console.error('DeepSeek resume error', res.status, await res.text().catch(() => ''))
+      console.error('DeepSeek resume error:', res.status, await res.text().catch(() => ''))
       return null
     }
     const data = await res.json()
     const content: string = data?.choices?.[0]?.message?.content
     return content ? JSON.parse(content) : null
   } catch (e) {
-    console.error('DeepSeek resume call failed', e)
+    console.error('DeepSeek resume call failed:', e)
     return null
   }
 }
 
 // ---------------------------------------------------------------------------
-// Analysis
+// Heuristic Fallback Engine (Strict & Calibrated)
 // ---------------------------------------------------------------------------
 function clamp(n: number, lo = 0, hi = 100) {
   return Math.max(lo, Math.min(hi, Math.round(n)))
@@ -159,10 +181,11 @@ export async function analyzeResumeText(rawText: string, ctx: CandidateContext):
   const lower = text.toLowerCase()
   const words = (text.match(/\S+/g) || []).length
 
+  // Prioritize DeepSeek analysis
   const ai = await callDeepSeek(text, ctx)
   if (ai) return normalizeAi(ai, text, words)
 
-  // ---------------- heuristic engine ----------------
+  // ---------------- Strict Heuristic Fallback Engine ----------------
   const email = text.match(/[\w.+-]+@[\w-]+\.[\w.-]+/)?.[0]
   const phone = text.match(/(\+?\d[\d\s()-]{8,14}\d)/)?.[0]?.trim()
   const linkedin = text.match(/linkedin\.com\/(?:in|pub)\/[\w-]+/i)?.[0]
@@ -170,10 +193,10 @@ export async function analyzeResumeText(rawText: string, ctx: CandidateContext):
 
   const hasSection = (re: RegExp) => re.test(lower)
   const sections = {
-    experience: hasSection(/experience|internship|employment/),
-    education: hasSection(/education|academics/),
-    skills: hasSection(/skills|technologies|stack/),
-    projects: hasSection(/projects/),
+    experience: hasSection(/experience|internship|employment|work history/),
+    education: hasSection(/education|academics|university|college/),
+    skills: hasSection(/skills|technologies|tech stack|proficiencies/),
+    projects: hasSection(/projects|technical projects|portfolio/),
   }
 
   const detected = detectName(text)
@@ -181,70 +204,100 @@ export async function analyzeResumeText(rawText: string, ctx: CandidateContext):
   const matchedTokens = nameTokens.filter((t) => lower.includes(t))
   const name_match = nameTokens.length === 0 ? true : matchedTokens.length >= Math.max(1, Math.ceil(nameTokens.length / 2))
 
-  const metrics = (text.match(/\d+(\.\d+)?\s*(%|percent|\bx\b|users|customers|ms|seconds?|minutes?|latency|revenue|requests|₹|\$|k\b)/gi) || []).length
+  const metrics = (text.match(/\d+(\.\d+)?\s*(%|percent|\bx\b|users|customers|ms|seconds?|minutes?|latency|revenue|requests|₹|\$|k\b|queries|qps)/gi) || []).length
   const verbs = ACTION_VERBS.filter((v) => new RegExp(`\\b${v}\\b`, 'i').test(text)).length
   const skills = SKILL_KEYWORDS.filter((s) => lower.includes(s))
-  const slang = (text.match(/\b(u|ur|plz|thx|wanna|gonna|kinda|lol|omg|stuff like that)\b/gi) || []).length
-  const capsWords = (text.match(/\b[A-Z]{4,}\b/g) || []).filter((w) => !/^[A-Z]{4,}$/.test(w) || true).length
+  const slang = (text.match(/\b(u|ur|plz|thx|wanna|gonna|kinda|lol|omg|stuff like that|hardworking|enthusiastic|team player)\b/gi) || []).length
   const years = Array.from(new Set((text.match(/20\d{2}/g) || []).map(Number))).sort((a, b) => a - b)
   const expSpan = years.length >= 2 ? Math.min(10, Math.max(0, years[years.length - 1] - years[0])) : 0
-  const expEntries = (text.match(/20\d{2}\s*[-–—to]+\s*(20\d{2}|present|current)/gi) || []).length
   const projects = (text.match(/\bprojects?\b/gi) || []).length
 
   const flags: ResumeFlag[] = []
-  if (nameTokens.length > 0 && !name_match) {
-    flags.push({ level: 'error', text: `Name mismatch — resume appears to belong to “${detected || 'someone else'}”, but your profile says “${ctx.full_name}”. Upload your own resume.` })
-  } else {
-    flags.push({ level: 'ok', text: nameTokens.length ? `Name on the resume matches your profile (${ctx.full_name}).` : 'No profile name to cross-check against.' })
-  }
-  if (!email) flags.push({ level: 'warn', text: 'No email address found — recruiters cannot contact you.' })
-  if (!phone) flags.push({ level: 'warn', text: 'No phone number found on the resume.' })
-  if (!sections.experience) flags.push({ level: 'warn', text: 'No Experience/Internship section detected.' })
-  if (!sections.skills) flags.push({ level: 'warn', text: 'No Skills section detected — ATS filters may skip you.' })
-  if (words < 60) flags.push({ level: 'error', text: `Resume is far too short (${words} words) to be evaluated professionally.` })
-  else if (words < 150) flags.push({ level: 'warn', text: `On the short side (${words} words) — expand with projects and impact.` })
-  else if (words > 1200) flags.push({ level: 'warn', text: `Very long resume (${words} words) — aim for one page as a student.` })
-  if (slang > 0) flags.push({ level: 'warn', text: 'Informal language detected (u, ur, plz, wanna…) — keep it professional.' })
-  if (metrics === 0) flags.push({ level: 'warn', text: 'No quantified impact (%, numbers, metrics) found anywhere.' })
-  if (flags.every((f) => f.level === 'ok')) flags.push({ level: 'ok', text: 'Contact details, sections and impact all present.' })
 
-  const completeness = clamp(25 + Object.values(sections).filter(Boolean).length * 15 + (email ? 10 : 0) + (phone ? 5 : 0))
-  const impact = clamp(20 + Math.min(40, metrics * 8) + Math.min(30, verbs * 5))
+  if (nameTokens.length > 0 && !name_match) {
+    flags.push({
+      level: 'error',
+      text: `⛔ Name mismatch: Resume appears to belong to “${detected || 'someone else'}”, but your application profile states “${ctx.full_name}”. Upload your authentic resume.`,
+    })
+  } else {
+    flags.push({
+      level: 'ok',
+      text: nameTokens.length ? `Candidate identity verified: Name matches profile (${ctx.full_name}).` : 'Name verified.',
+    })
+  }
+
+  if (!email || !phone) {
+    flags.push({ level: 'error', text: 'Missing essential contact details (Email or Phone) — ATS will discard this document.' })
+  }
+  if (!github && !linkedin) {
+    flags.push({ level: 'warn', text: 'No GitHub or LinkedIn profiles linked — technical recruiters cannot verify your code or history.' })
+  }
+  if (!sections.projects && !sections.experience) {
+    flags.push({ level: 'error', text: 'No Experience or Projects section found — high risk of immediate rejection.' })
+  }
+  if (metrics === 0) {
+    flags.push({ level: 'error', text: '❌ Zero quantified metrics detected. Bullets only state generic duties rather than measurable engineering impact.' })
+  } else if (metrics < 3) {
+    flags.push({ level: 'warn', text: `Only ${metrics} quantified metric(s) found. Top resumes quantify impact across every single bullet.` })
+  }
+  if (words < 100) {
+    flags.push({ level: 'error', text: `Resume is severely underdeveloped (${words} words) — insufficient content for technical screening.` })
+  } else if (words > 1200) {
+    flags.push({ level: 'warn', text: `Resume is too verbose (${words} words) — strictly prune down to 1-2 pages.` })
+  }
+
+  // Strict honest scoring calculation
+  let baseScore = 30
+  if (name_match) baseScore += 15
+  if (email && phone) baseScore += 10
+  if (sections.projects) baseScore += 12
+  if (sections.experience) baseScore += 12
+  if (sections.skills && skills.length >= 4) baseScore += 10
+  if (github || linkedin) baseScore += 6
+
+  // Impact factor (heavily penalizes lack of metrics)
+  const impactScore = metrics === 0 ? 0 : Math.min(20, metrics * 5)
+  const verbsScore = Math.min(10, verbs * 2)
+
+  let totalScore = baseScore + impactScore + verbsScore
+  if (words < 40 || !name_match) totalScore = Math.min(25, totalScore)
+  else if (words < 80) totalScore = Math.min(50, totalScore)
+  if (metrics === 0) totalScore = Math.min(54, totalScore) // Cap at 54 if zero metrics
+  if (slang > 2) totalScore = Math.max(10, totalScore - 15)
+
+  const resume_score = clamp(totalScore)
   const professionalism = clamp(
-    90 - slang * 12 - (words < 60 ? 30 : 0) - (words > 1200 ? 10 : 0) - (capsWords > 12 ? 8 : 0) + (email && phone ? 5 : 0),
+    85 - slang * 10 - (words < 40 ? 40 : words < 80 ? 20 : 0) - (metrics === 0 ? 15 : 0) + (email && phone ? 10 : 0) + (github ? 5 : 0),
   )
-  const presentation = clamp(40 + Math.min(30, skills.length * 3) + (sections.projects ? 15 : 0) + (linkedin || github ? 10 : 0))
-  const nameScore = name_match ? 100 : 15
-  const resume_score = clamp(completeness * 0.25 + impact * 0.25 + professionalism * 0.25 + presentation * 0.15 + nameScore * 0.1)
 
   const strengths: string[] = []
-  if (sections.experience) strengths.push('Includes an experience/internship section')
-  if (metrics > 0) strengths.push(`Uses quantified impact in ${metrics} place${metrics === 1 ? '' : 's'}`)
-  if (skills.length >= 4) strengths.push(`Clear skills coverage (${skills.slice(0, 6).join(', ')}…)`)
-  if (linkedin || github) strengths.push('Links a professional profile (LinkedIn/GitHub)')
-  if (strengths.length === 0) strengths.push('A resume file was submitted for analysis')
+  if (metrics >= 3) strengths.push(`Quantified outcomes with ${metrics} measurable engineering metric(s)`)
+  if (skills.length >= 6) strengths.push(`Solid technical keywords (${skills.slice(0, 5).join(', ')})`)
+  if (github) strengths.push('Included GitHub profile for code verification')
+  if (sections.projects && sections.experience) strengths.push('Structured with both Projects and Experience sections')
+  if (strengths.length === 0) strengths.push('Document contains readable plain text')
 
   const gaps: string[] = []
-  if (!name_match) gaps.push('Resume does not appear to belong to the candidate')
-  if (!email || !phone) gaps.push('Missing contact details')
-  if (!sections.experience) gaps.push('No experience or internship history visible')
-  if (metrics === 0) gaps.push('No measurable results (numbers, %) in any bullet')
-  if (verbs < 3) gaps.push('Bullets lack strong action verbs')
-  if (!sections.projects) gaps.push('No projects section for a student profile')
-  if (gaps.length === 0) gaps.push('Minor polish needed — see suggestions')
+  if (!name_match) gaps.push('Critical identity discrepancy with profile name')
+  if (metrics === 0) gaps.push('Zero quantified metrics — bullets fail to show scale, latency, or business results')
+  if (!github) gaps.push('No GitHub link to prove real code competence')
+  if (!sections.projects) gaps.push('Missing portfolio/projects section for a junior/student developer')
+  if (verbs < 4) gaps.push('Weak action verbs — avoid passive phrasing like "responsible for" or "helped with"')
 
   const suggestions: string[] = []
-  if (!name_match) suggestions.push('Replace this file with your own resume before proceeding.')
-  suggestions.push('Start every bullet with a strong verb and end with a metric, e.g. “Reduced API latency by 30%”.')
-  if (!sections.skills) suggestions.push('Add a dedicated Skills section with tools and languages.')
-  if (!linkedin && !github) suggestions.push('Add LinkedIn and GitHub URLs so recruiters can verify your work.')
-  suggestions.push('Keep it to one page with clear section headings (Experience, Education, Skills, Projects).')
+  if (!name_match) suggestions.push('Upload your own authentic resume matching your profile details.')
+  suggestions.push('Rewrite every bullet point using Google’s XYZ formula: "Accomplished [X], as measured by [Y], by doing [Z]".')
+  if (metrics === 0) suggestions.push('Add specific numbers (e.g. "% reduction in latency", "X daily users", "Y ms query optimization").')
+  if (!github) suggestions.push('Add your GitHub profile with pinned repositories demonstrating clean commits and test suites.')
+  suggestions.push('Eliminate generic buzzwords and focus strictly on architecture, libraries, and measurable results.')
 
   const summary =
-    `${detected || 'The candidate'} presents a ${words}-word resume${sections.experience ? ' with an experience section' : ' lacking an experience section'}` +
-    `${expSpan ? ` covering roughly ${expSpan} year(s)` : ''}${skills.length ? ` and a skill set including ${skills.slice(0, 4).join(', ')}` : ''}. ` +
-    (name_match ? '' : `It does NOT match the profile name “${ctx.full_name}”, so it was flagged. `) +
-    (metrics ? 'Quantified impact is present.' : 'Quantified impact is missing, which hurts ATS scoring.')
+    `${detected || 'The candidate'} presents a ${words}-word resume. ` +
+    (name_match ? '' : `CRITICAL WARNING: The name on this resume does NOT match profile name "${ctx.full_name}". `) +
+    (metrics === 0
+      ? 'Honest Recruiter Assessment: Lacks any quantified metrics or measurable technical impact, resulting in a low ATS score. '
+      : `Includes ${metrics} quantified metrics demonstrating engineering impact. `) +
+    (github ? 'Includes code links. ' : 'Missing code/GitHub repository links for verification.')
 
   return {
     resume_score,
@@ -274,13 +327,13 @@ function normalizeAi(ai: any, text: string, words: number): ResumeAnalysis {
   const skills = Array.isArray(ai?.skills) ? ai.skills.slice(0, 12).map(String) : []
   const exp = ai?.experience || {}
   return {
-    resume_score: clamp(Number(ai?.resume_score ?? 50)),
+    resume_score: clamp(Number(ai?.resume_score ?? 45)),
     engine: 'deepseek',
     name_match: ai?.name_match !== false,
     detected_name: String(ai?.detected_name || detectName(text)),
     flags,
-    professionalism: clamp(Number(ai?.professionalism ?? 60)),
-    summary: String(ai?.summary || 'AI analysis complete.'),
+    professionalism: clamp(Number(ai?.professionalism ?? 55)),
+    summary: String(ai?.summary || 'Brutally honest AI analysis complete.'),
     experience: { years: Number(exp?.years ?? 0), entries: Array.isArray(exp?.entries) ? exp.entries.slice(0, 6).map(String) : [] },
     education: Array.isArray(ai?.education) ? ai.education.slice(0, 4).map(String) : [],
     skills,

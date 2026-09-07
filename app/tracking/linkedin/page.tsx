@@ -1,9 +1,11 @@
 'use client'
+import { useRouter } from 'next/navigation'
 import { Navbar } from '@/components/Navbar'
-import { StoreProvider, useStore } from '@/lib/store'
+import { useStore } from '@/lib/store'
 import { Stepper } from '@/components/Stepper'
 
 function Inner(){
+  const router = useRouter()
   const {tracking,setTracking,user} = useStore()
   const complete = async ()=>{
     setTracking({...tracking, linkedin:true})
@@ -14,7 +16,7 @@ function Inner(){
         body: JSON.stringify({ user_id: user?.id, action: 'follow_linkedin', completed: true }),
       })
     } catch { /* demo mode */ }
-    setTimeout(()=> window.location.href='/confirmation', 450)
+    setTimeout(()=> router.push('/confirmation'), 450)
   }
   return (
     <div>
@@ -38,11 +40,11 @@ function Inner(){
             <a href="https://www.linkedin.com/company/calibiai-academy" target="_blank" rel="noreferrer" onClick={complete} className="btn-primary !bg-none bg-sky-600 !shadow-sky-300/50 hover:bg-sky-700">Follow on LinkedIn →</a>
             <button onClick={complete} className="btn-soft">I followed ✓</button>
           </div>
-          <button onClick={()=>window.location.href='/confirmation'} className="mt-4 text-xs font-semibold text-slate-400 hover:text-slate-600">Continue →</button>
+          <button onClick={()=>router.push('/confirmation')} className="mt-4 text-xs font-semibold text-slate-400 hover:text-slate-600">Continue →</button>
           {tracking.linkedin && <div className="mt-4 text-xs text-emerald-600 font-semibold animate-pop">✓ Done</div>}
         </div>
       </main>
     </div>
   )
 }
-export default function Page(){ return <StoreProvider><Inner/></StoreProvider> }
+export default function Page(){ return <Inner/> }

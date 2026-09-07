@@ -1,14 +1,17 @@
 'use client'
 export const dynamic = 'force-dynamic'
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Navbar } from '@/components/Navbar'
-import { StoreProvider, useStore } from '@/lib/store'
+import { useStore } from '@/lib/store'
 import { isProfileComplete } from '@/lib/validate'
 import { consumeJustSubmittedTicket } from '@/lib/justSubmitted'
 import { ReportModal } from '@/components/ReportModal'
 import { SkillChips } from '@/components/SkillChips'
 
 function Inner(){
+  const router = useRouter()
   const { user, profile, setProfile, resume, setResume, scores, setScores, hydrated } = useStore()
   const [showReport, setShowReport] = useState(false)
   const [downloading, setDownloading] = useState(false)
@@ -16,11 +19,10 @@ function Inner(){
   const [justCompleted, setJustCompleted] = useState(false)
   const ticketChecked = useRef(false)
 
-  // Protect the student dashboard: a signed-out visitor is sent to /login.
-  // Render nothing until the session is known so the page never flashes.
+  // Protect the student dashboard: a signed-out visitor is sent to /login smoothly.
   useEffect(()=>{
-    if (hydrated && !user) window.location.replace('/login')
-  },[hydrated, user])
+    if (hydrated && !user) router.replace('/login')
+  },[hydrated, user, router])
 
   // The assessment page hands the candidate here after submitting and leaves a
   // single-use ticket behind, so this is where "assessment complete" is
@@ -35,7 +37,6 @@ function Inner(){
   // Enrich the (locally hydrated) store with the latest DB data when signed in.
   // Data is written through the store so the navbar and every other page sees
   // the same profile — including the full name set on the profile page.
-  // All hooks must run before any conditional returns to keep the hook order stable.
   useEffect(()=>{
     if(!user?.id) return
     fetch('/api/user/profile?user_id='+user.id).then(r=>r.json()).then(data=>{
@@ -64,12 +65,35 @@ function Inner(){
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[user?.id])
 
-  if (!hydrated) return null
-  if (!user) return null
+  if (!hydrated) {
+    return (
+      <div>
+        <Navbar />
+        <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+          <div className="animate-pulse space-y-6">
+            <div className="h-8 w-64 bg-slate-200/70 rounded-xl" />
+            <div className="grid lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 glass-card h-80 bg-white/40" />
+              <div className="glass-card h-80 bg-white/40" />
+            </div>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="glass-card animate-fade-up flex items-center gap-3 px-6 py-4">
+          <span className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
+          <span className="text-sm font-bold text-slate-700">Redirecting to login…</span>
+        </div>
+      </div>
+    )
+  }
+
   const onboarded = isProfileComplete(profile)
-  // The right place to continue: finish onboarding if we never did, otherwise
-  // jump to the assessment instructions (which start/create the session). This
-  // never sends a signed-in user back to /login.
   const startHref = onboarded ? '/instructions' : '/onboarding'
 
   return (
@@ -116,13 +140,13 @@ function Inner(){
                 </div>
                 <div className="mt-5 grid sm:grid-cols-2 gap-2.5">
                   {[
-                    ['English', scores.english.total, 200],['Problem Solving', scores.problem_solving, 200],
-                    ['AI Debugging', scores.ai_debugging, 150],['AI Feature Dev', scores.ai_feature, 150],
-                    ['Prompt Eng', scores.prompt_engineering, 100],['Cognitive', scores.cognitive.total, 200],
+                    ['English', scores.english?.total ?? 0, 200],['Problem Solving', scores.problem_solving ?? 0, 200],
+                    ['AI Debugging', scores.ai_debugging ?? 0, 150],['AI Feature Dev', scores.ai_feature ?? 0, 150],
+                    ['Prompt Eng', scores.prompt_engineering ?? 0, 100],['Cognitive', scores.cognitive?.total ?? 0, 200],
                   ].map(([k,v,m])=>(
                     <div key={k as string} className="panel p-3">
                       <div className="flex justify-between text-xs mb-1"><span className="text-slate-600 font-medium">{k}</span><span className="font-mono font-bold text-slate-700">{v}/{m}</span></div>
-                      <div className="h-2 rounded-full bg-slate-100 overflow-hidden"><div className="h-full calibiai-gradient rounded-full" style={{width:`${(v as number)/(m as number)*100}%`}}/></div>
+                      <div className="h-2 rounded-full bg-slate-100 overflow-hidden"><div className="h-full calibiai-gradient rounded-full" style={{width:`${(Number(v))/(Number(m))*100}%`}}/></div>
                     </div>
                   ))}
                 </div>
@@ -149,7 +173,7 @@ function Inner(){
               <div className="mt-6 rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/40 p-8 text-center">
                 <div className="text-4xl">🎯</div>
                 <p className="mt-2 text-sm text-slate-500">You haven't taken the assessment yet.</p>
-                <a href={startHref} className="btn-primary mt-4 inline-flex">Start your assessment →</a>
+                <Link href={startHref} className="btn-primary mt-4 inline-flex">Start your assessment →</Link>
               </div>
             )}
           </div>
@@ -165,10 +189,10 @@ function Inner(){
                     <div className="text-xs text-slate-500">out of 100</div>
                   </div>
                   <div className="mt-3 text-xs font-bold text-emerald-600">Strengths</div>
-                  <ul className="list-disc ml-4 text-xs text-slate-600">{resume.feedback.strengths.slice(0,2).map((s:string)=><li key={s}>{s}</li>)}</ul>
-                  <a href="/resume" className="mt-3 inline-block text-xs font-semibold text-indigo-600">Update resume →</a>
+                  <ul className="list-disc ml-4 text-xs text-slate-600">{(resume.feedback?.strengths || []).slice(0,2).map((s:string)=><li key={s}>{s}</li>)}</ul>
+                  <Link href="/resume" className="mt-3 inline-block text-xs font-semibold text-indigo-600">Update resume →</Link>
                 </div>
-              ) : <p className="text-xs text-slate-400 mt-2">No resume uploaded yet. <a href="/resume" className="text-indigo-600 font-semibold">Upload →</a></p>}
+              ) : <p className="text-xs text-slate-400 mt-2">No resume uploaded yet. <Link href="/resume" className="text-indigo-600 font-semibold">Upload →</Link></p>}
             </div>
 
             <div className="rounded-3xl calibiai-gradient p-5 text-white shadow-xl shadow-indigo-200 animate-fade-up" style={{animationDelay:'.15s'}}>
@@ -196,12 +220,12 @@ function Inner(){
               <div>🎓 {profile.college || '—'}</div>
               <div className="sm:col-span-3 min-w-0"><SkillChips skills={profile.skills} icon="🛠️" /></div>
             </div>
-            <a href="/profile" className="mt-3 inline-block text-xs font-semibold text-indigo-600">See my profile →</a>
-            <a href="/edit-profile" className="mt-3 ml-3 inline-block text-xs font-semibold text-indigo-600">Edit profile →</a>
+            <Link href="/profile" className="mt-3 inline-block text-xs font-semibold text-indigo-600">See my profile →</Link>
+            <Link href="/edit-profile" className="mt-3 ml-3 inline-block text-xs font-semibold text-indigo-600">Edit profile →</Link>
           </div>
         )}
       </main>
     </div>
   )
 }
-export default function Page(){ return <StoreProvider><Inner/></StoreProvider> }
+export default function Page(){ return <Inner/> }

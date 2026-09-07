@@ -1,7 +1,8 @@
 'use client'
 import { useRef, useState } from 'react'
+import Link from 'next/link'
 import { Navbar } from '@/components/Navbar'
-import { StoreProvider, useStore } from '@/lib/store'
+import { useStore } from '@/lib/store'
 import { Stepper } from '@/components/Stepper'
 
 function ScoreRing({ score }: { score: number }) {
@@ -111,8 +112,8 @@ function ResumeInner() {
             )}
 
             <div className="mt-6 flex gap-3">
-              <a href="/tracking/whatsapp" className={`btn-primary ${!done ? 'pointer-events-none opacity-40' : ''}`}>Continue →</a>
-              <a href="/profile" className="btn-soft">Back</a>
+              <Link href="/tracking/whatsapp" className={`btn-primary ${!done ? 'pointer-events-none opacity-40' : ''}`}>Continue →</Link>
+              <Link href="/profile" className="btn-soft">Back</Link>
             </div>
           </div>
 
@@ -234,5 +235,5 @@ function ResumeInner() {
 }
 
 export default function Page() {
-  return <StoreProvider><ResumeInner /></StoreProvider>
+  return <ResumeInner />
 }

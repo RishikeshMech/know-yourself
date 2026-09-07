@@ -1,5 +1,4 @@
 'use client'
-import { StoreProvider } from '@/lib/store'
 import { OnboardingFlow } from '@/components/OnboardingFlow'
 
 /**
@@ -9,9 +8,5 @@ import { OnboardingFlow } from '@/components/OnboardingFlow'
  * is a one-time step per profile.
  */
 export default function Page() {
-  return (
-    <StoreProvider>
-      <OnboardingFlow variant="edit" />
-    </StoreProvider>
-  )
+  return <OnboardingFlow variant="edit" />
 }
