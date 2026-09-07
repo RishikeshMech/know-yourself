@@ -60,3 +60,21 @@ export function afterSignInRoute(flags: SignInFlags = {}): StudentRoute {
 export function signedInLandingRoute(profile: any): StudentRoute {
   return isProfileComplete(profile) ? DASHBOARD_ROUTE : ONBOARDING_ROUTE
 }
+
+/**
+ * Which dashboard home a role belongs to. `/dashboard` itself is only a
+ * redirector (see app/dashboard/page.tsx); the real pages live under
+ * `/dashboard/<role>`. Unknown or missing roles get the student view, so a
+ * profile whose `role` was never set can never 404 on `/dashboard`.
+ */
+export function dashboardRouteForRole(role?: string | null): string {
+  switch ((role || '').toLowerCase()) {
+    case 'faculty':
+      return '/dashboard/faculty'
+    case 'institution':
+    case 'admin':
+      return '/dashboard/institution'
+    default:
+      return DASHBOARD_ROUTE
+  }
+}

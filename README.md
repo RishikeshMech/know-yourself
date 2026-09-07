@@ -30,7 +30,22 @@ Copy `.env.example` → `.env.local`:
 
 When Supabase is configured: email + password live in **Supabase Auth** (`auth.users`), a `profiles` row is auto-created on sign-up and every onboarding field (mobile number, PRN, gender, degree, college, CGPA, skills, links), resume analysis and WhatsApp/LinkedIn tracking event is mirrored to Postgres by the API routes (service-role writes when `SUPABASE_SERVICE_ROLE_KEY` is set). The browser session is handed to supabase-js after login so RLS and Storage uploads work client-side. **Each student gets their own isolated assessment session** (server-side row, one active session per student, RLS-protected), answers + results persist to Postgres and recordings/resumes go to Storage buckets. When DeepSeek is configured, every subjective section shows an "✨ Evaluate with AI" button that returns a rubric score, strengths and improvement notes (otherwise a deterministic heuristic runs).
 
-### Assessment content & anti-cheating
+### Google sign-in & custom domains
+
+Google login is Supabase OAuth with the **PKCE** grant (`flowType: 'pkce'` in `lib/supabase.ts`), so Supabase returns `?code=` to `/auth/callback` and `app/auth/callback/page.tsx` exchanges it for a session. PKCE is pinned explicitly because supabase-js defaults to the *implicit* grant, which returns the session in the URL **fragment** (`#access_token=…`) — the callback exchanges a `?code=`, so under the default every Google login silently bounced back to `/login`. The callback still handles the implicit fragment as a fallback, and any failure is now shown on screen instead of being swallowed.
+
+No domain is hard-coded anywhere: `redirectTo` is built from `window.location.origin` (`app/login/page.tsx`) and every other navigation is a relative path. Deploying to a new domain therefore requires **only** a Supabase dashboard change — Auth → URL Configuration:
+
+| Setting | Value |
+|---|---|
+| Site URL | `https://assessment.calibiai.com` |
+| Redirect URLs | `http://localhost:3000/auth/callback`, `https://assessment.calibiai.com/auth/callback` |
+
+Add one Redirect URL entry per origin the app is served from. A `redirectTo` that is not on the list is ignored and Supabase falls back to the Site URL, which reproduces the login loop. Google Cloud Console needs no per-domain change — Supabase is the OAuth client, so its Authorized redirect URI stays `https://<project-ref>.supabase.co/auth/v1/callback`.
+
+`NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` must also be set on the hosting platform; without the two public ones `lib/supabase.ts` degrades to local demo mode and the Google button reports "not configured".
+
+
 
 - All questions live in **`data/questions.json`** (the database seed source) — medium-to-hard, organized in the 6 stages / suggested allocation 15+20+20+25+15+25 = 120 min.
 - **Listening** uses real, playable audio (`public/audio/`) with a **2-play limit** per clip.

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { afterSignInRoute, signedInLandingRoute, ONBOARDING_ROUTE, DASHBOARD_ROUTE } from '../nextStep.ts'
+import { afterSignInRoute, signedInLandingRoute, dashboardRouteForRole, ONBOARDING_ROUTE, DASHBOARD_ROUTE } from '../nextStep.ts'
 
 /** The row `/api/auth/signup` writes: a name and an email, nothing else. */
 const signupSeededProfile = { id: 'u1', email: 'new@uni.edu', full_name: 'new' }
@@ -61,4 +61,25 @@ test('a completed profile goes to the dashboard', () => {
 test('a partially filled profile still needs onboarding', () => {
   assert.equal(signedInLandingRoute({ ...completeProfile, cgpa: 0 }), ONBOARDING_ROUTE)
   assert.equal(signedInLandingRoute({ ...completeProfile, phone: '' }), ONBOARDING_ROUTE)
+})
+
+// ---------------------------------------------------------------------------
+// /dashboard is a redirector: every role must resolve to a page that exists.
+// ---------------------------------------------------------------------------
+test('dashboardRouteForRole routes each known role to its own dashboard', () => {
+  assert.equal(dashboardRouteForRole('student'), '/dashboard/student')
+  assert.equal(dashboardRouteForRole('faculty'), '/dashboard/faculty')
+  assert.equal(dashboardRouteForRole('institution'), '/dashboard/institution')
+})
+
+test('dashboardRouteForRole falls back to the student dashboard, never a 404', () => {
+  assert.equal(dashboardRouteForRole(undefined), DASHBOARD_ROUTE)
+  assert.equal(dashboardRouteForRole(null), DASHBOARD_ROUTE)
+  assert.equal(dashboardRouteForRole(''), DASHBOARD_ROUTE)
+  assert.equal(dashboardRouteForRole('something-new'), DASHBOARD_ROUTE)
+})
+
+test('dashboardRouteForRole is case-insensitive (role may come from user_metadata)', () => {
+  assert.equal(dashboardRouteForRole('Faculty'), '/dashboard/faculty')
+  assert.equal(dashboardRouteForRole('ADMIN'), '/dashboard/institution')
 })
