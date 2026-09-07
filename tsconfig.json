@@ -6,6 +6,10 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
+    /* Lets `npm test` run the TS specs in lib/__tests__ straight through Node's
+       type-stripping loader, which requires explicit .ts import specifiers.
+       Safe here because this project never emits (noEmit above). */
+    "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",
