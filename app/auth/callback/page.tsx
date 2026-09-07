@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase'
 import { useStore } from '@/lib/store'
@@ -11,8 +11,20 @@ export default function AuthCallbackPage() {
   const { setUser, setProfile } = useStore()
   const [status, setStatus] = useState('Verifying your Google session…')
   const [failure, setFailure] = useState('')
+  // Guard against React 18 StrictMode's dev-only double-invocation of mount
+  // effects (reactStrictMode is on in next.config.js). Without it the effect
+  // ran TWICE, both runs exchanged the SAME single-use PKCE `?code=` and the
+  // losing run flashed its "sign-in did not finish" error card for a second
+  // even though the winning run had already signed the user in — the
+  // "everything works, but a ~2s warning shows on Google login" symptom.
+  // See app/dashboard/student/page.tsx (just-submitted ticket) for the same
+  // pattern. The ref survives the StrictMode remount of this component.
+  const startedRef = useRef(false)
 
   useEffect(() => {
+    if (startedRef.current) return
+    startedRef.current = true
+
     const handleAuth = async () => {
       try {
         const sb = getSupabase()
@@ -30,36 +42,52 @@ export default function AuthCallbackPage() {
           throw new Error(describeAuthError(cb))
         }
 
+        // Drop the single-use code / token from the address bar BEFORE any
+        // await. A code left in the URL lets a StrictMode re-run, a reload or
+        // a back-navigation re-attempt an already-consumed code — which is
+        // what produced the transient error card.
+        if (window.history?.replaceState) {
+          window.history.replaceState({}, '', window.location.pathname)
+        }
+
+        const hadOAuthPayload = hasSessionInCallbackUrl(cb)
+        // Message kept when an exchange/install fails but no session exists
+        // afterwards — the real success test is getSession() below.
+        let installError = ''
+
         if (cb.code) {
           // PKCE flow. The shared client sets detectSessionInUrl: false so
           // supabase-js has not already consumed this single-use code.
-          const { error: exchangeError } = await sb.auth.exchangeCodeForSession(cb.code)
-          if (exchangeError) throw exchangeError
+          const { error } = await sb.auth.exchangeCodeForSession(cb.code)
+          if (error) installError = error.message || 'The sign-in code could not be exchanged.'
         } else if (cb.accessToken && cb.refreshToken) {
           // Implicit flow fallback — keeps the callback working even if the
           // Supabase project is switched back to the implicit grant.
-          const { error: sessionError } = await sb.auth.setSession({
+          const { error } = await sb.auth.setSession({
             access_token: cb.accessToken,
             refresh_token: cb.refreshToken,
           })
-          if (sessionError) throw sessionError
-        } else if (!hasSessionInCallbackUrl(cb)) {
-          // No code, no tokens and no error: Supabase rejected our
-          // `redirect_to` (it is not on the project's Redirect URL allow list)
-          // and fell back to the Site URL. Say so instead of looping.
-          throw new Error(
-            'No session was returned to ' + window.location.origin + '/auth/callback. ' +
-            'Add that exact URL to Supabase → Authentication → URL Configuration → Redirect URLs.',
-          )
+          if (error) installError = error.message || 'The sign-in session could not be installed.'
         }
-
-        // Drop the single-use code / token from the address bar.
-        window.history.replaceState({}, '', window.location.pathname)
 
         const { data: { session }, error } = await sb.auth.getSession()
         if (error) throw error
 
         if (!session?.user) {
+          // A duplicate/racing exchange can report an error while a valid
+          // session already exists (the winner stored it) — that case is
+          // handled above by only reaching this branch when getSession found
+          // nothing, i.e. the sign-in genuinely did not complete.
+          if (installError) throw new Error(installError)
+          if (!hadOAuthPayload) {
+            // No code, no tokens and no error: Supabase rejected our
+            // `redirect_to` (it is not on the project's Redirect URL allow
+            // list) and fell back to the Site URL. Say so instead of looping.
+            throw new Error(
+              'No session was returned to ' + window.location.origin + '/auth/callback. ' +
+              'Add that exact URL to Supabase → Authentication → URL Configuration → Redirect URLs.',
+            )
+          }
           throw new Error('Supabase did not return a session for this callback.')
         }
 
