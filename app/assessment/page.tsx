@@ -162,7 +162,13 @@ function AssessmentInner() {
 
     const boot = (raw: string) => {
       if (cancelled) return
-      let s: any
+      // Parse the stored session BEFORE any of the checks below. `s` used to
+      // be left `undefined` here (the JSON.parse(raw) line was missing), so
+      // `!s?.id` was always true and /assessment bounced every in-progress
+      // visitor to /instructions — which then bounced them straight back,
+      // producing the visible flicker between the two pages.
+      let s: any = null
+      try { s = JSON.parse(raw) } catch { s = null }
       // One-time assessment: a completed (submitted/expired) session can
       // never be re-entered — even via the browser back button.
       if (s?.status === 'submitted' || s?.status === 'expired') { window.location.replace('/profile'); return }
@@ -177,7 +183,10 @@ function AssessmentInner() {
       const tick = () => {
         const rem = Math.max(0, Math.floor((expires - Date.now()) / 1000))
         setRemaining(rem)
-        if (rem <= 0) handleSubmit(true)
+        // submitRef.current — not the captured handleSubmit — so the
+        // auto-submit closes over the latest answers/aiResults/sid instead
+        // of the stale first-render ones (which were still empty/undefined).
+        if (rem <= 0) submitRef.current(true)
       }
       tick()
       intervalId = setInterval(tick, 1000)
