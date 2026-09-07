@@ -232,6 +232,10 @@ function AssessmentInner() {
   const [playCounts, setPlayCounts] = useState<Record<string, number>>({})
   const [showHint, setShowHint] = useState<Record<string, boolean>>({})
   const [testResults, setTestResults] = useState<Record<string, TestRunResult | undefined>>({})
+  // Friendly submit-confirmation modal (replaces the old browser `confirm()`).
+  const [showSubmit, setShowSubmit] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const submittingRef = useRef(false)
 
   const gridCfg = bank.cognitive.grid
   const [gridRound, setGridRound] = useState(0)
@@ -569,9 +573,14 @@ function AssessmentInner() {
     if (autoTickRef.current) clearInterval(autoTickRef.current)
   }, [])
 
-  const handleSubmit = async (auto = false) => {
-    if (terminated) return
-    if (!auto && !confirm('Submit assessment? You cannot change answers afterwards.')) return
+  // Runs the real submission. `auto` = triggered by the timer running out or
+  // the 3rd focus warning (auto_submitted, status "expired"); manual confirms
+  // from the modal call it with auto=false (status "submitted").
+  const doSubmit = async (auto = false) => {
+    if (terminated || submittingRef.current) return
+    submittingRef.current = true
+    setSubmitting(true)
+    setShowSubmit(false)
     clearInterval(intervalRef.current)
     proctorStreamRef.current?.getTracks().forEach(t => t.stop())
     proctorStreamRef.current = null
@@ -610,10 +619,19 @@ function AssessmentInner() {
     markJustSubmitted()
     router.replace(AFTER_ASSESSMENT_ROUTE)
   }
-  useEffect(() => { submitRef.current = handleSubmit })
+  useEffect(() => { submitRef.current = doSubmit })
 
   const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
   const critical = remaining < 600
+  // Show a live count on the confirm modal so the student knows what will be
+  // submitted before they commit (vs. how many are still empty).
+  const answeredCount = Object.values(answers).filter(v =>
+    v !== undefined && v !== null && v !== '' && !(Array.isArray(v) && v.length === 0),
+  ).length
+  const requestSubmit = () => {
+    if (terminated || submittingRef.current) return
+    setShowSubmit(true)
+  }
   if (!session) return <div className="p-16 text-center text-slate-500">Loading your session…</div>
 
   const renderStage = () => {
@@ -1192,7 +1210,7 @@ function AssessmentInner() {
               <span className={`px-2 py-0.5 rounded-full font-bold ${strikes >= 3 ? 'bg-rose-500 text-white' : strikes >= 1 ? 'bg-amber-400 text-slate-900' : 'bg-slate-100 text-slate-500'}`}>{strikes}/3</span>
             </span>
             <div className={`px-4 py-1.5 rounded-full font-mono font-black text-sm border ${critical ? 'bg-rose-500 text-white border-rose-400 timer-pulse' : 'bg-white text-slate-800 border-slate-200'}`}>⏱ {fmt(remaining)}</div>
-            <button onClick={() => handleSubmit(false)} className="btn-primary !px-4 !py-2 !text-xs">Submit</button>
+            <button onClick={requestSubmit} className="btn-primary !px-4 !py-2 !text-xs">Submit</button>
           </div>
         </div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-2.5">
@@ -1333,7 +1351,7 @@ function AssessmentInner() {
                 ? <button onClick={goNext} className="btn-primary !px-5">
                     {nextIsNewStage ? `Finish ${STAGES[stage].label.split(' ')[0]} → ${nextLabel}` : `Next: ${nextLabel}`} →
                   </button>
-                : <button onClick={() => handleSubmit(false)} className="btn-primary !px-7">Submit assessment →</button>}
+                : <button onClick={requestSubmit} className="btn-primary !px-7">Submit assessment →</button>}
             </div>
           </div>
 
@@ -1380,6 +1398,63 @@ function AssessmentInner() {
             <button onClick={enableMedia} className="btn-primary mt-6 w-full">Turn on camera & mic →</button>
             {mediaError && <div className="mt-3 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl p-2">{mediaError}</div>}
             <button onClick={() => { setMediaReady(true); mediaReadyRef.current = true }} className="mt-3 text-xs text-indigo-600 font-semibold">Continue without camera (focus monitoring still active)</button>
+          </div>
+        </div>
+      )}
+
+      {/* Submit confirmation — replaces the old browser confirm() */}
+      {showSubmit && !terminated && (
+        <div className="fixed inset-0 z-[60] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-7 shadow-2xl animate-pop">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl calibiai-gradient text-white shadow-lg shadow-indigo-300">
+              <span className="text-3xl leading-none">📤</span>
+            </div>
+            <h3 className="mt-4 text-center text-2xl font-black text-slate-900">Submit assessment?</h3>
+            <p className="mt-2 text-center text-sm leading-relaxed text-slate-500">
+              This is your final step. Once submitted, your answers are evaluated and your CalibiAI Score is locked — you cannot go back and change anything.
+            </p>
+
+            <div className="mt-5 grid grid-cols-2 gap-2.5 text-center">
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
+                <div className="text-lg font-black text-emerald-600">{answeredCount}</div>
+                <div className="text-[10px] font-bold uppercase tracking-wide text-emerald-600/80">answers recorded</div>
+              </div>
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5">
+                <div className="text-lg font-black text-amber-600">⏱ {fmt(remaining)}</div>
+                <div className="text-[10px] font-bold uppercase tracking-wide text-amber-600/80">time left</div>
+              </div>
+            </div>
+
+            {strikes > 0 && (
+              <p className="mt-3 rounded-xl bg-rose-50 border border-rose-100 px-3 py-2 text-center text-[11px] font-semibold text-rose-500">
+                ⚠ {strikes} focus warning{strikes > 1 ? 's' : ''} recorded this session
+              </p>
+            )}
+
+            <div className="mt-6 flex flex-col-reverse gap-2.5 sm:flex-row">
+              <button
+                onClick={() => setShowSubmit(false)}
+                disabled={submitting}
+                className="btn-soft flex-1 !py-3 text-sm font-bold disabled:opacity-50"
+              >
+                ← Keep editing
+              </button>
+              <button
+                onClick={() => doSubmit(false)}
+                disabled={submitting}
+                className="btn-primary flex-1 !py-3 text-sm disabled:opacity-60"
+              >
+                {submitting ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                    Submitting…
+                  </span>
+                ) : 'Yes, submit assessment'}
+              </button>
+            </div>
+            <p className="mt-4 text-center text-[11px] text-slate-400">
+              Tip: unanswered questions simply score zero — you can submit whenever you are ready.
+            </p>
           </div>
         </div>
       )}

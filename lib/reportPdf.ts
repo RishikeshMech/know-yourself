@@ -1,14 +1,19 @@
 /* ------------------------------------------------------------------ */
-/* Shared CalibiAI report -> PDF builder (client-side, jsPDF)          */
-/* Produces a well-formatted, ~2-page A4 report containing:            */
-/*   1. Overall score summary (total / grade / percentile / tier)      */
-/*   2. Full candidate profile (name, email, mobile, DOB, education,   */
-/*      skills, links, session & verification details)                 */
-/*   3. Section-wise score analysis with progress bars                 */
-/*   4. English sub-skills, objective accuracy, behavioural traits     */
-/*   5. AI feedback & "where you are lacking" improvement areas        */
-/* Used by the result page, the student dashboard and the profile page */
-/* (via the ReportModal pop-up) so every download looks identical.     */
+/* CalibiAI report -> PDF builder (client-side, jsPDF)                 */
+/*                                                                    */
+/* A clean, branded, multi-page A4 report:                            */
+/*   1. Header band on every page: CalibiAI logo + wordmark, report   */
+/*      title, candidate name, page number                            */
+/*   2. Page 1 — hero score card (total / grade / percentile / tier), */
+/*      candidate profile card, skills chips, module performance bars */
+/*   3. Page 2+ — English sub-skills tiles, objective accuracy,       */
+/*      behavioural traits, AI feedback & improvement areas           */
+/*   4. Footer on every page with the CalibiAI logo                   */
+/*                                                                    */
+/* Used by the student dashboard, ReportModal pop-up, profile page    */
+/* and the sample report, so every download looks identical.          */
+/* The logo is fetched from /icon-512.png at generation time (the     */
+/* brand mark also used in the navbar) and embedded into the PDF.     */
 /* ------------------------------------------------------------------ */
 'use client'
 
@@ -79,90 +84,76 @@ export function pctColor(pct: number): [number, number, number] {
   return [244, 63, 94]                       // rose
 }
 
+/** Brand colours used across the report (site palette). */
+const GRADE_COLOR: Record<string, [number, number, number]> = {
+  S: [16, 185, 129], A: [99, 102, 241], B: [139, 92, 246], C: [245, 158, 11], D: [244, 63, 94],
+}
+
+type RGB = [number, number, number]
+
+const ML = 13
+const MR = 13
+const CW = 210 - ML - MR          // 184 mm content width
+const HEADER_H = 21                // dark brand band at the top of every page
+const BOTTOM_LIMIT = 280           // content must end above this
+
+// Palette
+const INK: RGB = [15, 23, 42]
+const SLATE: RGB = [71, 85, 105]
+const MUT: RGB = [148, 163, 184]
+const INDIGO: RGB = [79, 70, 229]
+const VIOLET: RGB = [124, 58, 237]
+const NAVY: RGB = [30, 27, 75]
+const LINE: RGB = [226, 232, 240]
+const LIGHT: RGB = [241, 245, 249]
+const WHITE: RGB = [255, 255, 255]
+const INDIGO_LIGHT: RGB = [224, 231, 255]
+const INDIGO_TXT: RGB = [199, 210, 254]   // light indigo text on dark bands
+
 type PdfInput = {
   scores: any
   profile?: any
   user?: any
   sample?: boolean
+  /** Optional pre-loaded logo data URL (tests / SSR). Falls back to /icon-512.png. */
+  logoDataUrl?: string | null
 }
 
-export async function generateReportPdf({ scores, profile = {}, user = {}, sample = false }: PdfInput) {
-  const { default: JsPDF } = await import('jspdf')
-  const doc = new JsPDF({ unit: 'mm', format: 'a4' })
-
-  /* ------------------------------ palette ------------------------------ */
-  const INK: [number, number, number] = [15, 23, 42]
-  const SLATE: [number, number, number] = [71, 85, 105]
-  const MUT: [number, number, number] = [148, 163, 184]
-  const INDIGO: [number, number, number] = [79, 70, 229]
-  const VIOLET: [number, number, number] = [139, 92, 246]
-  const LINE: [number, number, number] = [226, 232, 240]
-  const LIGHT: [number, number, number] = [241, 245, 249]
-  const WHITE: [number, number, number] = [255, 255, 255]
-  const AMBER: [number, number, number] = [245, 158, 11]
-  const PAGE_W = 210
-  const PAGE_H = 297
-  const ML = 12                       // left margin
-  const CW = PAGE_W - ML * 2          // content width = 186
-  const BOTTOM = 280
-
-  let page = 1
-
-  /* --------------------------- helpers -------------------------------- */
-  function band(doc: any) {
-    doc.setFillColor(15, 23, 42)
-    doc.rect(0, 0, PAGE_W, 20, 'F')
-    doc.setFillColor(99, 102, 241)
-    doc.rect(0, 19.2, PAGE_W, 0.8, 'F')
-    doc.setTextColor(...WHITE)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(13)
-    doc.text('CALIBIAI', ML, 10.5)
-    doc.setTextColor(165, 180, 252)
-    doc.text('SCORE', ML + 23, 10.5)
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(7.5)
-    doc.setTextColor(...MUT)
-    doc.text('Verified Talent Assessment · Global Employability Standard', ML + 36, 10.5)
-    doc.text(`Page ${page}`, PAGE_W - ML, 10.5, { align: 'right' })
+/** Load the brand mark as a PNG data URL (best effort, never throws). */
+async function loadLogoDataUrl(provided?: string | null): Promise<string | null> {
+  if (provided) return provided
+  if (typeof window === 'undefined') return null
+  try {
+    const res = await fetch('/calibiai-logo.png', { cache: 'force-cache' })
+    if (!res.ok) return null
+    const blob = await res.blob()
+    return await new Promise<string | null>(resolve => {
+      const fr = new FileReader()
+      fr.onload = () => resolve(typeof fr.result === 'string' ? fr.result : null)
+      fr.onerror = () => resolve(null)
+      fr.readAsDataURL(blob)
+    })
+  } catch {
+    return null
   }
+}
 
-  /** Ensure `space` mm is free below y — else start a new page. */
-  function fit(doc: any, y: number, space: number): number {
-    if (y + space <= BOTTOM) return y
-    page += 1
-    doc.addPage()
-    band(doc)
-    return 28
-  }
+export async function generateReportPdf({ scores, profile = {}, user = {}, sample = false, logoDataUrl }: PdfInput) {
+  // Resolve the jsPDF constructor across module systems: webpack returns the
+  // class as `default`, while Node's ESM/CJS interop wraps it one level deeper
+  // (`default.default`). Accepting both keeps tests and the browser build happy.
+  const mod: any = await import('jspdf')
+  let JsPDF: any = mod?.default
+  if (JsPDF && typeof JsPDF !== 'function' && typeof JsPDF.default === 'function') JsPDF = JsPDF.default
+  if (typeof JsPDF !== 'function') JsPDF = mod?.JsPDF || mod
+  const doc: any = new JsPDF({ unit: 'mm', format: 'a4' })
+  const logo = await loadLogoDataUrl(logoDataUrl)
 
-  function heading(doc: any, text: string, y: number): number {
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(9)
-    doc.setTextColor(...INDIGO)
-    doc.text(text.toUpperCase(), ML, y)
-    doc.setDrawColor(...INDIGO)
-    doc.setLineWidth(0.3)
-    doc.line(ML + doc.getTextWidth(text.toUpperCase()) + 3, y - 1.2, PAGE_W - ML, y - 1.2)
-    return y
-  }
+  const fullName = String(profile?.full_name || user?.name || 'Student').trim() || 'Student'
+  const email = String(profile?.email || user?.email || '').trim()
+  doc.setProperties({ title: `CalibiAI Talent Report — ${fullName}` })
 
-  function bar(doc: any, x: number, y: number, w: number, h: number, pct: number, color: [number, number, number]) {
-    const p = Math.max(0, Math.min(100, num(pct)))
-    doc.setFillColor(...LIGHT)
-    doc.roundedRect(x, y, w, h, h / 2, h / 2, 'F')
-    if (p > 0) {
-      doc.setFillColor(...color)
-      doc.roundedRect(x, y, Math.max(h, (w * p) / 100), h, h / 2, h / 2, 'F')
-    }
-  }
-
-  /* ------------------------- header / metadata ------------------------ */
-  doc.setProperties({ title: `CalibiAI Talent Report — ${profile?.full_name || user?.name || 'Student'}` })
-  band(doc)
-
-  const fullName = (profile?.full_name || user?.name || '—').trim()
-  const email = (profile?.email || user?.email || '—').trim()
+  const dateLine = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
   const fmtPhone = (p: any) => {
     const d = String(p || '').replace(/\D/g, '').slice(-10)
     return d.length === 10 ? `+91 ${d.slice(0, 5)} ${d.slice(5)}` : (p || '—')
@@ -175,198 +166,319 @@ export async function generateReportPdf({ scores, profile = {}, user = {}, sampl
     let age = now.getFullYear() - b.getFullYear()
     const m = now.getMonth() - b.getMonth()
     if (m < 0 || (m === 0 && now.getDate() < b.getDate())) age--
-    return `${d}${age >= 0 && age < 120 ? `  (${age} yrs)` : ''}`
+    return `${String(d).slice(0, 10)}${age >= 0 && age < 120 ? `  (${age} yrs)` : ''}`
   }
 
   const total = num(scores?.total)
-  const grade = scores?.grade || '—'
+  const grade = String(scores?.grade || '—').slice(0, 1)
   const percentile = num(scores?.percentile)
   const tier = tierFor(total)
-  const sessionId = scores?.session_id || '—'
-  const hash = scores?.verifiable_hash || ''
-  const dateLine = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+  const sessionId = String(scores?.session_id || '—')
+  const hash = String(scores?.verifiable_hash || '')
+  const gradeColor = GRADE_COLOR[grade] || INDIGO
 
-  /* ============================ PAGE 1 ================================ */
-  let y = 30
+  /* ---------------------------- helpers ----------------------------- */
+  let page = 1
 
-  /* ---- hero score band ---- */
-  doc.setFillColor(30, 27, 75)
-  doc.roundedRect(ML, y, CW, 32, 4, 4, 'F')
-  doc.setFillColor(99, 102, 241)
-  doc.rect(ML, y, 2.4, 32, 'F')
-  doc.setTextColor(...WHITE)
+  /** Brand band drawn at the top of every page. */
+  function header() {
+    doc.setFillColor(...NAVY)
+    doc.rect(0, 0, 210, HEADER_H, 'F')
+    doc.setFillColor(...INDIGO)
+    doc.rect(0, HEADER_H - 0.9, 210, 0.9, 'F')
+    // Logo chip (white rounded square with the brand mark inside).
+    doc.setFillColor(...WHITE)
+    doc.roundedRect(ML, 4.2, 12.4, 12.4, 2.6, 2.6, 'F')
+    if (logo) {
+      try { doc.addImage(logo, 'PNG', ML + 1.4, 5.6, 9.6, 9.6, 'calibiai_logo') } catch { /* decorative */ }
+    }
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(12.5)
+    doc.setTextColor(...WHITE)
+    doc.text('CALIBIAI', ML + 15.5, 9.2)
+    doc.setTextColor(...INDIGO_TXT)
+    doc.text('SCORE', ML + 15.5 + doc.getTextWidth('CALIBIAI') + 1.5, 9.2)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(6.4)
+    doc.setTextColor(148, 163, 184)
+    doc.text('Verified Employability Assessment & Scoring', ML + 15.5, 13.8)
+    // Right side: report label + candidate + page
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(7)
+    doc.setTextColor(...INDIGO_TXT)
+    doc.text('TALENT REPORT', 210 - MR, 7.2, { align: 'right' })
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(8.4)
+    doc.setTextColor(...WHITE)
+    doc.text(fullName.slice(0, 42), 210 - MR, 11.6, { align: 'right' })
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(6.6)
+    doc.setTextColor(148, 163, 184)
+    doc.text(`Page ${page}`, 210 - MR, 15.6, { align: 'right' })
+  }
+
+  /** Start a new page and re-draw the header. */
+  function newPage(): number {
+    page += 1
+    doc.addPage()
+    header()
+    return HEADER_H + 8
+  }
+
+  /** Ensure `space` mm fits below y; page-break when it doesn't. */
+  function fit(y: number, space: number): number {
+    if (y + space <= BOTTOM_LIMIT) return y
+    return newPage()
+  }
+
+  /** Section heading with an indigo accent tick. */
+  function sectionTitle(text: string, y: number, sub?: string): number {
+    doc.setFillColor(...INDIGO)
+    doc.roundedRect(ML, y - 3, 1.8, 4.2, 0.9, 0.9, 'F')
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(10.5)
+    doc.setTextColor(...INK)
+    doc.text(text, ML + 4, y)
+    if (sub) {
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(6.8)
+      doc.setTextColor(...MUT)
+      doc.text(sub, ML + 4 + doc.getTextWidth(text) + 4, y - 0.6)
+    }
+    doc.setDrawColor(...LINE)
+    doc.setLineWidth(0.3)
+    const endX = ML + 4 + (sub ? doc.getTextWidth(text) + 4 + doc.getTextWidth(sub) : doc.getTextWidth(text)) + 3
+    doc.line(endX, y - 1.1, 210 - MR, y - 1.1)
+    return y + 2.6
+  }
+
+  /** Rounded progress bar. */
+  function bar(x: number, y: number, w: number, h: number, pct: number, color: RGB) {
+    const p = Math.max(0, Math.min(100, num(pct)))
+    doc.setFillColor(...LIGHT)
+    doc.roundedRect(x, y, w, h, h / 2, h / 2, 'F')
+    if (p > 0) {
+      doc.setFillColor(...color)
+      doc.roundedRect(x, y, Math.max(h, (w * p) / 100), h, h / 2, h / 2, 'F')
+    }
+  }
+
+  /** Skill chip: light indigo rounded pill; returns its width. */
+  function chip(x: number, y: number, text: string): number {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(7.2)
+    const w = doc.getTextWidth(text) + 5
+    doc.setFillColor(...INDIGO_LIGHT)
+    doc.roundedRect(x, y, w, 4.8, 2.4, 2.4, 'F')
+    doc.setTextColor(...INDIGO)
+    doc.text(text, x + w / 2, y + 3.4, { align: 'center' })
+    return w
+  }
+
+  function labelText(text: string, x: number, y: number, color: RGB = MUT, size = 6) {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(size)
+    doc.setTextColor(...color)
+    doc.text(String(text).toUpperCase(), x, y)
+  }
+  function valueText(text: string, x: number, y: number, color: RGB = INK, size = 9, style: 'bold' | 'normal' = 'bold') {
+    doc.setFont('helvetica', style)
+    doc.setFontSize(size)
+    doc.setTextColor(...color)
+    doc.text(String(text), x, y)
+  }
+
+  header()
+
+  /* ============================ PAGE 1 ============================== */
+  let y = HEADER_H + 7
+
+  /* ---- hero score card ---- */
+  y = fit(y, 50)
+  const heroY = y
+  const heroH = 50
+  doc.setFillColor(...NAVY)
+  doc.roundedRect(ML, heroY, CW, heroH, 6, 6, 'F')
+  doc.setFillColor(...INDIGO)
+  doc.rect(ML, heroY, 2.6, heroH, 'F')
+  // left — score
+  labelText('Calibiai Talent Score', ML + 11, heroY + 11, INDIGO_TXT, 8)
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(9)
-  doc.text('CALIBIAI TALENT SCORE', ML + 8, y + 8)
-  doc.setFontSize(26)
-  doc.text(String(total), ML + 8, y + 24)
-  doc.setFontSize(11)
-  doc.setTextColor(165, 180, 252)
-  doc.text('/ 1000', ML + 8 + doc.getTextWidth(String(total)) + 2, y + 24)
-  // grade pill
-  const gradeTxt = `GRADE ${grade}`
-  doc.setFillColor(99, 102, 241)
-  doc.roundedRect(120, y + 7, 26, 8, 4, 4, 'F')
+  doc.setFontSize(44)
   doc.setTextColor(...WHITE)
-  doc.setFontSize(11)
-  doc.text(gradeTxt, 133, y + 13.4, { align: 'center' })
+  doc.text(String(total), ML + 11, heroY + 31)
+  doc.setFontSize(13)
+  doc.setTextColor(...INDIGO_TXT)
+  doc.text('/ 1000', ML + 11 + doc.getTextWidth(String(total)) + 3, heroY + 31)
+  // candidate details under the score
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(11.5)
+  doc.setTextColor(...WHITE)
+  doc.text(fullName.length > 44 ? fullName.slice(0, 44) + '…' : fullName, ML + 11, heroY + 41.5)
+  const collegeTxt = String([profile?.college, profile?.degree].filter(Boolean).join(' · ') || '—').slice(0, 80)
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8.5)
-  doc.setTextColor(...MUT)
-  doc.text(`${percentile}th percentile`, 120, y + 21)
-  doc.text(`Tier: ${tier.label}`, 120, y + 25.5)
-  doc.setFontSize(7.5)
-  doc.setTextColor(148, 163, 184)
-  doc.text(`Report generated: ${dateLine}`, PAGE_W - ML - 8, y + 21, { align: 'right' })
-  if (hash) doc.text(`Hash: ${String(hash).slice(0, 30)}`, PAGE_W - ML - 8, y + 25.5, { align: 'right' })
-  y += 32 + 8
+  doc.setFontSize(7.6)
+  doc.setTextColor(165, 180, 252)
+  doc.text(collegeTxt, ML + 11, heroY + 46.6)
+  // right — grade badge + mini stats
+  const rx = 210 - MR - 6
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(6.4)
+  doc.setTextColor(...INDIGO_TXT)
+  doc.text('GRADE', rx - 20, heroY + 6.6, { align: 'center' })
+  doc.setFillColor(...gradeColor)
+  doc.roundedRect(rx - 44, heroY + 9.6, 44, 15, 7.5, 7.5, 'F')
+  doc.setFontSize(19)
+  doc.setTextColor(...WHITE)
+  doc.text(grade, rx - 22, heroY + 20.8, { align: 'center' })
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(7.4)
+  doc.setTextColor(...INDIGO_TXT)
+  doc.text(`Percentile   ${Number.isFinite(percentile) ? percentile.toFixed(0) : '—'}th`, rx, heroY + 31, { align: 'right' })
+  doc.text(`Tier         ${tier.label}`, rx, heroY + 36.4, { align: 'right' })
+  doc.text(`Report       ${dateLine}`, rx, heroY + 41.8, { align: 'right' })
+  if (sample) {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(6.6)
+    doc.setTextColor(253, 230, 138)
+    doc.text('SAMPLE — PREVIEW ONLY', rx, heroY + 47, { align: 'right' })
+  }
+  y = heroY + heroH + 6
 
-  /* ---- candidate profile ---- */
-  y = heading(doc, 'Candidate Profile', y + 3)
-  y += 3
+  /* ---- session / verification strip ---- */
+  y = fit(y, 9)
+  doc.setFillColor(...LIGHT)
+  doc.roundedRect(ML, y, CW, 8, 2.4, 2.4, 'F')
   doc.setFont('helvetica', 'normal')
-  const rows: [string, string][] = [
-    ['Full name', fullName],
-    ['PRN', profile?.prn ? String(profile.prn) : '—'],
-    ['Email', email],
+  doc.setFontSize(6.8)
+  doc.setTextColor(...SLATE)
+  doc.text(`Session: ${sessionId.slice(0, 28)}`, ML + 4, y + 5.3)
+  const assessedOn = String(scores?.submitted_at || dateLine).slice(0, 10)
+  doc.text(`Assessed on: ${assessedOn}`, ML + 66, y + 5.3)
+  if (hash) {
+    doc.setTextColor(...INDIGO)
+    doc.setFont('helvetica', 'bold')
+    doc.text(`Verifiable hash: ${hash.slice(0, 44)}`, 210 - MR - 4, y + 5.3, { align: 'right' })
+  }
+  y += 8 + 7
+
+  /* ---- candidate profile card ---- */
+  y = sectionTitle('Candidate Profile', y, 'personal & academic details')
+  y = fit(y, 4)
+  const cardY = y
+  const profileRows: [string, any][] = [
+    ['PRN', profile?.prn || '—'],
+    ['Email', email || '—'],
     ['Mobile', fmtPhone(profile?.phone)],
     ['Date of birth', dobLine(profile?.dob)],
-    ['Gender', (profile?.gender || '—') as string],
-    ['Degree', (profile?.degree || '—') as string],
-    ['College', (profile?.college || '—') as string],
-    ['Class of', profile?.graduation_year ? String(profile.graduation_year) : '—'],
+    ['Gender', profile?.gender || '—'],
+    ['Degree', profile?.degree || '—'],
+    ['College', profile?.college || '—'],
+    ['Graduation year', profile?.graduation_year ? String(profile.graduation_year) : '—'],
     ['CGPA', profile?.cgpa ? `${profile.cgpa} / 10` : '—'],
+    ['Registered', String(profile?.created_at || profile?.updated_at || '').slice(0, 10) || '—'],
   ]
-  const colW = (CW - 6) / 2
-  const colX = [ML, ML + colW + 6]
-  let cellY = y
-  rows.forEach(([label, value], i) => {
-    const cx = colX[i % 2]
-    if (i % 2 === 0) {
-      cellY = fit(doc, cellY, 10)
-    }
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(6.2)
-    doc.setTextColor(...MUT)
-    doc.text(label.toUpperCase(), cx, cellY)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(8.8)
-    doc.setTextColor(...INK)
-    doc.text(String(value), cx, cellY + 4.2)
-    if (i % 2 === 1) cellY += 9
+  const halfW = (CW - 14) / 2
+  const xL = ML + 7
+  const xR = ML + 7 + halfW + 14
+  // Cell height driven by the longest value (at most two wrapped lines).
+  let maxLines = 1
+  for (const [, value] of profileRows) {
+    maxLines = Math.max(maxLines, doc.splitTextToSize(String(value), halfW - 2).length)
+  }
+  const cellH = Math.min(12, Math.max(6.4, 5.2 + (maxLines - 1) * 3.6))
+  const cardH = 8 + Math.ceil(profileRows.length / 2) * cellH
+  doc.setFillColor(250, 250, 252)
+  doc.setDrawColor(...LINE)
+  doc.setLineWidth(0.3)
+  doc.roundedRect(ML, cardY, CW, cardH, 5, 5, 'FD')
+  profileRows.forEach(([label, value], i) => {
+    const col = i % 2
+    const row = Math.floor(i / 2)
+    const cy = cardY + 6.5 + row * cellH
+    const cx = col === 0 ? xL : xR
+    labelText(label, cx, cy)
+    const lines = doc.splitTextToSize(String(value), halfW - 2).slice(0, 2)
+    lines.forEach((line: string, li: number) => valueText(line, cx, cy + 3.4 + li * 3.6, INK, 8.6))
   })
-  y = cellY + 4
+  y = cardY + cardH + 8
 
-  // skills / links full width
+  /* ---- skills chips ---- */
   const skillsTxt = String(profile?.skills || '').trim()
   if (skillsTxt) {
-    y = fit(doc, y, 12)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(6.2)
-    doc.setTextColor(...MUT)
-    doc.text('SKILLS', ML, y)
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(8.5)
-    doc.setTextColor(...SLATE)
-    const sk = doc.splitTextToSize(skillsTxt, CW)
-    y += 3.6
-    sk.slice(0, 2).forEach((line: string) => {
-      y = fit(doc, y, 5)
-      doc.text(line, ML, y + 3)
-      y += 4.6
-    })
-    y += 2
+    const skills = skillsTxt.split(',').map(s => s.trim()).filter(Boolean).slice(0, 26)
+    y = sectionTitle('Skills', y, 'self-reported on profile')
+    y = fit(y, 8)
+    y += 4.6
+    let sx = ML
+    let sy = y
+    for (const skill of skills) {
+      const w = chip(sx, sy, skill)
+      sx += w + 2
+      if (sx + 16 > 210 - MR) {
+        sx = ML
+        sy += 6.6
+      }
+    }
+    y = sy + 5 + 6
   }
-  const links = [profile?.linkedin_url ? `LinkedIn: ${profile.linkedin_url}` : '', profile?.github_url ? `GitHub: ${profile.github_url}` : ''].filter(Boolean)
-  if (links.length) {
-    y = fit(doc, y, 10)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(6.2)
-    doc.setTextColor(...MUT)
-    doc.text('LINKS', ML, y)
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(8.5)
-    doc.setTextColor(...INDIGO)
-    y += 4
-    links.slice(0, 2).forEach((l: string) => {
-      y = fit(doc, y, 5)
-      doc.textWithLink(String(l), ML, y, { url: String(l).replace(/^LinkedIn: |^GitHub: /, '') })
-      y += 5
-    })
-    y += 2
-  }
-  // session meta strip
-  y = fit(doc, y, 9)
-  doc.setFillColor(...LIGHT)
-  doc.roundedRect(ML, y, CW, 7.5, 2, 2, 'F')
-  doc.setFontSize(7)
-  doc.setTextColor(...SLATE)
-  doc.text(`Session: ${sessionId}`, ML + 3, y + 5)
-  doc.text(`Report: CalibiAI_Report_${sessionId}.pdf`, PAGE_W - ML - 3, y + 5, { align: 'right' })
-  y += 12
 
-  /* ---- section-wise breakdown ---- */
-  y = heading(doc, 'Assessment Score · Section-wise Analysis', y + 2)
+  /* ---- module performance ---- */
+  y = sectionTitle('Section-wise Analysis', y, 'six modules on the 1000-point scale')
+  y = fit(y, 4)
   y += 5
   const sections = reportSections(scores)
-  sections.forEach(s => {
-    const h = s.note ? 11 : 8.5
-    y = fit(doc, y, h)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(9)
-    doc.setTextColor(...INK)
-    doc.text(s.label, ML, y)
-    const right = `${s.score} / ${s.max}` + (s.max ? `   ·   ${s.pct}%` : '')
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(8.5)
-    doc.setTextColor(...(s.max ? pctColor(s.pct) : SLATE))
-    doc.text(right, PAGE_W - ML, y, { align: 'right' })
-    bar(doc, ML, y + 1.6, CW, 1.8, s.pct, s.max ? pctColor(s.pct) : LINE)
+  for (const s of sections) {
+    y = fit(y, 11.5)
+    valueText(s.label, ML, y, INK, 9.2)
+    const scoreTxt = `${s.score} / ${s.max}` + (s.max ? `    ·   ${s.pct}%` : '')
+    valueText(scoreTxt, 210 - MR, y, s.max ? pctColor(s.pct) : SLATE, 8.4)
+    bar(ML, y + 2.2, CW, 2.6, s.pct, s.max ? pctColor(s.pct) : INDIGO)
     if (s.note) {
       doc.setFont('helvetica', 'normal')
-      doc.setFontSize(6.6)
+      doc.setFontSize(6.4)
       doc.setTextColor(...MUT)
-      doc.text(s.note, ML, y + 5.2)
+      doc.text(String(s.note).slice(0, 150), ML, y + 8)
     }
-    y += h
-  })
-  y += 4
+    y += s.note ? 11 : 8.4
+  }
+  y += 6
 
-  /* ============================ PAGE 2 ================================ */
-  y = fit(doc, y, 30)
-  if (page === 1) { page += 1; doc.addPage(); band(doc); y = 28 }
-  y = heading(doc, 'Detailed Score Analysis', y + 3)
-  y += 4
+  /* ============================ PAGE 2+ ============================= */
+  y = fit(y, 6)
+  y = sectionTitle('Detailed Score Analysis', y, 'sub-skills · accuracy · traits')
+  y += 6
 
-  /* --- English sub-skills --- */
+  /* ---- English sub-skills tiles ---- */
   const eng = scores?.english || {}
-  const engSubs = [
+  const engSubs: [string, any, any][] = [
     ['Listening', eng.listening, 50], ['Speaking', eng.speaking, 50],
     ['Reading', eng.reading, 50], ['Writing', eng.writing, 50],
   ]
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(8)
-  doc.setTextColor(...INK)
-  doc.text('English sub-skills', ML, y)
-  y += 2.5
+  y = fit(y, 17)
   const boxW = (CW - 6) / 4
   engSubs.forEach(([label, v, m], i) => {
     const bx = ML + i * (boxW + 2)
-    const pct = (num(v) / num(m)) * 100
+    const pct = m ? (num(v) / num(m)) * 100 : 0
     doc.setFillColor(...LIGHT)
-    doc.roundedRect(bx, y, boxW, 13, 2.5, 2.5, 'F')
+    doc.roundedRect(bx, y, boxW, 16, 3.5, 3.5, 'F')
+    const big = String(num(v))
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(12)
+    doc.setFontSize(15)
     doc.setTextColor(...pctColor(pct))
-    doc.text(String(num(v)), bx + boxW / 2, y + 6, { align: 'center' })
+    doc.text(big, bx + boxW / 2 - doc.getTextWidth(big) / 2 - 4, y + 8)
     doc.setFont('helvetica', 'normal')
-    doc.setFontSize(6.4)
+    doc.setFontSize(6)
+    doc.setTextColor(...MUT)
+    doc.text(`/ ${num(m)}`, bx + boxW / 2 + 2, y + 6.2)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(6.8)
     doc.setTextColor(...SLATE)
-    doc.text(String(label), bx + boxW / 2, y + 10.4, { align: 'center' })
+    doc.text(String(label), bx + boxW / 2, y + 12.8, { align: 'center' })
   })
-  y += 15
+  y += 16 + 8
 
-  /* --- objective accuracy --- */
+  /* ---- objective accuracy ---- */
   const detail = scores?.detail || {}
   const accRaw: [string, number, number][] = [
     ['Listening accuracy', num(detail.listeningCorrect), num(detail.listeningTotal)],
@@ -376,134 +488,153 @@ export async function generateReportPdf({ scores, profile = {}, user = {}, sampl
   ]
   const acc = accRaw.filter(([, , t]) => t > 0)
   if (acc.length) {
-    y = fit(doc, y, 8)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(8)
-    doc.setTextColor(...INK)
-    doc.text('Objective accuracy', ML, y)
-    y += 3
+    y = fit(y, 6)
+    y = sectionTitle('Objective Accuracy', y, 'correct answers in MCQ sections')
+    y += 6
     acc.forEach(([label, c, t]) => {
-      y = fit(doc, y, 7.2)
+      y = fit(y, 7)
       const pct = Math.round((c / t) * 100)
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(8)
-      doc.setTextColor(...SLATE)
-      doc.text(label, ML, y)
-      doc.text(`${c}/${t} · ${pct}%`, 118, y, { align: 'left' })
-      bar(doc, 132, y - 1.4, 66, 1.6, pct, pctColor(pct))
-      y += 7.2
+      valueText(label, ML, y, SLATE, 8, 'normal')
+      valueText(`${c}/${t} correct · ${pct}%`, ML + 64, y, pctColor(pct), 8)
+      bar(ML + 92, y - 1.5, 210 - MR - (ML + 92), 2, pct, pctColor(pct))
+      y += 8
     })
-    y += 3
+    y += 4
   }
 
-  /* --- behavioural traits --- */
+  /* ---- behavioural traits ---- */
   const cog = scores?.cognitive || {}
   const traits = Object.entries(cog?.behavioral || {}) as [string, number][]
   if (traits.length) {
-    y = fit(doc, y, 10)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(8)
-    doc.setTextColor(...INK)
-    doc.text('Behavioural profile', ML, y)
-    y += 3.6
-    const tColW = CW / 2
+    y = fit(y, 6)
+    y = sectionTitle('Behavioural Profile', y, 'six workplace traits · each /100')
+    y += 6.5
+    const tColW = (CW - 8) / 2
+    const rows2 = Math.ceil(traits.length / 2)
+    y = fit(y, rows2 * 8.6)
     traits.forEach(([k, v], i) => {
       const col = i % 2
       const row = Math.floor(i / 2)
-      const tx = ML + col * tColW + (col ? 6 : 0)
-      const ty = y + row * 7.2
-      ty < BOTTOM ? null : (y = fit(doc, y, 7.2 * 3))
-      const label = cog?.traitLabels?.[k] || String(k).replace(/_/g, ' ')
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(7.8)
-      doc.setTextColor(...SLATE)
-      doc.text(label, tx, ty)
-      doc.text(String(num(v)), tx + tColW - 22, ty, { align: 'right' })
-      bar(doc, tx + doc.getTextWidth(label) + 2, ty - 1.3, tColW - 30 - doc.getTextWidth(label), 1.5, num(v), pctColor(num(v)))
+      const tx = ML + col * (tColW + 8)
+      const ty = y + row * 8.6
+      const label = String(cog?.traitLabels?.[k] || String(k).replace(/_/g, ' ')).slice(0, 24)
+      valueText(label, tx, ty, SLATE, 7.8, 'normal')
+      valueText(String(num(v)), tx + tColW - 10, ty, pctColor(num(v)), 8)
+      bar(tx + 32, ty - 1.5, tColW - 44, 1.8, num(v), pctColor(num(v)))
     })
-    y += Math.ceil(traits.length / 2) * 7.2 + 2
+    y += rows2 * 8.6 + 5
   }
 
-  /* --- AI feedback & improvement areas (where the candidate is lacking) --- */
+  /* ---- AI feedback & improvement areas ---- */
   const aiEntries = Object.entries(scores?.ai_results || {}) as [string, any][]
-  y = fit(doc, y, 12)
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(8)
-  doc.setTextColor(...INK)
-  doc.text('AI feedback & areas to improve', ML, y)
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(6.6)
-  doc.setTextColor(...MUT)
-  doc.text('Generated per task by the AI evaluation engine.', PAGE_W - ML, y, { align: 'right' })
-  y += 3.4
-
-  if (!aiEntries.length) {
-    doc.setFontSize(8)
-    doc.setTextColor(...SLATE)
-    doc.text('No per-task AI feedback recorded for this attempt.', ML, y)
-    y += 6
-  }
-  aiEntries.slice(0, 8).forEach(([key, r]) => {
-    const label = aiTaskLabel(key)
-    const score = num(r?.score)
-    const note = String(r?.summary || '')
-    const imps = Array.isArray(r?.improvements) ? r.improvements.slice(0, 2) : []
-    // estimate needed height
-    const estLines = imps.reduce((a: number, imp: string) => a + doc.splitTextToSize(String(imp), CW - 8).length, 0)
-    y = fit(doc, y, 16 + estLines * 3.6)
-    doc.setFillColor(...LIGHT)
-    doc.roundedRect(ML, y - 4.4, CW, 1, 0.5, 0.5, 'F') // separator tick above
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(8.2)
-    doc.setTextColor(...INK)
-    doc.text(label, ML, y)
-    doc.setFillColor(...pctColor(score))
-    doc.roundedRect(150, y - 3.6, 48, 5, 2.5, 2.5, 'F')
-    doc.setTextColor(...WHITE)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(7)
-    doc.text(`${score}/100`, 174, y - 0.1, { align: 'center' })
-    y += 4.2
-    if (note) {
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(7.3)
-      doc.setTextColor(...SLATE)
-      const wrapped = doc.splitTextToSize(note, CW - 54)
-      wrapped.slice(0, 3).forEach((line: string) => {
-        y = fit(doc, y, 4)
-        doc.text(line, ML, y)
-        y += 3.6
+  if (aiEntries.length) {
+    y = fit(y, 6)
+    y = sectionTitle('AI Feedback & Areas to Improve', y, 'generated per task by the AI evaluation engine')
+    y += 7
+    aiEntries.slice(0, 8).forEach(([key, r]) => {
+      const label = aiTaskLabel(key)
+      const score = num(r?.score)
+      const note = String(r?.summary || '')
+      const noteLines = note ? doc.splitTextToSize(note, CW - 14).slice(0, 3) : []
+      const cardH = 10.5 + noteLines.length * 3.4 + (noteLines.length ? 2 : 0)
+      y = fit(y, cardH)
+      doc.setFillColor(...LIGHT)
+      doc.roundedRect(ML, y, CW, cardH, 4, 4, 'F')
+      doc.setFillColor(...INDIGO)
+      doc.roundedRect(ML, y, 2.2, cardH, 4, 4, 'F')
+      doc.rect(ML, y, 2.2, cardH - 4, 'F')
+      valueText(label, ML + 7, y + 5, INK, 8.6)
+      doc.setFillColor(...pctColor(score))
+      doc.roundedRect(210 - MR - 24, y + 1.8, 24, 6, 3, 3, 'F')
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(6.6)
+      doc.setTextColor(...WHITE)
+      doc.text(`${score}/100`, 210 - MR - 12, y + 6, { align: 'center' })
+      let ny = y + 6.8
+      noteLines.forEach((line: string) => {
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(6.6)
+        doc.setTextColor(...SLATE)
+        doc.text(line, ML + 7, ny)
+        ny += 3.4
+      })
+      y += cardH + 3.5
+    })
+    y += 3
+    /* improvement bullets */
+    const imps: string[] = []
+    aiEntries.slice(0, 8).forEach(([, r]) => {
+      if (Array.isArray(r?.improvements)) imps.push(...r.improvements.map(String))
+    })
+    const uniqImps = [...new Set(imps)].slice(0, 6)
+    if (uniqImps.length) {
+      y = fit(y, 6)
+      valueText('Suggested improvements', ML, y + 2, INK, 9)
+      y += 5
+      uniqImps.forEach(imp => {
+        const lines = doc.splitTextToSize(String(imp), CW - 10).slice(0, 2)
+        lines.forEach((line: string) => {
+          y = fit(y, 5)
+          doc.setFillColor(...VIOLET)
+          doc.circle(ML + 1.3, y - 1.2, 0.8, 'F')
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(7.4)
+          doc.setTextColor(...SLATE)
+          doc.text(String(line), ML + 4.5, y)
+          y += 4.6
+        })
       })
     }
-    imps.forEach((imp: string) => {
-      doc.setTextColor(190, 18, 60)
-      doc.setFontSize(7.3)
-      const wrapped = doc.splitTextToSize(String(imp), CW - 8)
-      wrapped.forEach((line: string, i2: number) => {
-        y = fit(doc, y, 4)
-        doc.text(i2 === 0 ? '•' : '', ML, y)
-        doc.text(line, ML + 3, y)
-        y += 3.6
-      })
-    })
-    y += 2.2
+  }
+
+  /* ---- closing blurb ---- */
+  y = fit(y, 18)
+  doc.setDrawColor(...LINE)
+  doc.setLineWidth(0.3)
+  doc.line(ML, y, 210 - MR, y)
+  y += 5.5
+  valueText('What is the CalibiAI Score?', ML, y, INK, 8.4)
+  y += 3.8
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(7)
+  doc.setTextColor(...SLATE)
+  const blurb = 'A 1000-point unified, verifiable measure of employability — English communication, problem solving, AI debugging, AI feature development, prompt engineering and cognitive/behavioural traits, assessed through a supervised 120-minute exam. Every report carries a tamper-evident verifiable hash.'
+  const blurbLines = doc.splitTextToSize(blurb, CW)
+  blurbLines.slice(0, 5).forEach((line: string) => {
+    y = fit(y, 4.4)
+    doc.text(line, ML, y)
+    y += 4.3
   })
 
-  /* --- footer --- */
-  y = fit(doc, y, 14)
-  doc.setDrawColor(...LINE)
-  doc.setLineWidth(0.2)
-  doc.line(ML, Math.min(y, BOTTOM - 10), PAGE_W - ML, Math.min(y, BOTTOM - 10))
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(6.6)
-  doc.setTextColor(...MUT)
-  doc.text('Verifiable CalibiAI credential · Shareable scorecard · Data encrypted at rest & in transit', ML, Math.min(y, BOTTOM - 10) + 4)
-  doc.text('CALIBIAI SCORE — Global Employability Standard', PAGE_W - ML, Math.min(y, BOTTOM - 10) + 4, { align: 'right' })
-  if (sample) {
-    doc.setTextColor(...AMBER)
+  /* ============================ footers ============================= */
+  const totalPages = doc.getNumberOfPages()
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i)
+    doc.setDrawColor(...LINE)
+    doc.setLineWidth(0.25)
+    doc.line(ML, 286.5, 210 - MR, 286.5)
+    if (logo) {
+      try { doc.addImage(logo, 'PNG', ML, 288.4, 5.2, 5.2, 'calibiai_logo') } catch { /* decorative */ }
+    }
     doc.setFont('helvetica', 'bold')
-    doc.text('SAMPLE REPORT — for preview purposes only', ML, Math.min(y, BOTTOM - 10) + 8.5)
+    doc.setFontSize(6.4)
+    doc.setTextColor(...SLATE)
+    doc.text('CALIBIAI SCORE', ML + 7.5, 291.8)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(6)
+    doc.setTextColor(...MUT)
+    doc.text('Verified Employability Assessment · calibiai.com', ML + 7.5, 295.2)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(6.4)
+    doc.setTextColor(...MUT)
+    doc.text(`Page ${i} of ${totalPages}`, 210 - MR, 291.8, { align: 'right' })
+    if (sample) {
+      doc.setTextColor(180, 83, 9)
+      doc.setFont('helvetica', 'bold')
+      doc.text('SAMPLE REPORT — FOR PREVIEW ONLY', 210 - MR, 295.2, { align: 'right' })
+    }
   }
+  doc.setPage(totalPages)
 
   return doc
 }

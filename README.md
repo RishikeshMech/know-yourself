@@ -18,6 +18,17 @@ npm run dev   # http://localhost:3000  (binds 0.0.0.0, preview at https://3000-*
 
 No external keys required. With no keys set the app runs in **fully local demo mode** (localStorage + built-in rule-based scoring); add keys to switch on real persistence and AI grading.
 
+### 🔐 Admin dashboard — `/admin`
+
+Admin-only view of **every student** (works on any domain — `http://localhost:3000/admin` locally, `https://<your-domain>/admin` when deployed):
+
+- **Login:** username `admin`, password `Admin@123` (fixed; session is an HttpOnly signed cookie, expires after 8 h).
+- **Filters:** by college (dropdown) and free search across name / email / PRN / mobile / college, plus an "assessed only" toggle.
+- **Download CSV:** one click exports the full dataset or the currently filtered view — Name, PRN, mobile number, email, college, degree, CGPA, profile + resume + merged skills, resume score and **every** CalibiAI module/sub-skill score (English listening/speaking/reading/writing, Problem Solving, AI Debugging, AI Feature, Prompt Eng, Cognitive grid/logical + 6 behavioural traits), percentile, grade and assessment date (48 columns, Excel/Sheets ready).
+- Data comes from the same backend as the app: Supabase (`student_profiles_full` view) when configured, otherwise the local JSON store.
+- Raw data is also served at `GET /api/admin/export?scope=all|filtered&college=&q=` (cookie-protected).
+- Set `ADMIN_SECRET` (any long random string) in production to sign admin sessions.
+
 ### Optional configuration (`.env.local`)
 
 Copy `.env.example` → `.env.local`:
