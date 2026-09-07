@@ -20,6 +20,17 @@ import { isProfileComplete } from './validate.ts'
 export const ONBOARDING_ROUTE = '/onboarding'
 export const DASHBOARD_ROUTE = '/dashboard/student'
 
+/**
+ * Where a student belongs once their one-time attempt is over: the student
+ * dashboard. It carries the latest CalibiAI Score, "View report", the PDF
+ * download and the resume card — i.e. everything a finished candidate needs.
+ *
+ * This used to be `/profile`, a details-and-edit page with no next steps, so
+ * submitting the assessment (or revisiting `/assessment`, `/instructions` or
+ * `/result` afterwards) dropped students somewhere they did not expect.
+ */
+export const AFTER_ASSESSMENT_ROUTE = DASHBOARD_ROUTE
+
 export type StudentRoute = typeof ONBOARDING_ROUTE | typeof DASHBOARD_ROUTE
 
 /** Flags as returned by `POST /api/auth/login`. */

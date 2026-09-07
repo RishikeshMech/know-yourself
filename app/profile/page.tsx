@@ -7,6 +7,7 @@ import { isProfileComplete } from '@/lib/validate'
 import { AiAvatar, AVATAR_STYLES, makeAvatarConfig, type AvatarConfig, type AvatarStyle } from '@/components/AiAvatar'
 import { SkillGraph, type SkillDatum } from '@/components/SkillGraph'
 import { ReportModal } from '@/components/ReportModal'
+import { SkillChips } from '@/components/SkillChips'
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
@@ -552,6 +553,7 @@ function ProfileInner() {
               />
               <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                 {[
+                  ['PRN No.', profile?.prn || '—'],
                   ['Phone', profile?.phone ? phoneDisplay(profile.phone) : '—'],
                   ['Gender', profile?.gender || '—'],
                   ['Date of birth', profile?.dob ? `${profile.dob}${ageFromDob(profile.dob) !== null ? ` (${ageFromDob(profile.dob)})` : ''}` : '—'],
@@ -559,13 +561,16 @@ function ProfileInner() {
                   ['College', profile?.college || '—'],
                   ['Graduating', profile?.graduation_year || '—'],
                   ['CGPA', profile?.cgpa ? `${profile.cgpa}/10` : '—'],
-                  ['Skills', profile?.skills || '—'],
                 ].map(([k, v]) => (
                   <div key={k as string} className="min-w-0">
                     <dt className="text-[11px] font-semibold text-slate-400">{k}</dt>
                     <dd className="truncate font-semibold text-slate-700" title={String(v)}>{v}</dd>
                   </div>
                 ))}
+                <div className="col-span-2 min-w-0">
+                  <dt className="text-[11px] font-semibold text-slate-400">Skills</dt>
+                  <dd className="mt-1.5"><SkillChips skills={profile?.skills} /></dd>
+                </div>
               </dl>
               <div className="mt-4 flex flex-wrap gap-2">
                 {profile?.linkedin_url && <a href={profile.linkedin_url} target="_blank" rel="noreferrer" className="chip !py-1.5 hover:border-indigo-300">🔗 LinkedIn</a>}

@@ -1,34 +1,36 @@
 'use client'
 export const dynamic = 'force-dynamic'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { StoreProvider } from '@/lib/store'
 import { ScoreReport } from '@/components/ScoreReport'
+import { AFTER_ASSESSMENT_ROUTE } from '@/lib/nextStep'
+import { consumeJustSubmittedTicket } from '@/lib/justSubmitted'
 
 /**
- * One-time assessment flow: the report is shown
- *   1. right after a fresh submission (the assessment page sets
- *      `calibiai_just_submitted`), or
- *   2. when opened deliberately via "View full report" (dashboard / profile
- *      set the same ticket on click).
+ * One-time assessment flow: the full report is shown
+ *   1. right after a fresh submission (the assessment page sets the
+ *      `calibiai_just_submitted` ticket before sending the candidate to their
+ *      dashboard), or
+ *   2. when the same ticket is still valid (a reload of this page).
  * Any other visit — most importantly the browser BACK button from the
- * dashboard — is redirected to the profile page, where the report link
- * stays available. The ticket is single-use.
+ * dashboard — is redirected to the student dashboard, where the report stays
+ * available through "View report". The ticket is single-use.
  */
 function ResultInner() {
   const [scores, setScores] = useState<any>(null)
+  // `reactStrictMode: true` runs mount effects twice in development. The
+  // ticket is single-use, so the second pass used to find it already cleared
+  // and bounce a just-submitted candidate off their own report — landing them
+  // on a page they never asked for. Decide exactly once per page load.
+  const decided = useRef(false)
 
   useEffect(() => {
-    let fresh = false
-    try {
-      const ts = Number(localStorage.getItem('calibiai_just_submitted') || 0)
-      if (ts && Date.now() - ts < 10 * 60 * 1000) {
-        fresh = true
-        localStorage.removeItem('calibiai_just_submitted')
-      }
-    } catch { }
+    if (decided.current) return
+    decided.current = true
+    const fresh = consumeJustSubmittedTicket()
     const s = localStorage.getItem('calibiai_scores')
-    if (!s || !fresh) { window.location.replace('/profile'); return }
-    try { setScores(JSON.parse(s)) } catch { window.location.replace('/profile') }
+    if (!s || !fresh) { window.location.replace(AFTER_ASSESSMENT_ROUTE); return }
+    try { setScores(JSON.parse(s)) } catch { window.location.replace(AFTER_ASSESSMENT_ROUTE) }
   }, [])
 
   if (!scores) return (

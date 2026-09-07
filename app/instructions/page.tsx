@@ -4,6 +4,7 @@ import { StoreProvider, useStore } from '@/lib/store'
 import { Stepper } from '@/components/Stepper'
 import { useEffect, useRef, useState } from 'react'
 import { resolveInstructionsRedirect, safeRead } from '@/lib/attemptAccess'
+import { AFTER_ASSESSMENT_ROUTE } from '@/lib/nextStep'
 
 const ALLOCATION = [
   [1, 'English Communication', '15 min'],
@@ -42,7 +43,7 @@ function Inner(){
   const [checked,setChecked]=useState(false)
   const [starting,setStarting]=useState(false)
   // One-time assessment: users who already have a result (local or DB) are sent
-  // to their profile instead of being able to start another attempt, and a user
+  // to their student dashboard instead of being able to start another attempt, and a user
   // mid-attempt goes straight back to the in-progress assessment.
   //
   // The page stays on `checking` until that decision is final, so the
@@ -76,7 +77,7 @@ function Inner(){
 
     fetch('/api/user/scores?student_id=' + user.id)
       .then(r => r.json())
-      .then(d => { if (cancelled) return; clearTimeout(timer); if (d?.result) go('/profile'); else finish() })
+      .then(d => { if (cancelled) return; clearTimeout(timer); if (d?.result) go(AFTER_ASSESSMENT_ROUTE); else finish() })
       .catch(() => { clearTimeout(timer); finish() })
 
     return () => { cancelled = true; clearTimeout(timer) }
@@ -199,7 +200,7 @@ function Inner(){
                 <li>Keep this tab/window focused — leaving it 3 times submits your test automatically.</li>
                 <li>Your answers are saved automatically as you go.</li>
                 <li>Use AI assistants for the debugging, feature and prompt sections — that's the skill being tested.</li>
-                <li>This is a one-time attempt — once submitted you can't retake it. Your report stays available on your profile.</li>
+                <li>This is a one-time attempt — once submitted you can't retake it. You land on your student dashboard, where the report and PDF stay available.</li>
               </ul>
             </div>
 

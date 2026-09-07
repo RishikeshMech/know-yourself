@@ -227,6 +227,7 @@ export async function generateReportPdf({ scores, profile = {}, user = {}, sampl
   doc.setFont('helvetica', 'normal')
   const rows: [string, string][] = [
     ['Full name', fullName],
+    ['PRN', profile?.prn ? String(profile.prn) : '—'],
     ['Email', email],
     ['Mobile', fmtPhone(profile?.phone)],
     ['Date of birth', dobLine(profile?.dob)],

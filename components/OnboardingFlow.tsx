@@ -13,14 +13,18 @@ import {
   MIN_AGE,
   PHONE_COUNTRY_CODE,
   PHONE_DIGITS,
+  PRN_MAX_LENGTH,
+  PRN_MIN_LENGTH,
   ageFrom,
   formatPhoneInternational,
   isValidCgpa,
   isValidDob,
   isValidGradYear,
   isValidPhone,
+  isValidPrn,
   isValidUrl,
   normalizePhone,
+  normalizePrn,
 } from '@/lib/validate'
 
 const STEPS = [
@@ -52,6 +56,10 @@ function validateStep(step: number, f: Form): Record<string, string> {
     else if (!GENDER_OPTIONS.includes(f.gender as any)) e.gender = 'Choose Male, Female or Other.'
   }
   if (step === 2) {
+    // PRN is optional (blank is fine) but must look like one when given.
+    if (!isValidPrn(f.prn)) {
+      e.prn = `Use ${PRN_MIN_LENGTH}–${PRN_MAX_LENGTH} letters/numbers, or leave it blank.`
+    }
     if (!f.degree.trim()) e.degree = 'Degree is required.'
     if (!f.college.trim()) e.college = 'College / university is required.'
     if (!f.graduation_year) e.graduation_year = 'Graduation year is required.'
@@ -375,6 +383,7 @@ export function OnboardingFlow({ variant = 'onboarding' }: { variant?: 'onboardi
     const payload = {
       ...form,
       full_name: form.full_name.trim(),
+      prn: normalizePrn(form.prn),
       phone: normalizePhone(form.phone),
       graduation_year: Number(form.graduation_year),
       cgpa: Number(form.cgpa),
@@ -593,6 +602,22 @@ export function OnboardingFlow({ variant = 'onboarding' }: { variant?: 'onboardi
                         className={`field ${err('college') ? 'border-rose-300' : ''}`}
                       />
                     </Field>
+                    <Field
+                      label="PRN No."
+                      htmlFor="prn"
+                      error={err('prn')}
+                      hint={`Optional — ${PRN_MIN_LENGTH}–${PRN_MAX_LENGTH} characters. Helps your college match this score with its own records.`}
+                    >
+                      <input
+                        id="prn"
+                        value={form.prn}
+                        onChange={(e) => set('prn', normalizePrn(e.target.value).slice(0, PRN_MAX_LENGTH))}
+                        placeholder="2021COEP001"
+                        autoComplete="off"
+                        maxLength={PRN_MAX_LENGTH}
+                        className={`field ${err('prn') ? 'border-rose-300' : ''}`}
+                      />
+                    </Field>
                     <Field label="Graduation year" htmlFor="graduation_year" error={err('graduation_year')} hint={`${GRAD_YEAR_MIN}–${GRAD_YEAR_MAX}`}>
                       <input
                         id="graduation_year"
@@ -653,6 +678,7 @@ export function OnboardingFlow({ variant = 'onboarding' }: { variant?: 'onboardi
                         <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
                           {[
                             ['Name', form.full_name],
+                            ['PRN No.', form.prn],
                             ['Mobile', formatPhoneInternational(form.phone)],
                             ['Gender', form.gender],
                             ['Degree', form.degree],

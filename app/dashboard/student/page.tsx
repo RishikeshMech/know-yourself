@@ -1,21 +1,36 @@
 'use client'
 export const dynamic = 'force-dynamic'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Navbar } from '@/components/Navbar'
 import { StoreProvider, useStore } from '@/lib/store'
 import { isProfileComplete } from '@/lib/validate'
+import { consumeJustSubmittedTicket } from '@/lib/justSubmitted'
 import { ReportModal } from '@/components/ReportModal'
+import { SkillChips } from '@/components/SkillChips'
 
 function Inner(){
   const { user, profile, setProfile, resume, setResume, scores, setScores, hydrated } = useStore()
   const [showReport, setShowReport] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  // True only on the landing right after the assessment was submitted.
+  const [justCompleted, setJustCompleted] = useState(false)
+  const ticketChecked = useRef(false)
 
   // Protect the student dashboard: a signed-out visitor is sent to /login.
   // Render nothing until the session is known so the page never flashes.
   useEffect(()=>{
     if (hydrated && !user) window.location.replace('/login')
   },[hydrated, user])
+
+  // The assessment page hands the candidate here after submitting and leaves a
+  // single-use ticket behind, so this is where "assessment complete" is
+  // acknowledged. `reactStrictMode` runs mount effects twice in development —
+  // the ref keeps the (already consumed) ticket from being read twice.
+  useEffect(()=>{
+    if (ticketChecked.current) return
+    ticketChecked.current = true
+    setJustCompleted(consumeJustSubmittedTicket())
+  },[])
 
   // Enrich the (locally hydrated) store with the latest DB data when signed in.
   // Data is written through the store so the navbar and every other page sees
@@ -65,6 +80,28 @@ function Inner(){
           <h1 className="text-2xl font-black text-slate-900">Hello{profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''} 👋</h1>
           <p className="text-slate-500 text-sm mt-1">Here's your readiness overview and next steps.</p>
         </div>
+
+        {/* Shown once, right after the assessment is submitted. */}
+        {justCompleted && (
+          <div className="mt-6 animate-fade-up rounded-3xl border border-emerald-200 bg-emerald-50/80 p-5 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl" aria-hidden>🎉</span>
+                <div>
+                  <div className="text-sm font-black text-emerald-800">Assessment submitted — your CalibiAI Score is ready</div>
+                  <p className="mt-1 text-xs text-emerald-700">
+                    This dashboard is your home from now on: score, full report, PDF download and resume all live here.
+                  </p>
+                </div>
+              </div>
+              {scores && (
+                <button onClick={() => setShowReport(true)} className="btn-primary !py-2.5 text-xs">
+                  View my full report →
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="mt-6 grid lg:grid-cols-3 gap-6">
           {/* Score */}
@@ -157,7 +194,7 @@ function Inner(){
             <div className="mt-2 text-sm text-slate-600 grid sm:grid-cols-3 gap-2">
               <div>👤 {profile.full_name || '—'}</div>
               <div>🎓 {profile.college || '—'}</div>
-              <div>🛠 {profile.skills || '—'}</div>
+              <div className="sm:col-span-3 min-w-0"><SkillChips skills={profile.skills} icon="🛠️" /></div>
             </div>
             <a href="/profile" className="mt-3 inline-block text-xs font-semibold text-indigo-600">See my profile →</a>
             <a href="/edit-profile" className="mt-3 ml-3 inline-block text-xs font-semibold text-indigo-600">Edit profile →</a>

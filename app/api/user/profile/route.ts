@@ -1,20 +1,50 @@
 import { NextResponse } from 'next/server'
-import { getProfileById, saveProfile } from '@/lib/db'
+import { findProfileByPrn, getProfileById, saveProfile } from '@/lib/db'
 import { getServerClient } from '@/lib/supabaseServer'
 import { persistProfile, fetchProfile } from '@/lib/persist'
 import {
   GENDER_OPTIONS,
   PHONE_DIGITS,
+  PRN_MAX_LENGTH,
+  PRN_MIN_LENGTH,
   isGender,
   isValidPhone,
+  isValidPrn,
   normalizePhone,
+  normalizePrn,
 } from '@/lib/validate'
 
 /** Fields a partial update may touch — everything else is ignored. */
 const PARTIAL_FIELDS = [
-  'full_name', 'phone', 'dob', 'gender', 'degree', 'college',
+  'full_name', 'prn', 'phone', 'dob', 'gender', 'degree', 'college',
   'graduation_year', 'cgpa', 'skills', 'linkedin_url', 'github_url', 'ai_avatar',
 ] as const
+
+const PRN_ERROR = `PRN must be ${PRN_MIN_LENGTH}–${PRN_MAX_LENGTH} letters/numbers, or left blank.`
+
+/**
+ * A PRN identifies one student inside a college, so two accounts may not claim
+ * the same one. Blank is always allowed (the field is optional) and a student
+ * re-saving their own PRN is allowed.
+ */
+async function prnAlreadyTaken(prn: string, userId: string): Promise<boolean> {
+  if (!prn) return false
+  const sb = getServerClient()
+  if (sb) {
+    try {
+      const { data } = await sb
+        .from('profiles')
+        .select('id')
+        .eq('prn', prn)
+        .neq('id', userId)
+        .limit(1)
+      if (data && data.length > 0) return true
+    } catch {
+      /* fall through to the local check below */
+    }
+  }
+  return Boolean(findProfileByPrn(prn, userId))
+}
 
 export async function GET(req: Request) {
   try {
@@ -58,6 +88,18 @@ export async function POST(req: Request) {
       if (merged.ai_avatar !== undefined && !(merged.ai_avatar && typeof merged.ai_avatar === 'object')) {
         merged.ai_avatar = null
       }
+      // PRN is optional; when present it must be a plausible registration number
+      // that no other student already claims.
+      merged.prn = normalizePrn(merged.prn)
+      if (!isValidPrn(merged.prn)) {
+        return NextResponse.json({ error: PRN_ERROR }, { status: 400 })
+      }
+      if (await prnAlreadyTaken(merged.prn, userId)) {
+        return NextResponse.json(
+          { error: 'That PRN is already registered to another account.' },
+          { status: 409 },
+        )
+      }
       merged.updated_at = new Date().toISOString()
 
       saveProfile(merged)
@@ -83,10 +125,22 @@ export async function POST(req: Request) {
         { status: 400 },
       )
     }
+    // PRN: optional, but validated and unique when supplied.
+    const prn = normalizePrn(body.prn)
+    if (!isValidPrn(prn)) {
+      return NextResponse.json({ error: PRN_ERROR }, { status: 400 })
+    }
+    if (userId && await prnAlreadyTaken(prn, String(userId))) {
+      return NextResponse.json(
+        { error: 'That PRN is already registered to another account.' },
+        { status: 409 },
+      )
+    }
     const profile = {
       id: userId,
       email: body.email || '',
       full_name: body.full_name || '',
+      prn,
       phone,
       dob: body.dob || '',
       gender,

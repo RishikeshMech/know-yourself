@@ -105,6 +105,7 @@ export async function persistProfile(client: SupabaseClient, p: any): Promise<bo
     id: p.id || p.user_id,
     email: clean(p.email),
     full_name: clean(p.full_name),
+    prn: clean(p.prn),
     phone: clean(p.phone),
     dob: clean(p.dob),
     gender: clean(p.gender),

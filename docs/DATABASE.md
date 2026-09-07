@@ -57,6 +57,7 @@ CREATE INDEX ON users (institution_id);
 CREATE TABLE profiles (
   user_id UUID PRIMARY KEY REFERENCES users(id),
   full_name TEXT NOT NULL,
+  prn TEXT, -- college PRN / registration number (optional, unique when set)
   phone TEXT,
   dob DATE,
   gender TEXT,

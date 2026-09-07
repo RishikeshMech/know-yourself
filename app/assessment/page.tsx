@@ -5,6 +5,8 @@ import { StoreProvider, useStore } from '@/lib/store'
 import { bank, shuffledOptions, shuffledChoiceOptions, mulberry32 } from '@/lib/questions'
 import { computeScores } from '@/lib/scoring'
 import { getSupabase } from '@/lib/supabase'
+import { AFTER_ASSESSMENT_ROUTE } from '@/lib/nextStep'
+import { markJustSubmitted } from '@/lib/justSubmitted'
 import { Logo } from '@/components/Logo'
 import type { TestRunResult } from '@/lib/runTests'
 
@@ -170,10 +172,12 @@ function AssessmentInner() {
       let s: any = null
       try { s = JSON.parse(raw) } catch { s = null }
       // One-time assessment: a completed (submitted/expired) session can
-      // never be re-entered — even via the browser back button.
-      if (s?.status === 'submitted' || s?.status === 'expired') { window.location.replace('/profile'); return }
-      if (localStorage.getItem('calibiai_scores')) { window.location.replace('/profile'); return }
-      if (!s?.id || !s?.expires_at) { window.location.href = localStorage.getItem('calibiai_scores') ? '/profile' : '/instructions'; return }
+      // never be re-entered — even via the browser back button. Whoever is
+      // already done belongs on the student dashboard, where their score,
+      // report and PDF live.
+      if (s?.status === 'submitted' || s?.status === 'expired') { window.location.replace(AFTER_ASSESSMENT_ROUTE); return }
+      if (localStorage.getItem('calibiai_scores')) { window.location.replace(AFTER_ASSESSMENT_ROUTE); return }
+      if (!s?.id || !s?.expires_at) { window.location.href = localStorage.getItem('calibiai_scores') ? AFTER_ASSESSMENT_ROUTE : '/instructions'; return }
       if (!session) setSession(s)
       try {
         const a = localStorage.getItem('calibiai_answers_' + s.id); if (a) setAnswers(JSON.parse(a))
@@ -199,7 +203,7 @@ function AssessmentInner() {
       const raw = localStorage.getItem('calibiai_session')
       if (raw) { boot(raw); return }
       attempts += 1
-      if (attempts >= 8) { window.location.replace(localStorage.getItem('calibiai_scores') ? '/profile' : '/instructions'); return }
+      if (attempts >= 8) { window.location.replace(localStorage.getItem('calibiai_scores') ? AFTER_ASSESSMENT_ROUTE : '/instructions'); return }
       setTimeout(tryLoad, 50)
     }
     tryLoad()
@@ -391,11 +395,14 @@ function AssessmentInner() {
     const s = JSON.parse(localStorage.getItem('calibiai_session') || '{}')
     s.status = 'submitted'
     localStorage.setItem('calibiai_session', JSON.stringify(s))
-    // Fresh-submission ticket: lets /result show the report exactly once
-    // (right after submitting, or via "View full report"). Any other visit
-    // to /result (e.g. back button) is sent to the profile page.
-    try { localStorage.setItem('calibiai_just_submitted', String(Date.now())) } catch { }
-    window.location.href = '/result'
+    // Fresh-submission ticket: the student dashboard reads it to show the
+    // "assessment complete" banner (and /result uses it to allow one look at
+    // the full report). Single-use — whoever lands first clears it.
+    markJustSubmitted()
+    // Submitting ends the attempt, so the candidate goes to their student
+    // dashboard — the page that holds the score, the full report, the PDF and
+    // the resume card — not to the profile details page.
+    window.location.href = AFTER_ASSESSMENT_ROUTE
   }
   useEffect(() => { submitRef.current = handleSubmit })
 
