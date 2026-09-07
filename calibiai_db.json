@@ -182,6 +182,23 @@
       "github_url": "",
       "ai_avatar": null,
       "updated_at": "2026-09-07T16:00:18.657Z"
+    },
+    {
+      "id": "6c236d21-e771-43ff-a8a4-9115d454ac89",
+      "email": "prajwalgu16@gmail.com",
+      "full_name": "Prajwal",
+      "phone": "8432984989",
+      "dob": "2002-04-02",
+      "gender": "Male",
+      "degree": "B.Tech Civil",
+      "college": "IIT",
+      "graduation_year": 2020,
+      "cgpa": 9,
+      "skills": "python ,  sql",
+      "linkedin_url": "",
+      "github_url": "",
+      "ai_avatar": null,
+      "updated_at": "2026-09-07T16:19:50.240Z"
     }
   ],
   "assessment_sessions": [
@@ -448,6 +465,60 @@
       "submitted_at": "2026-09-07T15:59:57.392Z",
       "tab_switches": 0,
       "created_at": "2026-09-07T15:59:57.392Z"
+    },
+    {
+      "id": "f76b4163-e863-4467-9df5-317c7c527f1a",
+      "student_id": "ba16af1e-d5b1-4aad-b479-05e4311a5bbb",
+      "status": "submitted",
+      "started_at": "2026-09-07T16:17:28.402Z",
+      "expires_at": "2026-09-07T18:17:28.402Z",
+      "duration_sec": 7200,
+      "answers": {
+        "EL1": "The alert went to a channel nobody monitored overnight",
+        "EL3": "The schema change was not backward compatible",
+        "EL4": "Expand-and-contract pattern reviewed by two engineers",
+        "EL6": "Pods were scaled to 30 but the pool stayed at 50"
+      },
+      "submitted_at": "2026-09-07T16:17:50.169Z",
+      "tab_switches": 0,
+      "question_seed": 459583426,
+      "created_at": "2026-09-07T16:17:28.402Z"
+    },
+    {
+      "id": "157f2057-e348-41fd-bc9b-677e7f2d2417",
+      "student_id": "6c236d21-e771-43ff-a8a4-9115d454ac89",
+      "status": "submitted",
+      "started_at": "2026-09-07T16:20:26.466Z",
+      "expires_at": "2026-09-07T18:20:26.466Z",
+      "duration_sec": 7200,
+      "answers": {
+        "EL1": "The alert went to a channel nobody monitored overnight",
+        "EL2": "Post them to the release notes",
+        "EL3": "The CDN cache had to be flushed",
+        "EL4": "Single-engineer ownership of releases",
+        "EL5": "At the database storage layer",
+        "EL6": "Database CPU was throttled",
+        "EL7": "To force users to retry",
+        "EL8": "Fewer application pods; alerts at 90%",
+        "ER1": "Juniors benefited most from skipping review",
+        "ER3": "The key skill is judging correctness rather than generating code",
+        "ER4": "Reviewers were inexperienced",
+        "ER5": "Sharing one assistant login per team",
+        "ER6": "It was paired with tight, fast feedback loops alongside the assistant",
+        "PS1": "All parallelograms are squares",
+        "PS2": "30",
+        "PS3": "4",
+        "PS5": "O(n)",
+        "PS6": "5/36",
+        "PS7": "3.0",
+        "PS8": "Reject the variant because p is small",
+        "PS10": "12:00",
+        "PS9": "5"
+      },
+      "submitted_at": "2026-09-07T16:21:23.252Z",
+      "tab_switches": 0,
+      "question_seed": 411053198,
+      "created_at": "2026-09-07T16:20:26.466Z"
     }
   ],
   "assessment_results": [
@@ -1332,6 +1403,166 @@
       "verifiable_hash": "sha256:49d7ea8-07c99002",
       "ai_feedback": {},
       "created_at": "2026-09-07T15:59:57.392Z"
+    },
+    {
+      "id": "res_88becf47",
+      "session_id": "f76b4163-e863-4467-9df5-317c7c527f1a",
+      "student_id": "ba16af1e-d5b1-4aad-b479-05e4311a5bbb",
+      "scores": {
+        "session_id": "f76b4163-e863-4467-9df5-317c7c527f1a",
+        "english": {
+          "listening": 25,
+          "speaking": 0,
+          "reading": 0,
+          "writing": 0,
+          "total": 25,
+          "max": 200
+        },
+        "problem_solving": 0,
+        "ai_debugging": 0,
+        "ai_feature": 0,
+        "prompt_engineering": 0,
+        "cognitive": {
+          "grid": 0,
+          "logical": 0,
+          "cognitive_score": 0,
+          "behavioral_total": 40,
+          "total": 40,
+          "max": 200,
+          "behavioral": {
+            "teamwork": 40,
+            "accountability": 40,
+            "adaptability": 40,
+            "responsible_ai": 40,
+            "decision_making": 40,
+            "learning_mindset": 40
+          },
+          "traitLabels": {
+            "teamwork": "Teamwork",
+            "accountability": "Accountability",
+            "adaptability": "Adaptability",
+            "responsible_ai": "Responsible AI",
+            "decision_making": "Decision Making",
+            "learning_mindset": "Learning Mindset"
+          }
+        },
+        "detail": {
+          "listeningCorrect": 4,
+          "listeningTotal": 8,
+          "readingCorrect": 0,
+          "readingTotal": 6,
+          "problemCorrect": 0,
+          "problemTotal": 10,
+          "logicalCorrect": 0,
+          "logicalTotal": 7,
+          "debugPer": {
+            "AD1": 0,
+            "AD2": 0,
+            "AD3": 0
+          },
+          "promptPer": {
+            "PE1": 0,
+            "PE2": 0,
+            "PE3": 0
+          },
+          "featureScore100": 0,
+          "speakingCount": 0
+        },
+        "total": 65,
+        "grade": "D",
+        "percentile": 39,
+        "ai_results": {},
+        "verifiable_hash": "sha256:248c8f1-07ca95ee",
+        "tab_switches": 0,
+        "auto_submitted": false,
+        "submitted_at": "2026-09-07T16:17:49.803Z"
+      },
+      "total": 65,
+      "grade": "D",
+      "percentile": 39,
+      "verifiable_hash": "sha256:248c8f1-07ca95ee",
+      "ai_feedback": {},
+      "created_at": "2026-09-07T16:17:50.169Z"
+    },
+    {
+      "id": "res_6179d8f9",
+      "session_id": "157f2057-e348-41fd-bc9b-677e7f2d2417",
+      "student_id": "6c236d21-e771-43ff-a8a4-9115d454ac89",
+      "scores": {
+        "session_id": "157f2057-e348-41fd-bc9b-677e7f2d2417",
+        "english": {
+          "listening": 6,
+          "speaking": 0,
+          "reading": 17,
+          "writing": 0,
+          "total": 23,
+          "max": 200
+        },
+        "problem_solving": 40,
+        "ai_debugging": 0,
+        "ai_feature": 0,
+        "prompt_engineering": 0,
+        "cognitive": {
+          "grid": 0,
+          "logical": 0,
+          "cognitive_score": 0,
+          "behavioral_total": 40,
+          "total": 40,
+          "max": 200,
+          "behavioral": {
+            "teamwork": 40,
+            "accountability": 40,
+            "adaptability": 40,
+            "responsible_ai": 40,
+            "decision_making": 40,
+            "learning_mindset": 40
+          },
+          "traitLabels": {
+            "teamwork": "Teamwork",
+            "accountability": "Accountability",
+            "adaptability": "Adaptability",
+            "responsible_ai": "Responsible AI",
+            "decision_making": "Decision Making",
+            "learning_mindset": "Learning Mindset"
+          }
+        },
+        "detail": {
+          "listeningCorrect": 1,
+          "listeningTotal": 8,
+          "readingCorrect": 2,
+          "readingTotal": 6,
+          "problemCorrect": 2,
+          "problemTotal": 10,
+          "logicalCorrect": 0,
+          "logicalTotal": 7,
+          "debugPer": {
+            "AD1": 0,
+            "AD2": 0,
+            "AD3": 0
+          },
+          "promptPer": {
+            "PE1": 0,
+            "PE2": 0,
+            "PE3": 0
+          },
+          "featureScore100": 0,
+          "speakingCount": 0
+        },
+        "total": 103,
+        "grade": "D",
+        "percentile": 41,
+        "ai_results": {},
+        "verifiable_hash": "sha256:690837-07cac9e9",
+        "tab_switches": 0,
+        "auto_submitted": false,
+        "submitted_at": "2026-09-07T16:21:22.716Z"
+      },
+      "total": 103,
+      "grade": "D",
+      "percentile": 41,
+      "verifiable_hash": "sha256:690837-07cac9e9",
+      "ai_feedback": {},
+      "created_at": "2026-09-07T16:21:23.251Z"
     }
   ],
   "resume_analyses": [
@@ -2381,6 +2612,108 @@
         ]
       },
       "word_count": 473
+    },
+    {
+      "id": "res_1788798004128",
+      "student_id": "6c236d21-e771-43ff-a8a4-9115d454ac89",
+      "storage_key": "",
+      "file_name": "Prajwal Gulhane Re.pdf",
+      "created_at": "2026-09-07T16:20:04.128Z",
+      "resume_score": 78,
+      "engine": "deepseek",
+      "name_match": true,
+      "detected_name": "Prajwal Gulhane",
+      "flags": [
+        {
+          "level": "ok",
+          "text": "Name matches candidate profile."
+        },
+        {
+          "level": "warn",
+          "text": "Email mismatch: resume shows prajwalen100@gmail.com, profile shows prajwalgu16@gmail.com."
+        },
+        {
+          "level": "ok",
+          "text": "Contact details present (phone, email, LinkedIn)."
+        },
+        {
+          "level": "ok",
+          "text": "Quantified achievements included."
+        },
+        {
+          "level": "warn",
+          "text": "Degree mismatch: profile says B.Tech Civil, resume says B.E. Computer Science."
+        }
+      ],
+      "professionalism": 90,
+      "summary": "Backend developer with 1.5+ years at Cognizant, specializing in Java, Spring Boot, and microservices for Life Sciences. Demonstrated impact through reducing invoice failures by 40%, building RESTful APIs handling 10k daily transactions, and cutting data latency by 60%. Holds multiple AWS certifications and has hands-on project experience with AI integration. Strong technical breadth across Java, cloud, and databases. Education in Computer Science, though profile indicates Civil Engineering background.",
+      "experience": {
+        "years": 1.5,
+        "entries": [
+          "Software Engineer – Cognizant Technology Solutions – Dec 2023 – Present"
+        ]
+      },
+      "education": [
+        "Bachelor of Engineering in Computer Science – Prof. Ram Meghe Institute of Technology and Research"
+      ],
+      "skills": [
+        "Java",
+        "Python",
+        "SQL",
+        "Spring Boot",
+        "Spring Cloud",
+        "Spring Security",
+        "Spring Data JPA",
+        "Hibernate",
+        "JUnit",
+        "Maven",
+        "Lombok",
+        "TestNG"
+      ],
+      "contact": {
+        "email": "prajwalen100@gmail.com",
+        "phone": "+91 9284364839",
+        "linkedin": "linkedin.com/in/prajwalg90"
+      },
+      "feedback": {
+        "strengths": [
+          "Quantified achievements (e.g., 40% reduction in failures, 99.5% uptime).",
+          "Strong technical stack including Java, Spring, AWS, and AI/ML.",
+          "Relevant certifications (AWS Certified).",
+          "Clear career progression at a reputable company.",
+          "Good use of action verbs and project details."
+        ],
+        "gaps": [
+          "No GitHub link provided.",
+          "Email inconsistency between resume and profile.",
+          "Education degree mismatch with profile (B.Tech Civil vs B.E. Computer Science).",
+          "Only one work experience entry; limited duration.",
+          "No mention of soft skills or leadership."
+        ],
+        "suggestions": [
+          "Align email address across all documents.",
+          "Add GitHub profile link to showcase code samples.",
+          "Clarify education background to avoid confusion.",
+          "Expand work experience section with more bullet points if possible.",
+          "Include any internships or freelance projects to strengthen experience."
+        ]
+      },
+      "parsed": {
+        "name": "Prajwal Gulhane",
+        "experience_years": 1.5,
+        "projects": 2,
+        "skills": [
+          "Java",
+          "Python",
+          "SQL",
+          "Spring Boot",
+          "Spring Cloud",
+          "Spring Security",
+          "Spring Data JPA",
+          "Hibernate"
+        ]
+      },
+      "word_count": 473
     }
   ],
   "tracking_events": [
@@ -2530,6 +2863,20 @@
       "action": "follow_linkedin",
       "completed": true,
       "completed_at": "2026-09-07T15:52:33.848Z"
+    },
+    {
+      "id": "track_1788798014123",
+      "user_id": "6c236d21-e771-43ff-a8a4-9115d454ac89",
+      "action": "join_whatsapp",
+      "completed": true,
+      "completed_at": "2026-09-07T16:20:14.123Z"
+    },
+    {
+      "id": "track_1788798017325",
+      "user_id": "6c236d21-e771-43ff-a8a4-9115d454ac89",
+      "action": "follow_linkedin",
+      "completed": true,
+      "completed_at": "2026-09-07T16:20:17.325Z"
     }
   ]
 }
