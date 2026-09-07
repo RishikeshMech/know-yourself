@@ -28,6 +28,92 @@ const clamp01 = (n: number) => Math.max(0, Math.min(1, n))
 const MIN_PROMPT_CHARS = 100
 
 /* ------------------------------------------------------------------ */
+/* Subsection auto-advance — when a candidate finishes one subsection   */
+/* (e.g. Listening) they glide automatically into the next one (e.g.   */
+/* Speaking). Applies to the two stages that HAVE subsections: English */
+/* (Listening/Speaking/Reading/Writing) and Cognitive (Grid / Logical  */
+/* Reasoning / Behavioural).                                           */
+/* ------------------------------------------------------------------ */
+
+// Writing counts as "done" for auto-advance once it has real content —
+// deliberately lower than the 150-word scoring target so candidates are
+// never trapped; they can always come back and keep writing.
+const WRITING_AUTONEXT_WORDS = 50
+// How long the "moving to …" banner shows before gliding forward.
+const AUTONEXT_DELAY_MS = 2800
+
+const wordCount = (t: string) => (t || '').trim().split(/\s+/).filter(Boolean).length
+
+export type SubProgress = { answered: number; total: number; complete: boolean }
+
+function getSubProgress(
+  stageId: string,
+  subIdx: number,
+  answers: Record<string, any>,
+  gridInfo: { rounds: number; doneRounds: number },
+): SubProgress {
+  if (stageId === 'english') {
+    if (subIdx === 0) {
+      const qs: any[] = bank.english.listening.clips.flatMap((c: any) => c.questions)
+      const answered = qs.filter(q => answers[q.id] != null && answers[q.id] !== '').length
+      return { answered, total: qs.length, complete: answered >= qs.length }
+    }
+    if (subIdx === 1) {
+      const answered = (answers['SP1_audio'] ? 1 : 0) + (answers['SP2_audio'] ? 1 : 0)
+      return { answered, total: 2, complete: answered >= 2 }
+    }
+    if (subIdx === 2) {
+      const qs: any[] = bank.english.reading.questions
+      const answered = qs.filter(q => answers[q.id] != null && answers[q.id] !== '').length
+      return { answered, total: qs.length, complete: answered >= qs.length }
+    }
+    const words = wordCount(answers['WRITING'] || '')
+    return { answered: Math.min(words, WRITING_AUTONEXT_WORDS), total: WRITING_AUTONEXT_WORDS, complete: words >= WRITING_AUTONEXT_WORDS }
+  }
+  if (stageId === 'cognitive') {
+    if (subIdx === 0) {
+      const done = answers['GRID'] !== undefined
+      return {
+        answered: done ? gridInfo.rounds : Math.min(gridInfo.doneRounds, gridInfo.rounds),
+        total: gridInfo.rounds,
+        complete: done,
+      }
+    }
+    if (subIdx === 1) {
+      const qs: any[] = bank.cognitive.logical
+      const answered = qs.filter(q => answers[q.id] != null && answers[q.id] !== '').length
+      return { answered, total: qs.length, complete: answered >= qs.length }
+    }
+    const qs: any[] = bank.cognitive.behavioral
+    const answered = qs.filter(q => typeof answers[q.id] === 'number').length
+    return { answered, total: qs.length, complete: answered >= qs.length }
+  }
+  return { answered: 0, total: 0, complete: false }
+}
+
+// Linear navigation across (stage, sub): next/prev subsection, spilling over
+// into the neighbouring stage when at a boundary.
+function nextLocation(stage: number, sub: number): { stage: number; sub: number } | null {
+  const subs = STAGES[stage].sub
+  if (sub < subs.length - 1) return { stage, sub: sub + 1 }
+  if (stage < STAGES.length - 1) return { stage: stage + 1, sub: 0 }
+  return null
+}
+function prevLocation(stage: number, sub: number): { stage: number; sub: number } | null {
+  if (sub > 0) return { stage, sub: sub - 1 }
+  if (stage > 0) {
+    const ps = stage - 1
+    const lastSub = Math.max(0, STAGES[ps].sub.length - 1)
+    return { stage: ps, sub: STAGES[ps].sub.length ? lastSub : 0 }
+  }
+  return null
+}
+function locationLabel(stage: number, sub: number): string {
+  const s = STAGES[stage]
+  return s.sub.length ? s.sub[sub] : s.label
+}
+
+/* ------------------------------------------------------------------ */
 /* Presentational sub-components — hoisted OUTSIDE the assessment      */
 /* component. Defining them inline caused React to remount them on     */
 /* every render (e.g. each timer tick), which is what made the AI      */
@@ -120,6 +206,18 @@ function AssessmentInner() {
   const [aiResults, setAiResults] = useState<Record<string, any>>({})
   const [stage, setStage] = useState(0)
   const [sub, setSub] = useState(0)
+  // Slide direction for the subsection transition ('next' slides in from the
+  // right, 'prev' from the left). Reset after each navigation.
+  const [direction, setDirection] = useState<'next' | 'prev' | null>(null)
+  // Candidate-controllable auto-advance (persisted). When ON, finishing a
+  // subsection glides them into the next one after a short banner.
+  // Initialised to ON for SSR parity; the stored preference is applied once
+  // mounted (avoids a hydration mismatch for returning candidates).
+  const [autoAdvance, setAutoAdvance] = useState<boolean>(true)
+  // Pending auto hop: { toStage, toSub, fromLabel, toLabel, countdown }
+  const [pendingAdvance, setPendingAdvance] = useState<{
+    toStage: number; toSub: number; fromLabel: string; toLabel: string; secs: number
+  } | null>(null)
   const [activeDebuggingTask, setActiveDebuggingTask] = useState(0)
   const [remaining, setRemaining] = useState(7200)
   const [strikes, setStrikes] = useState(0)
@@ -153,6 +251,13 @@ function AssessmentInner() {
   const strikesRef = useRef(0)
   const submitRef = useRef<(auto?: boolean) => void>(() => {})
   const mediaReadyRef = useRef(false)
+  // Auto-advance bookkeeping: was the CURRENT subsection already complete on
+  // the last check (prevents re-triggering when navigating back to a
+  // finished subsection), plus the timers driving the countdown banner.
+  const wasCompleteRef = useRef(false)
+  const autoTimerRef = useRef<any>(null)
+  const autoTickRef = useRef<any>(null)
+  const mainCardRef = useRef<HTMLDivElement | null>(null)
 
   const seed: number = session?.question_seed ?? 8675309
   const sid = session?.id
@@ -344,6 +449,125 @@ function AssessmentInner() {
   const stopRecording = () => mediaRef.current?.stop()
 
   const speakingCount = (answers['SP1_audio'] ? 1 : 0) + (answers['SP2_audio'] ? 1 : 0)
+
+  /* ---------------- Subsection-aware navigation ---------------- */
+  const clearPendingAdvance = () => {
+    setPendingAdvance(null)
+    if (autoTimerRef.current) clearTimeout(autoTimerRef.current)
+    if (autoTickRef.current) clearInterval(autoTickRef.current)
+    autoTimerRef.current = null
+    autoTickRef.current = null
+  }
+
+  const navigateTo = (nStage: number, nSub: number, dir: 'next' | 'prev' | null) => {
+    if (nStage === stage && nSub === sub) return
+    clearPendingAdvance()
+    if (dir) setDirection(dir)
+    setStage(nStage)
+    setSub(nSub)
+    // Glide the new subsection into view (the sticky header offsets it).
+    requestAnimationFrame(() => {
+      try {
+        mainCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      } catch { window.scrollTo({ top: 0, behavior: 'smooth' }) }
+    })
+  }
+
+  const goNext = () => {
+    const n = nextLocation(stage, sub)
+    if (n) navigateTo(n.stage, n.sub, 'next')
+  }
+  const goPrev = () => {
+    const p = prevLocation(stage, sub)
+    if (p) navigateTo(p.stage, p.sub, 'prev')
+  }
+
+  const goNowAdvance = () => {
+    if (!pendingAdvance) return
+    const { toStage, toSub } = pendingAdvance
+    navigateTo(toStage, toSub, 'next')
+  }
+
+  // Load + persist the auto-advance preference (client only).
+  const autoPrefLoaded = useRef(false)
+  useEffect(() => {
+    try {
+      if (localStorage.getItem('calibiai_autoadvance') === 'off') setAutoAdvance(false)
+    } catch { }
+    autoPrefLoaded.current = true
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  useEffect(() => {
+    if (!autoPrefLoaded.current) return
+    try { localStorage.setItem('calibiai_autoadvance', autoAdvance ? 'on' : 'off') } catch { }
+    if (!autoAdvance) clearPendingAdvance()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoAdvance])
+
+  // Current-subsection progress (English + Cognitive have subsections).
+  const gridInfo = { rounds: gridCfg.rounds, doneRounds: gridScores.length }
+  const currentProgress: SubProgress = getSubProgress(STAGES[stage].id, sub, answers, gridInfo)
+  const stageHasSubs = STAGES[stage].sub.length > 0
+
+  // Whenever we ARRIVE at a (stage, sub), snapshot its completion state so
+  // that navigating back to an already-finished subsection does NOT
+  // instantly re-trigger auto-advance — only a fresh incomplete→complete
+  // transition while viewing it does.
+  useEffect(() => {
+    clearPendingAdvance()
+    wasCompleteRef.current = getSubProgress(
+      STAGES[stage].id, sub, answers, { rounds: gridCfg.rounds, doneRounds: gridScores.length },
+    ).complete
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, sub])
+
+  // Watch for the completion moment → start the countdown banner, then glide.
+  useEffect(() => {
+    if (terminated) return
+    if (!mediaReady || !stageHasSubs || !autoAdvance) {
+      // Keep the snapshot in sync even while gated/disabled so that enabling
+      // the camera (or the toggle) on an already-complete subsection does
+      // NOT instantly trigger a hop — only a fresh answer does.
+      wasCompleteRef.current = currentProgress.complete
+      return
+    }
+    const justCompleted = currentProgress.complete && !wasCompleteRef.current
+    wasCompleteRef.current = currentProgress.complete
+    if (!justCompleted || autoTimerRef.current) return
+    const next = nextLocation(stage, sub)
+    if (!next) {
+      showToast('Behavioural complete ✓ — review your answers and submit when ready.')
+      return
+    }
+    const fromLabel = locationLabel(stage, sub)
+    const toLabel = locationLabel(next.stage, next.sub)
+    const totalSecs = Math.max(1, Math.round(AUTONEXT_DELAY_MS / 1000))
+    setPendingAdvance({ toStage: next.stage, toSub: next.sub, fromLabel, toLabel, secs: totalSecs })
+    autoTickRef.current = setInterval(() => {
+      setPendingAdvance(prev => {
+        if (!prev) return prev
+        if (prev.secs <= 1) return prev
+        return { ...prev, secs: prev.secs - 1 }
+      })
+    }, 1000)
+    autoTimerRef.current = setTimeout(() => {
+      navigateTo(next.stage, next.sub, 'next')
+    }, AUTONEXT_DELAY_MS)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [answers, gridScores, stageHasSubs, autoAdvance, mediaReady, terminated])
+
+  // If the subsection becomes incomplete again while the banner is showing
+  // (e.g. writing trimmed below the threshold), cancel the hop.
+  useEffect(() => {
+    if (!currentProgress.complete && autoTimerRef.current) clearPendingAdvance()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentProgress.complete])
+
+  // Clear timers on unmount.
+  useEffect(() => () => {
+    if (autoTimerRef.current) clearTimeout(autoTimerRef.current)
+    if (autoTickRef.current) clearInterval(autoTickRef.current)
+  }, [])
 
   const handleSubmit = async (auto = false) => {
     if (terminated) return
@@ -895,7 +1119,10 @@ function AssessmentInner() {
                   if (gridRound < gridCfg.rounds - 1) setGridRound(r => r + 1)
                   else {
                     handleAnswer('GRID', scores.reduce((a, b) => a + b, 0) / scores.length)
-                    showToast(`Grid complete! Average accuracy/speed ${Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 100)}%. Continue to Logical Reasoning →`)
+                    const pct = Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 100)
+                    showToast(autoAdvance
+                      ? `Grid complete ✓ (${pct}%) — gliding to Logical Reasoning…`
+                      : `Grid complete! Average accuracy/speed ${pct}%. Continue to Logical Reasoning →`)
                   }
                 }} className="btn-primary !py-2.5 disabled:opacity-40">Submit pattern</button>
                 <button onClick={() => { setGridRound(0); setGridScores([]) }} className="btn-soft !py-2.5">Reset</button>
@@ -942,6 +1169,12 @@ function AssessmentInner() {
   }
 
   const subs = STAGES[stage].sub
+  const nextLoc = nextLocation(stage, sub)
+  const prevLoc = prevLocation(stage, sub)
+  const nextLabel = nextLoc ? locationLabel(nextLoc.stage, nextLoc.sub) : ''
+  const prevLabel = prevLoc ? locationLabel(prevLoc.stage, prevLoc.sub) : ''
+  const nextIsNewStage = !!nextLoc && nextLoc.stage !== stage
+  const transitionClass = direction === 'next' ? 'animate-sub-next' : direction === 'prev' ? 'animate-sub-prev' : 'animate-sub-fade'
 
   return (
     <div className="min-h-screen text-slate-800">
@@ -965,8 +1198,8 @@ function AssessmentInner() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-2.5">
           <div className="flex gap-1.5 overflow-x-auto py-1">
             {STAGES.map((s, i) => (
-              <button key={s.id} onClick={() => { setStage(i); setSub(0) }}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border transition ${i === stage ? 'calibiai-gradient text-white border-transparent shadow-md shadow-indigo-200' : 'bg-white/70 text-slate-600 border-slate-200 hover:bg-white'}`}>
+              <button key={s.id} onClick={() => navigateTo(i, 0, i > stage ? 'next' : i < stage ? 'prev' : null)}
+                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border transition-all duration-300 ${i === stage ? 'calibiai-gradient text-white border-transparent shadow-md shadow-indigo-200' : 'bg-white/70 text-slate-600 border-slate-200 hover:bg-white hover:shadow-sm'}`}>
                 {i + 1}. {s.label}
               </button>
             ))}
@@ -992,44 +1225,114 @@ function AssessmentInner() {
             </div>
 
             <div className="text-sm font-black text-slate-800 pt-1 border-t border-slate-200/70">Sections</div>
-            {STAGES.map((s, i) => (
-              <button key={s.id} onClick={() => { setStage(i); setSub(0) }}
-                className={`w-full text-left px-3 py-2 rounded-xl text-xs border transition ${i === stage ? 'bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-200' : 'bg-white/70 border-slate-200 text-slate-600 hover:bg-white'}`}>
-                <div className="flex items-center justify-between">
-                  <span className="font-bold">{i + 1}. {s.label}</span>
-                  {(s.id === 'debugging' || s.id === 'feature') && (
-                    <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-600 border border-indigo-100 font-bold">AI</span>
-                  )}
-                </div>
-                <div className={`text-[10px] ${i === stage ? 'text-indigo-100' : 'text-slate-400'}`}>Suggested {s.min} min</div>
-              </button>
-            ))}
+            {STAGES.map((s, i) => {
+              // How many subsections of this stage are fully done (for the
+              // English + Cognitive stages that have them).
+              const doneSubs = s.sub.length
+                ? s.sub.filter((_, si) => getSubProgress(s.id, si, answers, gridInfo).complete).length
+                : 0
+              return (
+                <button key={s.id} onClick={() => navigateTo(i, 0, i > stage ? 'next' : i < stage ? 'prev' : null)}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs border transition-all duration-300 ${i === stage ? 'bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-200' : 'bg-white/70 border-slate-200 text-slate-600 hover:bg-white hover:shadow-sm'}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold">{i + 1}. {s.label}</span>
+                    <span className="flex items-center gap-1.5 shrink-0">
+                      {s.sub.length > 0 && (
+                        <span className={`font-mono font-bold ${i === stage ? 'text-indigo-100' : doneSubs === s.sub.length ? 'text-emerald-600' : 'text-slate-400'}`}>
+                          {doneSubs === s.sub.length ? '✓' : `${doneSubs}/${s.sub.length}`}
+                        </span>
+                      )}
+                      {(s.id === 'debugging' || s.id === 'feature') && (
+                        <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded font-bold ${i === stage ? 'bg-white/20 text-white border border-white/30' : 'bg-indigo-50 text-indigo-600 border border-indigo-100'}`}>AI</span>
+                      )}
+                    </span>
+                  </div>
+                  <div className={`text-[10px] ${i === stage ? 'text-indigo-100' : 'text-slate-400'}`}>Suggested {s.min} min</div>
+                </button>
+              )
+            })}
           </div>
         </div>
 
         {/* Main */}
         <div className="lg:col-span-9">
-          <div className="glass-card animate-fade-up">
+          <div ref={mainCardRef} className="glass-card animate-fade-up scroll-mt-28">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <h2 className="text-lg font-black text-slate-900">{STAGES[stage].label} <span className="text-slate-400 font-normal text-sm">· suggested {STAGES[stage].min} min</span></h2>
-              <span className="text-xs px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 font-bold">Section {stage + 1} / {STAGES.length}</span>
+              <div className="flex items-center gap-2">
+                {subs.length > 0 && (
+                  <button
+                    onClick={() => setAutoAdvance(v => !v)}
+                    title={autoAdvance ? 'Turn off automatic subsection advance' : 'Turn on automatic subsection advance'}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all duration-300 ${autoAdvance ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-400 border-slate-200'}`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${autoAdvance ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                    Auto-advance {autoAdvance ? 'on' : 'off'}
+                  </button>
+                )}
+                <span className="text-xs px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 font-bold">Section {stage + 1} / {STAGES.length}</span>
+              </div>
             </div>
 
             {subs.length > 0 && (
-              <div className="mt-3 flex gap-2 flex-wrap">
-                {subs.map((label, i) => (
-                  <button key={label} onClick={() => setSub(i)}
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold border transition ${i === sub ? 'bg-indigo-600 text-white border-indigo-500 shadow-sm' : 'bg-white/70 text-slate-600 border-slate-200 hover:bg-white'}`}>{label}</button>
-                ))}
+              <div className="mt-3">
+                <div className="flex gap-2 flex-wrap">
+                  {subs.map((label, i) => {
+                    const p = getSubProgress(STAGES[stage].id, i, answers, gridInfo)
+                    const done = p.complete
+                    const active = i === sub
+                    return (
+                      <button key={label} onClick={() => navigateTo(stage, i, i > sub ? 'next' : i < sub ? 'prev' : null)}
+                        className={`px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all duration-300 flex items-center gap-1.5 ${active
+                          ? 'bg-indigo-600 text-white border-indigo-500 shadow-md shadow-indigo-200 scale-[1.03]'
+                          : done
+                            ? 'bg-emerald-50/80 text-emerald-700 border-emerald-200 hover:bg-emerald-50'
+                            : 'bg-white/70 text-slate-600 border-slate-200 hover:bg-white hover:shadow-sm'}`}>
+                        {done && !active && <span className="w-4 h-4 rounded-full bg-emerald-500 text-white text-[10px] flex items-center justify-center">✓</span>}
+                        {active && done && <span className="w-4 h-4 rounded-full bg-white/25 text-white text-[10px] flex items-center justify-center">✓</span>}
+                        {label}
+                        {!done && p.total > 1 && <span className={`font-mono font-normal ${active ? 'text-indigo-200' : 'text-slate-400'}`}>{p.answered}/{p.total}</span>}
+                      </button>
+                    )
+                  })}
+                </div>
+                {/* Live progress of the subsection being viewed */}
+                <div className="mt-2.5 flex items-center gap-2.5">
+                  <div className="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full progress-smooth ${currentProgress.complete ? 'bg-emerald-500' : 'calibiai-gradient'}`}
+                      style={{ width: `${currentProgress.total ? Math.round((currentProgress.answered / currentProgress.total) * 100) : 0}%` }}
+                    />
+                  </div>
+                  <span className="text-[11px] font-mono text-slate-500 shrink-0">
+                    {currentProgress.complete
+                      ? `✓ ${subs[sub]} complete`
+                      : STAGES[stage].id === 'english' && sub === 3
+                        ? `${wordCount(answers['WRITING'] || '')}/${WRITING_AUTONEXT_WORDS}+ words to continue`
+                        : `${currentProgress.answered}/${currentProgress.total} answered`}
+                  </span>
+                </div>
               </div>
             )}
 
-            <div className="mt-5">{renderStage()}</div>
+            {/* Direction-aware smooth transition between subsections/stages */}
+            <div key={`${stage}-${sub}-${direction}`} className={`mt-5 ${transitionClass}`}>
+              <div className="sub-card-rise">{renderStage()}</div>
+            </div>
 
-            <div className="mt-7 flex justify-between pt-2">
-              <button disabled={stage === 0} onClick={() => { setStage(s => Math.max(0, s - 1)); setSub(0) }} className="btn-soft disabled:opacity-30">← Previous section</button>
-              {stage < STAGES.length - 1
-                ? <button onClick={() => { setStage(s => s + 1); setSub(0); window.scrollTo({ top: 0, behavior: 'smooth' }) }} className="btn-primary">Next section →</button>
+            <div className="mt-7 flex justify-between items-center gap-3 pt-2 flex-wrap">
+              <button disabled={!prevLoc} onClick={goPrev} className="btn-soft disabled:opacity-30 !px-5">
+                ← {prevLoc ? prevLabel : 'Previous'}
+              </button>
+              {subs.length > 0 && (
+                <span className="text-[11px] font-mono text-slate-400 order-first w-full text-center sm:order-none sm:w-auto">
+                  {subs[sub]} · {sub + 1}/{subs.length}
+                </span>
+              )}
+              {nextLoc
+                ? <button onClick={goNext} className="btn-primary !px-5">
+                    {nextIsNewStage ? `Finish ${STAGES[stage].label.split(' ')[0]} → ${nextLabel}` : `Next: ${nextLabel}`} →
+                  </button>
                 : <button onClick={() => handleSubmit(false)} className="btn-primary !px-7">Submit assessment →</button>}
             </div>
           </div>
@@ -1040,8 +1343,32 @@ function AssessmentInner() {
         </div>
       </div>
 
+      {/* Auto-advance banner: "Listening complete ✓ — moving to Speaking…" */}
+      {pendingAdvance && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-md animate-pop">
+          <div className="overflow-hidden rounded-2xl border border-emerald-200 bg-white/95 backdrop-blur shadow-2xl">
+            <div className="px-5 pt-3.5 pb-3 flex items-center gap-3">
+              <span className="w-9 h-9 rounded-full bg-emerald-500 text-white flex items-center justify-center text-lg shrink-0 shadow-md shadow-emerald-200">✓</span>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-bold text-slate-800 truncate">
+                  {pendingAdvance.fromLabel} complete — moving to {pendingAdvance.toLabel}
+                </div>
+                <div className="text-xs text-slate-500">Continuing in {pendingAdvance.secs}s…</div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button onClick={clearPendingAdvance} className="px-3 py-1.5 rounded-full text-xs font-bold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition">Stay</button>
+                <button onClick={goNowAdvance} className="px-3.5 py-1.5 rounded-full text-xs font-bold text-white calibiai-gradient shadow-md shadow-indigo-200 hover:brightness-105 active:scale-95 transition">Go now →</button>
+              </div>
+            </div>
+            <div className="h-1 bg-emerald-100">
+              <div key={`${stage}-${sub}`} className="h-full bg-emerald-500 autoadvance-bar" style={{ animationDuration: `${AUTONEXT_DELAY_MS}ms` }} />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Toast */}
-      {toast && <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-md px-5 py-3 rounded-2xl bg-white/90 backdrop-blur border border-indigo-200 shadow-2xl text-sm text-slate-800 animate-pop">{toast}</div>}
+      {toast && !pendingAdvance && <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-md px-5 py-3 rounded-2xl bg-white/90 backdrop-blur border border-indigo-200 shadow-2xl text-sm text-slate-800 animate-pop">{toast}</div>}
 
       {/* Camera/mic gate */}
       {!mediaReady && (
