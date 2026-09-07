@@ -11,9 +11,16 @@ export async function GET(req: Request) {
     const url = new URL(req.url)
     const college = url.searchParams.get('college') || ''
     const q = url.searchParams.get('q') || ''
-    const all = await fetchAllStudents()
-    const rows = filterRows(all, { college, q })
-    return NextResponse.json({ students: rows, total: all.length, filtered: rows.length })
+    const { students, source, warning } = await fetchAllStudents()
+    const rows = filterRows(students, { college, q })
+    return NextResponse.json({
+      students: rows,
+      total: students.length,
+      filtered: rows.length,
+      source,
+      warning,
+      updated_at: new Date().toISOString(),
+    })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'Failed to load students.' }, { status: 500 })
   }
