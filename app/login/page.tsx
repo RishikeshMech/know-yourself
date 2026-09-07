@@ -1,11 +1,12 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { StoreProvider, useStore } from '@/lib/store'
 import { getSupabase } from '@/lib/supabase'
 import { Logo } from '@/components/Logo'
+import { afterSignInRoute, ONBOARDING_ROUTE, signedInLandingRoute } from '@/lib/nextStep'
 
 function LoginInner() {
-  const { setUser, setProfile, user, hydrated } = useStore()
+  const { setUser, setProfile, user, profile, hydrated } = useStore()
   // Never pre-fill credentials — the form must start empty so one user's
   // details are never shown to the next person on a shared device.
   const [email, setEmail] = useState('')
@@ -13,13 +14,28 @@ function LoginInner() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
+  // Set the moment `submit` decides where to go. Without it the "already
+  // signed in" guard below fired as soon as `setUser` landed and issued its own
+  // navigation — see the comment on that effect.
+  const leavingRef = useRef(false)
 
   // A candidate with a live session should never see the login screen (e.g.
-  // when they navigate back or hit /login directly). Send them to the
-  // dashboard, replacing the entry so the back button can't return to login.
+  // when they navigate back or hit /login directly). Send them on, replacing
+  // the entry so the back button can't return to login.
+  //
+  // Two things this must not do:
+  //   1. hard-code the dashboard — a brand-new account still has to fill in
+  //      their profile, so route on onboarding state (this is the page people
+  //      reach after confirming their email);
+  //   2. override the navigation `submit` has already started. `setUser` makes
+  //      this effect re-run, and React flushes it *after* the synchronous
+  //      `window.location.replace` in `submit` returns — so its redirect used
+  //      to win and new users landed on /dashboard/student instead of
+  //      /onboarding.
   useEffect(() => {
-    if (user && hydrated) window.location.replace('/dashboard/student')
-  }, [user, hydrated])
+    if (leavingRef.current) return
+    if (user && hydrated) window.location.replace(signedInLandingRoute(profile))
+  }, [user, profile, hydrated])
   // Render nothing until the session is known; if already signed in, redirect.
   if (!hydrated || user) return null
 
@@ -52,6 +68,12 @@ function LoginInner() {
           }
         } catch { /* keep server-provided name */ }
       }
+      // Decide the destination BEFORE `setUser`: that call re-renders this
+      // component and re-runs the signed-in guard, which would otherwise issue
+      // a competing navigation (and win — it runs last). A brand-new signup
+      // goes to onboarding; a sign-in goes wherever their state says.
+      const dest = mode === 'signup' ? ONBOARDING_ROUTE : afterSignInRoute(data)
+      leavingRef.current = true
       // A brand new account is signed in immediately — no second sign-in step.
       setUser({ id: user.id, email: user.email, role: user.role || 'student', institution_id: user.institution_id || 'inst_iitm', name })
       // When Supabase is the backend, hand the session to supabase-js in the
@@ -62,18 +84,9 @@ function LoginInner() {
           await sb.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token })
         }
       } catch { /* demo mode / unreachable backend */ }
-      if (mode === 'signup') {
-        // Straight into onboarding. `replace` keeps the login screen out of the
-        // history stack so the browser back button can't bring it back.
-        window.location.replace('/onboarding')
-        return
-      }
-      if (data.has_assessment || data.has_onboarding) {
-        // Returning user — show dashboard (assessment results or profile overview).
-        window.location.replace('/dashboard/student')
-      } else {
-        window.location.replace('/onboarding')
-      }
+      // `replace` keeps the login screen out of the history stack so the
+      // browser back button can't bring it back.
+      window.location.replace(dest)
     } catch (e: any) {
       setErr(e?.message || 'Sign in failed. Please try again.')
     } finally { setBusy(false) }
