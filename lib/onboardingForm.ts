@@ -1,7 +1,9 @@
-import { normalizePhone } from './validate.ts'
+import { normalizePhone, normalizePrn } from './validate.ts'
 
 export type OnboardingForm = {
   full_name: string
+  /** College PRN / permanent registration number — optional. */
+  prn: string
   phone: string
   dob: string
   gender: string
@@ -25,6 +27,7 @@ export function normalizeOnboardingForm(profile?: Record<string, unknown> | null
   return {
     ...p,
     full_name: String(p.full_name ?? ''),
+    prn: normalizePrn(p.prn),
     phone: normalizePhone(p.phone),
     dob: String(p.dob ?? ''),
     gender: String(p.gender ?? ''),

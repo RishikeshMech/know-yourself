@@ -552,6 +552,7 @@ function ProfileInner() {
               />
               <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                 {[
+                  ['PRN No.', profile?.prn || '—'],
                   ['Phone', profile?.phone ? phoneDisplay(profile.phone) : '—'],
                   ['Gender', profile?.gender || '—'],
                   ['Date of birth', profile?.dob ? `${profile.dob}${ageFromDob(profile.dob) !== null ? ` (${ageFromDob(profile.dob)})` : ''}` : '—'],

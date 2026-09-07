@@ -2,7 +2,7 @@
  * Where a visitor who lands on `/instructions` actually belongs.
  *
  * The assessment is a one-time attempt, so `/instructions` has to bounce people
- * who already have a result (→ `/profile`) or who are mid-attempt
+ * who already have a result (→ the student dashboard) or who are mid-attempt
  * (→ `/assessment`) instead of letting them start a second timer.
  *
  * This used to live inline in a `useEffect` on the page, which meant the whole
@@ -15,8 +15,11 @@
  * browser and against a plain object in tests / on the server (where
  * `localStorage` does not exist).
  */
+// Explicit .ts extension so this module can also be exercised directly by
+// `npm test` (Node's type-stripping loader requires full specifiers).
+import { AFTER_ASSESSMENT_ROUTE } from './nextStep.ts'
 
-export type AttemptRedirect = '/profile' | '/assessment' | null
+export type AttemptRedirect = typeof AFTER_ASSESSMENT_ROUTE | '/assessment' | null
 
 export type AttemptRead = (key: string) => string | null
 
@@ -47,14 +50,15 @@ export function resolveInstructionsRedirect(read: AttemptRead = safeRead): Attem
     return null
   }
 
-  // Already scored → the report lives on the profile; no second attempt.
-  if (scores) return '/profile'
+  // Already scored → the dashboard holds the score and the report; no second
+  // attempt is allowed.
+  if (scores) return AFTER_ASSESSMENT_ROUTE
 
   if (!session) return null
   try {
     const s = JSON.parse(session)
     const status = s?.status
-    if (status === 'submitted' || status === 'expired') return '/profile'
+    if (status === 'submitted' || status === 'expired') return AFTER_ASSESSMENT_ROUTE
     // Mid-attempt → straight back to the running 120-minute timer. Restarting
     // from the instructions page would reset it.
     if (status === 'in_progress') return '/assessment'

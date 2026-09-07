@@ -19,6 +19,8 @@ export interface Profile {
   id: string
   email: string
   full_name?: string
+  /** College PRN / permanent registration number — optional. */
+  prn?: string
   phone?: string
   dob?: string
   gender?: string
@@ -173,6 +175,21 @@ export function saveProfile(profile: Profile) {
 export function getProfileById(id: string): Profile | undefined {
   const db = getDB()
   return db.profiles.find(p => p.id === id)
+}
+
+/**
+ * Another student already using this PRN, or `undefined`. PRNs are compared in
+ * canonical form (upper case, no whitespace — see normalizePrn) and blanks are
+ * never a match, since the field is optional.
+ */
+export function findProfileByPrn(prn: string, excludeId?: string): Profile | undefined {
+  const wanted = String(prn ?? '').replace(/\s+/g, '').toUpperCase()
+  if (!wanted) return undefined
+  const db = getDB()
+  return db.profiles.find(p =>
+    p.id !== excludeId &&
+    String(p.prn ?? '').replace(/\s+/g, '').toUpperCase() === wanted,
+  )
 }
 
 export function saveAssessmentSession(session: AssessmentSession) {

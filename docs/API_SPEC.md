@@ -41,11 +41,14 @@ Returns caller profile + institution + shard.
 Upsert student profile.
 ```json
 {
-  "full_name":"Priya Sharma", "phone":"+91...", "dob":"2003-04-12",
+  "full_name":"Priya Sharma", "prn":"21CS1042", "phone":"+91...", "dob":"2003-04-12",
   "degree":"B.Tech CSE", "college":"IIT Madras", "graduation_year":2026,
   "cgpa":8.7, "skills":["Python","React"], "linkedin_url":"...", "github_url":"..."
 }
 ```
+
+`prn` (college PRN / permanent registration number) is optional: blank is accepted,
+and when supplied it is stored upper case and must be unique across students.
 
 ### GET /api/v1/profile/:user_id
 Faculty/institution can fetch if same tenant.

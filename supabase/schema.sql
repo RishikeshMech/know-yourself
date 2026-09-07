@@ -23,6 +23,7 @@ create table if not exists public.profiles (
   email            text not null,
   role             text not null default 'student' check (role in ('student','faculty','institution')),
   full_name        text,
+  prn              text,                      -- college PRN / registration number (optional)
   phone            text,
   dob              date,
   gender           text,
@@ -41,6 +42,13 @@ create table if not exists public.profiles (
 
 -- Index for fast login lookup by email (used by /api/auth/login)
 create index if not exists profiles_email_idx on public.profiles (email);
+
+-- One student per PRN (partial index: blank/absent PRNs never collide, the
+-- field is optional). Colleges match CalibiAI records to their own register by
+-- PRN, so a duplicate would silently merge two different students.
+create unique index if not exists profiles_prn_unique_idx
+  on public.profiles (prn)
+  where prn is not null and btrim(prn) <> '';
 
 -- Auto-create a profile row when a new auth user signs up
 create or replace function public.handle_new_user()
@@ -211,7 +219,8 @@ create policy "own files" on storage.objects for all using (
 -- Download view — one row per student: profile + latest resume analysis +
 -- latest assessment result. Export from the Supabase table editor
 -- (CSV / Excel / JSON) to download all data in one click.
--- (Also provided as a standalone migration: migrations/0002_profile_avatar_and_full_view.sql)
+-- (Also provided as standalone migrations: 0002_profile_avatar_and_full_view.sql
+--  and 0003_profile_prn.sql, which re-creates this view with the PRN column.)
 -- ============================================================================
 create or replace view public.student_profiles_full
 with (security_invoker = on)   -- RLS of the underlying tables still applies
@@ -221,6 +230,7 @@ select
   p.email,
   p.role,
   p.full_name,
+  p.prn,
   p.phone,
   p.dob,
   p.gender,
