@@ -1,6 +1,6 @@
 'use client'
 export const dynamic = 'force-dynamic'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Navbar } from '@/components/Navbar'
@@ -38,7 +38,9 @@ function Inner(){
   // Enrich the (locally hydrated) store with the latest DB data when signed in.
   // Data is written through the store so the navbar and every other page sees
   // the same profile — including the full name set on the profile page.
-  useEffect(()=>{
+  // Extracted into a `refresh` so it can also run on window focus (returning
+  // from the edit-profile / update-resume pages) so the score is always live.
+  const refresh = useCallback(()=>{
     if(!user?.id) return
     fetch('/api/user/profile?user_id='+user.id).then(r=>r.json()).then(data=>{
       if(data.profile) setProfile(data.profile)
@@ -63,8 +65,19 @@ function Inner(){
         setScores(payload)
       }
     }).catch(()=>{})
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[user?.id])
+  },[user?.id, setProfile, setResume, setScores])
+
+  useEffect(()=>{
+    refresh()
+  },[refresh])
+
+  // Re-sync when the user returns to this tab (e.g. after editing their profile
+  // or resume on the dedicated pages) so the score reflects the latest data.
+  useEffect(()=>{
+    const onFocus = () => refresh()
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  },[refresh])
 
   if (!hydrated) {
     return (
@@ -191,9 +204,9 @@ function Inner(){
                   </div>
                   <div className="mt-3 text-xs font-bold text-emerald-600">Strengths</div>
                   <ul className="list-disc ml-4 text-xs text-slate-600">{(resume.feedback?.strengths || []).slice(0,2).map((s:string)=><li key={s}>{s}</li>)}</ul>
-                  <Link href="/resume" className="mt-3 inline-block text-xs font-semibold text-indigo-600">Update resume →</Link>
+                  <Link href="/resume?edit=1" className="mt-3 inline-block text-xs font-semibold text-indigo-600">Update resume →</Link>
                 </div>
-              ) : <p className="text-xs text-slate-400 mt-2">No resume uploaded yet. <Link href="/resume" className="text-indigo-600 font-semibold">Upload →</Link></p>}
+              ) : <p className="text-xs text-slate-400 mt-2">No resume uploaded yet. <Link href="/resume?edit=1" className="text-indigo-600 font-semibold">Upload →</Link></p>}
             </div>
 
             <div className="rounded-3xl calibiai-gradient p-5 text-white shadow-xl shadow-indigo-200 animate-fade-up" style={{animationDelay:'.15s'}}>

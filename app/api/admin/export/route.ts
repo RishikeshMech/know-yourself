@@ -19,7 +19,7 @@ export async function GET(req: Request) {
     const scope = url.searchParams.get('scope') || 'filtered'
     const college = url.searchParams.get('college') || ''
     const q = url.searchParams.get('q') || ''
-    const all = await fetchAllStudents()
+    const { students: all } = await fetchAllStudents()
     const rows = scope === 'all' ? all : filterRows(all, { college, q })
     const csv = rowsToCsv(rows)
     const file = scope === 'all' ? downloadFilename('all') : downloadFilename('filtered')

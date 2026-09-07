@@ -6,7 +6,7 @@ import { Eye, EyeOff } from 'lucide-react'
 import { useStore } from '@/lib/store'
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase'
 import { Logo } from '@/components/Logo'
-import { afterSignInRoute, ONBOARDING_ROUTE, signedInLandingRoute } from '@/lib/nextStep'
+import { afterSignInRoute, signedInLandingRoute } from '@/lib/nextStep'
 
 function GoogleIcon({ className = 'h-5 w-5' }: { className?: string }) {
   return (
@@ -125,7 +125,11 @@ export default function LoginPage() {
         }
       }
 
-      const dest = mode === 'signup' ? ONBOARDING_ROUTE : afterSignInRoute(data)
+      // After a successful sign-in/sign-up, send the user where they belong:
+      // brand-new accounts go to /onboarding, but anyone who already completed
+      // onboarding (or has a score) goes straight to their dashboard — so a
+      // completed profile is never pushed back into the onboarding flow.
+      const dest = afterSignInRoute(data)
       leavingRef.current = true
       setRedirecting(true)
 
