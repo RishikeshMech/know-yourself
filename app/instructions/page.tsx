@@ -125,7 +125,9 @@ function Inner(){
       localStorage.setItem('calibiai_session_server_start', String(now))
     }catch{ }
     setSession(session)
-    window.location.assign('/assessment')
+    // `replace` so the one-time instructions page doesn't linger in history —
+    // the Back button should never walk a finished candidate through the flow.
+    window.location.replace('/assessment')
   }
 
   // Same chrome as the real page, so nothing jumps when the content arrives —

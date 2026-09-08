@@ -1,4 +1,4 @@
-// AI evaluation endpoint — server-side only (keeps DEEPSEEK_API_KEY secret).
+// AI evaluation endpoint — server-side only (keeps the CalibiAI key secret).
 // Body: { kind, ...payload }
 //   writing   { text, scenario }
 //   speaking  { transcript?, recordingCount }
@@ -10,7 +10,7 @@ export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
 import {
   evaluateWriting, evaluateSpeaking, evaluateDebugging, evaluateFeature, evaluatePrompt,
-  isDeepSeekConfigured, type AiKind,
+  isCalibiAiConfigured, type AiKind,
 } from '@/lib/ai'
 
 export async function POST(req: Request) {
@@ -46,7 +46,7 @@ export async function POST(req: Request) {
       default:
         return NextResponse.json({ error: `unknown kind: ${kind}` }, { status: 400 })
     }
-    return NextResponse.json({ ok: true, engine: isDeepSeekConfigured() ? 'deepseek' : 'heuristic', result })
+    return NextResponse.json({ ok: true, engine: isCalibiAiConfigured() ? 'calibiai' : 'heuristic', result })
   } catch (e: any) {
     return NextResponse.json({ error: 'evaluation failed', detail: String(e?.message || e) }, { status: 500 })
   }

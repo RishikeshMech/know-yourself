@@ -261,7 +261,7 @@ export function AiExamAssistant({
   const [messages, setMessages] = useState<ChatMsg[]>([])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
-  const [engine, setEngine] = useState<'deepseek' | 'heuristic' | null>(null)
+  const [engine, setEngine] = useState<'calibiai' | 'heuristic' | null>(null)
   const [promptsUsed, setPromptsUsed] = useState(0)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -464,7 +464,7 @@ export function AiExamAssistant({
           </span>
           {engine && (
             <span className="hidden sm:inline-flex px-2 py-0.5 rounded-md bg-white/10 text-[9.5px] font-mono text-indigo-200">
-              {engine === 'deepseek' ? 'DeepSeek' : 'Heuristic Engine'}
+              {engine === 'calibiai' ? 'CalibiAI' : 'Heuristic Engine'}
             </span>
           )}
           <button

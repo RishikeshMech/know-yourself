@@ -1,7 +1,7 @@
 // Calibiai scoring engine — pure function over answers + AI results.
 // MCQ answers are stored as the chosen option TEXT (order-independent because
 // options are shuffled per session). Behavioral answers store the option's
-// own trait score (0-100). Subjective sections use DeepSeek results when
+// own trait score (0-100). Subjective sections use CalibiAI results when
 // present (aiResults), else a deterministic heuristic.
 import { bank } from './questions'
 

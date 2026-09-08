@@ -412,10 +412,12 @@ export function OnboardingFlow({ variant = 'onboarding' }: { variant?: 'onboardi
     }
     setSaved(true)
     // First-time onboarding continues to resume upload; the edit form returns
-    // to the (real) profile page.
+    // to the (real) profile page. Onboarding is a one-time step, so `replace`
+    // (not `push`) keeps it out of the browser history — otherwise the Back
+    // button from the dashboard walks back through the whole onboarding flow.
     setTimeout(() => {
-      if (variant === 'edit') router.push('/profile')
-      else router.push('/resume')
+      if (variant === 'edit') router.replace('/profile')
+      else router.replace('/resume')
     }, 900)
   }
 

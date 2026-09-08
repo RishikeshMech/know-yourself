@@ -164,7 +164,7 @@ function AiFeedback({ r }: { r: any }) {
     <div className="mt-3 rounded-2xl bg-emerald-50/80 border border-emerald-200 p-3.5 text-sm animate-fade-up">
       <div className="flex items-center justify-between">
         <span className="font-bold text-emerald-700">AI score: {r.score}/100</span>
-        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white text-emerald-700 border border-emerald-200">{r.engine === 'deepseek' ? 'DeepSeek' : 'rule engine'}</span>
+        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white text-emerald-700 border border-emerald-200">{r.engine === 'calibiai' ? 'CalibiAI' : 'rule engine'}</span>
       </div>
       {r.rubric && Object.keys(r.rubric).length > 0 && (
         <div className="mt-2 space-y-1.5">

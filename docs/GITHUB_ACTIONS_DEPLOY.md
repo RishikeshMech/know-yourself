@@ -90,7 +90,7 @@ hosting (static/PHP only). Use MilesWeb **Node.js hosting** or a **VPS**.
 ## 5. Why there are no build/env secrets in the workflow
 
 The deployment step only needs SSH credentials. Build-time environment
-variables (Supabase, DeepSeek, `ADMIN_SECRET`, etc.) belong on **your server**
+variables (Supabase, CalibiAI, `ADMIN_SECRET`, etc.) belong on **your server**
 — set them in the server's `.env` / `.env.local`, or in the MilesWeb control
 panel. The app already falls back to local demo mode when they're absent, so
 none of them are required for the workflow to run.

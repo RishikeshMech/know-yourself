@@ -11,8 +11,8 @@ import {
 
 /**
  * POST multipart { file, user_id, full_name, email, degree, skills }
- * Extracts the document text server-side, then runs DeepSeek (or the
- * rule-based engine) to produce a professional, industry-style analysis —
+ * Extracts the document text server-side, then runs the CalibiAI resume grader
+ * (or the rule-based engine) to produce a professional, industry-style analysis —
  * including name-mismatch and professionalism flags.
  */
 export async function POST(req: Request) {

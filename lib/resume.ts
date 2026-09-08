@@ -1,8 +1,9 @@
 // Server-side resume analysis.
-// Uses DeepSeek when DEEPSEEK_API_KEY is set; otherwise a deterministic
-// rule-based engine so the flow always works. Text is extracted from the
-// uploaded PDF/DOCX/TXT first so both engines analyse the REAL document —
-// which is what enables name-mismatch, recruiter flags, and professionalism checks.
+// Uses the CalibiAI resume grader when an API key is set; otherwise a
+// deterministic rule-based engine so the flow always works. Text is extracted
+// from the uploaded PDF/DOCX/TXT first so both engines analyse the REAL
+// document — which is what enables name-mismatch, recruiter flags, and
+// professionalism checks.
 
 import mammoth from 'mammoth'
 import { PDFParse } from 'pdf-parse'
@@ -16,7 +17,7 @@ export interface ResumeFlag {
 
 export interface ResumeAnalysis {
   resume_score: number
-  engine: 'deepseek' | 'heuristic'
+  engine: 'calibiai' | 'heuristic'
   name_match: boolean
   detected_name: string
   flags: ResumeFlag[]
@@ -38,8 +39,8 @@ export interface CandidateContext {
   skills?: string
 }
 
-export function isDeepSeekConfigured(): boolean {
-  return !!process.env.DEEPSEEK_API_KEY
+export function isCalibiAiConfigured(): boolean {
+  return !!(process.env.CALIBIAI_API_KEY || process.env.DEEPSEEK_API_KEY)
 }
 
 // ---------------------------------------------------------------------------
@@ -67,10 +68,10 @@ export async function extractResumeText(buffer: Buffer, filename: string): Promi
 }
 
 // ---------------------------------------------------------------------------
-// DeepSeek Integration — Brutal & Honest Technical Recruiter Evaluation
+// CalibiAI Integration — Brutal & Honest Technical Recruiter Evaluation
 // ---------------------------------------------------------------------------
-const DEEPSEEK_BASE = process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com'
-const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-chat'
+const AI_BASE = process.env.CALIBIAI_BASE_URL || process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com'
+const AI_MODEL = process.env.CALIBIAI_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-chat'
 
 const BRUTAL_RECRUITER_CONTRACT = `Respond ONLY with a valid JSON object matching exactly this schema:
 {
@@ -110,15 +111,15 @@ Strict Rules:
 4. Highlight vague buzzwords ('hardworking', 'enthusiastic', 'responsible for') as gaps.
 5. Provide actionable suggestions that tell the candidate exactly how to rewrite bullet points using the Google XYZ formula: 'Accomplished [X] as measured by [Y], by doing [Z]'.`
 
-async function callDeepSeek(text: string, ctx: CandidateContext): Promise<any | null> {
-  const key = process.env.DEEPSEEK_API_KEY
+async function callCalibiAi(text: string, ctx: CandidateContext): Promise<any | null> {
+  const key = process.env.CALIBIAI_API_KEY || process.env.DEEPSEEK_API_KEY
   if (!key) return null
   try {
-    const res = await fetch(`${DEEPSEEK_BASE}/chat/completions`, {
+    const res = await fetch(`${AI_BASE}/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
       body: JSON.stringify({
-        model: DEEPSEEK_MODEL,
+        model: AI_MODEL,
         temperature: 0.15,
         response_format: { type: 'json_object' },
         messages: [
@@ -131,14 +132,14 @@ async function callDeepSeek(text: string, ctx: CandidateContext): Promise<any | 
       }),
     })
     if (!res.ok) {
-      console.error('DeepSeek resume error:', res.status, await res.text().catch(() => ''))
+      console.error('CalibiAI resume error:', res.status, await res.text().catch(() => ''))
       return null
     }
     const data = await res.json()
     const content: string = data?.choices?.[0]?.message?.content
     return content ? JSON.parse(content) : null
   } catch (e) {
-    console.error('DeepSeek resume call failed:', e)
+    console.error('CalibiAI resume call failed:', e)
     return null
   }
 }
@@ -181,8 +182,8 @@ export async function analyzeResumeText(rawText: string, ctx: CandidateContext):
   const lower = text.toLowerCase()
   const words = (text.match(/\S+/g) || []).length
 
-  // Prioritize DeepSeek analysis
-  const ai = await callDeepSeek(text, ctx)
+  // Prioritize CalibiAI analysis
+  const ai = await callCalibiAi(text, ctx)
   if (ai) return normalizeAi(ai, text, words)
 
   // ---------------- Strict Heuristic Fallback Engine ----------------
@@ -328,7 +329,7 @@ function normalizeAi(ai: any, text: string, words: number): ResumeAnalysis {
   const exp = ai?.experience || {}
   return {
     resume_score: clamp(Number(ai?.resume_score ?? 45)),
-    engine: 'deepseek',
+    engine: 'calibiai',
     name_match: ai?.name_match !== false,
     detected_name: String(ai?.detected_name || detectName(text)),
     flags,

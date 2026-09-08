@@ -1285,7 +1285,7 @@
               "Speak for the full 60–90 seconds",
               "Structure answers: situation → action → result"
             ],
-            "summary": "Recording captured. In production, Whisper transcribes it and DeepSeek grades the transcript (heuristic score shown).",
+            "summary": "Recording captured. In production, Whisper transcribes it and CalibiAI grades the transcript (heuristic score shown).",
             "engine": "heuristic"
           },
           "AD1": {
@@ -1309,7 +1309,7 @@
               "Do not leave the function body empty; provide a complete working solution."
             ],
             "summary": "The submission is incomplete (empty body) and does not fix the bug or address edge cases, so it earns a low score.",
-            "engine": "deepseek"
+            "engine": "calibiai"
           }
         },
         "verifiable_hash": "sha256:152f231-07825c54",
@@ -1337,7 +1337,7 @@
             "Speak for the full 60–90 seconds",
             "Structure answers: situation → action → result"
           ],
-          "summary": "Recording captured. In production, Whisper transcribes it and DeepSeek grades the transcript (heuristic score shown).",
+          "summary": "Recording captured. In production, Whisper transcribes it and CalibiAI grades the transcript (heuristic score shown).",
           "engine": "heuristic"
         },
         "AD1": {
@@ -1361,7 +1361,7 @@
             "Do not leave the function body empty; provide a complete working solution."
           ],
           "summary": "The submission is incomplete (empty body) and does not fix the bug or address edge cases, so it earns a low score.",
-          "engine": "deepseek"
+          "engine": "calibiai"
         }
       },
       "created_at": "2026-09-06T19:15:37.007Z"
@@ -1451,7 +1451,7 @@
               "Add or run tests to verify behavior for page=1, page=0, negative page, size=0, and out-of-range pages."
             ],
             "summary": "The submission is identical to the original buggy code and does not attempt any fix, so it scores near zero.",
-            "engine": "deepseek"
+            "engine": "calibiai"
           },
           "PE1": {
             "score": 0,
@@ -1482,7 +1482,7 @@
               "Break down the task: reading in chunks, hashing composite key, tracking seen keys, writing unique rows to output."
             ],
             "summary": "The candidate's prompt is gibberish and completely fails to address the task, scoring near zero.",
-            "engine": "deepseek"
+            "engine": "calibiai"
           },
           "SP_speaking": {
             "score": 61,
@@ -1499,7 +1499,7 @@
               "Speak for the full 60–90 seconds",
               "Structure answers: situation → action → result"
             ],
-            "summary": "Recording captured. In production Whisper transcribes it and DeepSeek grades the transcript (heuristic score shown).",
+            "summary": "Recording captured. In production Whisper transcribes it and CalibiAI grades the transcript (heuristic score shown).",
             "engine": "heuristic"
           },
           "WRITING": {
@@ -1540,7 +1540,7 @@
             "Add or run tests to verify behavior for page=1, page=0, negative page, size=0, and out-of-range pages."
           ],
           "summary": "The submission is identical to the original buggy code and does not attempt any fix, so it scores near zero.",
-          "engine": "deepseek"
+          "engine": "calibiai"
         },
         "PE1": {
           "score": 0,
@@ -1571,7 +1571,7 @@
             "Break down the task: reading in chunks, hashing composite key, tracking seen keys, writing unique rows to output."
           ],
           "summary": "The candidate's prompt is gibberish and completely fails to address the task, scoring near zero.",
-          "engine": "deepseek"
+          "engine": "calibiai"
         },
         "SP_speaking": {
           "score": 61,
@@ -1588,7 +1588,7 @@
             "Speak for the full 60–90 seconds",
             "Structure answers: situation → action → result"
           ],
-          "summary": "Recording captured. In production Whisper transcribes it and DeepSeek grades the transcript (heuristic score shown).",
+          "summary": "Recording captured. In production Whisper transcribes it and CalibiAI grades the transcript (heuristic score shown).",
           "engine": "heuristic"
         },
         "WRITING": {
@@ -1934,7 +1934,7 @@
               "If items is not a list but a generator, slicing would fail; consider converting to list or using itertools.islice for generality."
             ],
             "summary": "The fix correctly addresses the core pagination bug and handles the specified edge cases, with minor room for improvement in input handling and testing.",
-            "engine": "deepseek"
+            "engine": "calibiai"
           },
           "AF1": {
             "score": 88,
@@ -1959,7 +1959,7 @@
               "Add tests for boundary conditions (exact window edge, concurrent requests)."
             ],
             "summary": "A solid, functional implementation that meets the spec with correct middleware wiring and retry-after handling, though it could improve memory cleanup for inactive users and handle degenerate maxRequests values.",
-            "engine": "deepseek"
+            "engine": "calibiai"
           }
         },
         "verifiable_hash": "sha256:454e58c-07d26997",
@@ -1994,7 +1994,7 @@
             "If items is not a list but a generator, slicing would fail; consider converting to list or using itertools.islice for generality."
           ],
           "summary": "The fix correctly addresses the core pagination bug and handles the specified edge cases, with minor room for improvement in input handling and testing.",
-          "engine": "deepseek"
+          "engine": "calibiai"
         },
         "AF1": {
           "score": 88,
@@ -2019,7 +2019,7 @@
             "Add tests for boundary conditions (exact window edge, concurrent requests)."
           ],
           "summary": "A solid, functional implementation that meets the spec with correct middleware wiring and retry-after handling, though it could improve memory cleanup for inactive users and handle degenerate maxRequests values.",
-          "engine": "deepseek"
+          "engine": "calibiai"
         }
       },
       "created_at": "2026-09-07T18:34:37.287Z"
@@ -2343,7 +2343,7 @@
       "file_name": "23000486910000999C11.pdf",
       "created_at": "2026-09-06T13:10:30.505Z",
       "resume_score": 5,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": false,
       "detected_name": "Sub-Regional Office",
       "flags": [
@@ -2407,7 +2407,7 @@
       "file_name": "Prajwal Gulhane Re.pdf",
       "created_at": "2026-09-06T14:44:19.437Z",
       "resume_score": 78,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": true,
       "detected_name": "Prajwal Gulhane",
       "flags": [
@@ -2516,7 +2516,7 @@
       "file_name": "Prajwal Gulhane Re.pdf",
       "created_at": "2026-09-06T16:24:41.737Z",
       "resume_score": 78,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": true,
       "detected_name": "Prajwal Gulhane",
       "flags": [
@@ -2617,7 +2617,7 @@
       "file_name": "23000486910000999C11.pdf",
       "created_at": "2026-09-06T17:20:49.004Z",
       "resume_score": 5,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": false,
       "detected_name": "Vinod Gulhane",
       "flags": [
@@ -2683,7 +2683,7 @@
       "file_name": "Prajwal Gulhane Re.pdf",
       "created_at": "2026-09-06T17:21:14.566Z",
       "resume_score": 78,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": true,
       "detected_name": "Prajwal Gulhane",
       "flags": [
@@ -2776,7 +2776,7 @@
       "file_name": "CalibiAI_SSPU_Kiwale_MoU.pdf",
       "created_at": "2026-09-06T19:07:49.134Z",
       "resume_score": 0,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": false,
       "detected_name": "MEMORANDUM OF UNDERSTANDING",
       "flags": [
@@ -2828,7 +2828,7 @@
       "file_name": "Prajwal Gulhane Re.pdf",
       "created_at": "2026-09-06T19:08:16.582Z",
       "resume_score": 78,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": false,
       "detected_name": "Prajwal Gulhane",
       "flags": [
@@ -2933,7 +2933,7 @@
       "file_name": "Prajwal Gulhane Re.pdf",
       "created_at": "2026-09-06T21:25:55.891Z",
       "resume_score": 78,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": false,
       "detected_name": "Prajwal Gulhane",
       "flags": [
@@ -3030,7 +3030,7 @@
       "file_name": "Prajwal Gulhane Re.pdf",
       "created_at": "2026-09-07T07:43:32.037Z",
       "resume_score": 78,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": false,
       "detected_name": "Prajwal Gulhane",
       "flags": [
@@ -3126,7 +3126,7 @@
       "file_name": "Prajwal Gulhane Re.pdf",
       "created_at": "2026-09-07T08:09:54.581Z",
       "resume_score": 78,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": false,
       "detected_name": "Prajwal Gulhane",
       "flags": [
@@ -3223,7 +3223,7 @@
       "file_name": "Prajwal Gulhane Re.pdf",
       "created_at": "2026-09-07T15:52:26.689Z",
       "resume_score": 78,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": true,
       "detected_name": "Prajwal Gulhane",
       "flags": [
@@ -3320,7 +3320,7 @@
       "file_name": "Prajwal Gulhane Re.pdf",
       "created_at": "2026-09-07T16:20:04.128Z",
       "resume_score": 78,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": true,
       "detected_name": "Prajwal Gulhane",
       "flags": [
@@ -3654,7 +3654,7 @@
       "file_name": "CalibiAI_Report_77c9d00f-a788-471e-9a40-1fd919dd2c26 (1).pdf",
       "created_at": "2026-09-07T18:04:45.144Z",
       "resume_score": 12,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": false,
       "detected_name": "Prajwalen100",
       "flags": [
@@ -3714,7 +3714,7 @@
       "file_name": "Prajwal Gulhane Re.pdf",
       "created_at": "2026-09-07T20:01:17.280Z",
       "resume_score": 82,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": true,
       "detected_name": "Prajwal Gulhane",
       "flags": [
@@ -3807,7 +3807,7 @@
       "file_name": "Prajwal Gulhane Re.pdf",
       "created_at": "2026-09-07T20:44:23.293Z",
       "resume_score": 78,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": true,
       "detected_name": "Prajwal Gulhane",
       "flags": [
@@ -3904,7 +3904,7 @@
       "file_name": "CalibiAI_SSPU_Kiwale_MoU.pdf",
       "created_at": "2026-09-07T21:10:30.517Z",
       "resume_score": 5,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": false,
       "detected_name": "MEMORANDUM OF UNDERSTANDING",
       "flags": [
@@ -3958,7 +3958,7 @@
       "file_name": "Prajwal Gulhane Re.pdf",
       "created_at": "2026-09-07T21:17:13.056Z",
       "resume_score": 78,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": true,
       "detected_name": "Prajwal Gulhane",
       "flags": [
@@ -4052,7 +4052,7 @@
       "file_name": "Prajwal Gulhane Re.pdf",
       "created_at": "2026-09-08T06:25:07.785Z",
       "resume_score": 82,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": true,
       "detected_name": "Prajwal Gulhane",
       "flags": [

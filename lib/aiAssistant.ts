@@ -2,7 +2,7 @@
 // Provides conversational guidance, explanations, debugging help, edge-case analysis,
 // and code reviews for Stage 3 (AI-Assisted Debugging) and Stage 4 (AI Feature Dev).
 //
-// When DEEPSEEK_API_KEY is available, uses DeepSeek Chat.
+// When an API key is configured, uses the CalibiAI coding assistant.
 // Otherwise, uses a rich contextual heuristic knowledge engine tailored to AD1, AD2, AD3, and AF1.
 
 export interface ChatMessage {
@@ -21,23 +21,23 @@ export interface AssistantRequest {
 
 export interface AssistantResponse {
   reply: string
-  engine: 'deepseek' | 'heuristic'
+  engine: 'calibiai' | 'heuristic'
   suggestions?: string[]
 }
 
-const DEEPSEEK_BASE = process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com'
-const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-chat'
+const AI_KEY = process.env.CALIBIAI_API_KEY || process.env.DEEPSEEK_API_KEY || ''
+const AI_BASE = process.env.CALIBIAI_BASE_URL || process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com'
+const AI_MODEL = process.env.CALIBIAI_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-chat'
 
-export function isDeepSeekConfigured(): boolean {
-  return !!process.env.DEEPSEEK_API_KEY
+export function isCalibiAiConfigured(): boolean {
+  return !!AI_KEY
 }
 
-async function callDeepSeekChat(
+async function callCalibiAiChat(
   systemPrompt: string,
   messages: ChatMessage[],
 ): Promise<string | null> {
-  const key = process.env.DEEPSEEK_API_KEY
-  if (!key) return null
+  if (!AI_KEY) return null
   try {
     const formattedMessages = [
       { role: 'system', content: systemPrompt },
@@ -47,18 +47,18 @@ async function callDeepSeekChat(
       })),
     ]
 
-    const res = await fetch(`${DEEPSEEK_BASE}/chat/completions`, {
+    const res = await fetch(`${AI_BASE}/chat/completions`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${AI_KEY}` },
       body: JSON.stringify({
-        model: DEEPSEEK_MODEL,
+        model: AI_MODEL,
         temperature: 0.3,
         messages: formattedMessages,
       }),
     })
 
     if (!res.ok) {
-      console.error('DeepSeek chat error:', res.status, await res.text().catch(() => ''))
+      console.error('CalibiAI assistant error:', res.status, await res.text().catch(() => ''))
       return null
     }
 
@@ -66,7 +66,7 @@ async function callDeepSeekChat(
     const reply: string = data?.choices?.[0]?.message?.content
     return reply || null
   } catch (err) {
-    console.error('DeepSeek chat call failed:', err)
+    console.error('CalibiAI assistant call failed:', err)
     return null
   }
 }
@@ -442,7 +442,7 @@ export async function chatWithAssistant(req: AssistantRequest): Promise<Assistan
   const { taskId, taskTitle, taskPrompt, buggyOrSpec, currentCode, messages } = req
   const knowledge = getTaskKnowledge(taskId)
 
-  if (isDeepSeekConfigured()) {
+  if (isCalibiAiConfigured()) {
     const systemPrompt = `You are the CalibiAI Coding Assistant embedded inside a proctored graduate hiring assessment.
 The student is working on Stage 3/4 (${taskId}: "${taskTitle || knowledge.name}").
 Proctoring rules strictly prevent tab switching, so you are their in-exam companion.
@@ -467,11 +467,11 @@ GUIDELINES:
 4. If they ask to review their code, highlight what is correct and point out bugs or missing edge cases constructively.
 5. Be concise, polite, encouraging, and accurate.`
 
-    const deepSeekReply = await callDeepSeekChat(systemPrompt, messages)
-    if (deepSeekReply) {
+    const calibiAiReply = await callCalibiAiChat(systemPrompt, messages)
+    if (calibiAiReply) {
       return {
-        reply: deepSeekReply,
-        engine: 'deepseek',
+        reply: calibiAiReply,
+        engine: 'calibiai',
         suggestions: knowledge.suggestions,
       }
     }

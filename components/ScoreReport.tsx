@@ -159,7 +159,7 @@ export function ScoreReport({ scores, sample = false }: Props) {
         {aiEntries.length > 0 && (
           <div className="glass-card animate-fade-up" style={{ animationDelay: '.15s' }}>
             <div className="text-sm font-bold text-slate-800">AI feedback & improvement areas
-              <span className="ml-2 text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">{aiEntries.some(([, r]) => r.engine === 'deepseek') ? 'DeepSeek' : 'rule engine'}</span>
+              <span className="ml-2 text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">{aiEntries.some(([, r]) => r.engine === 'calibiai') ? 'CalibiAI' : 'rule engine'}</span>
             </div>
             <div className="mt-4 grid md:grid-cols-2 gap-3">
               {aiEntries.map(([key, r]) => (
