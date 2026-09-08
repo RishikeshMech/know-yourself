@@ -9,3 +9,8 @@ coverage
 storage/minio-data
 storage/pgdata
 tsconfig.tsbuildinfo
+
+# Demo-mode runtime data — the app writes live sign-ups/sessions/results here
+# instead of the git-tracked calibiai_db.json seed, so deploys can always
+# `git checkout` cleanly.
+calibiai_db.runtime.json
