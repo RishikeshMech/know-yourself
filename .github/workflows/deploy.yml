@@ -1,0 +1,50 @@
+name: Deploy to MilesWeb (SSH)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy via SSH
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            set -e
+
+            # 1) Load Node (nvm) — required in non-interactive shells
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+            # 2) Your app lives here (already cloned on the server)
+            cd "$HOME/know-yourself"
+
+            # 3) Pull the PR branch that triggered this run
+            BRANCH="${{ github.head_ref || github.ref_name }}"
+            git fetch origin
+            git checkout -B "$BRANCH" "origin/$BRANCH"
+
+            # 4) Install deps (dev deps are REQUIRED to build Next.js) + build
+            npm ci --include=dev
+            npm run build
+
+            # 5) Restart: kill the old server, let MilesWeb's "persistent app"
+            #    supervisor respawn it with the new build.
+            #    (The [ ] trick stops these patterns matching this script itself.)
+            pkill -f "next-serve[r]" || true        # frees port 3000
+            pkill -f "next start -p 300[0]" || true # triggers respawn
+            sleep 5
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 http://localhost:3000/ || true)
+            echo "App HTTP status after restart: ${CODE:-000}"
