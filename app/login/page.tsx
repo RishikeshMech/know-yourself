@@ -7,6 +7,8 @@ import { useStore } from '@/lib/store'
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase'
 import { Logo } from '@/components/Logo'
 import { afterSignInRoute, signedInLandingRoute } from '@/lib/nextStep'
+import { isProfileComplete } from '@/lib/validate'
+import { getLiveUser } from '@/lib/session'
 
 function GoogleIcon({ className = 'h-5 w-5' }: { className?: string }) {
   return (
@@ -33,7 +35,7 @@ function GoogleIcon({ className = 'h-5 w-5' }: { className?: string }) {
 
 export default function LoginPage() {
   const router = useRouter()
-  const { setUser, setProfile, user, profile, hydrated } = useStore()
+  const { setUser, setProfile, setScores, setResume, user, profile, hydrated, reconcileForUser } = useStore()
 
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [fullName, setFullName] = useState('')
@@ -48,15 +50,36 @@ export default function LoginPage() {
 
   const leavingRef = useRef(false)
 
-  // A signed-in candidate should never see this screen.
+  // A signed-in candidate should never see this screen. The cached user cannot
+  // be trusted on its own — after a Supabase deletion + re-signup the old
+  // profile/scores still sit in localStorage and would route the new account
+  // straight to the dashboard. Validate against Supabase Auth, reconcile from
+  // the DB when the cached account no longer matches, and only then route.
   useEffect(() => {
     if (leavingRef.current) return
-    if (user && hydrated) {
-      leavingRef.current = true
-      setRedirecting(true)
-      router.replace(signedInLandingRoute(profile))
-    }
-  }, [user, profile, hydrated, router])
+    if (!user || !hydrated) return
+    leavingRef.current = true
+    setRedirecting(true)
+    ;(async () => {
+      let route = signedInLandingRoute(profile)
+      const live = await getLiveUser()
+      if (live === null) {
+        // No live Supabase session for this cached account (deleted / expired)
+        // — clear the stale cache and show the form again.
+        localStorage.clear()
+        setUser(null)
+        setProfile(null)
+        leavingRef.current = false
+        setRedirecting(false)
+        return
+      }
+      if (live && live.id !== user.id) {
+        const { profile: p, hasAssessment } = await reconcileForUser(live)
+        route = afterSignInRoute({ has_assessment: hasAssessment, has_onboarding: isProfileComplete(p) })
+      }
+      router.replace(route)
+    })()
+  }, [user, profile, hydrated, router, setUser, setProfile, reconcileForUser])
 
   // Supabase Google OAuth — redirects to Google, returns via /auth/callback.
   const handleGoogleAuth = async () => {
@@ -112,6 +135,15 @@ export default function LoginPage() {
 
       const authUser = data.user
       let resolvedName = authUser.name || payload.full_name
+
+      // If we signed into a *different* account than the one cached (e.g. the
+      // previous account was deleted in Supabase and re-created), drop the old
+      // account's cached profile/resume/scores so nothing leaks across.
+      if (authUser.id && user && user.id !== authUser.id) {
+        setProfile(null)
+        setScores(null)
+        setResume(null)
+      }
 
       if (authUser.id && data.has_onboarding) {
         try {

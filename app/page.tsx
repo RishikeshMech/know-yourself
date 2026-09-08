@@ -7,7 +7,9 @@ import { HeroMockup } from '@/components/HeroMockup'
 import { useStore } from '@/lib/store'
 import { Typewriter } from '@/components/Typewriter'
 import { WhatsAppLink } from '@/components/WhatsAppCommunity'
-import { signedInLandingRoute } from '@/lib/nextStep'
+import { signedInLandingRoute, afterSignInRoute } from '@/lib/nextStep'
+import { isProfileComplete } from '@/lib/validate'
+import { getLiveUser } from '@/lib/session'
 
 const MODULES = [
   'English Communication', 'Problem Solving', 'AI Debugging',
@@ -16,7 +18,7 @@ const MODULES = [
 
 function Landing() {
   const router = useRouter()
-  const { user, profile, hydrated } = useStore()
+  const { user, profile, hydrated, setUser, reconcileForUser } = useStore()
   const sentRef = useRef(false)
   const [redirecting, setRedirecting] = useState(false)
 
@@ -24,12 +26,36 @@ function Landing() {
   // screen). If they land here while authenticated — via the Supabase email
   // confirmation redirect, the browser back button or a direct URL — send them
   // smoothly to their actual next step (dashboard or onboarding).
+  //
+  // The cached `user`/`profile` cannot be trusted on its own: after an account
+  // is deleted in Supabase and re-created, the old profile still sits in
+  // localStorage and would route the "new" user straight to the dashboard. So
+  // validate against Supabase Auth first, re-hydrate from the DB if the cached
+  // account no longer matches, and only then route.
   useEffect(() => {
     if (!hydrated || !user || sentRef.current) return
     sentRef.current = true
     setRedirecting(true)
-    router.replace(signedInLandingRoute(profile))
-  }, [user, profile, hydrated, router])
+    ;(async () => {
+      let route = signedInLandingRoute(profile)
+      const live = await getLiveUser()
+      if (live === null) {
+        // Supabase no longer knows this account (deleted / no session) — wipe
+        // the stale cache so the next sign-in starts from scratch.
+        localStorage.clear()
+        setUser(null)
+        router.replace('/login')
+        return
+      }
+      if (live && live.id !== user.id) {
+        // The cached account belongs to a different live user — re-hydrate the
+        // real one from the DB and route by its actual onboarding/result state.
+        const { profile: p, hasAssessment } = await reconcileForUser(live)
+        route = afterSignInRoute({ has_assessment: hasAssessment, has_onboarding: isProfileComplete(p) })
+      }
+      router.replace(route)
+    })()
+  }, [user, profile, hydrated, router, setUser, reconcileForUser])
 
   if (!hydrated || user || redirecting) {
     if (user || redirecting) {

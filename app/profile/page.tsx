@@ -10,6 +10,7 @@ import { AiAvatar, AVATAR_STYLES, makeAvatarConfig, type AvatarConfig, type Avat
 import { SkillGraph, type SkillDatum } from '@/components/SkillGraph'
 import { ReportModal } from '@/components/ReportModal'
 import { SkillChips } from '@/components/SkillChips'
+import { flattenAssessmentResult } from '@/lib/resultShape'
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
@@ -147,23 +148,13 @@ function ProfileInner() {
         fetch('/api/user/resume?student_id=' + user.id).then(x => x.json()).catch(() => ({})),
       ])
       if (p.profile) setProfile(p.profile)
-      if (s.result) {
-        const payload = {
-          session_id: s.result.session_id,
-          ...s.result.scores,
-          total: s.result.total,
-          grade: s.result.grade,
-          percentile: s.result.percentile,
-          verifiable_hash: s.result.verifiable_hash,
-          cognitive: s.result.scores?.cognitive,
-          english: s.result.scores?.english,
-          detail: s.result.scores?.detail,
-          ai_results: s.result.ai_feedback,
-        }
-        setScoresPayload(payload)
-        setScores(payload)
-        localStorage.setItem('calibiai_scores', JSON.stringify(payload))
-      }
+      // Always write through — including `null` when there is no result — so a
+      // stale cached score from a deleted/previous account never lingers.
+      const flat = flattenAssessmentResult(s.result)
+      setScoresPayload(flat)
+      setScores(flat)
+      if (flat) localStorage.setItem('calibiai_scores', JSON.stringify(flat))
+      else localStorage.removeItem('calibiai_scores')
       if (r.analysis) setResumeLocal(r.analysis)
       if (r.analysis) setResume(r.analysis)
       if (r.analysis) localStorage.setItem('calibiai_resume', JSON.stringify(r.analysis))

@@ -1,5 +1,6 @@
 'use client'
 import React, { createContext, useContext, useEffect, useState } from 'react'
+import { flattenAssessmentResult } from './resultShape'
 
 type User = { id: string, email: string, role: string, institution_id: string, name?: string }
 type Store = {
@@ -12,6 +13,8 @@ type Store = {
   scores: any, setScores: (s:any)=>void,
   hydrated: boolean,
   logout: ()=>void,
+  hasLocalKey: (key: string) => boolean,
+  reconcileForUser: (live: { id: string, email?: string, role?: string, name?: string }) => Promise<{ profile: any, hasAssessment: boolean }>,
 }
 
 const Ctx = createContext<Store | null>(null)
@@ -67,6 +70,7 @@ function StoreProviderRoot({ children }: { children: React.ReactNode }) {
   const setProfileSafe = (p: any) => {
     setProfile(p)
     if (p) localStorage.setItem('calibiai_profile', JSON.stringify(p))
+    else localStorage.removeItem('calibiai_profile')
     const full = typeof p?.full_name === 'string' ? p.full_name.trim() : ''
     if (full && user && user.name !== full) {
       const merged = { ...user, name: full }
@@ -86,6 +90,7 @@ function StoreProviderRoot({ children }: { children: React.ReactNode }) {
   const setResumeSafe = (r: any) => {
     setResume(r)
     if (r) localStorage.setItem('calibiai_resume', JSON.stringify(r))
+    else localStorage.removeItem('calibiai_resume')
   }
   const setSessionSafe = (s: any) => {
     setSession(s)
@@ -95,6 +100,7 @@ function StoreProviderRoot({ children }: { children: React.ReactNode }) {
   const setScoresSafe = (s: any) => {
     setScores(s)
     if (s) localStorage.setItem('calibiai_scores', JSON.stringify(s))
+    else localStorage.removeItem('calibiai_scores')
   }
   useEffect(() => { if (!hydrated) return; if (profile) localStorage.setItem('calibiai_profile', JSON.stringify(profile)) }, [profile, hydrated])
   useEffect(() => { if (!hydrated) return; if (resume) localStorage.setItem('calibiai_resume', JSON.stringify(resume)) }, [resume, hydrated])
@@ -106,6 +112,66 @@ function StoreProviderRoot({ children }: { children: React.ReactNode }) {
     localStorage.clear()
     setUserState(null); setProfile(null); setResume(null); setTracking({ whatsapp: false, linkedin: false }); setSession(null); setScores(null)
     window.location.href = '/login'
+  }
+
+  const hasLocalKey = (key: string) => {
+    try { return localStorage.getItem(key) != null } catch { return false }
+  }
+
+  /** Drop every cached slice that belongs to an account, keeping session ids/tickets intact. */
+  const clearLocalState = () => {
+    for (const k of ['calibiai_profile', 'calibiai_resume', 'calibiai_scores', 'calibiai_tracking', 'calibiai_report_ready', 'calibiai_just_submitted']) {
+      try { localStorage.removeItem(k) } catch {}
+    }
+    setProfile(null); setResume(null); setScores(null); setTracking({ whatsapp: false, linkedin: false })
+  }
+
+  /**
+   * Re-sync the client store against the live Supabase account after login /
+   * OAuth callback. If the cached user belongs to a *different* account (e.g.
+   * the old account was deleted in Supabase and a new one was created), all of
+   * the old account's cached data is wiped first so nothing leaks across. The
+   * profile and scores are then re-hydrated from the DB, never from the cache.
+   *
+   * The cached account id is read from React state AND raw localStorage because
+   * this can run from `/auth/callback` before hydration has completed.
+   *
+   * Returns the DB profile + whether the user has an assessment result so
+   * callers can compute the post-login route without a second fetch.
+   */
+  const reconcileForUser = async (live: { id: string, email?: string, role?: string, name?: string }) => {
+    let cachedId = user?.id
+    try {
+      if (!cachedId) {
+        const raw = localStorage.getItem('calibiai_user')
+        if (raw) cachedId = JSON.parse(raw)?.id
+      }
+    } catch { /* ignore corrupt cache */ }
+    if (cachedId && cachedId !== live.id) clearLocalState()
+    setUser({ id: live.id, email: live.email || '', role: live.role || 'student', institution_id: 'inst_iitm', name: live.name })
+    let profile: any = null
+    let hasAssessment = false
+    let resultRow: any = null
+    let fetched = false
+    try {
+      const [pRes, sRes] = await Promise.all([
+        fetch(`/api/user/profile?user_id=${encodeURIComponent(live.id)}`),
+        fetch(`/api/user/scores?student_id=${encodeURIComponent(live.id)}`),
+      ])
+      const p = await pRes.json()
+      const s = await sRes.json()
+      fetched = true
+      profile = p?.profile || null
+      resultRow = s?.result || null
+      hasAssessment = !!resultRow
+    } catch { /* transient failure — keep whatever is already cached */ }
+    // Only write through (and possibly clear) when the DB fetch succeeded; a
+    // network hiccup must never wipe cached profile/scores.
+    if (fetched) {
+      setProfileSafe(profile)
+      setScoresSafe(flattenAssessmentResult(resultRow))
+    }
+    return { profile, hasAssessment }
   }
 
   return (
@@ -125,6 +191,8 @@ function StoreProviderRoot({ children }: { children: React.ReactNode }) {
         setScores: setScoresSafe,
         hydrated,
         logout,
+        hasLocalKey,
+        reconcileForUser,
       }}
     >
       {children}

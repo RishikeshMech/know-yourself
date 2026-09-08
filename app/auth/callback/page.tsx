@@ -8,7 +8,7 @@ import { parseAuthCallbackUrl, hasSessionInCallbackUrl, describeAuthError } from
 
 export default function AuthCallbackPage() {
   const router = useRouter()
-  const { setUser, setProfile } = useStore()
+  const { reconcileForUser } = useStore()
   const [status, setStatus] = useState('Verifying your Google session…')
   const [failure, setFailure] = useState('')
   // Guard against React 18 StrictMode's dev-only double-invocation of mount
@@ -95,20 +95,16 @@ export default function AuthCallbackPage() {
         const email = user.email || ''
         const fullName = user.user_metadata?.full_name || user.user_metadata?.name || email.split('@')[0]
 
-        const res = await fetch('/api/user/profile?user_id=' + user.id).then(r => r.json()).catch(() => ({}))
-        const profile = res.profile
-
-        setUser({
+        // Install the live user into the store. This also clears any cached
+        // data that belongs to a *different* account (e.g. the previous account
+        // was deleted in Supabase and re-created) and re-hydrates the profile +
+        // scores from the DB, so the post-login route reflects reality.
+        const { profile, hasAssessment } = await reconcileForUser({
           id: user.id,
           email,
           role: user.user_metadata?.role || 'student',
-          institution_id: 'inst_iitm',
-          name: profile?.full_name || fullName,
+          name: fullName,
         })
-        if (profile) setProfile(profile)
-
-        const scoresRes = await fetch('/api/user/scores?student_id=' + user.id).then(r => r.json()).catch(() => ({}))
-        const hasAssessment = !!scoresRes.result
 
         const dest = afterSignInRoute({
           has_assessment: hasAssessment,
@@ -128,7 +124,7 @@ export default function AuthCallbackPage() {
     }
 
     handleAuth()
-  }, [router, setProfile, setUser])
+  }, [router, reconcileForUser])
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
