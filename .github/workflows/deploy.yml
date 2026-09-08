@@ -38,7 +38,7 @@ jobs:
             #
             # A) Server already has the repo → pull + rebuild + restart:
             # ------------------------------------------------------------------
-            cd /home/USERNAME/public_html        # <-- your app's folder
+            cd /home/assessme1/public_html        # <-- your app's folder
             git pull origin main                 # <-- branch your server tracks
             npm ci --omit=dev && npm run build
             pm2 restart calibiai || pm2 start npm --name calibiai -- start
