@@ -1,0 +1,49 @@
+# ---------------------------------------------------------------------------
+# Deploy Calibiai Score → MilesWeb hosting via SSH (GitHub Actions)
+#   • Runs automatically every time a pull request is opened or pushed to.
+#   • Logs into your MilesWeb server over SSH and runs the deploy commands.
+#   • Credentials come from repo secrets — nothing is committed to git.
+# ---------------------------------------------------------------------------
+
+name: Deploy to MilesWeb (SSH)
+
+on:
+  # Deploy whenever a new PR is opened, updated, or reopened.
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+  # Allow manual deploys from the Actions tab ("Run workflow").
+  workflow_dispatch:
+
+# Cancel the previous run for the same PR when a newer push arrives.
+concurrency:
+  group: deploy-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy via SSH
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH into MilesWeb and deploy
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.SSH_HOST }}          # e.g. 123.45.67.89 or yourserver.com
+          username: ${{ secrets.SSH_USERNAME }}  # your SSH/cPanel username
+          password: ${{ secrets.SSH_PASSWORD }}  # your SSH password
+          port: ${{ secrets.SSH_PORT || 22 }}    # usually 22 (or 2222/21098 on cPanel)
+          script: |
+            # ------------------------------------------------------------------
+            # EDIT THIS to match your server. Two common patterns:
+            #
+            # A) Server already has the repo → pull + rebuild + restart:
+            # ------------------------------------------------------------------
+            cd /home/USERNAME/public_html        # <-- your app's folder
+            git pull origin main                 # <-- branch your server tracks
+            npm ci --omit=dev && npm run build
+            pm2 restart calibiai || pm2 start npm --name calibiai -- start
+            #
+            # B) OR, if you deploy by copying files another way, replace the
+            #    lines above with whatever restart command MilesWeb uses
+            #    (e.g. touch tmp/restart.txt for Passenger-based hosting):
+            # cd /home/USERNAME/public_html && touch tmp/restart.txt
