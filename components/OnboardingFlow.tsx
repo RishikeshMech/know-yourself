@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Navbar } from '@/components/Navbar'
 import { Stepper } from '@/components/Stepper'
+import { CollegeCombobox } from '@/components/CollegeCombobox'
 import { useStore } from '@/lib/store'
 import { normalizeOnboardingForm, type OnboardingForm as Form } from '@/lib/onboardingForm'
 import {
@@ -599,13 +600,17 @@ export function OnboardingFlow({ variant = 'onboarding' }: { variant?: 'onboardi
                     <Field label="Degree" htmlFor="degree" error={err('degree')} hint="Pick your programme">
                       <Dropdown id="degree" options={DEGREE_OPTIONS} placeholder="Select degree" ariaLabel="Degree" value={form.degree} invalid={!!err('degree')} onChange={(v) => set('degree', v)} />
                     </Field>
-                    <Field label="College / University" htmlFor="college" error={err('college')}>
-                      <input
+                    <Field
+                      label="College / University"
+                      htmlFor="college"
+                      error={err('college')}
+                      hint="Type to search — Pune & Amravati colleges are preloaded"
+                    >
+                      <CollegeCombobox
                         id="college"
                         value={form.college}
-                        onChange={(e) => set('college', e.target.value)}
-                        placeholder="IIT Madras"
-                        className={`field ${err('college') ? 'border-rose-300' : ''}`}
+                        invalid={!!err('college')}
+                        onChange={(v) => set('college', v)}
                       />
                     </Field>
                     <Field

@@ -17,6 +17,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Navbar } from '@/components/Navbar'
+import { CollegeCombobox } from '@/components/CollegeCombobox'
 import { useStore } from '@/lib/store'
 import { normalizeOnboardingForm, type OnboardingForm as Form } from '@/lib/onboardingForm'
 import {
@@ -268,8 +269,13 @@ export default function EditProfilePage() {
                 </select>
               </Field>
 
-              <Field label="College / University" htmlFor="college" error={err('college')}>
-                <input id="college" value={form.college} onChange={(e) => set('college', e.target.value)} placeholder="IIT Madras" className={`field ${err('college') ? 'border-rose-300' : ''}`} />
+              <Field label="College / University" htmlFor="college" error={err('college')} hint="Type to search — Pune & Amravati colleges are preloaded">
+                <CollegeCombobox
+                  id="college"
+                  value={form.college}
+                  invalid={!!err('college')}
+                  onChange={(v) => set('college', v)}
+                />
               </Field>
 
               <Field label="PRN No." htmlFor="prn" error={err('prn')} hint="Optional — helps your college match this score">
