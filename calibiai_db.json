@@ -49,6 +49,26 @@
       "name": "Priya Sharma",
       "created_at": "2026-09-07T18:00:06.435Z",
       "last_login_at": "2026-09-07T18:00:13.792Z"
+    },
+    {
+      "id": "u_e07a2569",
+      "email": "prajwalgulhane85@gmail.com",
+      "password_hash": "1ba70157a0feb588a18055a3c0ae0b4dc4a901d0622f65b93bf14f724b779ebb",
+      "role": "student",
+      "institution_id": "inst_iitm",
+      "name": "Prajwal Gulhane",
+      "created_at": "2026-09-08T18:58:26.977Z",
+      "last_login_at": "2026-09-08T18:58:26.977Z"
+    },
+    {
+      "id": "u_31265a1b",
+      "email": "senofa8782@94an.com",
+      "password_hash": "aa40e601a6f98ed3831a29cfdbb496c9242aa00528d132a459a7768f2b1411d3",
+      "role": "student",
+      "institution_id": "inst_iitm",
+      "name": "Sanika",
+      "created_at": "2026-09-08T19:08:56.212Z",
+      "last_login_at": "2026-09-08T19:08:56.212Z"
     }
   ],
   "profiles": [
@@ -330,6 +350,29 @@
       "github_url": "",
       "ai_avatar": null,
       "updated_at": "2026-09-08T06:24:52.185Z"
+    },
+    {
+      "id": "u_e07a2569",
+      "email": "prajwalgulhane85@gmail.com",
+      "full_name": "Prajwal Gulhane",
+      "prn": "898329038",
+      "phone": "7837937983",
+      "dob": "2002-06-04",
+      "gender": "Male",
+      "degree": "B.Tech Electrical",
+      "college": "Pune Institute of Computer Technology",
+      "graduation_year": 2029,
+      "cgpa": 9,
+      "skills": "Python, React, Next.js, NumPy, Docker, Deep Learning, HTML, CSS",
+      "linkedin_url": "",
+      "github_url": "",
+      "ai_avatar": {
+        "seed": 1834764170,
+        "style": "emerald",
+        "version": 1,
+        "generated_at": "2026-09-08T19:06:04.707Z"
+      },
+      "updated_at": "2026-09-08T19:06:04.932Z"
     }
   ],
   "assessment_sessions": [
@@ -799,6 +842,45 @@
       "tab_switches": 0,
       "question_seed": 591522897,
       "created_at": "2026-09-07T21:18:33.273Z"
+    },
+    {
+      "id": "3afceecf-7104-4321-b548-148627a4a5f7",
+      "student_id": "u_e07a2569",
+      "status": "submitted",
+      "started_at": "2026-09-08T19:00:32.473Z",
+      "expires_at": "2026-09-08T21:00:32.473Z",
+      "duration_sec": 7200,
+      "answers": {
+        "AD1_fix": "def paginate(items, page, size):\n    # Validate inputs\n    if not isinstance(items, (list, tuple)) or page < 1 or size <= 0:\n        return []\n    \n    # 0-indexed slice calculation\n    start = (page - 1) * size\n    end = start + size\n    \n    # Check if start is beyond list bounds\n    if start >= len(items):\n        return []\n        \n    return list(items[start:end])"
+      },
+      "submitted_at": "2026-09-08T19:03:03.431Z",
+      "tab_switches": 2,
+      "question_seed": 944591117,
+      "created_at": "2026-09-08T19:00:32.473Z"
+    },
+    {
+      "id": "25979a3f-d258-42f9-bada-a14fab1e2a3c",
+      "student_id": "u_31265a1b",
+      "status": "in_progress",
+      "started_at": "2026-09-08T19:09:17.898Z",
+      "expires_at": "2026-09-08T21:09:17.898Z",
+      "duration_sec": 7200,
+      "answers": {
+        "EL1": "The migration was rolled back silently",
+        "EL2": "Post them to the release notes",
+        "EL3": "The database backup was corrupted",
+        "EL4": "Single-engineer ownership of releases",
+        "EL5": "In the client browser",
+        "EL8": "Fewer application pods; alerts at 90%",
+        "ER1": "Defect rates were identical across groups",
+        "ER3": "Writing code is now impossible",
+        "ER5": "Removing human review",
+        "ER6": "It was paired with tight, fast feedback loops alongside the assistant"
+      },
+      "submitted_at": null,
+      "tab_switches": 0,
+      "question_seed": 276988100,
+      "created_at": "2026-09-08T19:09:17.898Z"
     }
   ],
   "assessment_results": [
@@ -2263,6 +2345,126 @@
       "verifiable_hash": "sha256:49d7ea8-07dbccf0",
       "ai_feedback": {},
       "created_at": "2026-09-07T21:18:41.219Z"
+    },
+    {
+      "id": "res_cfbe5828",
+      "session_id": "3afceecf-7104-4321-b548-148627a4a5f7",
+      "student_id": "u_e07a2569",
+      "scores": {
+        "session_id": "3afceecf-7104-4321-b548-148627a4a5f7",
+        "english": {
+          "listening": 0,
+          "speaking": 0,
+          "reading": 0,
+          "writing": 0,
+          "total": 0,
+          "max": 200
+        },
+        "problem_solving": 0,
+        "ai_debugging": 39,
+        "ai_feature": 0,
+        "prompt_engineering": 0,
+        "cognitive": {
+          "grid": 0,
+          "logical": 0,
+          "cognitive_score": 0,
+          "behavioral_total": 40,
+          "total": 40,
+          "max": 200,
+          "behavioral": {
+            "teamwork": 40,
+            "accountability": 40,
+            "adaptability": 40,
+            "responsible_ai": 40,
+            "decision_making": 40,
+            "learning_mindset": 40
+          },
+          "traitLabels": {
+            "teamwork": "Teamwork",
+            "accountability": "Accountability",
+            "adaptability": "Adaptability",
+            "responsible_ai": "Responsible AI",
+            "decision_making": "Decision Making",
+            "learning_mindset": "Learning Mindset"
+          }
+        },
+        "detail": {
+          "listeningCorrect": 0,
+          "listeningTotal": 8,
+          "readingCorrect": 0,
+          "readingTotal": 6,
+          "problemCorrect": 0,
+          "problemTotal": 10,
+          "logicalCorrect": 0,
+          "logicalTotal": 7,
+          "debugPer": {
+            "AD1": 78,
+            "AD2": 0,
+            "AD3": 0
+          },
+          "promptPer": {
+            "PE1": 0,
+            "PE2": 0,
+            "PE3": 0
+          },
+          "featureScore100": 0,
+          "speakingCount": 0
+        },
+        "total": 79,
+        "grade": "D",
+        "percentile": 40,
+        "ai_results": {
+          "AD1": {
+            "score": 78,
+            "rubric": {
+              "correctness": 88,
+              "root_cause_understanding": 82,
+              "edge_cases": 86,
+              "code_quality": 85,
+              "test_awareness": 48
+            },
+            "strengths": [
+              "Core bug appears fixed"
+            ],
+            "improvements": [
+              "Add explicit handling for invalid inputs and boundary cases",
+              "Include tests proving the fix"
+            ],
+            "summary": "Rule-based static heuristic (connect CalibiAI for semantic grading of the fix).",
+            "engine": "heuristic"
+          }
+        },
+        "verifiable_hash": "sha256:67c9f-08266f52",
+        "tab_switches": 2,
+        "auto_submitted": true,
+        "submitted_at": "2026-09-08T19:03:00.641Z"
+      },
+      "total": 79,
+      "grade": "D",
+      "percentile": 40,
+      "verifiable_hash": "sha256:67c9f-08266f52",
+      "ai_feedback": {
+        "AD1": {
+          "score": 78,
+          "rubric": {
+            "correctness": 88,
+            "root_cause_understanding": 82,
+            "edge_cases": 86,
+            "code_quality": 85,
+            "test_awareness": 48
+          },
+          "strengths": [
+            "Core bug appears fixed"
+          ],
+          "improvements": [
+            "Add explicit handling for invalid inputs and boundary cases",
+            "Include tests proving the fix"
+          ],
+          "summary": "Rule-based static heuristic (connect CalibiAI for semantic grading of the fix).",
+          "engine": "heuristic"
+        }
+      },
+      "created_at": "2026-09-08T19:03:03.429Z"
     }
   ],
   "resume_analyses": [
@@ -4139,6 +4341,88 @@
           "Hibernate",
           "Apache Kafka",
           "PostgreSQL"
+        ]
+      },
+      "word_count": 473
+    },
+    {
+      "id": "res_1788894002061",
+      "student_id": "u_e07a2569",
+      "storage_key": "",
+      "file_name": "Prajwal Gulhane Re.pdf",
+      "created_at": "2026-09-08T19:00:02.061Z",
+      "resume_score": 100,
+      "engine": "heuristic",
+      "name_match": true,
+      "detected_name": "Prajwal Gulhane",
+      "flags": [
+        {
+          "level": "ok",
+          "text": "Candidate identity verified: Name matches profile (Prajwal Gulhane)."
+        }
+      ],
+      "professionalism": 95,
+      "summary": "Prajwal Gulhane presents a 473-word resume. Includes 5 quantified metrics demonstrating engineering impact. Missing code/GitHub repository links for verification.",
+      "experience": {
+        "years": 6,
+        "entries": [
+          "Cognizant Technology Solutions Dec 2023 – Present"
+        ]
+      },
+      "education": [
+        "B.Tech Electrical"
+      ],
+      "skills": [
+        "python",
+        "java",
+        "javascript",
+        "react",
+        "sql",
+        "mysql",
+        "postgres",
+        "mongodb",
+        "docker",
+        "kubernetes",
+        "aws",
+        "git",
+        "html",
+        "css",
+        "spring",
+        "linux"
+      ],
+      "contact": {
+        "email": "prajwalen100@gmail.com",
+        "phone": "+91 9284364839",
+        "linkedin": "linkedin.com/in/prajwalg90"
+      },
+      "feedback": {
+        "strengths": [
+          "Quantified outcomes with 5 measurable engineering metric(s)",
+          "Solid technical keywords (python, java, javascript, react, sql)",
+          "Structured with both Projects and Experience sections"
+        ],
+        "gaps": [
+          "No GitHub link to prove real code competence"
+        ],
+        "suggestions": [
+          "Rewrite every bullet point using Google’s XYZ formula: \"Accomplished [X], as measured by [Y], by doing [Z]\".",
+          "Add your GitHub profile with pinned repositories demonstrating clean commits and test suites.",
+          "Eliminate generic buzzwords and focus strictly on architecture, libraries, and measurable results."
+        ]
+      },
+      "parsed": {
+        "name": "Prajwal Gulhane",
+        "experience_years": 6,
+        "projects": 2,
+        "skills": [
+          "python",
+          "java",
+          "javascript",
+          "react",
+          "sql",
+          "mysql",
+          "postgres",
+          "mongodb"
         ]
       },
       "word_count": 473

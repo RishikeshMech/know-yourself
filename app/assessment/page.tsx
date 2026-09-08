@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useStore } from '@/lib/store'
-import { Maximize2 } from 'lucide-react'
+import { Maximize2, TriangleAlert } from 'lucide-react'
 import { bank, shuffledOptions, shuffledChoiceOptions, mulberry32 } from '@/lib/questions'
 import { computeScores } from '@/lib/scoring'
 import { getSupabase } from '@/lib/supabase'
@@ -20,6 +20,7 @@ import {
   classifyDisplayEvent,
   evaluateStartGate,
   fullscreenCapable,
+  safeRequestFullscreen,
   resolveScreenFacts,
   rightClickShouldBlock,
   FULLSCREEN_EXIT_MSG,
@@ -61,6 +62,12 @@ const MIN_PROMPT_CHARS = 100
 const WRITING_AUTONEXT_WORDS = 50
 // How long the "moving to …" banner shows before gliding forward.
 const AUTONEXT_DELAY_MS = 2800
+
+// A single real violation fires several overlapping signals (window blur +
+// visibilitychange + a fullscreen exit detected by the 1.5s monitor, e.g. when
+// a native dialog steals focus). Within this window those are coalesced into
+// ONE warning instead of cascading straight to the 3-warning auto-submit.
+const STRIKE_COOLDOWN_MS = 2500
 
 const wordCount = (t: string) => (t || '').trim().split(/\s+/).filter(Boolean).length
 
@@ -289,6 +296,9 @@ function AssessmentInner() {
   const awayRef = useRef(false)
   const suppressRef = useRef(false)
   const strikesRef = useRef(0)
+  // Timestamp of the last recorded strike — used to coalesce the burst of
+  // blur/visibility/fullscreen events a single action produces.
+  const lastStrikeAtRef = useRef(0)
   const submitRef = useRef<(auto?: boolean) => void>(() => {})
   // Snapshot of the screen captured when the pre-test gate was cleared, so the
   // live monitor can compare it against later states to detect an external
@@ -417,6 +427,10 @@ function AssessmentInner() {
       if (!mediaReadyRef.current || suppressRef.current || terminated) return
       if (document.hidden || !document.hasFocus()) {
         if (awayRef.current) return
+        // Coalesce the burst of events a single action produces (e.g. a native
+        // dialog firing blur + visibilitychange together) into one warning.
+        if (Date.now() - lastStrikeAtRef.current < STRIKE_COOLDOWN_MS) return
+        lastStrikeAtRef.current = Date.now()
         awayRef.current = true
         const n = strikesRef.current + 1
         strikesRef.current = n
@@ -463,6 +477,10 @@ function AssessmentInner() {
 
     const bumpStrike = (msg: string) => {
       if (terminated || submittingRef.current) return
+      // Same coalescing as onLeave — a fullscreen exit that follows a blur from
+      // the same user action must not count as a second, separate strike.
+      if (Date.now() - lastStrikeAtRef.current < STRIKE_COOLDOWN_MS) return
+      lastStrikeAtRef.current = Date.now()
       const n = strikesRef.current + 1
       strikesRef.current = n
       setStrikes(n)
@@ -534,10 +552,10 @@ function AssessmentInner() {
       if (document.fullscreenElement || submittingRef.current) return
       const attempt = async () => {
         if (document.fullscreenElement || submittingRef.current) return
-        try {
-          await document.documentElement.requestFullscreen()
+        const ok = await safeRequestFullscreen(document)
+        if (ok) {
           showToast('Fullscreen restored — it must stay on for the whole test.')
-        } catch {
+        } else {
           attempts += 1
           if (attempts < 6) {
             clearTimeout(timer)
@@ -1764,12 +1782,49 @@ function AssessmentInner() {
       {/* Violation warning */}
       {showViolation && !terminated && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-          <div className="max-w-sm w-full rounded-3xl border-2 border-amber-300 bg-white p-7 text-center shadow-2xl animate-pop">
-            <div className="text-5xl">⚠️</div>
-            <h3 className="mt-3 text-xl font-black text-amber-600">Warning {strikes} of {MAX_FOCUS_STRIKES}</h3>
-            <p className="mt-2 text-sm text-slate-600">{violationMsg || 'You left the assessment window. Switching away is recorded as a proctoring violation.'}
-              {strikes >= MAX_FOCUS_STRIKES - 1 && <b className="text-rose-600"> One more warning and your assessment will be submitted automatically.</b>}</p>
-            <button onClick={() => { setShowViolation(false); awayRef.current = false }} className="btn-primary mt-6 w-full">I'm back — resume</button>
+          <div className="relative w-full max-w-sm rounded-3xl border border-amber-200 bg-white p-7 text-center shadow-2xl shadow-amber-200/40 animate-slide-down">
+            {/* Pulsing halo + shaking icon */}
+            <div className="relative mx-auto h-20 w-20">
+              <span className="absolute inset-0 rounded-full bg-amber-400/30 animate-ping" />
+              <div className="relative grid h-20 w-20 place-items-center rounded-full bg-gradient-to-br from-amber-100 to-amber-200 shadow-inner animate-shake">
+                <TriangleAlert className="h-9 w-9 text-amber-600" aria-hidden />
+              </div>
+            </div>
+
+            <h3 className="mt-4 text-xl font-black text-slate-900">Heads up — warning {strikes} of {MAX_FOCUS_STRIKES}</h3>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">
+              {violationMsg || 'You left the assessment window. Switching away is recorded as a proctoring violation.'}
+            </p>
+
+            {/* Strike progress pips */}
+            <div className="mt-4 flex items-center justify-center gap-1.5" aria-label={`${strikes} of ${MAX_FOCUS_STRIKES} warnings`}>
+              {Array.from({ length: MAX_FOCUS_STRIKES }).map((_, i) => {
+                const filled = i < strikes
+                const latest = i === strikes - 1
+                return (
+                  <span
+                    key={i}
+                    className={`h-2.5 rounded-full transition-all duration-500 ${
+                      filled
+                        ? latest
+                          ? 'w-7 bg-amber-500 animate-pulse'
+                          : 'w-7 bg-amber-400/70'
+                        : 'w-2.5 bg-slate-200'
+                    }`}
+                  />
+                )
+              })}
+            </div>
+
+            {strikes >= MAX_FOCUS_STRIKES - 1 && (
+              <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-bold text-rose-600 animate-fade-in">
+                ⚠ One more warning and your assessment will be submitted automatically.
+              </div>
+            )}
+
+            <button onClick={() => { setShowViolation(false); awayRef.current = false }} className="btn-primary mt-6 w-full">
+              I'm back — resume
+            </button>
           </div>
         </div>
       )}

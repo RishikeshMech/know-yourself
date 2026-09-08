@@ -16,6 +16,8 @@ import {
   ArrowDownToLine,
   User,
   Lock,
+  Trash2,
+  X,
 } from 'lucide-react'
 
 export interface ChatMsg {
@@ -263,6 +265,11 @@ export function AiExamAssistant({
   const [busy, setBusy] = useState(false)
   const [engine, setEngine] = useState<'calibiai' | 'heuristic' | null>(null)
   const [promptsUsed, setPromptsUsed] = useState(0)
+  // Inline confirm for "clear chat" — a native window.confirm() blurs the page
+  // and (in fullscreen) drops the tab out of fullscreen, which the proctoring
+  // system counts as focus violations. This in-card confirm never leaves the
+  // tab, so it can't trigger a warning.
+  const [confirmReset, setConfirmReset] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -406,18 +413,19 @@ export function AiExamAssistant({
     }
   }
 
-  const handleResetChat = () => {
-    if (confirm('Clear chat history for this task?')) {
-      localStorage.removeItem(`calibiai_chat_${taskId}`)
-      const greeting: ChatMsg = {
-        id: 'greet_' + Date.now(),
-        role: 'assistant',
-        content: `👋 **Chat reset.** What would you like help with regarding **${taskTitle}**?`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      }
-      setMessages([greeting])
+  const doResetChat = () => {
+    localStorage.removeItem(`calibiai_chat_${taskId}`)
+    const greeting: ChatMsg = {
+      id: 'greet_' + Date.now(),
+      role: 'assistant',
+      content: `👋 **Chat reset.** What would you like help with regarding **${taskTitle}**?`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     }
+    setMessages([greeting])
+    setConfirmReset(false)
   }
+
+  const handleResetChat = () => setConfirmReset((v) => !v)
 
   const suggestions = DEFAULT_SUGGESTIONS[taskId] || [
     '💡 Explain the problem approach',
@@ -492,6 +500,37 @@ export function AiExamAssistant({
           </button>
         </div>
       </div>
+
+      {/* Inline "clear chat" confirm — replaces window.confirm() so the tab
+          never loses focus / leaves fullscreen (which would trip the
+          proctoring focus monitor). */}
+      {confirmReset && (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 border-b border-amber-200 bg-amber-50/90 animate-slide-down">
+          <div className="flex items-start gap-2.5 min-w-0 flex-1">
+            <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-amber-100 text-amber-600 animate-shake">
+              <Trash2 className="h-3.5 w-3.5" />
+            </span>
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-amber-800">Clear the chat for this task?</div>
+              <div className="text-[11px] text-amber-700/80">Only the conversation is cleared — your {MAX_PROMPTS}-prompt limit stays as it is.</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setConfirmReset(false)}
+              className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-white px-3 py-1.5 text-[11px] font-bold text-amber-800 transition hover:bg-amber-100 active:scale-95"
+            >
+              <X className="h-3 w-3" /> Cancel
+            </button>
+            <button
+              onClick={doResetChat}
+              className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-3 py-1.5 text-[11px] font-bold text-white shadow-sm shadow-amber-200 transition hover:bg-amber-600 active:scale-95"
+            >
+              <RotateCcw className="h-3 w-3" /> Yes, clear
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Collapsible Content */}
       {expanded && (

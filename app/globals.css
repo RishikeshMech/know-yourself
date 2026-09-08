@@ -111,6 +111,18 @@ body {
   0% { opacity: 0; transform: scale(.94); }
   100% { opacity: 1; transform: scale(1); }
 }
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-6px) rotate(-2deg); }
+  30% { transform: translateX(5px) rotate(2deg); }
+  45% { transform: translateX(-4px) rotate(-1deg); }
+  60% { transform: translateX(3px) rotate(1deg); }
+  75% { transform: translateX(-2px); }
+}
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-18px) scale(.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
 @keyframes chip-in {
   0%   { opacity: 0; transform: translateY(8px) scale(.6); }
   60%  { opacity: 1; transform: translateY(-2px) scale(1.06); }
@@ -164,6 +176,8 @@ body {
 .animate-fade-up { animation: fade-up .6s cubic-bezier(.22,.8,.32,1) both; }
 .animate-fade-in { animation: fade-in .5s ease both; }
 .animate-pop     { animation: pop .35s cubic-bezier(.22,.8,.32,1.2) both; }
+.animate-shake   { animation: shake .5s cubic-bezier(.36,.07,.19,.97) both; }
+.animate-slide-down { animation: slide-down .4s cubic-bezier(.22,.8,.32,1) both; }
 
 /* ---------- Assessment subsection transitions ----------
    Direction-aware slide + fade so moving between Listening → Speaking →
