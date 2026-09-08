@@ -1,6 +1,6 @@
-// Server-side AI evaluation layer.
-// Uses DeepSeek (deepseek-chat) when DEEPSEEK_API_KEY is set; otherwise falls
-// back to a deterministic rule-based heuristic so the flow always works.
+// Server-side AI evaluation layer (branded CalibiAI).
+// Uses the CalibiAI grader when an API key is configured; otherwise falls back
+// to a deterministic rule-based heuristic so the flow always works.
 // Never imported by client components directly — go through /api/ai/evaluate.
 //
 // Grading philosophy (per product requirement): brutal and honest. Empty,
@@ -16,18 +16,19 @@ export interface AiEval {
   strengths: string[]
   improvements: string[]
   summary: string
-  engine: 'deepseek' | 'heuristic'
+  engine: 'calibiai' | 'heuristic'
 }
 
-const DEEPSEEK_BASE = process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com'
-const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-chat'
+const AI_KEY = process.env.CALIBIAI_API_KEY || process.env.DEEPSEEK_API_KEY || ''
+const AI_BASE = process.env.CALIBIAI_BASE_URL || process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com'
+const AI_MODEL = process.env.CALIBIAI_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-chat'
 
 // Prompt submissions must contain at least this many characters to earn any
 // credit. Shorter answers are treated as empty and score 0 (with a clear note).
 const MIN_PROMPT_CHARS = 100
 
-export function isDeepSeekConfigured(): boolean {
-  return !!process.env.DEEPSEEK_API_KEY
+export function isCalibiAiConfigured(): boolean {
+  return !!AI_KEY
 }
 
 function clamp(n: number, lo = 0, hi = 100) {
@@ -51,17 +52,16 @@ function zero(improvements: string[], summary: string): AiEval {
 }
 
 // ---------------------------------------------------------------------------
-// DeepSeek call
+// CalibiAI grader call
 // ---------------------------------------------------------------------------
-async function callDeepSeek(systemPrompt: string, userPrompt: string): Promise<any | null> {
-  const key = process.env.DEEPSEEK_API_KEY
-  if (!key) return null
+async function callCalibiAi(systemPrompt: string, userPrompt: string): Promise<any | null> {
+  if (!AI_KEY) return null
   try {
-    const res = await fetch(`${DEEPSEEK_BASE}/chat/completions`, {
+    const res = await fetch(`${AI_BASE}/chat/completions`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${AI_KEY}` },
       body: JSON.stringify({
-        model: DEEPSEEK_MODEL,
+        model: AI_MODEL,
         temperature: 0.2,
         response_format: { type: 'json_object' },
         messages: [
@@ -71,7 +71,7 @@ async function callDeepSeek(systemPrompt: string, userPrompt: string): Promise<a
       }),
     })
     if (!res.ok) {
-      console.error('DeepSeek error', res.status, await res.text().catch(() => ''))
+      console.error('CalibiAI grader error', res.status, await res.text().catch(() => ''))
       return null
     }
     const data = await res.json()
@@ -79,7 +79,7 @@ async function callDeepSeek(systemPrompt: string, userPrompt: string): Promise<a
     if (!content) return null
     return JSON.parse(content)
   } catch (e) {
-    console.error('DeepSeek call failed', e)
+    console.error('CalibiAI grader call failed', e)
     return null
   }
 }
@@ -111,8 +111,8 @@ export async function evaluateWriting(text: string, scenario: string): Promise<A
 Evaluate the candidate's email against the scenario on four criteria, each 0-100:
 clarity, grammar, structure, professional_tone. Also judge whether it addresses impact, mitigation and a revised timeline.
 ${JSON_CONTRACT}`
-  const ai = await callDeepSeek(sys, `Scenario:\n${scenario}\n\nCandidate's email:\n"""\n${text}\n"""`)
-  if (ai) return normalize(ai, 'deepseek', ['clarity', 'grammar', 'structure', 'professional_tone'])
+  const ai = await callCalibiAi(sys, `Scenario:\n${scenario}\n\nCandidate's email:\n"""\n${text}\n"""`)
+  if (ai) return normalize(ai, 'calibiai', ['clarity', 'grammar', 'structure', 'professional_tone'])
 
   // heuristic fallback
   const clarity = words >= 150 && words <= 300 ? 82 : words >= 90 ? 70 : words >= 30 ? 52 : 25
@@ -124,7 +124,7 @@ ${JSON_CONTRACT}`
     rubric: { clarity, grammar, structure, professional_tone: tone },
     strengths: words >= 150 ? ['Meets the target length (150–300 words)'] : [],
     improvements: words < 150 ? ['Expand to 150–300 words covering impact, mitigation and timeline'] : ['Tighten tone and proofread for grammar'],
-    summary: 'Rule-based evaluation (connect DeepSeek for full AI grading).',
+    summary: 'Rule-based evaluation (connect CalibiAI for full AI grading).',
     engine: 'heuristic',
   }
 }
@@ -142,8 +142,8 @@ export async function evaluateSpeaking(transcript: string | null, recordingCount
 Grade 0-100 on: fluency, pronunciation, confidence, grammar, task_achievement.
 Be brutal and honest: short, rambling, off-topic or heavily accented/unclear answers score low.
 ${JSON_CONTRACT}`
-    const ai = await callDeepSeek(sys, `Transcript of the candidate's spoken answer:\n"""\n${tr}\n"""`)
-    if (ai) return normalize(ai, 'deepseek', ['fluency', 'pronunciation', 'confidence', 'grammar'])
+    const ai = await callCalibiAi(sys, `Transcript of the candidate's spoken answer:\n"""\n${tr}\n"""`)
+    if (ai) return normalize(ai, 'calibiai', ['fluency', 'pronunciation', 'confidence', 'grammar'])
   }
   // Evidence-only heuristic: at least one recording was made, but without a
   // transcript we cannot verify content, so keep it conservative and honest.
@@ -157,7 +157,7 @@ ${JSON_CONTRACT}`
     rubric,
     strengths: recordingCount >= 2 ? ['Both speaking tasks recorded'] : ['One speaking task recorded'],
     improvements: ['Speak for the full 60–90 seconds', 'Structure answers: situation → action → result'],
-    summary: 'Recording captured. In production Whisper transcribes it and DeepSeek grades the transcript (heuristic score shown).',
+    summary: 'Recording captured. In production Whisper transcribes it and CalibiAI grades the transcript (heuristic score shown).',
     engine: 'heuristic',
   }
 }
@@ -173,8 +173,8 @@ The candidate was given buggy code and asked to fix it (they may use AI). Grade 
 correctness (does the fix actually solve the bug), root_cause_understanding, edge_cases, code_quality, test_awareness.
 Inspect the submitted code carefully; partial fixes get partial credit. A fix that merely re-types the buggy code scores 0.
 ${JSON_CONTRACT}`
-  const ai = await callDeepSeek(sys, `Task id: ${taskId}\n\nBuggy code:\n"""\n${buggy}\n"""\n\nRequirement:\n${prompt}\n\nCandidate's fixed code:\n"""\n${fix}\n"""`)
-  if (ai) return normalize(ai, 'deepseek', ['correctness', 'root_cause_understanding', 'edge_cases', 'code_quality', 'test_awareness'])
+  const ai = await callCalibiAi(sys, `Task id: ${taskId}\n\nBuggy code:\n"""\n${buggy}\n"""\n\nRequirement:\n${prompt}\n\nCandidate's fixed code:\n"""\n${fix}\n"""`)
+  if (ai) return normalize(ai, 'calibiai', ['correctness', 'root_cause_understanding', 'edge_cases', 'code_quality', 'test_awareness'])
 
   const fl = f.toLowerCase()
   let correctness = 30
@@ -195,7 +195,7 @@ ${JSON_CONTRACT}`
     rubric,
     strengths: correctness >= 70 ? ['Core bug appears fixed'] : correctness >= 40 ? ['Partial fix attempted'] : [],
     improvements: ['Add explicit handling for invalid inputs and boundary cases', 'Include tests proving the fix'],
-    summary: 'Rule-based static heuristic (connect DeepSeek for semantic grading of the fix).',
+    summary: 'Rule-based static heuristic (connect CalibiAI for semantic grading of the fix).',
     engine: 'heuristic',
   }
 }
@@ -211,8 +211,8 @@ Grade the candidate's implementation against the spec, 0-100 on:
 requirement_understanding, functional_correctness, edge_cases, code_quality, api_integration (the Express middleware / 429 + Retry-After wiring).
 Working, complete implementations score 75-95; stubs or partial logic score lower. Non-functional code scores near 0.
 ${JSON_CONTRACT}`
-  const ai = await callDeepSeek(sys, `Spec:\n${spec}\n\nCandidate's implementation:\n"""\n${code}\n"""`)
-  if (ai) return normalize(ai, 'deepseek', ['requirement_understanding', 'functional_correctness', 'edge_cases', 'code_quality', 'api_integration'])
+  const ai = await callCalibiAi(sys, `Spec:\n${spec}\n\nCandidate's implementation:\n"""\n${code}\n"""`)
+  if (ai) return normalize(ai, 'calibiai', ['requirement_understanding', 'functional_correctness', 'edge_cases', 'code_quality', 'api_integration'])
 
   const cl = c.toLowerCase()
   let functional = /isallowed|is_allowed/.test(cl) ? 62 : 30
@@ -231,7 +231,7 @@ ${JSON_CONTRACT}`
     rubric,
     strengths: functional >= 75 ? ['Sliding-window logic and HTTP wiring present'] : functional >= 45 ? ['Attempts the limiter logic'] : [],
     improvements: ['Wire the 429 response with a Retry-After header in middleware', 'Add tests for window expiry and concurrent calls'],
-    summary: 'Rule-based static heuristic (connect DeepSeek for semantic grading).',
+    summary: 'Rule-based static heuristic (connect CalibiAI for semantic grading).',
     engine: 'heuristic',
   }
 }
@@ -248,8 +248,8 @@ Grade the candidate's prompt 0-100 on: role_definition, context, constraints, ou
 A strong prompt names a role, gives context/audience, states constraints, pins the output format, and prevents hallucination.
 Be brutal: a vague or generic prompt that would produce poor output scores low.
 ${JSON_CONTRACT}`
-  const ai = await callDeepSeek(sys, `Task:\n${task}\n\nHint: ${hint}\n\nCandidate's prompt:\n"""\n${prompt}\n"""`)
-  if (ai) return normalize(ai, 'deepseek', ['role_definition', 'context', 'constraints', 'output_format', 'specificity', 'task_decomposition'])
+  const ai = await callCalibiAi(sys, `Task:\n${task}\n\nHint: ${hint}\n\nCandidate's prompt:\n"""\n${prompt}\n"""`)
+  if (ai) return normalize(ai, 'calibiai', ['role_definition', 'context', 'constraints', 'output_format', 'specificity', 'task_decomposition'])
 
   const pl = p.toLowerCase()
   const rubric = {
@@ -265,7 +265,7 @@ ${JSON_CONTRACT}`
     rubric,
     strengths: ['Prompt includes several effective elements'],
     improvements: ['Pin the exact output format (e.g. strict JSON)', 'Add explicit constraints and a hallucination guardrail'],
-    summary: 'Rule-based rubric heuristic (connect DeepSeek for semantic grading).',
+    summary: 'Rule-based rubric heuristic (connect CalibiAI for semantic grading).',
     engine: 'heuristic',
   }
 }

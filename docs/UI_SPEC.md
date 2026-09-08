@@ -51,8 +51,8 @@ accounts (where sign-up routes to), `/profile` as the same form in edit mode.
 
 - Drag & drop + browse (PDF/DOCX/TXT, <5MB)
 - On upload: file is sent to `POST /api/user/resume/analyze`; text is extracted
-  server-side (pdf-parse for PDF, mammoth for DOCX) and analysed by DeepSeek when
-  `DEEPSEEK_API_KEY` is set, else a deterministic rule-based engine
+  server-side (pdf-parse for PDF, mammoth for DOCX) and analysed by the CalibiAI
+  grader when `CALIBIAI_API_KEY` is set, else a deterministic rule-based engine
 - **Resume Analysis (AI)** — score ring /100 + professionalism, AI summary, recruiter
   flags (🔴/🟡/), detected skills/education/experience/contact chips,
   strengths/gaps/suggestions

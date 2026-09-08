@@ -136,7 +136,7 @@ function ResumeInner() {
                 </>
               ) : (
                 <>
-                  <Link href="/tracking/whatsapp" className={`btn-primary ${!done ? 'pointer-events-none opacity-40' : ''}`}>Continue →</Link>
+                  <Link href="/tracking/whatsapp" replace className={`btn-primary ${!done ? 'pointer-events-none opacity-40' : ''}`}>Continue →</Link>
                   <Link href="/profile" className="btn-soft">Back</Link>
                 </>
               )}
@@ -148,8 +148,8 @@ function ResumeInner() {
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-lg font-black text-slate-900">Resume analysis</h3>
               {done && (
-                <span className={`chip ${done.engine === 'deepseek' ? 'border-violet-200 bg-violet-50/80 text-violet-700' : 'border-slate-200 bg-white/70 text-slate-500'}`}>
-                  {done.engine === 'deepseek' ? '✨ DeepSeek AI' : '⚙️ Rule-based engine'}
+                <span className={`chip ${done.engine === 'calibiai' ? 'border-violet-200 bg-violet-50/80 text-violet-700' : 'border-slate-200 bg-white/70 text-slate-500'}`}>
+                  {done.engine === 'calibiai' ? '✨ CalibiAI AI' : '⚙️ Rule-based engine'}
                 </span>
               )}
             </div>

@@ -39,7 +39,7 @@ function Inner(){
             I confirm my details are accurate and agree to the 120-minute assessment (focus is monitored to keep results fair).
           </label>
 
-          <button onClick={()=>router.push('/instructions')} className="btn-primary mt-6 w-full sm:w-auto">
+          <button onClick={()=>router.replace('/instructions')} className="btn-primary mt-6 w-full sm:w-auto">
             Continue to instructions →
           </button>
         </div>
