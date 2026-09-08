@@ -2,9 +2,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { ChevronLeft } from 'lucide-react'
 import { Navbar } from '@/components/Navbar'
 import { Stepper } from '@/components/Stepper'
 import { CollegeCombobox } from '@/components/CollegeCombobox'
+import { SearchableSelect } from '@/components/SearchableSelect'
 import { useStore } from '@/lib/store'
 import { normalizeOnboardingForm, type OnboardingForm as Form } from '@/lib/onboardingForm'
 import {
@@ -597,8 +599,8 @@ export function OnboardingFlow({ variant = 'onboarding' }: { variant?: 'onboardi
 
                 {step === 2 && (
                   <div className="grid gap-x-5 sm:grid-cols-2">
-                    <Field label="Degree" htmlFor="degree" error={err('degree')} hint="Pick your programme">
-                      <Dropdown id="degree" options={DEGREE_OPTIONS} placeholder="Select degree" ariaLabel="Degree" value={form.degree} invalid={!!err('degree')} onChange={(v) => set('degree', v)} />
+                    <Field label="Degree" htmlFor="degree" error={err('degree')} hint="Search and pick your programme">
+                      <SearchableSelect id="degree" options={DEGREE_OPTIONS} placeholder="Search degree…" ariaLabel="Degree" value={form.degree} invalid={!!err('degree')} onChange={(v) => set('degree', v)} />
                     </Field>
                     <Field
                       label="College / University"
@@ -721,9 +723,10 @@ export function OnboardingFlow({ variant = 'onboarding' }: { variant?: 'onboardi
                   type="button"
                   onClick={goBack}
                   disabled={step === 1 || busy}
-                  className="btn-soft w-full sm:w-auto disabled:opacity-40"
+                  className="group inline-flex w-full items-center justify-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-semibold text-slate-600 transition duration-200 hover:bg-white hover:text-slate-900 hover:shadow-md hover:shadow-slate-200/60 active:scale-[.98] disabled:pointer-events-none disabled:opacity-40 sm:w-auto"
                 >
-                  ← Back
+                  <ChevronLeft className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" aria-hidden />
+                  Back
                 </button>
 
                 <div className="flex w-full items-center gap-3 sm:w-auto">

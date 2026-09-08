@@ -16,8 +16,10 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { ChevronLeft } from 'lucide-react'
 import { Navbar } from '@/components/Navbar'
 import { CollegeCombobox } from '@/components/CollegeCombobox'
+import { SearchableSelect } from '@/components/SearchableSelect'
 import { useStore } from '@/lib/store'
 import { normalizeOnboardingForm, type OnboardingForm as Form } from '@/lib/onboardingForm'
 import {
@@ -201,7 +203,13 @@ export default function EditProfilePage() {
             <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">Edit your profile</h1>
             <p className="mt-1 text-sm text-slate-500">Keep your details accurate — they drive your scorecard and report.</p>
           </div>
-          <Link href="/dashboard/student" className="btn-soft !py-2 text-xs font-bold">← Back</Link>
+          <Link
+            href="/dashboard/student"
+            className="group inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white/70 px-3.5 py-2 text-xs font-bold text-slate-600 backdrop-blur transition duration-200 hover:bg-white hover:text-slate-900 hover:shadow-md"
+          >
+            <ChevronLeft className="h-3.5 w-3.5 transition-transform duration-200 group-hover:-translate-x-0.5" aria-hidden />
+            Back
+          </Link>
         </div>
 
         <form onSubmit={submit} className="glass-card relative mt-6 animate-fade-up overflow-hidden">
@@ -262,11 +270,8 @@ export default function EditProfilePage() {
               <span aria-hidden>🎓</span> Academics
             </h2>
             <div className="mt-3 grid gap-x-5 sm:grid-cols-2">
-              <Field label="Degree" htmlFor="degree" error={err('degree')} hint="Pick your programme">
-                <select id="degree" value={form.degree} onChange={(e) => set('degree', e.target.value)} className={`field ${err('degree') ? 'border-rose-300' : ''}`}>
-                  <option value="">Select degree</option>
-                  {DEGREE_OPTIONS.map((d) => <option key={d} value={d}>{d}</option>)}
-                </select>
+              <Field label="Degree" htmlFor="degree" error={err('degree')} hint="Search and pick your programme">
+                <SearchableSelect id="degree" options={DEGREE_OPTIONS} placeholder="Search degree…" ariaLabel="Degree" value={form.degree} invalid={!!err('degree')} onChange={(v) => set('degree', v)} />
               </Field>
 
               <Field label="College / University" htmlFor="college" error={err('college')} hint="Type to search — Pune & Amravati colleges are preloaded">
