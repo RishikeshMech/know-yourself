@@ -260,6 +260,26 @@ export function fullscreenCapable(doc: any): boolean {
   return !!doc && (typeof doc.documentElement?.requestFullscreen === 'function')
 }
 
+/**
+ * Requests fullscreen and NEVER rejects — the browser rejects the promise
+ * (rather than throwing) when a Permissions Policy disallows it (e.g. the app
+ * is embedded in an iframe without `allow="fullscreen"`), and an unhandled
+ * rejection there surfaces as a Next.js runtime error. Callers get a boolean
+ * success result instead.
+ */
+export async function safeRequestFullscreen(doc: any): Promise<boolean> {
+  if (!fullscreenCapable(doc)) return false
+  // `fullscreenEnabled === false` means the permission is missing outright —
+  // skip the doomed call entirely rather than producing a rejection.
+  if (doc?.fullscreenEnabled === false) return false
+  try {
+    await doc.documentElement.requestFullscreen()
+    return !!doc.fullscreenElement
+  } catch {
+    return false
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Leak-prevention watermark                                            */
 /*                                                                     */

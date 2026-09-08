@@ -127,13 +127,13 @@ create table if not exists public.assessment_results (
   grade               text,
   percentile         numeric,
   verifiable_hash     text,
-  ai_feedback         jsonb,               -- DeepSeek feedback per subjective section
+  ai_feedback         jsonb,               -- CalibiAI feedback per subjective section
   report_storage_key  text,                -- PDF report path
   created_at          timestamptz not null default now()
 );
 
 -- ---------------------------------------------------------------------------
--- AI evaluation jobs (DeepSeek) — for speaking/writing/code/prompts
+-- AI evaluation jobs (CalibiAI) — for speaking/writing/code/prompts
 -- ---------------------------------------------------------------------------
 create table if not exists public.ai_evaluation_jobs (
   id            uuid primary key default gen_random_uuid(),

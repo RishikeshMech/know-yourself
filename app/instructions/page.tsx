@@ -19,8 +19,8 @@ const ALLOCATION = [
 const MODULES = [
   ['English Communication','200 pts · Listening, Speaking, Reading, Writing'],
   ['Problem Solving','200 pts · Logic, correctness, data interpretation'],
-  ['AI-Assisted Debugging','150 pts · Fix buggy code (In-Exam AI Assistant provided)'],
-  ['AI-Assisted Feature Dev','150 pts · Build a feature (In-Exam AI Assistant provided)'],
+  ['AI-Assisted Debugging','150 pts · Fix buggy code (In-Exam AI Assistant · 5 prompts)'],
+  ['AI-Assisted Feature Dev','150 pts · Build a feature (In-Exam AI Assistant · 5 prompts)'],
   ['Prompt Engineering','100 pts · 3 tasks, AI-rubric scored'],
   ['Cognitive Assessment','200 pts · Grid challenge, logical reasoning, behavioural'],
 ]
@@ -125,7 +125,9 @@ function Inner(){
       localStorage.setItem('calibiai_session_server_start', String(now))
     }catch{ }
     setSession(session)
-    window.location.assign('/assessment')
+    // `replace` so the one-time instructions page doesn't linger in history —
+    // the Back button should never walk a finished candidate through the flow.
+    window.location.replace('/assessment')
   }
 
   // Same chrome as the real page, so nothing jumps when the content arrives —
@@ -201,8 +203,8 @@ function Inner(){
               <ul className="list-disc ml-4 space-y-1">
                 <li><b>No tab switching:</b> Keep this tab/window focused — switching windows/tabs 3 times terminates and submits your test automatically.</li>
                 <li><b>Close other tabs before starting:</b> When you start, the app will ask you to close every other tab/window (a webpage cannot close them for you). Please close them and confirm.</li>
-                <li><b>No external / mirrored display:</b> The test runs in fullscreen with right-click disabled. Disconnect any external or second display — if one is detected the test won't start, and connecting one mid-test terminates the assessment as cheating.</li>
-                <li><b>In-Exam AI Assistant:</b> For AI Debugging and AI Feature Dev (Stages 3 & 4), an interactive AI assistant is embedded right below each coding task. You can ask questions, get explanations, and review code without leaving the tab.</li>
+                <li><b>Fullscreen is required:</b> The test locks you into fullscreen with right-click disabled. If you press Esc, fullscreen re-enters automatically, and leaving fullscreen mid-test is recorded as a violation. Disconnect any external or second display — if one is detected the test won't start, and connecting one mid-test terminates the assessment as cheating.</li>
+                <li><b>In-Exam AI Assistant:</b> For AI Debugging and AI Feature Dev (Stages 3 & 4), an interactive AI assistant is embedded right below each coding task. You can ask questions, get explanations, and review code without leaving the tab. <b>It answers a maximum of 5 prompts per task and then locks</b> — so plan your best questions before asking.</li>
                 <li>Your answers are saved automatically as you go.</li>
                 <li>This is a one-time attempt — once submitted you can't retake it. You land on your student dashboard, where the report and PDF stay available.</li>
               </ul>

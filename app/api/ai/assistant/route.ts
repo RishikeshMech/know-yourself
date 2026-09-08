@@ -1,6 +1,6 @@
 // API Route: POST /api/ai/assistant
 // Handles in-exam AI assistant chat requests for Stage 3 (AI Debugging) and Stage 4 (AI Feature Dev).
-// Server-side execution keeps DEEPSEEK_API_KEY secure.
+// Server-side execution keeps the CalibiAI key secure.
 
 export const runtime = 'nodejs'
 

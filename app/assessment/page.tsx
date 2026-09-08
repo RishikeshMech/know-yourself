@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useStore } from '@/lib/store'
+import { Maximize2, TriangleAlert } from 'lucide-react'
 import { bank, shuffledOptions, shuffledChoiceOptions, mulberry32 } from '@/lib/questions'
 import { computeScores } from '@/lib/scoring'
 import { getSupabase } from '@/lib/supabase'
@@ -10,12 +11,15 @@ import { AFTER_ASSESSMENT_ROUTE } from '@/lib/nextStep'
 import { markJustSubmitted } from '@/lib/justSubmitted'
 import { Logo } from '@/components/Logo'
 import { AiExamAssistant } from '@/components/AiExamAssistant'
+import { AssessmentReview } from '@/components/AssessmentReview'
+import { buildReview, type ReviewTarget } from '@/lib/reviewModel'
+import { shouldCountListeningPlay, LISTENING_MAX_PLAYS } from '@/lib/listeningPlay'
 import type { TestRunResult } from '@/lib/runTests'
 import {
   MAX_FOCUS_STRIKES,
   classifyDisplayEvent,
   evaluateStartGate,
-  fullscreenCapable,
+  safeRequestFullscreen,
   resolveScreenFacts,
   rightClickShouldBlock,
   FULLSCREEN_EXIT_MSG,
@@ -57,6 +61,12 @@ const MIN_PROMPT_CHARS = 100
 const WRITING_AUTONEXT_WORDS = 50
 // How long the "moving to …" banner shows before gliding forward.
 const AUTONEXT_DELAY_MS = 2800
+
+// A single real violation fires several overlapping signals (window blur +
+// visibilitychange + a fullscreen exit detected by the 1.5s monitor, e.g. when
+// a native dialog steals focus). Within this window those are coalesced into
+// ONE warning instead of cascading straight to the 3-warning auto-submit.
+const STRIKE_COOLDOWN_MS = 2500
 
 const wordCount = (t: string) => (t || '').trim().split(/\s+/).filter(Boolean).length
 
@@ -160,7 +170,7 @@ function AiFeedback({ r }: { r: any }) {
     <div className="mt-3 rounded-2xl bg-emerald-50/80 border border-emerald-200 p-3.5 text-sm animate-fade-up">
       <div className="flex items-center justify-between">
         <span className="font-bold text-emerald-700">AI score: {r.score}/100</span>
-        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white text-emerald-700 border border-emerald-200">{r.engine === 'deepseek' ? 'DeepSeek' : 'rule engine'}</span>
+        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white text-emerald-700 border border-emerald-200">{r.engine === 'calibiai' ? 'CalibiAI' : 'rule engine'}</span>
       </div>
       {r.rubric && Object.keys(r.rubric).length > 0 && (
         <div className="mt-2 space-y-1.5">
@@ -250,6 +260,10 @@ function AssessmentInner() {
   const [envBlockReason, setEnvBlockReason] = useState<string | null>(null)
   const [envConsent, setEnvConsent] = useState(false)
   const [envBusy, setEnvBusy] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  // Whether fullscreen was actually engaged at the gate (state twin of
+  // envFsEngagedRef so the UI can render on it).
+  const [fsEngaged, setFsEngaged] = useState(false)
   const [mediaReady, setMediaReady] = useState(false)
   const [mediaError, setMediaError] = useState('')
   const [videoOn, setVideoOn] = useState(false)
@@ -259,8 +273,12 @@ function AssessmentInner() {
   const [playCounts, setPlayCounts] = useState<Record<string, number>>({})
   const [showHint, setShowHint] = useState<Record<string, boolean>>({})
   const [testResults, setTestResults] = useState<Record<string, TestRunResult | undefined>>({})
-  // Friendly submit-confirmation modal (replaces the old browser `confirm()`).
-  const [showSubmit, setShowSubmit] = useState(false)
+  // Pre-submit review page. `reviewMode`:
+  //   'manual' — candidate-initiated submit; can jump back to any question.
+  //   'auto'   — time-up / 3 warnings; read-only, no returning to the exam.
+  const [showReview, setShowReview] = useState(false)
+  const [reviewMode, setReviewMode] = useState<'manual' | 'auto' | null>(null)
+  const [autoSubmitReason, setAutoSubmitReason] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const submittingRef = useRef(false)
 
@@ -280,7 +298,15 @@ function AssessmentInner() {
   const awayRef = useRef(false)
   const suppressRef = useRef(false)
   const strikesRef = useRef(0)
+  // Timestamp of the last recorded strike — used to coalesce the burst of
+  // blur/visibility/fullscreen events a single action produces.
+  const lastStrikeAtRef = useRef(0)
   const submitRef = useRef<(auto?: boolean) => void>(() => {})
+  // Auto-submit (time-up / 3 warnings) opens the read-only review page. These
+  // refs keep the latest closure + a once-only guard reachable from the
+  // mount-time timer interval declared further down.
+  const autoSubmitRef = useRef<(reason: string) => void>(() => {})
+  const autoReviewRef = useRef(false)
   // Snapshot of the screen captured when the pre-test gate was cleared, so the
   // live monitor can compare it against later states to detect an external
   // display being connected or the tab moving to another screen.
@@ -339,7 +365,7 @@ function AssessmentInner() {
       const tick = () => {
         const rem = Math.max(0, Math.floor((expires - Date.now()) / 1000))
         setRemaining(rem)
-        if (rem <= 0) submitRef.current(true)
+        if (rem <= 0) autoSubmitRef.current('Time is up — your assessment ended automatically.')
       }
       tick()
       intervalId = setInterval(tick, 1000)
@@ -408,12 +434,16 @@ function AssessmentInner() {
       if (!mediaReadyRef.current || suppressRef.current || terminated) return
       if (document.hidden || !document.hasFocus()) {
         if (awayRef.current) return
+        // Coalesce the burst of events a single action produces (e.g. a native
+        // dialog firing blur + visibilitychange together) into one warning.
+        if (Date.now() - lastStrikeAtRef.current < STRIKE_COOLDOWN_MS) return
+        lastStrikeAtRef.current = Date.now()
         awayRef.current = true
         const n = strikesRef.current + 1
         strikesRef.current = n
         setStrikes(n)
         setViolationMsg('You left the assessment window. Switching away is recorded as a proctoring violation.')
-        if (n >= 3) { setTerminated(true); setShowViolation(false); submitRef.current(true) }
+        if (n >= 3) { setShowViolation(false); autoSubmitRef.current('You reached 3 focus warnings — your assessment ended automatically.') }
         else setShowViolation(true)
       }
     }
@@ -454,14 +484,17 @@ function AssessmentInner() {
 
     const bumpStrike = (msg: string) => {
       if (terminated || submittingRef.current) return
+      // Same coalescing as onLeave — a fullscreen exit that follows a blur from
+      // the same user action must not count as a second, separate strike.
+      if (Date.now() - lastStrikeAtRef.current < STRIKE_COOLDOWN_MS) return
+      lastStrikeAtRef.current = Date.now()
       const n = strikesRef.current + 1
       strikesRef.current = n
       setStrikes(n)
       setViolationMsg(msg)
       if (n >= MAX_FOCUS_STRIKES) {
-        setTerminated(true)
         setShowViolation(false)
-        submitRef.current(true)
+        autoSubmitRef.current('You reached 3 focus warnings — your assessment ended automatically.')
       } else {
         setShowViolation(true)
       }
@@ -502,6 +535,56 @@ function AssessmentInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [envState, terminated])
 
+  // Keep the header button in sync with the real fullscreen state.
+  useEffect(() => {
+    const sync = () => setIsFullscreen(!!document.fullscreenElement)
+    sync()
+    document.addEventListener('fullscreenchange', sync)
+    return () => document.removeEventListener('fullscreenchange', sync)
+  }, [])
+
+  // Lock the candidate in fullscreen for the whole live test. Pressing Esc (or
+  // any other fullscreen exit) re-enters fullscreen automatically. Browsers
+  // briefly refuse a programmatic re-entry right after an Esc exit, so we retry
+  // a few times; the header's fullscreen button remains a one-click fallback
+  // (a real user gesture always succeeds).
+  useEffect(() => {
+    if (envState !== 'cleared' || terminated) return
+    if (!fsEngaged) return // fullscreen never engaged → nothing to re-enter
+    let attempts = 0
+    let timer: any = null
+
+    const reenter = () => {
+      if (document.fullscreenElement || submittingRef.current) return
+      const attempt = async () => {
+        if (document.fullscreenElement || submittingRef.current) return
+        const ok = await safeRequestFullscreen(document)
+        if (ok) {
+          showToast('Fullscreen restored — it must stay on for the whole test.')
+        } else {
+          attempts += 1
+          if (attempts < 6) {
+            clearTimeout(timer)
+            timer = setTimeout(attempt, 500)
+          } else {
+            showToast('⚠ Fullscreen was exited — click the ⛶ button in the header to go back.')
+          }
+        }
+      }
+      attempt()
+    }
+
+    const onFsChange = () => {
+      if (!document.fullscreenElement) reenter()
+    }
+    document.addEventListener('fullscreenchange', onFsChange)
+    return () => {
+      document.removeEventListener('fullscreenchange', onFsChange)
+      clearTimeout(timer)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [envState, terminated, fsEngaged])
+
   // Pre-start environment check — runs (and must pass) BEFORE the test is
   // reachable. Tries to enter fullscreen, enumerates displays via the
   // Window-Management API where available, and blocks the start if more than
@@ -509,17 +592,14 @@ function AssessmentInner() {
   const runEnvCheck = async () => {
     setEnvBusy(true)
     try {
-      let fsEngaged = false
-      try {
-        if (fullscreenCapable(document)) {
-          await document.documentElement.requestFullscreen()
-          fsEngaged = true
-        }
-      } catch {
-        /* fullscreen unavailable/denied (e.g. an iframe without permission) —
-           carry on best-effort; the focus/monitor still works. */
-      }
+      // `safeRequestFullscreen` never rejects — it returns false when the
+      // browser's Permissions Policy blocks fullscreen (e.g. embedded in an
+      // iframe without `allow="fullscreen"`), so no unhandled rejection can
+      // surface as a runtime error.
+      const fsEngaged = await safeRequestFullscreen(document)
       envFsEngagedRef.current = fsEngaged
+      setFsEngaged(fsEngaged)
+      setIsFullscreen(!!document.fullscreenElement)
       const facts = await resolveScreenFacts(window)
       const verdict = evaluateStartGate(facts)
       if (!verdict.allow) {
@@ -737,12 +817,12 @@ function AssessmentInner() {
 
   // Runs the real submission. `auto` = triggered by the timer running out or
   // the 3rd focus warning (auto_submitted, status "expired"); manual confirms
-  // from the modal call it with auto=false (status "submitted").
+  // from the review page call it with auto=false (status "submitted").
   const doSubmit = async (auto = false) => {
-    if (terminated || submittingRef.current) return
+    if (submittingRef.current) return
     submittingRef.current = true
     setSubmitting(true)
-    setShowSubmit(false)
+    setShowReview(false)
     clearInterval(intervalRef.current)
     proctorStreamRef.current?.getTracks().forEach(t => t.stop())
     proctorStreamRef.current = null
@@ -783,17 +863,41 @@ function AssessmentInner() {
   }
   useEffect(() => { submitRef.current = doSubmit })
 
+  // Automatic submission (timer expiry or the 3rd focus warning) opens the same
+  // review page in READ-ONLY mode: the candidate can see exactly what was
+  // submitted, but cannot return to the exam. The actual network submission
+  // runs when they tap "Continue to results" (→ doSubmit(true)).
+  const beginAutoSubmit = (reason: string) => {
+    if (autoReviewRef.current || submittingRef.current) return
+    autoReviewRef.current = true
+    setAutoSubmitReason(reason)
+    setShowViolation(false)
+    setTerminated(true)
+    setReviewMode('auto')
+    setShowReview(true)
+  }
+  useEffect(() => { autoSubmitRef.current = beginAutoSubmit })
+
   const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
   const critical = remaining < 600
-  // Show a live count on the confirm modal so the student knows what will be
-  // submitted before they commit (vs. how many are still empty).
-  const answeredCount = Object.values(answers).filter(v =>
-    v !== undefined && v !== null && v !== '' && !(Array.isArray(v) && v.length === 0),
-  ).length
+
+  // Pre-submit review model: every section/question with answered status.
+  const review = useMemo(() => buildReview(bank, answers), [bank, answers])
+
   const requestSubmit = () => {
     if (terminated || submittingRef.current) return
-    setShowSubmit(true)
+    setReviewMode('manual')
+    setShowReview(true)
   }
+
+  // Jump from the review page back to a specific question (manual mode only —
+  // the read-only auto review never calls this).
+  const jumpToQuestion = (target: ReviewTarget) => {
+    setShowReview(false)
+    if (target.task !== undefined) setActiveDebuggingTask(target.task)
+    navigateTo(target.stage, target.sub, target.stage > stage ? 'next' : target.stage < stage ? 'prev' : null)
+  }
+
   if (!session) return <div className="p-16 text-center text-slate-500">Loading your session…</div>
 
   const renderStage = () => {
@@ -809,11 +913,26 @@ function AssessmentInner() {
                   <div key={c.id} className="panel p-4">
                     <div className="flex items-center justify-between gap-2">
                       <div className="text-sm font-bold text-slate-800">🎧 {c.title}</div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 shrink-0">plays {plays}/2</span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 shrink-0">plays {plays}/{LISTENING_MAX_PLAYS}</span>
                     </div>
                     <audio controls className="w-full mt-3" src={c.audio}
-                      onPlay={(e) => { if ((playCounts[c.id] || 0) >= 2) { e.currentTarget.pause(); return } setPlayCounts(p => ({ ...p, [c.id]: (p[c.id] || 0) + 1 })) }} />
-                    {plays >= 2 && <div className="mt-1 text-[11px] text-amber-600">Play limit reached — answer from memory.</div>}
+                      onPlay={(e) => {
+                        const el = e.currentTarget
+                        const plays = playCounts[c.id] || 0
+                        // Hard stop once both listens are used.
+                        if (plays >= LISTENING_MAX_PLAYS) { el.pause(); return }
+                        // Only a play that starts from the beginning counts —
+                        // seeking/skipping or resuming mid-clip must not burn
+                        // one of the two listens.
+                        if (shouldCountListeningPlay(el.currentTime, plays)) {
+                          setPlayCounts(p => ({ ...p, [c.id]: plays + 1 }))
+                        }
+                      }} />
+                    <div className="mt-1 text-[11px] text-slate-400">
+                      {plays >= LISTENING_MAX_PLAYS
+                        ? 'Play limit reached — answer from memory.'
+                        : `Each clip can be replayed from the start up to ${LISTENING_MAX_PLAYS} times — skipping within a clip doesn't count.`}
+                    </div>
                     <div className="mt-4 space-y-4">
                       {c.questions.map((q: any) => (
                         <div key={q.id} className="p-3.5 rounded-xl bg-white/70 border border-slate-200">
@@ -933,7 +1052,7 @@ function AssessmentInner() {
                     </span>
                   </div>
                   <div className="text-[11px] text-indigo-200 mt-0.5">
-                    Proctored assessment — do not switch browser tabs. Use the AI Assistant below to ask questions about bugs, edge cases, or review your code.
+                    Proctored assessment — do not switch browser tabs. Use the AI Assistant below to ask questions about bugs, edge cases, or review your code. <b className="text-white">You have 5 assistant prompts for this task — use them wisely.</b>
                   </div>
                 </div>
               </div>
@@ -1136,7 +1255,7 @@ function AssessmentInner() {
                     </span>
                   </div>
                   <div className="text-[11px] text-indigo-200 mt-0.5">
-                    Proctored mode active. Build the sliding-window rate limiter & Express middleware. Ask the AI assistant below for architecture, code examples, or reviews without switching tabs.
+                    Proctored mode active. Build the sliding-window rate limiter & Express middleware. Ask the AI assistant below for architecture, code examples, or reviews without switching tabs. <b className="text-white">You have 5 assistant prompts for this task — use them wisely.</b>
                   </div>
                 </div>
               </div>
@@ -1377,6 +1496,16 @@ function AssessmentInner() {
               Warnings
               <span className={`px-2 py-0.5 rounded-full font-bold ${strikes >= 3 ? 'bg-rose-500 text-white' : strikes >= 1 ? 'bg-amber-400 text-slate-900' : 'bg-slate-100 text-slate-500'}`}>{strikes}/3</span>
             </span>
+            {envState === 'cleared' && !terminated && !submitting && !isFullscreen && (
+              <button
+                onClick={() => { safeRequestFullscreen(document) }}
+                title="Re-enter fullscreen"
+                className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700 transition hover:bg-amber-100 active:scale-95"
+              >
+                <Maximize2 className="h-3.5 w-3.5" aria-hidden />
+                Fullscreen
+              </button>
+            )}
             <div className={`px-4 py-1.5 rounded-full font-mono font-black text-sm border ${critical ? 'bg-rose-500 text-white border-rose-400 timer-pulse' : 'bg-white text-slate-800 border-slate-200'}`}>⏱ {fmt(remaining)}</div>
             <button onClick={requestSubmit} className="btn-primary !px-4 !py-2 !text-xs">Submit</button>
           </div>
@@ -1570,7 +1699,7 @@ function AssessmentInner() {
             <ul className="mt-5 space-y-2.5 text-sm text-slate-700">
               <li className="flex gap-2.5"><span className="shrink-0">🚫</span><span><b>Right-click</b> is disabled across the whole test screen.</span></li>
               <li className="flex gap-2.5"><span className="shrink-0">🖥️</span><span><b>External / mirrored displays</b> are not allowed. If one is detected the test won't start — or it is terminated if one is connected later.</span></li>
-              <li className="flex gap-2.5"><span className="shrink-0">🔒</span><span>The browser enters <b>fullscreen</b>; leaving fullscreen mid-test is recorded as a violation.</span></li>
+              <li className="flex gap-2.5"><span className="shrink-0">🔒</span><span>The browser is <b>locked in fullscreen</b> for the whole test. If you press Esc, fullscreen re-enters automatically — exiting it mid-test is recorded as a violation.</span></li>
               <li className="flex gap-2.5"><span className="shrink-0">🗂️</span><span>Please <b>close every other tab and window</b> first. (A webpage cannot close other tabs for you, but open-tab / away-switching is monitored.)</span></li>
             </ul>
 
@@ -1620,59 +1749,51 @@ function AssessmentInner() {
         </div>
       )}
 
-      {/* Submit confirmation — replaces the old browser confirm() */}
-      {showSubmit && !terminated && (
-        <div className="fixed inset-0 z-[60] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-7 shadow-2xl animate-pop">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl calibiai-gradient text-white shadow-lg shadow-indigo-300">
-              <span className="text-3xl leading-none">📤</span>
-            </div>
-            <h3 className="mt-4 text-center text-2xl font-black text-slate-900">Submit assessment?</h3>
-            <p className="mt-2 text-center text-sm leading-relaxed text-slate-500">
-              This is your final step. Once submitted, your answers are evaluated and your CalibiAI Score is locked — you cannot go back and change anything.
+      {/* Review page — manual submit (editable, can jump back) and auto-submit
+          (read-only, no return to the exam). */}
+      {showReview && !submitting && (
+        <AssessmentReview
+          sections={review.sections}
+          stats={review.stats}
+          timeLeft={fmt(remaining)}
+          strikes={strikes}
+          submitting={submitting}
+          readOnly={reviewMode === 'auto'}
+          autoReason={reviewMode === 'auto' ? autoSubmitReason : undefined}
+          onJump={jumpToQuestion}
+          onCancel={() => setShowReview(false)}
+          onSubmit={() => doSubmit(reviewMode === 'auto')}
+        />
+      )}
+
+      {/* Submitting overlay */}
+      {submitting && (
+        <div className="fixed inset-0 z-[65] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="glass-card flex items-center gap-3 px-6 py-5 animate-pop">
+            <span className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
+            <span className="text-sm font-bold text-slate-700">Submitting your assessment…</span>
+          </div>
+        </div>
+      )}
+
+      {/* Fullscreen lock — if fullscreen is lost mid-test (e.g. Esc) and the
+          automatic re-entry is blocked by the browser, the exam is paused behind
+          this overlay until the candidate re-enters fullscreen. This guarantees
+          the test can never be taken in normal windowed mode. */}
+      {envState === 'cleared' && !terminated && !submitting && fsEngaged && !isFullscreen && (
+        <div className="fixed inset-0 z-[45] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="max-w-sm w-full rounded-3xl border-2 border-indigo-300 bg-white p-7 text-center shadow-2xl animate-pop">
+            <div className="text-5xl">🖥️</div>
+            <h3 className="mt-3 text-xl font-black text-indigo-700">Fullscreen required</h3>
+            <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+              The assessment must run in fullscreen. It is paused until you re-enter fullscreen.
             </p>
-
-            <div className="mt-5 grid grid-cols-2 gap-2.5 text-center">
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
-                <div className="text-lg font-black text-emerald-600">{answeredCount}</div>
-                <div className="text-[10px] font-bold uppercase tracking-wide text-emerald-600/80">answers recorded</div>
-              </div>
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5">
-                <div className="text-lg font-black text-amber-600">⏱ {fmt(remaining)}</div>
-                <div className="text-[10px] font-bold uppercase tracking-wide text-amber-600/80">time left</div>
-              </div>
-            </div>
-
-            {strikes > 0 && (
-              <p className="mt-3 rounded-xl bg-rose-50 border border-rose-100 px-3 py-2 text-center text-[11px] font-semibold text-rose-500">
-                ⚠ {strikes} focus warning{strikes > 1 ? 's' : ''} recorded this session
-              </p>
-            )}
-
-            <div className="mt-6 flex flex-col-reverse gap-2.5 sm:flex-row">
-              <button
-                onClick={() => setShowSubmit(false)}
-                disabled={submitting}
-                className="btn-soft flex-1 !py-3 text-sm font-bold disabled:opacity-50"
-              >
-                ← Keep editing
-              </button>
-              <button
-                onClick={() => doSubmit(false)}
-                disabled={submitting}
-                className="btn-primary flex-1 !py-3 text-sm disabled:opacity-60"
-              >
-                {submitting ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                    Submitting…
-                  </span>
-                ) : 'Yes, submit assessment'}
-              </button>
-            </div>
-            <p className="mt-4 text-center text-[11px] text-slate-400">
-              Tip: unanswered questions simply score zero — you can submit whenever you are ready.
-            </p>
+            <button
+              onClick={() => { safeRequestFullscreen(document) }}
+              className="btn-primary mt-5 w-full !py-3"
+            >
+              <span className="inline-flex items-center gap-2"><Maximize2 className="h-4 w-4" aria-hidden /> Re-enter fullscreen</span>
+            </button>
           </div>
         </div>
       )}
@@ -1680,18 +1801,55 @@ function AssessmentInner() {
       {/* Violation warning */}
       {showViolation && !terminated && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-          <div className="max-w-sm w-full rounded-3xl border-2 border-amber-300 bg-white p-7 text-center shadow-2xl animate-pop">
-            <div className="text-5xl">⚠️</div>
-            <h3 className="mt-3 text-xl font-black text-amber-600">Warning {strikes} of {MAX_FOCUS_STRIKES}</h3>
-            <p className="mt-2 text-sm text-slate-600">{violationMsg || 'You left the assessment window. Switching away is recorded as a proctoring violation.'}
-              {strikes >= MAX_FOCUS_STRIKES - 1 && <b className="text-rose-600"> One more warning and your assessment will be submitted automatically.</b>}</p>
-            <button onClick={() => { setShowViolation(false); awayRef.current = false }} className="btn-primary mt-6 w-full">I'm back — resume</button>
+          <div className="relative w-full max-w-sm rounded-3xl border border-amber-200 bg-white p-7 text-center shadow-2xl shadow-amber-200/40 animate-slide-down">
+            {/* Pulsing halo + shaking icon */}
+            <div className="relative mx-auto h-20 w-20">
+              <span className="absolute inset-0 rounded-full bg-amber-400/30 animate-ping" />
+              <div className="relative grid h-20 w-20 place-items-center rounded-full bg-gradient-to-br from-amber-100 to-amber-200 shadow-inner animate-shake">
+                <TriangleAlert className="h-9 w-9 text-amber-600" aria-hidden />
+              </div>
+            </div>
+
+            <h3 className="mt-4 text-xl font-black text-slate-900">Heads up — warning {strikes} of {MAX_FOCUS_STRIKES}</h3>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">
+              {violationMsg || 'You left the assessment window. Switching away is recorded as a proctoring violation.'}
+            </p>
+
+            {/* Strike progress pips */}
+            <div className="mt-4 flex items-center justify-center gap-1.5" aria-label={`${strikes} of ${MAX_FOCUS_STRIKES} warnings`}>
+              {Array.from({ length: MAX_FOCUS_STRIKES }).map((_, i) => {
+                const filled = i < strikes
+                const latest = i === strikes - 1
+                return (
+                  <span
+                    key={i}
+                    className={`h-2.5 rounded-full transition-all duration-500 ${
+                      filled
+                        ? latest
+                          ? 'w-7 bg-amber-500 animate-pulse'
+                          : 'w-7 bg-amber-400/70'
+                        : 'w-2.5 bg-slate-200'
+                    }`}
+                  />
+                )
+              })}
+            </div>
+
+            {strikes >= MAX_FOCUS_STRIKES - 1 && (
+              <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-bold text-rose-600 animate-fade-in">
+                ⚠ One more warning and your assessment will be submitted automatically.
+              </div>
+            )}
+
+            <button onClick={() => { setShowViolation(false); awayRef.current = false }} className="btn-primary mt-6 w-full">
+              I'm back — resume
+            </button>
           </div>
         </div>
       )}
 
-      {/* Terminated */}
-      {terminated && (
+      {/* Terminated — hidden while the read-only auto-submit review is up */}
+      {terminated && !(showReview && reviewMode === 'auto') && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
           <div className="max-w-sm w-full rounded-3xl border-2 border-rose-300 bg-white p-7 text-center shadow-2xl animate-pop">
             <div className="text-5xl">⛔</div>

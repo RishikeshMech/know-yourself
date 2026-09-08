@@ -49,6 +49,26 @@
       "name": "Priya Sharma",
       "created_at": "2026-09-07T18:00:06.435Z",
       "last_login_at": "2026-09-07T18:00:13.792Z"
+    },
+    {
+      "id": "u_e07a2569",
+      "email": "prajwalgulhane85@gmail.com",
+      "password_hash": "1ba70157a0feb588a18055a3c0ae0b4dc4a901d0622f65b93bf14f724b779ebb",
+      "role": "student",
+      "institution_id": "inst_iitm",
+      "name": "Prajwal Gulhane",
+      "created_at": "2026-09-08T18:58:26.977Z",
+      "last_login_at": "2026-09-08T18:58:26.977Z"
+    },
+    {
+      "id": "u_31265a1b",
+      "email": "senofa8782@94an.com",
+      "password_hash": "aa40e601a6f98ed3831a29cfdbb496c9242aa00528d132a459a7768f2b1411d3",
+      "role": "student",
+      "institution_id": "inst_iitm",
+      "name": "Sanika",
+      "created_at": "2026-09-08T19:08:56.212Z",
+      "last_login_at": "2026-09-08T19:08:56.212Z"
     }
   ],
   "profiles": [
@@ -332,40 +352,27 @@
       "updated_at": "2026-09-08T06:24:52.185Z"
     },
     {
-      "id": "e385aa7b-05f8-4c54-9174-edd5f04abf06",
-      "email": "prajwalen100@gmail.com",
+      "id": "u_e07a2569",
+      "email": "prajwalgulhane85@gmail.com",
       "full_name": "Prajwal Gulhane",
-      "prn": "39882939",
-      "phone": "9284364839",
-      "dob": "2001-06-08",
+      "prn": "898329038",
+      "phone": "7837937983",
+      "dob": "2002-06-04",
       "gender": "Male",
-      "degree": "B.Tech AI & ML",
-      "college": "Prof. Ram Meghe Institute of Technology & Research",
-      "graduation_year": 2026,
+      "degree": "B.Tech Electrical",
+      "college": "Pune Institute of Computer Technology",
+      "graduation_year": 2029,
       "cgpa": 9,
-      "skills": "Python , SQL ",
+      "skills": "Python, React, Next.js, NumPy, Docker, Deep Learning, HTML, CSS",
       "linkedin_url": "",
       "github_url": "",
-      "ai_avatar": null,
-      "updated_at": "2026-09-08T08:20:21.520Z"
-    },
-    {
-      "id": "8efd5e03-75dc-4275-b651-859a2a1620d7",
-      "email": "prajwalgu90@gmail.com",
-      "full_name": "Prajwal Gulhane",
-      "prn": "98498590",
-      "phone": "8989489898",
-      "dob": "2002-02-05",
-      "gender": "Male",
-      "degree": "B.Tech AI & DS",
-      "college": "College of Engineering, Pune",
-      "graduation_year": 2027,
-      "cgpa": 9,
-      "skills": "",
-      "linkedin_url": "",
-      "github_url": "",
-      "ai_avatar": null,
-      "updated_at": "2026-09-08T08:28:19.275Z"
+      "ai_avatar": {
+        "seed": 1834764170,
+        "style": "emerald",
+        "version": 1,
+        "generated_at": "2026-09-08T19:06:04.707Z"
+      },
+      "updated_at": "2026-09-08T19:06:04.932Z"
     }
   ],
   "assessment_sessions": [
@@ -837,73 +844,43 @@
       "created_at": "2026-09-07T21:18:33.273Z"
     },
     {
-      "id": "e7e9abd1-1013-43c0-975e-4bea07c3c4e6",
-      "student_id": "e385aa7b-05f8-4c54-9174-edd5f04abf06",
+      "id": "3afceecf-7104-4321-b548-148627a4a5f7",
+      "student_id": "u_e07a2569",
       "status": "submitted",
-      "started_at": "2026-09-08T08:22:54.393Z",
-      "expires_at": "2026-09-08T10:22:54.393Z",
+      "started_at": "2026-09-08T19:00:32.473Z",
+      "expires_at": "2026-09-08T21:00:32.473Z",
       "duration_sec": 7200,
       "answers": {
-        "EL1": "The alert went to a channel nobody monitored overnight",
-        "EL2": "Post them to the release notes",
-        "EL3": "The database backup was corrupted",
-        "EL4": "Single-engineer ownership of releases",
-        "EL5": "In the CDN edge nodes",
-        "EL6": "The pool was enlarged beyond capacity",
-        "EL7": "To speed up the database",
-        "EL8": "Bigger database instance; alerts at 50%",
-        "ER1": "AI tools uniformly improved every team",
-        "ER2": "They never used AI tools",
-        "ER3": "The key skill is judging correctness rather than generating code",
-        "ER4": "Reviewers were inexperienced",
-        "ER5": "Mandatory tests for generated blocks and explain-before-merge",
-        "ER6": "It was removed in favour of the assistant",
-        "PS2": "28",
-        "PS1": "Some rhombuses are rectangles",
-        "PS3": "4",
-        "PS4": "Activated → paid (-70%)",
-        "PS5": "O(n)",
-        "PS6": "1/9",
-        "PS7": "11.0",
-        "PS8": "Run the test forever",
-        "PS9": "4",
-        "PS10": "10:30",
-        "GRID": 0.8031075,
-        "CL2": "20",
-        "CL4": "NO",
-        "CL7": "60",
-        "BE1": 35,
-        "BE2": 30,
-        "BE3": 40,
-        "BE5": 35,
-        "BE6": 96
+        "AD1_fix": "def paginate(items, page, size):\n    # Validate inputs\n    if not isinstance(items, (list, tuple)) or page < 1 or size <= 0:\n        return []\n    \n    # 0-indexed slice calculation\n    start = (page - 1) * size\n    end = start + size\n    \n    # Check if start is beyond list bounds\n    if start >= len(items):\n        return []\n        \n    return list(items[start:end])"
       },
-      "submitted_at": "2026-09-08T08:25:13.830Z",
-      "tab_switches": 1,
-      "question_seed": 498133256,
-      "created_at": "2026-09-08T08:22:54.393Z"
+      "submitted_at": "2026-09-08T19:03:03.431Z",
+      "tab_switches": 2,
+      "question_seed": 944591117,
+      "created_at": "2026-09-08T19:00:32.473Z"
     },
     {
-      "id": "1e9492ee-1173-46f5-a6d8-8648ad8e5e24",
-      "student_id": "8efd5e03-75dc-4275-b651-859a2a1620d7",
-      "status": "submitted",
-      "started_at": "2026-09-08T08:28:50.539Z",
-      "expires_at": "2026-09-08T10:28:50.540Z",
+      "id": "25979a3f-d258-42f9-bada-a14fab1e2a3c",
+      "student_id": "u_31265a1b",
+      "status": "in_progress",
+      "started_at": "2026-09-08T19:09:17.898Z",
+      "expires_at": "2026-09-08T21:09:17.898Z",
       "duration_sec": 7200,
       "answers": {
         "EL1": "The migration was rolled back silently",
-        "EL2": "Disable them during night shifts",
-        "EL3": "The CDN cache had to be flushed",
-        "EL4": "Deploy on weekends only",
-        "EL5": "At the database storage layer",
-        "EL6": "The pool was enlarged beyond capacity",
-        "EL7": "To force users to retry",
-        "EL8": "Static connection strings; alerts disabled"
+        "EL2": "Post them to the release notes",
+        "EL3": "The database backup was corrupted",
+        "EL4": "Single-engineer ownership of releases",
+        "EL5": "In the client browser",
+        "EL8": "Fewer application pods; alerts at 90%",
+        "ER1": "Defect rates were identical across groups",
+        "ER3": "Writing code is now impossible",
+        "ER5": "Removing human review",
+        "ER6": "It was paired with tight, fast feedback loops alongside the assistant"
       },
-      "submitted_at": "2026-09-08T08:29:11.211Z",
+      "submitted_at": null,
       "tab_switches": 0,
-      "question_seed": 637052543,
-      "created_at": "2026-09-08T08:28:50.540Z"
+      "question_seed": 276988100,
+      "created_at": "2026-09-08T19:09:17.898Z"
     }
   ],
   "assessment_results": [
@@ -1390,7 +1367,7 @@
               "Speak for the full 60–90 seconds",
               "Structure answers: situation → action → result"
             ],
-            "summary": "Recording captured. In production, Whisper transcribes it and DeepSeek grades the transcript (heuristic score shown).",
+            "summary": "Recording captured. In production, Whisper transcribes it and CalibiAI grades the transcript (heuristic score shown).",
             "engine": "heuristic"
           },
           "AD1": {
@@ -1414,7 +1391,7 @@
               "Do not leave the function body empty; provide a complete working solution."
             ],
             "summary": "The submission is incomplete (empty body) and does not fix the bug or address edge cases, so it earns a low score.",
-            "engine": "deepseek"
+            "engine": "calibiai"
           }
         },
         "verifiable_hash": "sha256:152f231-07825c54",
@@ -1442,7 +1419,7 @@
             "Speak for the full 60–90 seconds",
             "Structure answers: situation → action → result"
           ],
-          "summary": "Recording captured. In production, Whisper transcribes it and DeepSeek grades the transcript (heuristic score shown).",
+          "summary": "Recording captured. In production, Whisper transcribes it and CalibiAI grades the transcript (heuristic score shown).",
           "engine": "heuristic"
         },
         "AD1": {
@@ -1466,7 +1443,7 @@
             "Do not leave the function body empty; provide a complete working solution."
           ],
           "summary": "The submission is incomplete (empty body) and does not fix the bug or address edge cases, so it earns a low score.",
-          "engine": "deepseek"
+          "engine": "calibiai"
         }
       },
       "created_at": "2026-09-06T19:15:37.007Z"
@@ -1556,7 +1533,7 @@
               "Add or run tests to verify behavior for page=1, page=0, negative page, size=0, and out-of-range pages."
             ],
             "summary": "The submission is identical to the original buggy code and does not attempt any fix, so it scores near zero.",
-            "engine": "deepseek"
+            "engine": "calibiai"
           },
           "PE1": {
             "score": 0,
@@ -1587,7 +1564,7 @@
               "Break down the task: reading in chunks, hashing composite key, tracking seen keys, writing unique rows to output."
             ],
             "summary": "The candidate's prompt is gibberish and completely fails to address the task, scoring near zero.",
-            "engine": "deepseek"
+            "engine": "calibiai"
           },
           "SP_speaking": {
             "score": 61,
@@ -1604,7 +1581,7 @@
               "Speak for the full 60–90 seconds",
               "Structure answers: situation → action → result"
             ],
-            "summary": "Recording captured. In production Whisper transcribes it and DeepSeek grades the transcript (heuristic score shown).",
+            "summary": "Recording captured. In production Whisper transcribes it and CalibiAI grades the transcript (heuristic score shown).",
             "engine": "heuristic"
           },
           "WRITING": {
@@ -1645,7 +1622,7 @@
             "Add or run tests to verify behavior for page=1, page=0, negative page, size=0, and out-of-range pages."
           ],
           "summary": "The submission is identical to the original buggy code and does not attempt any fix, so it scores near zero.",
-          "engine": "deepseek"
+          "engine": "calibiai"
         },
         "PE1": {
           "score": 0,
@@ -1676,7 +1653,7 @@
             "Break down the task: reading in chunks, hashing composite key, tracking seen keys, writing unique rows to output."
           ],
           "summary": "The candidate's prompt is gibberish and completely fails to address the task, scoring near zero.",
-          "engine": "deepseek"
+          "engine": "calibiai"
         },
         "SP_speaking": {
           "score": 61,
@@ -1693,7 +1670,7 @@
             "Speak for the full 60–90 seconds",
             "Structure answers: situation → action → result"
           ],
-          "summary": "Recording captured. In production Whisper transcribes it and DeepSeek grades the transcript (heuristic score shown).",
+          "summary": "Recording captured. In production Whisper transcribes it and CalibiAI grades the transcript (heuristic score shown).",
           "engine": "heuristic"
         },
         "WRITING": {
@@ -2039,7 +2016,7 @@
               "If items is not a list but a generator, slicing would fail; consider converting to list or using itertools.islice for generality."
             ],
             "summary": "The fix correctly addresses the core pagination bug and handles the specified edge cases, with minor room for improvement in input handling and testing.",
-            "engine": "deepseek"
+            "engine": "calibiai"
           },
           "AF1": {
             "score": 88,
@@ -2064,7 +2041,7 @@
               "Add tests for boundary conditions (exact window edge, concurrent requests)."
             ],
             "summary": "A solid, functional implementation that meets the spec with correct middleware wiring and retry-after handling, though it could improve memory cleanup for inactive users and handle degenerate maxRequests values.",
-            "engine": "deepseek"
+            "engine": "calibiai"
           }
         },
         "verifiable_hash": "sha256:454e58c-07d26997",
@@ -2099,7 +2076,7 @@
             "If items is not a list but a generator, slicing would fail; consider converting to list or using itertools.islice for generality."
           ],
           "summary": "The fix correctly addresses the core pagination bug and handles the specified edge cases, with minor room for improvement in input handling and testing.",
-          "engine": "deepseek"
+          "engine": "calibiai"
         },
         "AF1": {
           "score": 88,
@@ -2124,7 +2101,7 @@
             "Add tests for boundary conditions (exact window edge, concurrent requests)."
           ],
           "summary": "A solid, functional implementation that meets the spec with correct middleware wiring and retry-after handling, though it could improve memory cleanup for inactive users and handle degenerate maxRequests values.",
-          "engine": "deepseek"
+          "engine": "calibiai"
         }
       },
       "created_at": "2026-09-07T18:34:37.287Z"
@@ -2370,91 +2347,11 @@
       "created_at": "2026-09-07T21:18:41.219Z"
     },
     {
-      "id": "res_29fb91c1",
-      "session_id": "e7e9abd1-1013-43c0-975e-4bea07c3c4e6",
-      "student_id": "e385aa7b-05f8-4c54-9174-edd5f04abf06",
+      "id": "res_cfbe5828",
+      "session_id": "3afceecf-7104-4321-b548-148627a4a5f7",
+      "student_id": "u_e07a2569",
       "scores": {
-        "session_id": "e7e9abd1-1013-43c0-975e-4bea07c3c4e6",
-        "english": {
-          "listening": 6,
-          "speaking": 0,
-          "reading": 17,
-          "writing": 0,
-          "total": 23,
-          "max": 200
-        },
-        "problem_solving": 60,
-        "ai_debugging": 0,
-        "ai_feature": 0,
-        "prompt_engineering": 0,
-        "cognitive": {
-          "grid": 25,
-          "logical": 0,
-          "cognitive_score": 25,
-          "behavioral_total": 46,
-          "total": 71,
-          "max": 200,
-          "behavioral": {
-            "teamwork": 35,
-            "accountability": 30,
-            "adaptability": 40,
-            "responsible_ai": 40,
-            "decision_making": 35,
-            "learning_mindset": 96
-          },
-          "traitLabels": {
-            "teamwork": "Teamwork",
-            "accountability": "Accountability",
-            "adaptability": "Adaptability",
-            "responsible_ai": "Responsible AI",
-            "decision_making": "Decision Making",
-            "learning_mindset": "Learning Mindset"
-          }
-        },
-        "detail": {
-          "listeningCorrect": 1,
-          "listeningTotal": 8,
-          "readingCorrect": 2,
-          "readingTotal": 6,
-          "problemCorrect": 3,
-          "problemTotal": 10,
-          "logicalCorrect": 0,
-          "logicalTotal": 7,
-          "debugPer": {
-            "AD1": 0,
-            "AD2": 0,
-            "AD3": 0
-          },
-          "promptPer": {
-            "PE1": 0,
-            "PE2": 0,
-            "PE3": 0
-          },
-          "featureScore100": 0,
-          "speakingCount": 0
-        },
-        "total": 154,
-        "grade": "D",
-        "percentile": 44,
-        "ai_results": {},
-        "verifiable_hash": "sha256:4f41d7a-0801f0b4",
-        "tab_switches": 1,
-        "auto_submitted": false,
-        "submitted_at": "2026-09-08T08:25:13.290Z"
-      },
-      "total": 154,
-      "grade": "D",
-      "percentile": 44,
-      "verifiable_hash": "sha256:4f41d7a-0801f0b4",
-      "ai_feedback": {},
-      "created_at": "2026-09-08T08:25:13.829Z"
-    },
-    {
-      "id": "res_cdf07df2",
-      "session_id": "1e9492ee-1173-46f5-a6d8-8648ad8e5e24",
-      "student_id": "8efd5e03-75dc-4275-b651-859a2a1620d7",
-      "scores": {
-        "session_id": "1e9492ee-1173-46f5-a6d8-8648ad8e5e24",
+        "session_id": "3afceecf-7104-4321-b548-148627a4a5f7",
         "english": {
           "listening": 0,
           "speaking": 0,
@@ -2464,7 +2361,7 @@
           "max": 200
         },
         "problem_solving": 0,
-        "ai_debugging": 0,
+        "ai_debugging": 39,
         "ai_feature": 0,
         "prompt_engineering": 0,
         "cognitive": {
@@ -2501,7 +2398,7 @@
           "logicalCorrect": 0,
           "logicalTotal": 7,
           "debugPer": {
-            "AD1": 0,
+            "AD1": 78,
             "AD2": 0,
             "AD3": 0
           },
@@ -2513,21 +2410,61 @@
           "featureScore100": 0,
           "speakingCount": 0
         },
-        "total": 40,
+        "total": 79,
         "grade": "D",
-        "percentile": 37,
-        "ai_results": {},
-        "verifiable_hash": "sha256:49d7ea8-08022aa9",
-        "tab_switches": 0,
-        "auto_submitted": false,
-        "submitted_at": "2026-09-08T08:29:10.678Z"
+        "percentile": 40,
+        "ai_results": {
+          "AD1": {
+            "score": 78,
+            "rubric": {
+              "correctness": 88,
+              "root_cause_understanding": 82,
+              "edge_cases": 86,
+              "code_quality": 85,
+              "test_awareness": 48
+            },
+            "strengths": [
+              "Core bug appears fixed"
+            ],
+            "improvements": [
+              "Add explicit handling for invalid inputs and boundary cases",
+              "Include tests proving the fix"
+            ],
+            "summary": "Rule-based static heuristic (connect CalibiAI for semantic grading of the fix).",
+            "engine": "heuristic"
+          }
+        },
+        "verifiable_hash": "sha256:67c9f-08266f52",
+        "tab_switches": 2,
+        "auto_submitted": true,
+        "submitted_at": "2026-09-08T19:03:00.641Z"
       },
-      "total": 40,
+      "total": 79,
       "grade": "D",
-      "percentile": 37,
-      "verifiable_hash": "sha256:49d7ea8-08022aa9",
-      "ai_feedback": {},
-      "created_at": "2026-09-08T08:29:11.210Z"
+      "percentile": 40,
+      "verifiable_hash": "sha256:67c9f-08266f52",
+      "ai_feedback": {
+        "AD1": {
+          "score": 78,
+          "rubric": {
+            "correctness": 88,
+            "root_cause_understanding": 82,
+            "edge_cases": 86,
+            "code_quality": 85,
+            "test_awareness": 48
+          },
+          "strengths": [
+            "Core bug appears fixed"
+          ],
+          "improvements": [
+            "Add explicit handling for invalid inputs and boundary cases",
+            "Include tests proving the fix"
+          ],
+          "summary": "Rule-based static heuristic (connect CalibiAI for semantic grading of the fix).",
+          "engine": "heuristic"
+        }
+      },
+      "created_at": "2026-09-08T19:03:03.429Z"
     }
   ],
   "resume_analyses": [
@@ -2608,7 +2545,7 @@
       "file_name": "23000486910000999C11.pdf",
       "created_at": "2026-09-06T13:10:30.505Z",
       "resume_score": 5,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": false,
       "detected_name": "Sub-Regional Office",
       "flags": [
@@ -2672,7 +2609,7 @@
       "file_name": "Prajwal Gulhane Re.pdf",
       "created_at": "2026-09-06T14:44:19.437Z",
       "resume_score": 78,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": true,
       "detected_name": "Prajwal Gulhane",
       "flags": [
@@ -2781,7 +2718,7 @@
       "file_name": "Prajwal Gulhane Re.pdf",
       "created_at": "2026-09-06T16:24:41.737Z",
       "resume_score": 78,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": true,
       "detected_name": "Prajwal Gulhane",
       "flags": [
@@ -2882,7 +2819,7 @@
       "file_name": "23000486910000999C11.pdf",
       "created_at": "2026-09-06T17:20:49.004Z",
       "resume_score": 5,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": false,
       "detected_name": "Vinod Gulhane",
       "flags": [
@@ -2948,7 +2885,7 @@
       "file_name": "Prajwal Gulhane Re.pdf",
       "created_at": "2026-09-06T17:21:14.566Z",
       "resume_score": 78,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": true,
       "detected_name": "Prajwal Gulhane",
       "flags": [
@@ -3041,7 +2978,7 @@
       "file_name": "CalibiAI_SSPU_Kiwale_MoU.pdf",
       "created_at": "2026-09-06T19:07:49.134Z",
       "resume_score": 0,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": false,
       "detected_name": "MEMORANDUM OF UNDERSTANDING",
       "flags": [
@@ -3093,7 +3030,7 @@
       "file_name": "Prajwal Gulhane Re.pdf",
       "created_at": "2026-09-06T19:08:16.582Z",
       "resume_score": 78,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": false,
       "detected_name": "Prajwal Gulhane",
       "flags": [
@@ -3198,7 +3135,7 @@
       "file_name": "Prajwal Gulhane Re.pdf",
       "created_at": "2026-09-06T21:25:55.891Z",
       "resume_score": 78,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": false,
       "detected_name": "Prajwal Gulhane",
       "flags": [
@@ -3295,7 +3232,7 @@
       "file_name": "Prajwal Gulhane Re.pdf",
       "created_at": "2026-09-07T07:43:32.037Z",
       "resume_score": 78,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": false,
       "detected_name": "Prajwal Gulhane",
       "flags": [
@@ -3391,7 +3328,7 @@
       "file_name": "Prajwal Gulhane Re.pdf",
       "created_at": "2026-09-07T08:09:54.581Z",
       "resume_score": 78,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": false,
       "detected_name": "Prajwal Gulhane",
       "flags": [
@@ -3488,7 +3425,7 @@
       "file_name": "Prajwal Gulhane Re.pdf",
       "created_at": "2026-09-07T15:52:26.689Z",
       "resume_score": 78,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": true,
       "detected_name": "Prajwal Gulhane",
       "flags": [
@@ -3585,7 +3522,7 @@
       "file_name": "Prajwal Gulhane Re.pdf",
       "created_at": "2026-09-07T16:20:04.128Z",
       "resume_score": 78,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": true,
       "detected_name": "Prajwal Gulhane",
       "flags": [
@@ -3919,7 +3856,7 @@
       "file_name": "CalibiAI_Report_77c9d00f-a788-471e-9a40-1fd919dd2c26 (1).pdf",
       "created_at": "2026-09-07T18:04:45.144Z",
       "resume_score": 12,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": false,
       "detected_name": "Prajwalen100",
       "flags": [
@@ -3979,7 +3916,7 @@
       "file_name": "Prajwal Gulhane Re.pdf",
       "created_at": "2026-09-07T20:01:17.280Z",
       "resume_score": 82,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": true,
       "detected_name": "Prajwal Gulhane",
       "flags": [
@@ -4072,7 +4009,7 @@
       "file_name": "Prajwal Gulhane Re.pdf",
       "created_at": "2026-09-07T20:44:23.293Z",
       "resume_score": 78,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": true,
       "detected_name": "Prajwal Gulhane",
       "flags": [
@@ -4169,7 +4106,7 @@
       "file_name": "CalibiAI_SSPU_Kiwale_MoU.pdf",
       "created_at": "2026-09-07T21:10:30.517Z",
       "resume_score": 5,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": false,
       "detected_name": "MEMORANDUM OF UNDERSTANDING",
       "flags": [
@@ -4223,7 +4160,7 @@
       "file_name": "Prajwal Gulhane Re.pdf",
       "created_at": "2026-09-07T21:17:13.056Z",
       "resume_score": 78,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": true,
       "detected_name": "Prajwal Gulhane",
       "flags": [
@@ -4317,7 +4254,7 @@
       "file_name": "Prajwal Gulhane Re.pdf",
       "created_at": "2026-09-08T06:25:07.785Z",
       "resume_score": 82,
-      "engine": "deepseek",
+      "engine": "calibiai",
       "name_match": true,
       "detected_name": "Prajwal Gulhane",
       "flags": [
@@ -4409,53 +4346,49 @@
       "word_count": 473
     },
     {
-      "id": "res_1788855641891",
-      "student_id": "e385aa7b-05f8-4c54-9174-edd5f04abf06",
+      "id": "res_1788894002061",
+      "student_id": "u_e07a2569",
       "storage_key": "",
       "file_name": "Prajwal Gulhane Re.pdf",
-      "created_at": "2026-09-08T08:20:41.891Z",
-      "resume_score": 82,
-      "engine": "deepseek",
+      "created_at": "2026-09-08T19:00:02.061Z",
+      "resume_score": 100,
+      "engine": "heuristic",
       "name_match": true,
       "detected_name": "Prajwal Gulhane",
       "flags": [
         {
           "level": "ok",
-          "text": "Strong quantified achievements and clear structure."
-        },
-        {
-          "level": "warn",
-          "text": "Missing GitHub or live project URLs for developer roles."
-        },
-        {
-          "level": "warn",
-          "text": "Projects lack quantified outcomes and measurable impact."
+          "text": "Candidate identity verified: Name matches profile (Prajwal Gulhane)."
         }
       ],
-      "professionalism": 88,
-      "summary": "Prajwal is a Java Backend Developer with 1.5+ years at Cognizant, demonstrating solid microservices experience and strong quantified achievements in payment integration and API performance. His resume is well-structured and ATS-friendly, with impressive AWS certifications. However, the projects section is generic and lacks measurable outcomes, and there are no links to GitHub or live demos, which are critical for a developer role. Overall, he is a competitive candidate but needs to strengthen his project descriptions and provide verifiable proof of work to reach the top tier.",
+      "professionalism": 95,
+      "summary": "Prajwal Gulhane presents a 473-word resume. Includes 5 quantified metrics demonstrating engineering impact. Missing code/GitHub repository links for verification.",
       "experience": {
-        "years": 1.5,
+        "years": 6,
         "entries": [
-          "Software Engineer – Cognizant Technology Solutions (Dec 2023 – Present)"
+          "Cognizant Technology Solutions Dec 2023 – Present"
         ]
       },
       "education": [
-        "Bachelor of Engineering in Computer Science – Prof. Ram Meghe Institute of Technology and Research (2019-2023)"
+        "B.Tech Electrical"
       ],
       "skills": [
-        "Java",
-        "Spring Boot",
-        "Spring Security",
-        "Spring Data JPA",
-        "Hibernate",
-        "Apache Kafka",
-        "PostgreSQL",
-        "MongoDB",
-        "Neo4j",
-        "AWS (EC2, S3, Lambda, RDS)",
-        "Docker",
-        "Kubernetes"
+        "python",
+        "java",
+        "javascript",
+        "react",
+        "sql",
+        "mysql",
+        "postgres",
+        "mongodb",
+        "docker",
+        "kubernetes",
+        "aws",
+        "git",
+        "html",
+        "css",
+        "spring",
+        "linux"
       ],
       "contact": {
         "email": "prajwalen100@gmail.com",
@@ -4464,38 +4397,32 @@
       },
       "feedback": {
         "strengths": [
-          "Quantified achievements in work experience: reduced invoice processing failures by 40%, improved system reliability, handled 10k+ daily transactions with 99.5% uptime.",
-          "Strong technical stack including Java, Spring Boot, Kafka, AWS, and multiple databases.",
-          "Relevant AWS certifications (Cloud Practitioner, Solutions Architect Associate, AI Practitioner) demonstrate cloud proficiency.",
-          "Clear and concise professional summary highlighting backend development and microservices expertise."
+          "Quantified outcomes with 5 measurable engineering metric(s)",
+          "Solid technical keywords (python, java, javascript, react, sql)",
+          "Structured with both Projects and Experience sections"
         ],
         "gaps": [
-          "Missing GitHub or live project URLs, which are essential for verifying technical skills.",
-          "Projects section lacks quantified outcomes and measurable impact; descriptions are task-oriented rather than achievement-oriented.",
-          "No mention of soft skills or leadership experiences, which may be relevant for senior roles.",
-          "Resume does not include any metrics for the projects, such as user counts, performance improvements, or scale."
+          "No GitHub link to prove real code competence"
         ],
         "suggestions": [
-          "Add links to GitHub repositories and live demos for each project to provide verifiable proof of work.",
-          "Rewrite project bullet points using the XYZ formula: 'Accomplished [X] as measured by [Y], by doing [Z].' For example, 'Reduced URL shortening latency by 30% (measured by API response time) by implementing caching with Redis and optimizing database queries.'",
-          "Quantify the impact of your projects: mention number of users, transactions, or performance improvements.",
-          "Include any open-source contributions or personal projects that demonstrate initiative and depth.",
-          "Consider adding a 'Technical Achievements' section to highlight any awards, hackathons, or significant contributions."
+          "Rewrite every bullet point using Google’s XYZ formula: \"Accomplished [X], as measured by [Y], by doing [Z]\".",
+          "Add your GitHub profile with pinned repositories demonstrating clean commits and test suites.",
+          "Eliminate generic buzzwords and focus strictly on architecture, libraries, and measurable results."
         ]
       },
       "parsed": {
         "name": "Prajwal Gulhane",
-        "experience_years": 1.5,
+        "experience_years": 6,
         "projects": 2,
         "skills": [
-          "Java",
-          "Spring Boot",
-          "Spring Security",
-          "Spring Data JPA",
-          "Hibernate",
-          "Apache Kafka",
-          "PostgreSQL",
-          "MongoDB"
+          "python",
+          "java",
+          "javascript",
+          "react",
+          "sql",
+          "mysql",
+          "postgres",
+          "mongodb"
         ]
       },
       "word_count": 473

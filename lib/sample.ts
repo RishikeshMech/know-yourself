@@ -51,7 +51,7 @@ export const SAMPLE_SCORES = {
   ai_results: {
     WRITING: {
       score: 86,
-      engine: 'deepseek',
+      engine: 'calibiai',
       summary: 'Clear professional structure with a strong opening, specific client context and a well-scoped call to action.',
       rubric: { clarity: 88, structure: 90, grammar: 84, tone: 86, completeness: 82 },
       strengths: ['Strong client-first opening', 'Concise, actionable recommendations'],
@@ -59,7 +59,7 @@ export const SAMPLE_SCORES = {
     },
     SP_speaking: {
       score: 82,
-      engine: 'deepseek',
+      engine: 'calibiai',
       summary: 'Confident delivery with good pacing; a few long pauses and filler words reduce fluency slightly.',
       rubric: { fluency: 80, pronunciation: 86, grammar: 82, confidence: 84, relevance: 90 },
       strengths: ['Clear articulation', 'Relevant, well-structured answer'],
@@ -67,7 +67,7 @@ export const SAMPLE_SCORES = {
     },
     AF1: {
       score: 84,
-      engine: 'deepseek',
+      engine: 'calibiai',
       summary: 'Produces correctly ordered middleware with sensible defaults and a clean retry/backoff approach.',
       rubric: { correctness: 88, design: 82, edge_cases: 80, testing: 78 },
       strengths: ['Handles the rate-limit window correctly', 'Readable, well-commented code'],
@@ -75,7 +75,7 @@ export const SAMPLE_SCORES = {
     },
     PE1: {
       score: 88,
-      engine: 'deepseek',
+      engine: 'calibiai',
       summary: 'Excellent prompt: explicit role, constraints, output format and evaluation criteria all present.',
       rubric: { role: 90, context: 85, constraints: 88, format: 92, specificity: 86 },
       strengths: ['Defines a clear output schema', 'Includes success criteria for self-checking'],

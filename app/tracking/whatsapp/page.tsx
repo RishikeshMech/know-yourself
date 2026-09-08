@@ -18,7 +18,7 @@ function Inner(){
         body: JSON.stringify({ user_id: user?.id, action: 'join_whatsapp', completed: true }),
       })
     } catch { /* demo mode */ }
-    setTimeout(()=> router.push('/tracking/linkedin'), 450)
+    setTimeout(()=> router.replace('/tracking/linkedin'), 450)
   }
   return (
     <div>
@@ -42,7 +42,7 @@ function Inner(){
             <a href={WHATSAPP_COMMUNITY_URL} target="_blank" rel="noreferrer" onClick={complete} className="btn-primary !bg-none bg-emerald-500 !shadow-emerald-300/50 hover:bg-emerald-600 inline-flex items-center gap-2"><WhatsAppGlyph className="h-4 w-4" /> Join WhatsApp →</a>
             <button onClick={complete} className="btn-soft">I've joined ✓</button>
           </div>
-          <button onClick={()=>router.push('/tracking/linkedin')} className="mt-4 text-xs font-semibold text-slate-400 hover:text-slate-600">Skip for now</button>
+          <button onClick={()=>router.replace('/tracking/linkedin')} className="mt-4 text-xs font-semibold text-slate-400 hover:text-slate-600">Skip for now</button>
           {tracking.whatsapp && <div className="mt-4 text-xs text-emerald-600 font-semibold animate-pop">✓ Done</div>}
         </div>
       </main>

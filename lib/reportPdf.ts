@@ -239,15 +239,21 @@ export async function generateReportPdf({ scores, profile = {}, user = {}, sampl
     doc.setFontSize(10.5)
     doc.setTextColor(...INK)
     doc.text(text, ML + 4, y)
+    // Measure the title at its own size *before* switching to the subtitle
+    // font — the subtitle was previously positioned using a title width
+    // measured at 6.8pt, which made it collide with the title.
+    const titleW = doc.getTextWidth(text)
+    let subW = 0
     if (sub) {
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(6.8)
       doc.setTextColor(...MUT)
-      doc.text(sub, ML + 4 + doc.getTextWidth(text) + 4, y - 0.6)
+      subW = doc.getTextWidth(sub)
+      doc.text(sub, ML + 4 + titleW + 4, y - 0.6)
     }
     doc.setDrawColor(...LINE)
     doc.setLineWidth(0.3)
-    const endX = ML + 4 + (sub ? doc.getTextWidth(text) + 4 + doc.getTextWidth(sub) : doc.getTextWidth(text)) + 3
+    const endX = ML + 4 + titleW + (sub ? 4 + subW : 0) + 3
     doc.line(endX, y - 1.1, 210 - MR, y - 1.1)
     return y + 2.6
   }
@@ -281,11 +287,19 @@ export async function generateReportPdf({ scores, profile = {}, user = {}, sampl
     doc.setTextColor(...color)
     doc.text(String(text).toUpperCase(), x, y)
   }
-  function valueText(text: string, x: number, y: number, color: RGB = INK, size = 9, style: 'bold' | 'normal' = 'bold') {
+  function valueText(
+    text: string,
+    x: number,
+    y: number,
+    color: RGB = INK,
+    size = 9,
+    style: 'bold' | 'normal' = 'bold',
+    align: 'left' | 'right' | 'center' = 'left',
+  ) {
     doc.setFont('helvetica', style)
     doc.setFontSize(size)
     doc.setTextColor(...color)
-    doc.text(String(text), x, y)
+    doc.text(String(text), x, y, { align })
   }
 
   header()
@@ -307,9 +321,12 @@ export async function generateReportPdf({ scores, profile = {}, user = {}, sampl
   doc.setFontSize(44)
   doc.setTextColor(...WHITE)
   doc.text(String(total), ML + 11, heroY + 31)
+  // Measure the big number *before* shrinking the font — otherwise the
+  // "/ 1000" is sized/positioned wrong and lands on top of the score.
+  const totalW = doc.getTextWidth(String(total))
   doc.setFontSize(13)
   doc.setTextColor(...INDIGO_TXT)
-  doc.text('/ 1000', ML + 11 + doc.getTextWidth(String(total)) + 3, heroY + 31)
+  doc.text('/ 1000', ML + 11 + totalW + 3, heroY + 31)
   // candidate details under the score
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(11.5)
@@ -353,7 +370,7 @@ export async function generateReportPdf({ scores, profile = {}, user = {}, sampl
   doc.setFontSize(6.8)
   doc.setTextColor(...SLATE)
   doc.text(`Session: ${sessionId.slice(0, 28)}`, ML + 4, y + 5.3)
-  const assessedOn = String(scores?.submitted_at || dateLine).slice(0, 10)
+  const assessedOn = scores?.submitted_at ? String(scores.submitted_at).slice(0, 10) : dateLine
   doc.text(`Assessed on: ${assessedOn}`, ML + 66, y + 5.3)
   if (hash) {
     doc.setTextColor(...INDIGO)
@@ -386,7 +403,7 @@ export async function generateReportPdf({ scores, profile = {}, user = {}, sampl
   for (const [, value] of profileRows) {
     maxLines = Math.max(maxLines, doc.splitTextToSize(String(value), halfW - 2).length)
   }
-  const cellH = Math.min(12, Math.max(6.4, 5.2 + (maxLines - 1) * 3.6))
+  const cellH = Math.min(13, Math.max(7.2, 6.0 + (maxLines - 1) * 3.8))
   const cardH = 8 + Math.ceil(profileRows.length / 2) * cellH
   doc.setFillColor(250, 250, 252)
   doc.setDrawColor(...LINE)
@@ -399,7 +416,7 @@ export async function generateReportPdf({ scores, profile = {}, user = {}, sampl
     const cx = col === 0 ? xL : xR
     labelText(label, cx, cy)
     const lines = doc.splitTextToSize(String(value), halfW - 2).slice(0, 2)
-    lines.forEach((line: string, li: number) => valueText(line, cx, cy + 3.4 + li * 3.6, INK, 8.6))
+    lines.forEach((line: string, li: number) => valueText(line, cx, cy + 3.8 + li * 3.8, INK, 8.6))
   })
   y = cardY + cardH + 8
 
@@ -432,7 +449,7 @@ export async function generateReportPdf({ scores, profile = {}, user = {}, sampl
     y = fit(y, 11.5)
     valueText(s.label, ML, y, INK, 9.2)
     const scoreTxt = `${s.score} / ${s.max}` + (s.max ? `    ·   ${s.pct}%` : '')
-    valueText(scoreTxt, 210 - MR, y, s.max ? pctColor(s.pct) : SLATE, 8.4)
+    valueText(scoreTxt, 210 - MR, y, s.max ? pctColor(s.pct) : SLATE, 8.4, 'bold', 'right')
     bar(ML, y + 2.2, CW, 2.6, s.pct, s.max ? pctColor(s.pct) : INDIGO)
     if (s.note) {
       doc.setFont('helvetica', 'normal')
@@ -536,7 +553,7 @@ export async function generateReportPdf({ scores, profile = {}, user = {}, sampl
       const score = num(r?.score)
       const note = String(r?.summary || '')
       const noteLines = note ? doc.splitTextToSize(note, CW - 14).slice(0, 3) : []
-      const cardH = 10.5 + noteLines.length * 3.4 + (noteLines.length ? 2 : 0)
+      const cardH = 13 + noteLines.length * 3.4 + (noteLines.length ? 1.5 : 0)
       y = fit(y, cardH)
       doc.setFillColor(...LIGHT)
       doc.roundedRect(ML, y, CW, cardH, 4, 4, 'F')
@@ -550,7 +567,9 @@ export async function generateReportPdf({ scores, profile = {}, user = {}, sampl
       doc.setFontSize(6.6)
       doc.setTextColor(...WHITE)
       doc.text(`${score}/100`, 210 - MR - 12, y + 6, { align: 'center' })
-      let ny = y + 6.8
+      // Start the summary below the task label (8.6pt at y+5) with a real gap,
+      // so the first line no longer runs into the label text.
+      let ny = y + 9.4
       noteLines.forEach((line: string) => {
         doc.setFont('helvetica', 'normal')
         doc.setFontSize(6.6)

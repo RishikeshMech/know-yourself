@@ -44,9 +44,9 @@ Copy `.env.example` → `.env.local`:
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Auth + Postgres (sessions, profiles, results) + Storage (resumes, speaking audio). Run `supabase/schema.sql` in the Supabase SQL editor first. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Optional, server-side only. Lets the API routes create confirmed users and mirror onboarding (mobile, gender, degree…), resume analyses and tracking events into Postgres bypassing RLS. Never expose it client-side. |
-| `DEEPSEEK_API_KEY` | DeepSeek grading of writing / speaking transcript / debugging / feature / prompts. **Server-side only** (`/api/ai/evaluate`); falls back to a rule engine when absent. |
+| `CALIBIAI_API_KEY` | CalibiAI AI grading of writing / speaking transcript / debugging / feature / prompts. **Server-side only** (`/api/ai/evaluate`); falls back to a rule engine when absent. |
 
-When Supabase is configured: email + password live in **Supabase Auth** (`auth.users`), a `profiles` row is auto-created on sign-up and every onboarding field (mobile number, PRN, gender, degree, college, CGPA, skills, links), resume analysis and WhatsApp/LinkedIn tracking event is mirrored to Postgres by the API routes (service-role writes when `SUPABASE_SERVICE_ROLE_KEY` is set). The browser session is handed to supabase-js after login so RLS and Storage uploads work client-side. **Each student gets their own isolated assessment session** (server-side row, one active session per student, RLS-protected), answers + results persist to Postgres and recordings/resumes go to Storage buckets. When DeepSeek is configured, every subjective section shows an "✨ Evaluate with AI" button that returns a rubric score, strengths and improvement notes (otherwise a deterministic heuristic runs).
+When Supabase is configured: email + password live in **Supabase Auth** (`auth.users`), a `profiles` row is auto-created on sign-up and every onboarding field (mobile number, PRN, gender, degree, college, CGPA, skills, links), resume analysis and WhatsApp/LinkedIn tracking event is mirrored to Postgres by the API routes (service-role writes when `SUPABASE_SERVICE_ROLE_KEY` is set). The browser session is handed to supabase-js after login so RLS and Storage uploads work client-side. **Each student gets their own isolated assessment session** (server-side row, one active session per student, RLS-protected), answers + results persist to Postgres and recordings/resumes go to Storage buckets. When the CalibiAI grader is configured, every subjective section shows an "✨ Evaluate with AI" button that returns a rubric score, strengths and improvement notes (otherwise a deterministic heuristic runs).
 
 ### Google sign-in & custom domains
 
@@ -67,7 +67,7 @@ Add one Redirect URL entry per origin the app is served from. A `redirectTo` tha
 
 - All questions live in **`data/questions.json`** (the database seed source) — medium-to-hard, organized in the 6 stages / suggested allocation 15+20+20+25+15+25 = 120 min.
 - **Listening** uses real, playable audio (`public/audio/`) with a **2-play limit** per clip.
-- **Speaking** records the microphone (MediaRecorder) and uploads to Supabase Storage; production pipeline is recording → Whisper transcript → DeepSeek rubric.
+- **Speaking** records the microphone (MediaRecorder) and uploads to Supabase Storage; production pipeline is recording → Whisper transcript → CalibiAI rubric.
 - **MCQ options are shuffled per session**: every session gets a random `question_seed`; option order is derived deterministically from that seed (stable for the student, different across students, re-render safe). Answers are stored as the option *text*, so shuffling never affects scoring.
 
 ---

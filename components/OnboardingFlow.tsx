@@ -2,9 +2,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { ChevronLeft } from 'lucide-react'
 import { Navbar } from '@/components/Navbar'
 import { Stepper } from '@/components/Stepper'
 import { CollegeCombobox } from '@/components/CollegeCombobox'
+import { SearchableSelect } from '@/components/SearchableSelect'
+import { SkillPicker } from '@/components/SkillPicker'
 import { useStore } from '@/lib/store'
 import { normalizeOnboardingForm, type OnboardingForm as Form } from '@/lib/onboardingForm'
 import {
@@ -409,10 +412,12 @@ export function OnboardingFlow({ variant = 'onboarding' }: { variant?: 'onboardi
     }
     setSaved(true)
     // First-time onboarding continues to resume upload; the edit form returns
-    // to the (real) profile page.
+    // to the (real) profile page. Onboarding is a one-time step, so `replace`
+    // (not `push`) keeps it out of the browser history — otherwise the Back
+    // button from the dashboard walks back through the whole onboarding flow.
     setTimeout(() => {
-      if (variant === 'edit') router.push('/profile')
-      else router.push('/resume')
+      if (variant === 'edit') router.replace('/profile')
+      else router.replace('/resume')
     }, 900)
   }
 
@@ -569,7 +574,7 @@ export function OnboardingFlow({ variant = 'onboarding' }: { variant?: 'onboardi
                       label="Mobile number"
                       htmlFor="phone"
                       error={err('phone')}
-                      hint={`Exactly ${PHONE_DIGITS} digits — digits only`}
+                      hint={`Use your correct number — it will be verified against your resume (ATS). Exactly ${PHONE_DIGITS} digits.`}
                     >
                       <PhoneInput id="phone" value={form.phone} invalid={!!err('phone')} onChange={(v) => set('phone', v)} />
                     </Field>
@@ -597,8 +602,8 @@ export function OnboardingFlow({ variant = 'onboarding' }: { variant?: 'onboardi
 
                 {step === 2 && (
                   <div className="grid gap-x-5 sm:grid-cols-2">
-                    <Field label="Degree" htmlFor="degree" error={err('degree')} hint="Pick your programme">
-                      <Dropdown id="degree" options={DEGREE_OPTIONS} placeholder="Select degree" ariaLabel="Degree" value={form.degree} invalid={!!err('degree')} onChange={(v) => set('degree', v)} />
+                    <Field label="Degree" htmlFor="degree" error={err('degree')} hint="Search and pick your programme">
+                      <SearchableSelect id="degree" options={DEGREE_OPTIONS} placeholder="Search degree…" ariaLabel="Degree" value={form.degree} invalid={!!err('degree')} onChange={(v) => set('degree', v)} />
                     </Field>
                     <Field
                       label="College / University"
@@ -655,14 +660,8 @@ export function OnboardingFlow({ variant = 'onboarding' }: { variant?: 'onboardi
 
                 {step === 3 && (
                   <div className="grid gap-x-5 sm:grid-cols-2">
-                    <Field label="Skills" htmlFor="skills" className="sm:col-span-2" hint="Comma separated — these seed your skill report">
-                      <input
-                        id="skills"
-                        value={form.skills}
-                        onChange={(e) => set('skills', e.target.value)}
-                        placeholder="Python, React, SQL"
-                        className="field"
-                      />
+                    <Field label="Skills" htmlFor="skills" className="sm:col-span-2" hint="Tap trending skills to add them, or type your own and press Enter">
+                      <SkillPicker id="skills" value={form.skills} onChange={(v) => set('skills', v)} />
                     </Field>
                     <Field label="LinkedIn URL" htmlFor="linkedin_url" error={err('linkedin_url')} hint="Optional">
                       <input
@@ -721,9 +720,10 @@ export function OnboardingFlow({ variant = 'onboarding' }: { variant?: 'onboardi
                   type="button"
                   onClick={goBack}
                   disabled={step === 1 || busy}
-                  className="btn-soft w-full sm:w-auto disabled:opacity-40"
+                  className="group inline-flex w-full items-center justify-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-semibold text-slate-600 transition duration-200 hover:bg-white hover:text-slate-900 hover:shadow-md hover:shadow-slate-200/60 active:scale-[.98] disabled:pointer-events-none disabled:opacity-40 sm:w-auto"
                 >
-                  ← Back
+                  <ChevronLeft className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" aria-hidden />
+                  Back
                 </button>
 
                 <div className="flex w-full items-center gap-3 sm:w-auto">
