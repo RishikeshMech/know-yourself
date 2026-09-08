@@ -20,6 +20,7 @@ import { ChevronLeft } from 'lucide-react'
 import { Navbar } from '@/components/Navbar'
 import { CollegeCombobox } from '@/components/CollegeCombobox'
 import { SearchableSelect } from '@/components/SearchableSelect'
+import { SkillPicker } from '@/components/SkillPicker'
 import { useStore } from '@/lib/store'
 import { normalizeOnboardingForm, type OnboardingForm as Form } from '@/lib/onboardingForm'
 import {
@@ -301,8 +302,8 @@ export default function EditProfilePage() {
               <span aria-hidden>🔗</span> Your presence
             </h2>
             <div className="mt-3 grid gap-x-5 sm:grid-cols-2">
-              <Field label="Skills" htmlFor="skills" className="sm:col-span-2" hint="Comma separated — these seed your skill report">
-                <input id="skills" value={form.skills} onChange={(e) => set('skills', e.target.value)} placeholder="Python, React, SQL" className="field" />
+              <Field label="Skills" htmlFor="skills" className="sm:col-span-2" hint="Tap trending skills to add them, or type your own and press Enter">
+                <SkillPicker id="skills" value={form.skills} onChange={(v) => set('skills', v)} />
               </Field>
               <Field label="LinkedIn URL" htmlFor="linkedin_url" error={err('linkedin_url')} hint="Optional">
                 <input id="linkedin_url" value={form.linkedin_url} onChange={(e) => set('linkedin_url', e.target.value)} placeholder="https://linkedin.com/in/you" className={`field ${err('linkedin_url') ? 'border-rose-300' : ''}`} />

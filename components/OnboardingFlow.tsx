@@ -7,6 +7,7 @@ import { Navbar } from '@/components/Navbar'
 import { Stepper } from '@/components/Stepper'
 import { CollegeCombobox } from '@/components/CollegeCombobox'
 import { SearchableSelect } from '@/components/SearchableSelect'
+import { SkillPicker } from '@/components/SkillPicker'
 import { useStore } from '@/lib/store'
 import { normalizeOnboardingForm, type OnboardingForm as Form } from '@/lib/onboardingForm'
 import {
@@ -657,14 +658,8 @@ export function OnboardingFlow({ variant = 'onboarding' }: { variant?: 'onboardi
 
                 {step === 3 && (
                   <div className="grid gap-x-5 sm:grid-cols-2">
-                    <Field label="Skills" htmlFor="skills" className="sm:col-span-2" hint="Comma separated — these seed your skill report">
-                      <input
-                        id="skills"
-                        value={form.skills}
-                        onChange={(e) => set('skills', e.target.value)}
-                        placeholder="Python, React, SQL"
-                        className="field"
-                      />
+                    <Field label="Skills" htmlFor="skills" className="sm:col-span-2" hint="Tap trending skills to add them, or type your own and press Enter">
+                      <SkillPicker id="skills" value={form.skills} onChange={(v) => set('skills', v)} />
                     </Field>
                     <Field label="LinkedIn URL" htmlFor="linkedin_url" error={err('linkedin_url')} hint="Optional">
                       <input
