@@ -11,6 +11,9 @@ import { AFTER_ASSESSMENT_ROUTE } from '@/lib/nextStep'
 import { markJustSubmitted } from '@/lib/justSubmitted'
 import { Logo } from '@/components/Logo'
 import { AiExamAssistant } from '@/components/AiExamAssistant'
+import { AssessmentReview } from '@/components/AssessmentReview'
+import { buildReview, type ReviewTarget } from '@/lib/reviewModel'
+import { shouldCountListeningPlay, LISTENING_MAX_PLAYS } from '@/lib/listeningPlay'
 import type { TestRunResult } from '@/lib/runTests'
 import {
   MAX_FOCUS_STRIKES,
@@ -264,8 +267,9 @@ function AssessmentInner() {
   const [playCounts, setPlayCounts] = useState<Record<string, number>>({})
   const [showHint, setShowHint] = useState<Record<string, boolean>>({})
   const [testResults, setTestResults] = useState<Record<string, TestRunResult | undefined>>({})
-  // Friendly submit-confirmation modal (replaces the old browser `confirm()`).
-  const [showSubmit, setShowSubmit] = useState(false)
+  // Pre-submit review page (manual submit only — auto-submit skips straight to
+  // evaluation). The candidate can jump back to any question from here.
+  const [showReview, setShowReview] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const submittingRef = useRef(false)
 
@@ -799,7 +803,7 @@ function AssessmentInner() {
     if (terminated || submittingRef.current) return
     submittingRef.current = true
     setSubmitting(true)
-    setShowSubmit(false)
+    setShowReview(false)
     clearInterval(intervalRef.current)
     proctorStreamRef.current?.getTracks().forEach(t => t.stop())
     proctorStreamRef.current = null
@@ -842,15 +846,22 @@ function AssessmentInner() {
 
   const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
   const critical = remaining < 600
-  // Show a live count on the confirm modal so the student knows what will be
-  // submitted before they commit (vs. how many are still empty).
-  const answeredCount = Object.values(answers).filter(v =>
-    v !== undefined && v !== null && v !== '' && !(Array.isArray(v) && v.length === 0),
-  ).length
+
+  // Pre-submit review model: every section/question with answered status.
+  const review = useMemo(() => buildReview(bank, answers), [bank, answers])
+
   const requestSubmit = () => {
     if (terminated || submittingRef.current) return
-    setShowSubmit(true)
+    setShowReview(true)
   }
+
+  // Jump from the review page back to a specific question.
+  const jumpToQuestion = (target: ReviewTarget) => {
+    setShowReview(false)
+    if (target.task !== undefined) setActiveDebuggingTask(target.task)
+    navigateTo(target.stage, target.sub, target.stage > stage ? 'next' : target.stage < stage ? 'prev' : null)
+  }
+
   if (!session) return <div className="p-16 text-center text-slate-500">Loading your session…</div>
 
   const renderStage = () => {
@@ -866,11 +877,26 @@ function AssessmentInner() {
                   <div key={c.id} className="panel p-4">
                     <div className="flex items-center justify-between gap-2">
                       <div className="text-sm font-bold text-slate-800">🎧 {c.title}</div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 shrink-0">plays {plays}/2</span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 shrink-0">plays {plays}/{LISTENING_MAX_PLAYS}</span>
                     </div>
                     <audio controls className="w-full mt-3" src={c.audio}
-                      onPlay={(e) => { if ((playCounts[c.id] || 0) >= 2) { e.currentTarget.pause(); return } setPlayCounts(p => ({ ...p, [c.id]: (p[c.id] || 0) + 1 })) }} />
-                    {plays >= 2 && <div className="mt-1 text-[11px] text-amber-600">Play limit reached — answer from memory.</div>}
+                      onPlay={(e) => {
+                        const el = e.currentTarget
+                        const plays = playCounts[c.id] || 0
+                        // Hard stop once both listens are used.
+                        if (plays >= LISTENING_MAX_PLAYS) { el.pause(); return }
+                        // Only a play that starts from the beginning counts —
+                        // seeking/skipping or resuming mid-clip must not burn
+                        // one of the two listens.
+                        if (shouldCountListeningPlay(el.currentTime, plays)) {
+                          setPlayCounts(p => ({ ...p, [c.id]: plays + 1 }))
+                        }
+                      }} />
+                    <div className="mt-1 text-[11px] text-slate-400">
+                      {plays >= LISTENING_MAX_PLAYS
+                        ? 'Play limit reached — answer from memory.'
+                        : `Each clip can be replayed from the start up to ${LISTENING_MAX_PLAYS} times — skipping within a clip doesn't count.`}
+                    </div>
                     <div className="mt-4 space-y-4">
                       {c.questions.map((q: any) => (
                         <div key={q.id} className="p-3.5 rounded-xl bg-white/70 border border-slate-200">
@@ -1687,59 +1713,28 @@ function AssessmentInner() {
         </div>
       )}
 
-      {/* Submit confirmation — replaces the old browser confirm() */}
-      {showSubmit && !terminated && (
-        <div className="fixed inset-0 z-[60] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-7 shadow-2xl animate-pop">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl calibiai-gradient text-white shadow-lg shadow-indigo-300">
-              <span className="text-3xl leading-none">📤</span>
-            </div>
-            <h3 className="mt-4 text-center text-2xl font-black text-slate-900">Submit assessment?</h3>
-            <p className="mt-2 text-center text-sm leading-relaxed text-slate-500">
-              This is your final step. Once submitted, your answers are evaluated and your CalibiAI Score is locked — you cannot go back and change anything.
-            </p>
+      {/* Pre-submit review page — shown on manual submit only (auto-submit on
+          time-up / warnings skips straight to evaluation). The candidate can
+          inspect every question and jump back to any of them. */}
+      {showReview && !terminated && !submitting && (
+        <AssessmentReview
+          sections={review.sections}
+          stats={review.stats}
+          timeLeft={fmt(remaining)}
+          strikes={strikes}
+          submitting={submitting}
+          onJump={jumpToQuestion}
+          onCancel={() => setShowReview(false)}
+          onSubmit={() => doSubmit(false)}
+        />
+      )}
 
-            <div className="mt-5 grid grid-cols-2 gap-2.5 text-center">
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
-                <div className="text-lg font-black text-emerald-600">{answeredCount}</div>
-                <div className="text-[10px] font-bold uppercase tracking-wide text-emerald-600/80">answers recorded</div>
-              </div>
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5">
-                <div className="text-lg font-black text-amber-600">⏱ {fmt(remaining)}</div>
-                <div className="text-[10px] font-bold uppercase tracking-wide text-amber-600/80">time left</div>
-              </div>
-            </div>
-
-            {strikes > 0 && (
-              <p className="mt-3 rounded-xl bg-rose-50 border border-rose-100 px-3 py-2 text-center text-[11px] font-semibold text-rose-500">
-                ⚠ {strikes} focus warning{strikes > 1 ? 's' : ''} recorded this session
-              </p>
-            )}
-
-            <div className="mt-6 flex flex-col-reverse gap-2.5 sm:flex-row">
-              <button
-                onClick={() => setShowSubmit(false)}
-                disabled={submitting}
-                className="btn-soft flex-1 !py-3 text-sm font-bold disabled:opacity-50"
-              >
-                ← Keep editing
-              </button>
-              <button
-                onClick={() => doSubmit(false)}
-                disabled={submitting}
-                className="btn-primary flex-1 !py-3 text-sm disabled:opacity-60"
-              >
-                {submitting ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                    Submitting…
-                  </span>
-                ) : 'Yes, submit assessment'}
-              </button>
-            </div>
-            <p className="mt-4 text-center text-[11px] text-slate-400">
-              Tip: unanswered questions simply score zero — you can submit whenever you are ready.
-            </p>
+      {/* Submitting overlay */}
+      {submitting && !terminated && (
+        <div className="fixed inset-0 z-[65] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="glass-card flex items-center gap-3 px-6 py-5 animate-pop">
+            <span className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
+            <span className="text-sm font-bold text-slate-700">Submitting your assessment…</span>
           </div>
         </div>
       )}
