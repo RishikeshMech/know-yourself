@@ -78,6 +78,14 @@ body {
 }
 .timer-pulse { animation: pulse-ring 1s infinite; }
 
+/* Leak-prevention watermark — a full-viewport overlay whose `background-image`
+   is a tiled inline-SVG data URI carrying the candidate's id + CALIBIAI. Kept
+   non-interactive and off the main paint path so it never blocks the UI. */
+.watermark-overlay {
+  background-repeat: repeat;
+  will-change: background-position;
+}
+
 /* ---------- Animations ---------- */
 @keyframes fade-up {
   from { opacity: 0; transform: translateY(16px); }

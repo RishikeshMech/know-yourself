@@ -11,6 +11,22 @@ import { markJustSubmitted } from '@/lib/justSubmitted'
 import { Logo } from '@/components/Logo'
 import { AiExamAssistant } from '@/components/AiExamAssistant'
 import type { TestRunResult } from '@/lib/runTests'
+import {
+  MAX_FOCUS_STRIKES,
+  classifyDisplayEvent,
+  evaluateStartGate,
+  fullscreenCapable,
+  resolveScreenFacts,
+  rightClickShouldBlock,
+  FULLSCREEN_EXIT_MSG,
+  DISPLAY_CONNECT_MSG,
+  DISPLAY_CHANGE_MSG,
+  watermarkIdentity,
+  watermarkBackgroundImage,
+  WATERMARK_TILE_WIDTH,
+  WATERMARK_TILE_HEIGHT,
+} from '@/lib/proctoring'
+import type { ScreenFacts } from '@/lib/proctoring'
 
 const STAGES = [
   { id: 'english', label: 'English Communication', sub: ['Listening', 'Speaking', 'Reading', 'Writing'], min: 15 },
@@ -222,7 +238,18 @@ function AssessmentInner() {
   const [remaining, setRemaining] = useState(7200)
   const [strikes, setStrikes] = useState(0)
   const [showViolation, setShowViolation] = useState(false)
+  // Live reason shown in the warning / terminated modals (tab-focus vs.
+  // fullscreen vs. external-display events all flow through the same UI).
+  const [violationMsg, setViolationMsg] = useState('')
+  const [cheatReason, setCheatReason] = useState<string | null>(null)
   const [terminated, setTerminated] = useState(false)
+  // Pre-test environment gate — the test content stays locked behind this until
+  // the candidate enters fullscreen, passes the external-display check and
+  // confirms they have closed other tabs. See `lib/proctoring.ts`.
+  const [envState, setEnvState] = useState<'gate' | 'blocked' | 'cleared'>('gate')
+  const [envBlockReason, setEnvBlockReason] = useState<string | null>(null)
+  const [envConsent, setEnvConsent] = useState(false)
+  const [envBusy, setEnvBusy] = useState(false)
   const [mediaReady, setMediaReady] = useState(false)
   const [mediaError, setMediaError] = useState('')
   const [videoOn, setVideoOn] = useState(false)
@@ -254,6 +281,13 @@ function AssessmentInner() {
   const suppressRef = useRef(false)
   const strikesRef = useRef(0)
   const submitRef = useRef<(auto?: boolean) => void>(() => {})
+  // Snapshot of the screen captured when the pre-test gate was cleared, so the
+  // live monitor can compare it against later states to detect an external
+  // display being connected or the tab moving to another screen.
+  const envLastFactsRef = useRef<ScreenFacts | null>(null)
+  // Whether fullscreen was actually entered at the gate (only then is exiting
+  // fullscreen mid-test meaningful to enforce).
+  const envFsEngagedRef = useRef(false)
   const mediaReadyRef = useRef(false)
   // Auto-advance bookkeeping: was the CURRENT subsection already complete on
   // the last check (prevents re-triggering when navigating back to a
@@ -265,6 +299,22 @@ function AssessmentInner() {
 
   const seed: number = session?.question_seed ?? 8675309
   const sid = session?.id
+
+  // Leak-prevention watermark: a faint, tiled "candidate-id · CALIBIAI" text is
+  // overlaid across the whole test screen while it is live, so any screenshot
+  // or photo of a mirrored screen identifies who leaked it. Stable per identity
+  // (memoised) so it doesn't flicker or reshuffle on every render.
+  const watermarkText = useMemo(
+    () => watermarkIdentity({ name: user?.name, email: user?.email, id: user?.id, sessionId: sid }),
+    [user?.name, user?.email, user?.id, sid],
+  )
+  const watermarkStyle = useMemo(
+    () => ({
+      backgroundImage: watermarkBackgroundImage(watermarkText),
+      backgroundSize: `${WATERMARK_TILE_WIDTH}px ${WATERMARK_TILE_HEIGHT}px`,
+    }),
+    [watermarkText],
+  )
 
   useEffect(() => {
     // Read session from localStorage.
@@ -362,6 +412,7 @@ function AssessmentInner() {
         const n = strikesRef.current + 1
         strikesRef.current = n
         setStrikes(n)
+        setViolationMsg('You left the assessment window. Switching away is recorded as a proctoring violation.')
         if (n >= 3) { setTerminated(true); setShowViolation(false); submitRef.current(true) }
         else setShowViolation(true)
       }
@@ -375,6 +426,117 @@ function AssessmentInner() {
   }, [terminated])
 
   useEffect(() => () => { proctorStreamRef.current?.getTracks().forEach(t => t.stop()) }, [])
+
+  /* ------------------------------------------------------------------ */
+  /* Anti-cheat environment lock                                         */
+  /*                                                                     */
+  /* 1. Right-click context menu is disabled for the whole live test     */
+  /*    screen (page-level lock only — a tab cannot disable the OS menu  */
+  /*    or browser shortcuts).                                           */
+  /* 2. A monitor runs once the environment gate has been cleared. It    */
+  /*    compares fresh screen snapshots against the one captured at the  */
+  /*    gate to catch an external display being plugged in (treated as   */
+  /*    cheating → immediate auto-submit) or the tab leaving fullscreen  */
+  /*    / moving onto another screen (counted like a focus violation).   */
+  /* ------------------------------------------------------------------ */
+  useEffect(() => {
+    if (envState !== 'cleared' || terminated) return
+    const onCtx = (e: Event) => {
+      if (rightClickShouldBlock(true).block) e.preventDefault()
+    }
+    document.addEventListener('contextmenu', onCtx)
+    return () => document.removeEventListener('contextmenu', onCtx)
+  }, [envState, terminated])
+
+  useEffect(() => {
+    if (envState !== 'cleared' || terminated) return
+    let running = false
+
+    const bumpStrike = (msg: string) => {
+      if (terminated || submittingRef.current) return
+      const n = strikesRef.current + 1
+      strikesRef.current = n
+      setStrikes(n)
+      setViolationMsg(msg)
+      if (n >= MAX_FOCUS_STRIKES) {
+        setTerminated(true)
+        setShowViolation(false)
+        submitRef.current(true)
+      } else {
+        setShowViolation(true)
+      }
+    }
+
+    // Cheating signal (an extra display appeared mid-test) → immediate end.
+    const hardTerminate = (msg: string) => {
+      if (terminated || submittingRef.current) return
+      setCheatReason(msg)
+      setStrikes(MAX_FOCUS_STRIKES)
+      setShowViolation(false)
+      setTerminated(true)
+      submitRef.current(true)
+    }
+
+    const monitor = async () => {
+      if (running || submittingRef.current) return
+      running = true
+      try {
+        const now = await resolveScreenFacts(window)
+        const last = envLastFactsRef.current
+        if (!last) { envLastFactsRef.current = now; return }
+        // Leaving fullscreen is only meaningful if we actually entered it.
+        if (envFsEngagedRef.current && last.fullscreen && !now.fullscreen) {
+          bumpStrike(FULLSCREEN_EXIT_MSG)
+        }
+        const ev = classifyDisplayEvent(last, now)
+        if (ev === 'display_connect') { hardTerminate(DISPLAY_CONNECT_MSG); envLastFactsRef.current = now; return }
+        if (ev === 'display_layout_change') bumpStrike(DISPLAY_CHANGE_MSG)
+        envLastFactsRef.current = now
+      } finally {
+        running = false
+      }
+    }
+
+    const id = window.setInterval(monitor, 1500)
+    return () => window.clearInterval(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [envState, terminated])
+
+  // Pre-start environment check — runs (and must pass) BEFORE the test is
+  // reachable. Tries to enter fullscreen, enumerates displays via the
+  // Window-Management API where available, and blocks the start if more than
+  // one display is reachable.
+  const runEnvCheck = async () => {
+    setEnvBusy(true)
+    try {
+      let fsEngaged = false
+      try {
+        if (fullscreenCapable(document)) {
+          await document.documentElement.requestFullscreen()
+          fsEngaged = true
+        }
+      } catch {
+        /* fullscreen unavailable/denied (e.g. an iframe without permission) —
+           carry on best-effort; the focus/monitor still works. */
+      }
+      envFsEngagedRef.current = fsEngaged
+      const facts = await resolveScreenFacts(window)
+      const verdict = evaluateStartGate(facts)
+      if (!verdict.allow) {
+        setEnvBlockReason(verdict.reason)
+        setEnvState('blocked')
+        return
+      }
+      envLastFactsRef.current = facts
+      setEnvBlockReason(null)
+      setEnvState('cleared')
+    } catch {
+      setEnvBlockReason('The environment check could not run in this browser. Please close other tabs, disable screen mirroring, and try again.')
+      setEnvState('blocked')
+    } finally {
+      setEnvBusy(false)
+    }
+  }
 
   useEffect(() => {
     if (stage !== 5 || sub !== 0) return
@@ -1196,6 +1358,12 @@ function AssessmentInner() {
 
   return (
     <div className="min-h-screen text-slate-800">
+      {/* Leak-prevention watermark — only once the test is unlocked, so the
+          locked environment screens stay legible. Fixed + pointer-events-none so
+          it never blocks clicks, and it sits above content but below modals. */}
+      {envState === 'cleared' && !terminated && !submitting && (
+        <div aria-hidden className="pointer-events-none fixed inset-0 z-40 watermark-overlay" style={watermarkStyle} />
+      )}
       {/* Header */}
       <div className="sticky top-0 z-30 border-b border-white/60 bg-white/70 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
@@ -1388,6 +1556,56 @@ function AssessmentInner() {
       {/* Toast */}
       {toast && !pendingAdvance && <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-md px-5 py-3 rounded-2xl bg-white/90 backdrop-blur border border-indigo-200 shadow-2xl text-sm text-slate-800 animate-pop">{toast}</div>}
 
+      {/* Pre-test environment gate — blocks until fullscreen + display check +
+          other-tabs consent are done. This runs BEFORE the test is unlocked. */}
+      {envState === 'gate' && (
+        <div className="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="glass-card max-w-md w-full !p-8 animate-pop">
+            <div className="text-5xl text-center">🛡️</div>
+            <h3 className="mt-4 text-xl font-black text-slate-900 text-center">Secure your test environment</h3>
+            <p className="mt-2 text-sm text-slate-500 text-center">
+              Before the questions are revealed we run an anti-cheat check and lock the browser.
+            </p>
+
+            <ul className="mt-5 space-y-2.5 text-sm text-slate-700">
+              <li className="flex gap-2.5"><span className="shrink-0">🚫</span><span><b>Right-click</b> is disabled across the whole test screen.</span></li>
+              <li className="flex gap-2.5"><span className="shrink-0">🖥️</span><span><b>External / mirrored displays</b> are not allowed. If one is detected the test won't start — or it is terminated if one is connected later.</span></li>
+              <li className="flex gap-2.5"><span className="shrink-0">🔒</span><span>The browser enters <b>fullscreen</b>; leaving fullscreen mid-test is recorded as a violation.</span></li>
+              <li className="flex gap-2.5"><span className="shrink-0">🗂️</span><span>Please <b>close every other tab and window</b> first. (A webpage cannot close other tabs for you, but open-tab / away-switching is monitored.)</span></li>
+            </ul>
+
+            <label className="mt-5 flex gap-2 text-sm text-slate-700 cursor-pointer">
+              <input type="checkbox" checked={envConsent} onChange={e => setEnvConsent(e.target.checked)} className="accent-indigo-600 mt-0.5 w-4 h-4" />
+              I confirm I have closed all other tabs and windows, and I will not connect or mirror an external display during the test.
+            </label>
+
+            <button onClick={runEnvCheck} disabled={!envConsent || envBusy}
+              className={`mt-5 w-full rounded-full font-black text-sm transition ${envConsent && !envBusy ? 'btn-primary !py-3.5' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
+              {envBusy ? 'Checking environment…' : 'Enter fullscreen & begin security check →'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Environment gate blocked — an external / mirrored display was found. */}
+      {envState === 'blocked' && (
+        <div className="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="glass-card max-w-md w-full !p-8 animate-pop">
+            <div className="text-5xl text-center">⛔</div>
+            <h3 className="mt-4 text-xl font-black text-rose-600 text-center">Test can't start</h3>
+            <p className="mt-3 text-sm text-slate-600 text-center leading-relaxed">
+              {envBlockReason || 'An external or mirrored display appears to be connected.'}
+            </p>
+            <p className="mt-3 text-xs text-slate-500 text-center">
+              Please disconnect any external / second display and re-run the check.
+            </p>
+            <button onClick={runEnvCheck} disabled={envBusy} className="btn-primary mt-5 w-full !py-3">
+              {envBusy ? 'Re-checking…' : "I've disconnected it — re-check"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Camera/mic gate */}
       {!mediaReady && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
@@ -1464,9 +1682,9 @@ function AssessmentInner() {
         <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
           <div className="max-w-sm w-full rounded-3xl border-2 border-amber-300 bg-white p-7 text-center shadow-2xl animate-pop">
             <div className="text-5xl">⚠️</div>
-            <h3 className="mt-3 text-xl font-black text-amber-600">Warning {strikes} of 3</h3>
-            <p className="mt-2 text-sm text-slate-600">You left the assessment window. Switching away is recorded as a proctoring violation.
-              {strikes >= 2 && <b className="text-rose-600"> One more warning and your assessment will be submitted automatically.</b>}</p>
+            <h3 className="mt-3 text-xl font-black text-amber-600">Warning {strikes} of {MAX_FOCUS_STRIKES}</h3>
+            <p className="mt-2 text-sm text-slate-600">{violationMsg || 'You left the assessment window. Switching away is recorded as a proctoring violation.'}
+              {strikes >= MAX_FOCUS_STRIKES - 1 && <b className="text-rose-600"> One more warning and your assessment will be submitted automatically.</b>}</p>
             <button onClick={() => { setShowViolation(false); awayRef.current = false }} className="btn-primary mt-6 w-full">I'm back — resume</button>
           </div>
         </div>
@@ -1477,8 +1695,14 @@ function AssessmentInner() {
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
           <div className="max-w-sm w-full rounded-3xl border-2 border-rose-300 bg-white p-7 text-center shadow-2xl animate-pop">
             <div className="text-5xl">⛔</div>
-            <h3 className="mt-3 text-xl font-black text-rose-600">Assessment submitted</h3>
-            <p className="mt-2 text-sm text-slate-600">You reached 3 focus warnings. Your answers up to this point have been submitted for evaluation.</p>
+            <h3 className="mt-3 text-xl font-black text-rose-600">
+              {cheatReason ? 'Assessment terminated — violation' : 'Assessment submitted'}
+            </h3>
+            <p className="mt-2 text-sm text-slate-600">
+              {cheatReason
+                ? cheatReason
+                : `You reached ${MAX_FOCUS_STRIKES} focus warnings.`} Your answers up to this point have been submitted for evaluation and review.
+            </p>
             <div className="mt-4 inline-block text-xs px-3 py-1.5 rounded-full bg-slate-100 text-slate-500">Redirecting to your results…</div>
           </div>
         </div>

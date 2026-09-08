@@ -200,6 +200,8 @@ function Inner(){
               <div className="font-bold text-amber-700 mb-1">Please note</div>
               <ul className="list-disc ml-4 space-y-1">
                 <li><b>No tab switching:</b> Keep this tab/window focused — switching windows/tabs 3 times terminates and submits your test automatically.</li>
+                <li><b>Close other tabs before starting:</b> When you start, the app will ask you to close every other tab/window (a webpage cannot close them for you). Please close them and confirm.</li>
+                <li><b>No external / mirrored display:</b> The test runs in fullscreen with right-click disabled. Disconnect any external or second display — if one is detected the test won't start, and connecting one mid-test terminates the assessment as cheating.</li>
                 <li><b>In-Exam AI Assistant:</b> For AI Debugging and AI Feature Dev (Stages 3 & 4), an interactive AI assistant is embedded right below each coding task. You can ask questions, get explanations, and review code without leaving the tab.</li>
                 <li>Your answers are saved automatically as you go.</li>
                 <li>This is a one-time attempt — once submitted you can't retake it. You land on your student dashboard, where the report and PDF stay available.</li>
