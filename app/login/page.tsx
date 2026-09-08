@@ -304,6 +304,12 @@ export default function LoginPage() {
                 autoComplete="email"
                 className="field"
               />
+              {mode === 'signup' && (
+                <p className="mt-1.5 flex items-start gap-1.5 text-[11px] leading-snug text-indigo-600/90">
+                  <span aria-hidden>💼</span>
+                  <span>Use your <b>professional email</b> — it will be used for the hiring process and printed on your scorecard.</span>
+                </p>
+              )}
             </div>
             <div>
               <label htmlFor="password" className="mb-1.5 block text-xs font-bold text-slate-700">

@@ -19,7 +19,6 @@ import {
   MAX_FOCUS_STRIKES,
   classifyDisplayEvent,
   evaluateStartGate,
-  fullscreenCapable,
   safeRequestFullscreen,
   resolveScreenFacts,
   rightClickShouldBlock,
@@ -593,16 +592,11 @@ function AssessmentInner() {
   const runEnvCheck = async () => {
     setEnvBusy(true)
     try {
-      let fsEngaged = false
-      try {
-        if (fullscreenCapable(document)) {
-          await document.documentElement.requestFullscreen()
-          fsEngaged = true
-        }
-      } catch {
-        /* fullscreen unavailable/denied (e.g. an iframe without permission) —
-           carry on best-effort; the focus/monitor still works. */
-      }
+      // `safeRequestFullscreen` never rejects — it returns false when the
+      // browser's Permissions Policy blocks fullscreen (e.g. embedded in an
+      // iframe without `allow="fullscreen"`), so no unhandled rejection can
+      // surface as a runtime error.
+      const fsEngaged = await safeRequestFullscreen(document)
       envFsEngagedRef.current = fsEngaged
       setFsEngaged(fsEngaged)
       setIsFullscreen(!!document.fullscreenElement)
@@ -1504,7 +1498,7 @@ function AssessmentInner() {
             </span>
             {envState === 'cleared' && !terminated && !submitting && !isFullscreen && (
               <button
-                onClick={() => { try { document.documentElement.requestFullscreen() } catch { /* ignore */ } }}
+                onClick={() => { safeRequestFullscreen(document) }}
                 title="Re-enter fullscreen"
                 className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700 transition hover:bg-amber-100 active:scale-95"
               >
@@ -1795,7 +1789,7 @@ function AssessmentInner() {
               The assessment must run in fullscreen. It is paused until you re-enter fullscreen.
             </p>
             <button
-              onClick={() => { try { document.documentElement.requestFullscreen() } catch { /* ignore */ } }}
+              onClick={() => { safeRequestFullscreen(document) }}
               className="btn-primary mt-5 w-full !py-3"
             >
               <span className="inline-flex items-center gap-2"><Maximize2 className="h-4 w-4" aria-hidden /> Re-enter fullscreen</span>

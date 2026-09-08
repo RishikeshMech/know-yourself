@@ -574,7 +574,7 @@ export function OnboardingFlow({ variant = 'onboarding' }: { variant?: 'onboardi
                       label="Mobile number"
                       htmlFor="phone"
                       error={err('phone')}
-                      hint={`Exactly ${PHONE_DIGITS} digits — digits only`}
+                      hint={`Use your correct number — it will be verified against your resume (ATS). Exactly ${PHONE_DIGITS} digits.`}
                     >
                       <PhoneInput id="phone" value={form.phone} invalid={!!err('phone')} onChange={(v) => set('phone', v)} />
                     </Field>
