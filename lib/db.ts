@@ -2,7 +2,31 @@ import fs from 'fs'
 import path from 'path'
 import { randomUUID } from 'crypto'
 
-const DB_FILE = path.join(process.cwd(), 'calibiai_db.json')
+// ---------------------------------------------------------------------------
+// Demo-mode "database": a single JSON file on disk.
+//
+// Two files are involved, and the split matters for deploys:
+//   - `calibiai_db.json`            (git-tracked) — the SEED / demo snapshot.
+//   - `calibiai_db.runtime.json`    (gitignored)  — LIVE runtime writes.
+//
+// The app used to write new sign-ups / sessions / results straight into the
+// tracked file. On a live server that left the tracked file permanently
+// "modified", so the deploy's `git checkout -B <branch>` aborted with
+// "Your local changes ... would be overwritten by checkout". Runtime data now
+// lives in a gitignored file, so the tracked seed is only ever changed by
+// commits and deploys can always check out cleanly.
+// ---------------------------------------------------------------------------
+const SEED_FILE = path.join(process.cwd(), 'calibiai_db.json')
+const RUNTIME_FILE = path.join(process.cwd(), 'calibiai_db.runtime.json')
+
+/**
+ * Where the data lives right now. Once the runtime file exists it becomes the
+ * source of truth (it holds everything the seed did plus live writes); before
+ * that, the tracked seed is used.
+ */
+function dbFile(): string {
+  return fs.existsSync(RUNTIME_FILE) ? RUNTIME_FILE : SEED_FILE
+}
 
 export interface User {
   id: string
@@ -91,8 +115,9 @@ export interface DBData {
 
 function initDB(): DBData {
   try {
-    if (fs.existsSync(DB_FILE)) {
-      const raw = fs.readFileSync(DB_FILE, 'utf-8')
+    const file = dbFile()
+    if (fs.existsSync(file)) {
+      const raw = fs.readFileSync(file, 'utf-8')
       const parsed = JSON.parse(raw)
       return {
         users: parsed.users || [],
@@ -118,7 +143,9 @@ function initDB(): DBData {
 
 function saveDB(data: DBData) {
   try {
-    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8')
+    // Always persist to the runtime file (never the tracked seed) so live
+    // writes can't dirty the repo and break `git checkout` during deploys.
+    fs.writeFileSync(RUNTIME_FILE, JSON.stringify(data, null, 2), 'utf-8')
   } catch (e) {
     console.error('[db] save error', e)
   }
