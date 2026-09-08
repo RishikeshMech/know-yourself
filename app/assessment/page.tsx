@@ -260,6 +260,10 @@ function AssessmentInner() {
   const [envBlockReason, setEnvBlockReason] = useState<string | null>(null)
   const [envConsent, setEnvConsent] = useState(false)
   const [envBusy, setEnvBusy] = useState(false)
+  // True when the candidate denied (or the browser blocked) the fullscreen
+  // permission at the pre-test gate — fullscreen is a hard requirement, so the
+  // test must not start in a normal window.
+  const [fsBlocked, setFsBlocked] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   // Whether fullscreen was actually engaged at the gate (state twin of
   // envFsEngagedRef so the UI can render on it).
@@ -297,6 +301,11 @@ function AssessmentInner() {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const awayRef = useRef(false)
   const suppressRef = useRef(false)
+  // Timer that re-arms the proctoring monitors once a native fullscreen
+  // permission prompt has been answered (see `enterFullscreen` below).
+  const fsSuppressTimerRef = useRef<any>(null)
+  // Debounced server autosave (see the `[answers, sid]` effect below).
+  const autosaveTimerRef = useRef<any>(null)
   const strikesRef = useRef(0)
   // Timestamp of the last recorded strike — used to coalesce the burst of
   // blur/visibility/fullscreen events a single action produces.
@@ -395,18 +404,50 @@ function AssessmentInner() {
   useEffect(() => {
     if (sid) {
       localStorage.setItem('calibiai_answers_' + sid, JSON.stringify(answers))
-      try {
-        fetch('/api/user/assessment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_id: sid, answers, status: 'in_progress' }),
-        })
-      } catch { /* demo mode */ }
+      // Server autosave is debounced: typing a sentence would otherwise fire
+      // dozens of POSTs (one per keystroke), and at 5000 concurrent candidates
+      // that is a needless write storm on the store. One save ~1.5s after the
+      // user stops typing is plenty — the final submit persists everything.
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current)
+      autosaveTimerRef.current = setTimeout(() => {
+        autosaveTimerRef.current = null
+        try {
+          fetch('/api/user/assessment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_id: sid, answers, status: 'in_progress' }),
+          })
+        } catch { /* demo mode */ }
+      }, 1500)
     }
   }, [answers, sid])
   useEffect(() => { if (sid) localStorage.setItem('calibiai_ai_' + sid, JSON.stringify(aiResults)) }, [aiResults, sid])
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3200) }
+
+  // Request fullscreen while pausing the focus/fullscreen proctoring monitors.
+  // The native "Allow fullscreen?" permission prompt blurs the window (and some
+  // browsers briefly report the page as not-fullscreen) — none of that is a real
+  // tab switch or fullscreen exit, so it must not count as a warning. Monitors
+  // are re-armed shortly after the prompt is answered.
+  const enterFullscreen = async (): Promise<boolean> => {
+    suppressRef.current = true
+    if (fsSuppressTimerRef.current) { clearTimeout(fsSuppressTimerRef.current); fsSuppressTimerRef.current = null }
+    let engaged = false
+    try {
+      engaged = await safeRequestFullscreen(document)
+    } catch {
+      engaged = false
+    } finally {
+      // Absorb the trailing blur/visibility/fullscreenchange burst that follows
+      // an "Allow" click, then re-arm the monitors.
+      fsSuppressTimerRef.current = setTimeout(() => {
+        suppressRef.current = false
+        fsSuppressTimerRef.current = null
+      }, 1200)
+    }
+    return engaged
+  }
 
   const enableMedia = async () => {
     setMediaError('')
@@ -455,7 +496,11 @@ function AssessmentInner() {
     }
   }, [terminated])
 
-  useEffect(() => () => { proctorStreamRef.current?.getTracks().forEach(t => t.stop()) }, [])
+  useEffect(() => () => {
+    proctorStreamRef.current?.getTracks().forEach(t => t.stop())
+    if (fsSuppressTimerRef.current) clearTimeout(fsSuppressTimerRef.current)
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current)
+  }, [])
 
   /* ------------------------------------------------------------------ */
   /* Anti-cheat environment lock                                         */
@@ -483,7 +528,7 @@ function AssessmentInner() {
     let running = false
 
     const bumpStrike = (msg: string) => {
-      if (terminated || submittingRef.current) return
+      if (terminated || submittingRef.current || suppressRef.current) return
       // Same coalescing as onLeave — a fullscreen exit that follows a blur from
       // the same user action must not count as a second, separate strike.
       if (Date.now() - lastStrikeAtRef.current < STRIKE_COOLDOWN_MS) return
@@ -591,15 +636,26 @@ function AssessmentInner() {
   // one display is reachable.
   const runEnvCheck = async () => {
     setEnvBusy(true)
+    setFsBlocked(false)
     try {
-      // `safeRequestFullscreen` never rejects — it returns false when the
-      // browser's Permissions Policy blocks fullscreen (e.g. embedded in an
-      // iframe without `allow="fullscreen"`), so no unhandled rejection can
-      // surface as a runtime error.
-      const fsEngaged = await safeRequestFullscreen(document)
+      // `enterFullscreen` never rejects — it returns false when the user denies
+      // (or the browser's Permissions Policy blocks) fullscreen, e.g. embedded
+      // in an iframe without `allow="fullscreen"`, so no unhandled rejection
+      // can surface as a runtime error.
+      const fsEngaged = await enterFullscreen()
       envFsEngagedRef.current = fsEngaged
       setFsEngaged(fsEngaged)
       setIsFullscreen(!!document.fullscreenElement)
+
+      if (!fsEngaged) {
+        // Fullscreen is a hard requirement. If the candidate denied the
+        // permission we keep the gate locked and ask them to enable it instead
+        // of letting the test run in a normal window.
+        setFsBlocked(true)
+        setEnvState('gate')
+        return
+      }
+
       const facts = await resolveScreenFacts(window)
       const verdict = evaluateStartGate(facts)
       if (!verdict.allow) {
@@ -1498,7 +1554,7 @@ function AssessmentInner() {
             </span>
             {envState === 'cleared' && !terminated && !submitting && !isFullscreen && (
               <button
-                onClick={() => { safeRequestFullscreen(document) }}
+                onClick={() => { enterFullscreen() }}
                 title="Re-enter fullscreen"
                 className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700 transition hover:bg-amber-100 active:scale-95"
               >
@@ -1708,9 +1764,15 @@ function AssessmentInner() {
               I confirm I have closed all other tabs and windows, and I will not connect or mirror an external display during the test.
             </label>
 
+            {fsBlocked && (
+              <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-600 animate-fade-in">
+                Fullscreen permission was not granted. The assessment cannot run in a normal window — tap the button again and choose <b>Allow</b> when your browser asks. If you already blocked it, enable fullscreen for this site in your browser settings (or click the fullscreen icon in the address bar) and try again.
+              </div>
+            )}
+
             <button onClick={runEnvCheck} disabled={!envConsent || envBusy}
               className={`mt-5 w-full rounded-full font-black text-sm transition ${envConsent && !envBusy ? 'btn-primary !py-3.5' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
-              {envBusy ? 'Checking environment…' : 'Enter fullscreen & begin security check →'}
+              {envBusy ? 'Checking environment…' : fsBlocked ? 'Re-enter fullscreen & re-check →' : 'Enter fullscreen & begin security check →'}
             </button>
           </div>
         </div>
@@ -1789,7 +1851,7 @@ function AssessmentInner() {
               The assessment must run in fullscreen. It is paused until you re-enter fullscreen.
             </p>
             <button
-              onClick={() => { safeRequestFullscreen(document) }}
+              onClick={() => { enterFullscreen() }}
               className="btn-primary mt-5 w-full !py-3"
             >
               <span className="inline-flex items-center gap-2"><Maximize2 className="h-4 w-4" aria-hidden /> Re-enter fullscreen</span>

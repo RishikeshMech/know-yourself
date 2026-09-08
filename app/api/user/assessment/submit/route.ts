@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto'
 import { NextResponse } from 'next/server'
-import { saveAssessmentResult, saveAssessmentSession, getAssessmentSession, type AssessmentSession } from '@/lib/db'
+import { saveAssessmentResult, saveAssessmentSession, getAssessmentSession, flushDB, type AssessmentSession } from '@/lib/db'
 import { getServerClient } from '@/lib/supabaseServer'
 import { persistAssessmentResult, persistAssessmentSession, toUuid } from '@/lib/persist'
 
@@ -46,6 +46,9 @@ export async function POST(req: Request) {
     s.submitted_at = new Date().toISOString()
     saveAssessmentSession(s)
     saveAssessmentResult(result)
+    // A final submit is the one write that must be durable before we answer —
+    // force the (coalesced) flush to disk, never just hope it happens later.
+    await flushDB()
     // Mirror to Supabase: session status first (FK for the result row), then
     // the result — this is what makes the score survive a re-login.
     let supabase = false
