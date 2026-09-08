@@ -7,8 +7,11 @@
     "dev": "next dev -p 3000 -H 0.0.0.0",
     "build": "next build",
     "start": "next start -p 3000 -H 0.0.0.0",
+    "start:cluster": "pm2 startOrReload ecosystem.config.cjs",
     "lint": "next lint",
-    "test": "node --experimental-strip-types --test \"lib/__tests__/**/*.test.ts\""
+    "test": "node --experimental-strip-types --test \"lib/__tests__/**/*.test.ts\"",
+    "loadtest": "node scripts/loadtest.js",
+    "loadtest:k6": "k6 run scripts/loadtest.k6.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.115.0",
