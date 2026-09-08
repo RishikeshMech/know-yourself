@@ -7,23 +7,46 @@ import { Navbar } from '@/components/Navbar'
 import { useStore } from '@/lib/store'
 import { isProfileComplete } from '@/lib/validate'
 import { consumeJustSubmittedTicket } from '@/lib/justSubmitted'
+import { flattenAssessmentResult } from '@/lib/resultShape'
+import { getLiveUser } from '@/lib/session'
 import { ReportModal } from '@/components/ReportModal'
 import { SkillChips } from '@/components/SkillChips'
 import { WhatsAppCommunityCard } from '@/components/WhatsAppCommunity'
 
 function Inner(){
   const router = useRouter()
-  const { user, profile, setProfile, resume, setResume, scores, setScores, hydrated } = useStore()
+  const { user, profile, setProfile, resume, setResume, scores, setScores, hydrated, setUser, reconcileForUser } = useStore()
   const [showReport, setShowReport] = useState(false)
   const [downloading, setDownloading] = useState(false)
   // True only on the landing right after the assessment was submitted.
   const [justCompleted, setJustCompleted] = useState(false)
   const ticketChecked = useRef(false)
+  // True once the cached account has been validated against Supabase Auth.
+  const [validated, setValidated] = useState(false)
 
-  // Protect the student dashboard: a signed-out visitor is sent to /login smoothly.
+  // Protect the student dashboard: a signed-out visitor is sent to /login
+  // smoothly, and a cached account is validated against Supabase Auth first so
+  // a deleted-and-recreated account never sees the previous user's data.
   useEffect(()=>{
-    if (hydrated && !user) router.replace('/login')
-  },[hydrated, user, router])
+    if (!hydrated) return
+    if (!user) { router.replace('/login'); return }
+    let cancelled = false
+    ;(async () => {
+      const live = await getLiveUser()
+      if (cancelled) return
+      if (live === null) {
+        localStorage.clear()
+        setUser(null)
+        router.replace('/login')
+        return
+      }
+      if (live && live.id !== user.id) {
+        await reconcileForUser(live)
+      }
+      setValidated(true)
+    })()
+    return () => { cancelled = true }
+  },[hydrated, user, router, setUser, reconcileForUser])
 
   // The assessment page hands the candidate here after submitting and leaves a
   // single-use ticket behind, so this is where "assessment complete" is
@@ -41,7 +64,9 @@ function Inner(){
   // Extracted into a `refresh` so it can also run on window focus (returning
   // from the edit-profile / update-resume pages) so the score is always live.
   const refresh = useCallback(()=>{
-    if(!user?.id) return
+    // Wait until the cached account has been validated (and possibly reconciled
+    // to a different live user) so we never fetch the previous account's data.
+    if(!user?.id || !validated) return
     fetch('/api/user/profile?user_id='+user.id).then(r=>r.json()).then(data=>{
       if(data.profile) setProfile(data.profile)
     }).catch(()=>{})
@@ -49,23 +74,12 @@ function Inner(){
       if(data.analysis) setResume(data.analysis)
     }).catch(()=>{})
     fetch('/api/user/scores?student_id='+user.id).then(r=>r.json()).then(data=>{
-      if(data.result) {
-        const payload = {
-          session_id: data.result.session_id,
-          ...data.result.scores,
-          total: data.result.total,
-          grade: data.result.grade,
-          percentile: data.result.percentile,
-          verifiable_hash: data.result.verifiable_hash,
-          cognitive: data.result.scores?.cognitive,
-          english: data.result.scores?.english,
-          detail: data.result.scores?.detail,
-          ai_results: data.result.ai_feedback,
-        }
-        setScores(payload)
-      }
+      // Always write through — including `null` when there is no result, so a
+      // stale cached score from a deleted/previous account never lingers on
+      // screen or in the downloaded PDF.
+      setScores(flattenAssessmentResult(data.result))
     }).catch(()=>{})
-  },[user?.id, setProfile, setResume, setScores])
+  },[user?.id, validated, setProfile, setResume, setScores])
 
   useEffect(()=>{
     refresh()

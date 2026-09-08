@@ -5,62 +5,71 @@ import { useStore } from '@/lib/store'
 import { OnboardingFlow } from '@/components/OnboardingFlow'
 import { isProfileComplete } from '@/lib/validate'
 import { DASHBOARD_ROUTE } from '@/lib/nextStep'
+import { getLiveUser } from '@/lib/session'
 
 /**
  * Onboarding is a ONE-TIME step per profile. Fresh sign-ups flow here from
  * /login; anyone whose profile is already complete is redirected to the student
  * dashboard (/dashboard/student) smoothly without flickering or exposing the form.
  *
- * The completion state is captured on page load. Completing the form during
- * this visit does NOT trigger the redirect — the wizard's own "Profile saved"
- * overlay takes the user to the resume step.
+ * The DB — not the localStorage cache — is the source of truth for "already
+ * onboarded?". This matters because a deleted-and-recreated Supabase account
+ * leaves a complete profile in localStorage, and trusting that cache is exactly
+ * what bounced the fresh account straight to the dashboard.
+ *
+ * Completing the form during this visit does NOT trigger the redirect — the
+ * wizard's own "Profile saved" overlay takes the user to the resume step.
  */
 function Guard() {
   const router = useRouter()
-  const { user, profile, setProfile, hydrated } = useStore()
-  const initiallyComplete = useRef<boolean | null>(null)
+  const { user, profile, setProfile, setUser, hydrated, reconcileForUser } = useStore()
+  const checkedRef = useRef(false)
   const [checking, setChecking] = useState(false)
   const [redirecting, setRedirecting] = useState(false)
 
   useEffect(() => {
-    if (!hydrated) return
-    if (!user) return
-
-    // First knowledge of the profile (from store/localStorage) decides "one time".
-    if (initiallyComplete.current === null) {
-      const complete = isProfileComplete(profile)
-      initiallyComplete.current = complete
-      if (complete) {
-        setRedirecting(true)
-        router.replace(DASHBOARD_ROUTE)
-        return
-      }
-    }
-
-    // No profile locally → check the DB (returning user on a fresh device /
-    // cleared storage). Only the load-time state may cause a redirect.
-    if (initiallyComplete.current === false && !profile) {
-      setChecking(true)
-      fetch('/api/user/profile?user_id=' + user.id)
-        .then(r => r.json())
-        .then(d => {
-          if (d.profile) {
-            setProfile(d.profile)
-            if (isProfileComplete(d.profile)) {
-              initiallyComplete.current = true
-              setRedirecting(true)
-              router.replace(DASHBOARD_ROUTE)
-            }
+    if (!hydrated || !user || checkedRef.current) return
+    checkedRef.current = true
+    setChecking(true)
+    ;(async () => {
+      try {
+        const live = await getLiveUser()
+        if (live === null) {
+          localStorage.clear()
+          setUser(null)
+          setChecking(false)
+          router.replace('/login')
+          return
+        }
+        let userId = user.id
+        if (live && live.id !== user.id) {
+          // Cached account belongs to a different live user — clear the stale
+          // account data and re-hydrate from the DB before deciding.
+          await reconcileForUser(live)
+          userId = live.id
+        }
+        const res = await fetch('/api/user/profile?user_id=' + userId).then(r => r.json()).catch(() => ({}))
+        const dbProfile = res?.profile || null
+        if (dbProfile) {
+          setProfile(dbProfile)
+          if (isProfileComplete(dbProfile)) {
+            setRedirecting(true)
+            router.replace(DASHBOARD_ROUTE)
+            return
           }
-        })
-        .catch(() => {})
-        .finally(() => setChecking(false))
-    }
-  }, [hydrated, user, profile, setProfile, router])
+        } else if (profile) {
+          // DB has no profile for this account → the cached profile is stale.
+          // Clear it so the wizard starts blank instead of pre-filling old data.
+          setProfile(null)
+        }
+      } catch { /* network hiccup — allow the form rather than bouncing */ }
+      setChecking(false)
+    })()
+  }, [hydrated, user, setProfile, setUser, reconcileForUser, router])
 
-  // Prevent any flash of the onboarding form if we are still hydrating, checking the DB,
+  // Prevent any flash of the onboarding form while hydrating, checking the DB,
   // or redirecting an existing profile to the student dashboard.
-  if (!hydrated || checking || redirecting || initiallyComplete.current === true) {
+  if (!hydrated || checking || redirecting) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="glass-card animate-fade-up flex items-center gap-3 px-6 py-4">
