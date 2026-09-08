@@ -15,6 +15,7 @@ import {
   ShieldAlert,
   ArrowDownToLine,
   User,
+  Lock,
 } from 'lucide-react'
 
 export interface ChatMsg {
@@ -33,6 +34,13 @@ interface AiExamAssistantProps {
   onApplyCode?: (codeSnippet: string) => void
   defaultExpanded?: boolean
 }
+
+/**
+ * Hard cap on how many user prompts the in-exam assistant answers per task.
+ * After this the assistant locks, so the candidate plans their best prompts
+ * instead of leaning on it. Mirrored in the assessment instructions page.
+ */
+const MAX_PROMPTS = 5
 
 const DEFAULT_SUGGESTIONS: Record<string, string[]> = {
   AD1: [
@@ -254,8 +262,31 @@ export function AiExamAssistant({
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [engine, setEngine] = useState<'deepseek' | 'heuristic' | null>(null)
+  const [promptsUsed, setPromptsUsed] = useState(0)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  const locked = promptsUsed >= MAX_PROMPTS
+  const promptsLeft = Math.max(0, MAX_PROMPTS - promptsUsed)
+
+  // Prompt budget: load the per-task count so the 5-prompt limit survives
+  // navigation and page reloads — and deliberately NOT reset by "clear chat".
+  useEffect(() => {
+    try {
+      const n = parseInt(localStorage.getItem(`calibiai_prompt_count_${taskId}`) || '0', 10)
+      if (Number.isFinite(n)) setPromptsUsed(Math.max(0, Math.min(MAX_PROMPTS, n)))
+    } catch {
+      /* ignore */
+    }
+  }, [taskId])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`calibiai_prompt_count_${taskId}`, String(promptsUsed))
+    } catch {
+      /* ignore */
+    }
+  }, [promptsUsed, taskId])
 
   // Initialize greeting message per task
   useEffect(() => {
@@ -275,7 +306,7 @@ export function AiExamAssistant({
     const greeting: ChatMsg = {
       id: 'greet_' + Date.now(),
       role: 'assistant',
-      content: `👋 **Welcome to CalibiAI Assistant for ${taskTitle}!**\n\nBecause this is a proctored assessment, you are not permitted to switch browser tabs. I am provided here directly inside your exam so you can:\n- Ask for explanations of the bug or architecture.\n- Check edge cases and test harness requirements.\n- Request step-by-step guidance or code examples.\n- Have me review your draft solution before running tests.\n\n*How can I help you tackle this task?*`,
+      content: `👋 **Welcome to CalibiAI Assistant for ${taskTitle}!**\n\nBecause this is a proctored assessment, you are not permitted to switch browser tabs. I am provided here directly inside your exam so you can:\n- Ask for explanations of the bug or architecture.\n- Check edge cases and test harness requirements.\n- Request step-by-step guidance or code examples.\n- Have me review your draft solution before running tests.\n\n🔒 **Prompt limit:** you get exactly **${MAX_PROMPTS} prompts** for this task. Once they're used, I lock and you'll continue on your own — so make each question count and ask for your most valuable help first.\n\n*How can I help you tackle this task?*`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     }
     setMessages([greeting])
@@ -304,7 +335,7 @@ export function AiExamAssistant({
 
   const handleSend = async (textToSend?: string) => {
     const text = (textToSend || input).trim()
-    if (!text || busy) return
+    if (!text || busy || locked) return
 
     const userMsg: ChatMsg = {
       id: 'usr_' + Date.now(),
@@ -317,6 +348,8 @@ export function AiExamAssistant({
     setMessages(updatedMessages)
     setInput('')
     setBusy(true)
+    // Consume one of the task's prompts the moment the candidate sends.
+    setPromptsUsed((n) => Math.min(MAX_PROMPTS, n + 1))
 
     try {
       const res = await fetch('/api/ai/assistant', {
@@ -418,6 +451,17 @@ export function AiExamAssistant({
         </div>
 
         <div className="flex items-center gap-1.5">
+          <span
+            className={`hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9.5px] font-bold border ${
+              locked
+                ? 'bg-rose-500/30 border-rose-400/50 text-rose-100'
+                : 'bg-emerald-500/20 border-emerald-400/40 text-emerald-100'
+            }`}
+            title={locked ? 'Prompt limit reached for this task' : 'Prompts remaining for this task'}
+          >
+            {locked ? <Lock className="w-2.5 h-2.5" /> : null}
+            {locked ? 'Locked' : `${promptsLeft} prompt${promptsLeft === 1 ? '' : 's'} left`}
+          </span>
           {engine && (
             <span className="hidden sm:inline-flex px-2 py-0.5 rounded-md bg-white/10 text-[9.5px] font-mono text-indigo-200">
               {engine === 'deepseek' ? 'DeepSeek' : 'Heuristic Engine'}
@@ -452,6 +496,17 @@ export function AiExamAssistant({
       {/* Collapsible Content */}
       {expanded && (
         <div className="p-4 space-y-3.5 animate-fade-in">
+          {/* Locked state — the prompt budget is exhausted */}
+          {locked && (
+            <div className="flex items-start gap-2.5 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 animate-fade-in">
+              <Lock className="w-4 h-4 mt-0.5 shrink-0" />
+              <span>
+                <b>Assistant locked.</b> You've used all {MAX_PROMPTS} prompts for this task.
+                Review your work with what you've learned, run the tests, and submit your best solution.
+              </span>
+            </div>
+          )}
+
           {/* Quick Suggestion Prompt Chips */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
             <span className="text-[10px] font-bold text-indigo-900/70 shrink-0 uppercase tracking-wider flex items-center gap-1 mr-1">
@@ -460,7 +515,7 @@ export function AiExamAssistant({
             {suggestions.map((sug, i) => (
               <button
                 key={i}
-                disabled={busy}
+                disabled={busy || locked}
                 onClick={() => handleSend(sug)}
                 className="shrink-0 px-2.5 py-1 rounded-full bg-white/90 hover:bg-indigo-600 hover:text-white border border-indigo-200 text-slate-700 text-[11px] font-medium shadow-sm transition-all duration-200 hover:shadow disabled:opacity-50 active:scale-95"
               >
@@ -538,27 +593,31 @@ export function AiExamAssistant({
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask about the bug, edge cases, syntax, or review your code… (Press Enter to send)"
+                placeholder={
+                  locked
+                    ? 'Prompt limit reached — the assistant is locked for this task.'
+                    : 'Ask about the bug, edge cases, syntax, or review your code… (Press Enter to send)'
+                }
                 rows={1}
-                disabled={busy}
+                disabled={busy || locked}
                 className="w-full resize-none bg-transparent px-3.5 py-2.5 text-xs text-slate-800 placeholder:text-slate-400 outline-none max-h-24 min-h-[40px]"
               />
               <button
                 type="button"
-                disabled={!input.trim() || busy}
+                disabled={!input.trim() || busy || locked}
                 onClick={() => handleSend()}
                 className="m-1.5 p-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold transition hover:brightness-110 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
-                title="Send question"
+                title={locked ? 'Prompt limit reached' : 'Send question'}
               >
-                <Send className="w-3.5 h-3.5" />
+                {locked ? <Lock className="w-3.5 h-3.5" /> : <Send className="w-3.5 h-3.5" />}
               </button>
             </div>
             <div className="flex items-center justify-between px-1 text-[10px] text-slate-400">
               <span className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                Context synced with editor
+                <span className={`w-1.5 h-1.5 rounded-full inline-block ${locked ? 'bg-rose-500' : 'bg-emerald-500'}`} />
+                {locked ? `Prompt limit reached — ${MAX_PROMPTS}/${MAX_PROMPTS} used` : `${promptsLeft} prompt${promptsLeft === 1 ? '' : 's'} left · context synced with editor`}
               </span>
-              <span>Press Enter to send · Shift+Enter for new line</span>
+              <span>{locked ? 'Assistant locked for this task' : 'Press Enter to send · Shift+Enter for new line'}</span>
             </div>
           </div>
         </div>

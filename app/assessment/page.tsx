@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useStore } from '@/lib/store'
+import { Maximize2 } from 'lucide-react'
 import { bank, shuffledOptions, shuffledChoiceOptions, mulberry32 } from '@/lib/questions'
 import { computeScores } from '@/lib/scoring'
 import { getSupabase } from '@/lib/supabase'
@@ -250,6 +251,10 @@ function AssessmentInner() {
   const [envBlockReason, setEnvBlockReason] = useState<string | null>(null)
   const [envConsent, setEnvConsent] = useState(false)
   const [envBusy, setEnvBusy] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  // Whether fullscreen was actually engaged at the gate (state twin of
+  // envFsEngagedRef so the UI can render on it).
+  const [fsEngaged, setFsEngaged] = useState(false)
   const [mediaReady, setMediaReady] = useState(false)
   const [mediaError, setMediaError] = useState('')
   const [videoOn, setVideoOn] = useState(false)
@@ -502,6 +507,56 @@ function AssessmentInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [envState, terminated])
 
+  // Keep the header button in sync with the real fullscreen state.
+  useEffect(() => {
+    const sync = () => setIsFullscreen(!!document.fullscreenElement)
+    sync()
+    document.addEventListener('fullscreenchange', sync)
+    return () => document.removeEventListener('fullscreenchange', sync)
+  }, [])
+
+  // Lock the candidate in fullscreen for the whole live test. Pressing Esc (or
+  // any other fullscreen exit) re-enters fullscreen automatically. Browsers
+  // briefly refuse a programmatic re-entry right after an Esc exit, so we retry
+  // a few times; the header's fullscreen button remains a one-click fallback
+  // (a real user gesture always succeeds).
+  useEffect(() => {
+    if (envState !== 'cleared' || terminated) return
+    if (!fsEngaged) return // fullscreen never engaged → nothing to re-enter
+    let attempts = 0
+    let timer: any = null
+
+    const reenter = () => {
+      if (document.fullscreenElement || submittingRef.current) return
+      const attempt = async () => {
+        if (document.fullscreenElement || submittingRef.current) return
+        try {
+          await document.documentElement.requestFullscreen()
+          showToast('Fullscreen restored — it must stay on for the whole test.')
+        } catch {
+          attempts += 1
+          if (attempts < 6) {
+            clearTimeout(timer)
+            timer = setTimeout(attempt, 500)
+          } else {
+            showToast('⚠ Fullscreen was exited — click the ⛶ button in the header to go back.')
+          }
+        }
+      }
+      attempt()
+    }
+
+    const onFsChange = () => {
+      if (!document.fullscreenElement) reenter()
+    }
+    document.addEventListener('fullscreenchange', onFsChange)
+    return () => {
+      document.removeEventListener('fullscreenchange', onFsChange)
+      clearTimeout(timer)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [envState, terminated, fsEngaged])
+
   // Pre-start environment check — runs (and must pass) BEFORE the test is
   // reachable. Tries to enter fullscreen, enumerates displays via the
   // Window-Management API where available, and blocks the start if more than
@@ -520,6 +575,8 @@ function AssessmentInner() {
            carry on best-effort; the focus/monitor still works. */
       }
       envFsEngagedRef.current = fsEngaged
+      setFsEngaged(fsEngaged)
+      setIsFullscreen(!!document.fullscreenElement)
       const facts = await resolveScreenFacts(window)
       const verdict = evaluateStartGate(facts)
       if (!verdict.allow) {
@@ -933,7 +990,7 @@ function AssessmentInner() {
                     </span>
                   </div>
                   <div className="text-[11px] text-indigo-200 mt-0.5">
-                    Proctored assessment — do not switch browser tabs. Use the AI Assistant below to ask questions about bugs, edge cases, or review your code.
+                    Proctored assessment — do not switch browser tabs. Use the AI Assistant below to ask questions about bugs, edge cases, or review your code. <b className="text-white">You have 5 assistant prompts for this task — use them wisely.</b>
                   </div>
                 </div>
               </div>
@@ -1136,7 +1193,7 @@ function AssessmentInner() {
                     </span>
                   </div>
                   <div className="text-[11px] text-indigo-200 mt-0.5">
-                    Proctored mode active. Build the sliding-window rate limiter & Express middleware. Ask the AI assistant below for architecture, code examples, or reviews without switching tabs.
+                    Proctored mode active. Build the sliding-window rate limiter & Express middleware. Ask the AI assistant below for architecture, code examples, or reviews without switching tabs. <b className="text-white">You have 5 assistant prompts for this task — use them wisely.</b>
                   </div>
                 </div>
               </div>
@@ -1377,6 +1434,16 @@ function AssessmentInner() {
               Warnings
               <span className={`px-2 py-0.5 rounded-full font-bold ${strikes >= 3 ? 'bg-rose-500 text-white' : strikes >= 1 ? 'bg-amber-400 text-slate-900' : 'bg-slate-100 text-slate-500'}`}>{strikes}/3</span>
             </span>
+            {envState === 'cleared' && !terminated && !submitting && !isFullscreen && (
+              <button
+                onClick={() => { try { document.documentElement.requestFullscreen() } catch { /* ignore */ } }}
+                title="Re-enter fullscreen"
+                className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700 transition hover:bg-amber-100 active:scale-95"
+              >
+                <Maximize2 className="h-3.5 w-3.5" aria-hidden />
+                Fullscreen
+              </button>
+            )}
             <div className={`px-4 py-1.5 rounded-full font-mono font-black text-sm border ${critical ? 'bg-rose-500 text-white border-rose-400 timer-pulse' : 'bg-white text-slate-800 border-slate-200'}`}>⏱ {fmt(remaining)}</div>
             <button onClick={requestSubmit} className="btn-primary !px-4 !py-2 !text-xs">Submit</button>
           </div>
@@ -1570,7 +1637,7 @@ function AssessmentInner() {
             <ul className="mt-5 space-y-2.5 text-sm text-slate-700">
               <li className="flex gap-2.5"><span className="shrink-0">🚫</span><span><b>Right-click</b> is disabled across the whole test screen.</span></li>
               <li className="flex gap-2.5"><span className="shrink-0">🖥️</span><span><b>External / mirrored displays</b> are not allowed. If one is detected the test won't start — or it is terminated if one is connected later.</span></li>
-              <li className="flex gap-2.5"><span className="shrink-0">🔒</span><span>The browser enters <b>fullscreen</b>; leaving fullscreen mid-test is recorded as a violation.</span></li>
+              <li className="flex gap-2.5"><span className="shrink-0">🔒</span><span>The browser is <b>locked in fullscreen</b> for the whole test. If you press Esc, fullscreen re-enters automatically — exiting it mid-test is recorded as a violation.</span></li>
               <li className="flex gap-2.5"><span className="shrink-0">🗂️</span><span>Please <b>close every other tab and window</b> first. (A webpage cannot close other tabs for you, but open-tab / away-switching is monitored.)</span></li>
             </ul>
 
@@ -1673,6 +1740,28 @@ function AssessmentInner() {
             <p className="mt-4 text-center text-[11px] text-slate-400">
               Tip: unanswered questions simply score zero — you can submit whenever you are ready.
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Fullscreen lock — if fullscreen is lost mid-test (e.g. Esc) and the
+          automatic re-entry is blocked by the browser, the exam is paused behind
+          this overlay until the candidate re-enters fullscreen. This guarantees
+          the test can never be taken in normal windowed mode. */}
+      {envState === 'cleared' && !terminated && !submitting && fsEngaged && !isFullscreen && (
+        <div className="fixed inset-0 z-[45] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="max-w-sm w-full rounded-3xl border-2 border-indigo-300 bg-white p-7 text-center shadow-2xl animate-pop">
+            <div className="text-5xl">🖥️</div>
+            <h3 className="mt-3 text-xl font-black text-indigo-700">Fullscreen required</h3>
+            <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+              The assessment must run in fullscreen. It is paused until you re-enter fullscreen.
+            </p>
+            <button
+              onClick={() => { try { document.documentElement.requestFullscreen() } catch { /* ignore */ } }}
+              className="btn-primary mt-5 w-full !py-3"
+            >
+              <span className="inline-flex items-center gap-2"><Maximize2 className="h-4 w-4" aria-hidden /> Re-enter fullscreen</span>
+            </button>
           </div>
         </div>
       )}
