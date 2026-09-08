@@ -40,6 +40,12 @@ const nextConfig = {
     serverActions: { allowedOrigins: ['*'] },
     // pdf-parse/mammoth ship CJS that must not be webpack-bundled for API routes.
     serverComponentsExternalPackages: ['pdf-parse', 'mammoth'],
+    // MilesWeb shared Node.js hosting caps the number of processes a build may
+    // spawn. By default `next build` forks one static-generation worker per
+    // CPU; on the server that blows the process limit and dies with
+    // "spawn node EAGAIN". Force a single worker so the build fits the limits.
+    cpus: 1,
+    workerThreads: false,
   },
   webpack: (config) => {
     // Apply only when the real package is missing from node_modules.
