@@ -8,18 +8,24 @@ import {
   ChevronRight,
   Circle,
   Clock,
+  FileCheck2,
   ListChecks,
+  Lock,
   Send,
   X,
 } from 'lucide-react'
 import type { ReviewSection, ReviewStats, ReviewTarget } from '@/lib/reviewModel'
 
 /**
- * Pre-submit review page shown when the candidate clicks "Submit" themselves.
- * (Automatic submission — time up or 3 focus warnings — skips this and submits
- * directly.) Lists every section and question with answered / not-answered
- * status; each row jumps back to that question so nothing is left behind by
- * accident.
+ * Pre-submit review page.
+ *
+ * Manual submit (`readOnly = false`): lists every section and question with
+ * answered / not-answered status; each row jumps back to that question so
+ * nothing is left behind by accident.
+ *
+ * Auto-submit (`readOnly = true`): the same full summary, but read-only — the
+ * candidate can see exactly what was submitted after time-up / the 3rd focus
+ * warning, yet cannot return to the exam. A single button continues to results.
  */
 export function AssessmentReview({
   sections,
@@ -27,6 +33,8 @@ export function AssessmentReview({
   timeLeft,
   strikes,
   submitting,
+  readOnly = false,
+  autoReason,
   onJump,
   onCancel,
   onSubmit,
@@ -36,6 +44,8 @@ export function AssessmentReview({
   timeLeft: string
   strikes: number
   submitting: boolean
+  readOnly?: boolean
+  autoReason?: string
   onJump: (target: ReviewTarget) => void
   onCancel: () => void
   onSubmit: () => void
@@ -54,18 +64,30 @@ export function AssessmentReview({
               <ListChecks className="h-5 w-5" aria-hidden />
             </div>
             <div>
-              <h2 className="text-base font-black text-slate-900 sm:text-lg">Review your answers</h2>
-              <p className="text-[11px] text-slate-500">A last look before your score is locked.</p>
+              <h2 className="text-base font-black text-slate-900 sm:text-lg">
+                {readOnly ? 'Your submitted answers' : 'Review your answers'}
+              </h2>
+              <p className="text-[11px] text-slate-500">
+                {readOnly
+                  ? autoReason || 'Your assessment ended automatically.'
+                  : 'A last look before your score is locked.'}
+              </p>
             </div>
           </div>
-          <button
-            onClick={onCancel}
-            className="grid h-9 w-9 place-items-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-800"
-            aria-label="Return to assessment"
-            title="Return to assessment"
-          >
-            <X className="h-4 w-4" aria-hidden />
-          </button>
+          {readOnly ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-[11px] font-bold text-indigo-700">
+              <Lock className="h-3.5 w-3.5" aria-hidden /> Submitted automatically
+            </span>
+          ) : (
+            <button
+              onClick={onCancel}
+              className="grid h-9 w-9 place-items-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-800"
+              aria-label="Return to assessment"
+              title="Return to assessment"
+            >
+              <X className="h-4 w-4" aria-hidden />
+            </button>
+          )}
         </div>
       </header>
 
@@ -112,7 +134,9 @@ export function AssessmentReview({
                   </p>
                 )}
                 <p className="mt-1 text-xs text-slate-500">
-                  Tap any question below to jump back and finish it.
+                  {readOnly
+                    ? 'These are your answers exactly as submitted — no further changes can be made.'
+                    : 'Tap any question below to jump back and finish it.'}
                 </p>
               </div>
 
@@ -167,17 +191,9 @@ export function AssessmentReview({
                           {group.label}
                         </p>
                         <ul className="space-y-1">
-                          {group.questions.map((q) => (
-                            <li key={q.key}>
-                              <button
-                                type="button"
-                                onClick={() => onJump(q.target)}
-                                className={`group flex w-full items-start gap-3 rounded-2xl px-2.5 py-2 text-left transition ${
-                                  q.answered
-                                    ? 'hover:bg-slate-50'
-                                    : 'bg-amber-50/70 hover:bg-amber-100/70'
-                                }`}
-                              >
+                          {group.questions.map((q) => {
+                            const row = (
+                              <>
                                 <span className="mt-0.5 shrink-0">
                                   {q.answered ? (
                                     <CheckCircle2 className="h-4 w-4 text-emerald-500" aria-hidden />
@@ -193,10 +209,35 @@ export function AssessmentReview({
                                     {q.answered ? q.preview : 'Not answered yet'}
                                   </span>
                                 </span>
-                                <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-indigo-500" aria-hidden />
-                              </button>
-                            </li>
-                          ))}
+                                {readOnly ? (
+                                  <Lock className="mt-1 h-4 w-4 shrink-0 text-slate-300" aria-hidden />
+                                ) : (
+                                  <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-indigo-500" aria-hidden />
+                                )}
+                              </>
+                            )
+                            return (
+                              <li key={q.key}>
+                                {readOnly ? (
+                                  <div className={`flex w-full items-start gap-3 rounded-2xl px-2.5 py-2 ${q.answered ? '' : 'bg-amber-50/70'}`}>
+                                    {row}
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => onJump(q.target)}
+                                    className={`group flex w-full items-start gap-3 rounded-2xl px-2.5 py-2 text-left transition ${
+                                      q.answered
+                                        ? 'hover:bg-slate-50'
+                                        : 'bg-amber-50/70 hover:bg-amber-100/70'
+                                    }`}
+                                  >
+                                    {row}
+                                  </button>
+                                )}
+                              </li>
+                            )
+                          })}
                         </ul>
                       </div>
                     ))}
@@ -211,7 +252,29 @@ export function AssessmentReview({
       {/* Footer */}
       <footer className="shrink-0 border-t border-slate-200 bg-white/95 backdrop-blur-xl">
         <div className="mx-auto max-w-4xl px-4 py-3.5 sm:px-6">
-          {confirming ? (
+          {readOnly ? (
+            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm font-semibold text-slate-700">
+                Your answers have been locked and submitted — continue to see your CalibiAI Score and report.
+              </p>
+              <button
+                onClick={onSubmit}
+                disabled={submitting}
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-6 py-2.5 text-xs font-bold text-white shadow-lg shadow-indigo-300/50 transition hover:brightness-105 active:scale-[.98] disabled:opacity-50"
+              >
+                {submitting ? (
+                  <>
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                    Submitting…
+                  </>
+                ) : (
+                  <>
+                    <FileCheck2 className="h-3.5 w-3.5" aria-hidden /> Continue to results →
+                  </>
+                )}
+              </button>
+            </div>
+          ) : confirming ? (
             <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm font-semibold text-slate-700">
                 Once submitted, your CalibiAI Score is locked — you can't go back and change anything.

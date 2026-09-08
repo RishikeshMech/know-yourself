@@ -274,9 +274,12 @@ function AssessmentInner() {
   const [playCounts, setPlayCounts] = useState<Record<string, number>>({})
   const [showHint, setShowHint] = useState<Record<string, boolean>>({})
   const [testResults, setTestResults] = useState<Record<string, TestRunResult | undefined>>({})
-  // Pre-submit review page (manual submit only — auto-submit skips straight to
-  // evaluation). The candidate can jump back to any question from here.
+  // Pre-submit review page. `reviewMode`:
+  //   'manual' — candidate-initiated submit; can jump back to any question.
+  //   'auto'   — time-up / 3 warnings; read-only, no returning to the exam.
   const [showReview, setShowReview] = useState(false)
+  const [reviewMode, setReviewMode] = useState<'manual' | 'auto' | null>(null)
+  const [autoSubmitReason, setAutoSubmitReason] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const submittingRef = useRef(false)
 
@@ -300,6 +303,11 @@ function AssessmentInner() {
   // blur/visibility/fullscreen events a single action produces.
   const lastStrikeAtRef = useRef(0)
   const submitRef = useRef<(auto?: boolean) => void>(() => {})
+  // Auto-submit (time-up / 3 warnings) opens the read-only review page. These
+  // refs keep the latest closure + a once-only guard reachable from the
+  // mount-time timer interval declared further down.
+  const autoSubmitRef = useRef<(reason: string) => void>(() => {})
+  const autoReviewRef = useRef(false)
   // Snapshot of the screen captured when the pre-test gate was cleared, so the
   // live monitor can compare it against later states to detect an external
   // display being connected or the tab moving to another screen.
@@ -358,7 +366,7 @@ function AssessmentInner() {
       const tick = () => {
         const rem = Math.max(0, Math.floor((expires - Date.now()) / 1000))
         setRemaining(rem)
-        if (rem <= 0) submitRef.current(true)
+        if (rem <= 0) autoSubmitRef.current('Time is up — your assessment ended automatically.')
       }
       tick()
       intervalId = setInterval(tick, 1000)
@@ -436,7 +444,7 @@ function AssessmentInner() {
         strikesRef.current = n
         setStrikes(n)
         setViolationMsg('You left the assessment window. Switching away is recorded as a proctoring violation.')
-        if (n >= 3) { setTerminated(true); setShowViolation(false); submitRef.current(true) }
+        if (n >= 3) { setShowViolation(false); autoSubmitRef.current('You reached 3 focus warnings — your assessment ended automatically.') }
         else setShowViolation(true)
       }
     }
@@ -486,9 +494,8 @@ function AssessmentInner() {
       setStrikes(n)
       setViolationMsg(msg)
       if (n >= MAX_FOCUS_STRIKES) {
-        setTerminated(true)
         setShowViolation(false)
-        submitRef.current(true)
+        autoSubmitRef.current('You reached 3 focus warnings — your assessment ended automatically.')
       } else {
         setShowViolation(true)
       }
@@ -816,9 +823,9 @@ function AssessmentInner() {
 
   // Runs the real submission. `auto` = triggered by the timer running out or
   // the 3rd focus warning (auto_submitted, status "expired"); manual confirms
-  // from the modal call it with auto=false (status "submitted").
+  // from the review page call it with auto=false (status "submitted").
   const doSubmit = async (auto = false) => {
-    if (terminated || submittingRef.current) return
+    if (submittingRef.current) return
     submittingRef.current = true
     setSubmitting(true)
     setShowReview(false)
@@ -862,6 +869,21 @@ function AssessmentInner() {
   }
   useEffect(() => { submitRef.current = doSubmit })
 
+  // Automatic submission (timer expiry or the 3rd focus warning) opens the same
+  // review page in READ-ONLY mode: the candidate can see exactly what was
+  // submitted, but cannot return to the exam. The actual network submission
+  // runs when they tap "Continue to results" (→ doSubmit(true)).
+  const beginAutoSubmit = (reason: string) => {
+    if (autoReviewRef.current || submittingRef.current) return
+    autoReviewRef.current = true
+    setAutoSubmitReason(reason)
+    setShowViolation(false)
+    setTerminated(true)
+    setReviewMode('auto')
+    setShowReview(true)
+  }
+  useEffect(() => { autoSubmitRef.current = beginAutoSubmit })
+
   const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
   const critical = remaining < 600
 
@@ -870,10 +892,12 @@ function AssessmentInner() {
 
   const requestSubmit = () => {
     if (terminated || submittingRef.current) return
+    setReviewMode('manual')
     setShowReview(true)
   }
 
-  // Jump from the review page back to a specific question.
+  // Jump from the review page back to a specific question (manual mode only —
+  // the read-only auto review never calls this).
   const jumpToQuestion = (target: ReviewTarget) => {
     setShowReview(false)
     if (target.task !== undefined) setActiveDebuggingTask(target.task)
@@ -1731,24 +1755,25 @@ function AssessmentInner() {
         </div>
       )}
 
-      {/* Pre-submit review page — shown on manual submit only (auto-submit on
-          time-up / warnings skips straight to evaluation). The candidate can
-          inspect every question and jump back to any of them. */}
-      {showReview && !terminated && !submitting && (
+      {/* Review page — manual submit (editable, can jump back) and auto-submit
+          (read-only, no return to the exam). */}
+      {showReview && !submitting && (
         <AssessmentReview
           sections={review.sections}
           stats={review.stats}
           timeLeft={fmt(remaining)}
           strikes={strikes}
           submitting={submitting}
+          readOnly={reviewMode === 'auto'}
+          autoReason={reviewMode === 'auto' ? autoSubmitReason : undefined}
           onJump={jumpToQuestion}
           onCancel={() => setShowReview(false)}
-          onSubmit={() => doSubmit(false)}
+          onSubmit={() => doSubmit(reviewMode === 'auto')}
         />
       )}
 
       {/* Submitting overlay */}
-      {submitting && !terminated && (
+      {submitting && (
         <div className="fixed inset-0 z-[65] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
           <div className="glass-card flex items-center gap-3 px-6 py-5 animate-pop">
             <span className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
@@ -1829,8 +1854,8 @@ function AssessmentInner() {
         </div>
       )}
 
-      {/* Terminated */}
-      {terminated && (
+      {/* Terminated — hidden while the read-only auto-submit review is up */}
+      {terminated && !(showReview && reviewMode === 'auto') && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
           <div className="max-w-sm w-full rounded-3xl border-2 border-rose-300 bg-white p-7 text-center shadow-2xl animate-pop">
             <div className="text-5xl">⛔</div>
