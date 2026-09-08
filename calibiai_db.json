@@ -267,13 +267,13 @@
     {
       "id": "c631223c-b1c6-44f6-919b-4f41ee806053",
       "email": "prajwalen100@gmail.com",
-      "full_name": "Prajwal Gulhane",
+      "full_name": "Prajwal",
       "prn": "76868576",
       "phone": "9284364839",
       "dob": "2002-03-08",
       "gender": "Male",
       "degree": "B.Tech CSE",
-      "college": "Ram megh college",
+      "college": "Ram megh college engineering",
       "graduation_year": 2023,
       "cgpa": 9,
       "skills": "Python",
@@ -285,7 +285,51 @@
         "version": 1,
         "generated_at": "2026-09-07T20:50:01.487Z"
       },
-      "updated_at": "2026-09-07T20:50:01.808Z"
+      "updated_at": "2026-09-07T21:10:12.478Z"
+    },
+    {
+      "id": "1bfed2fb-f2b0-4be8-af14-819bffa277da",
+      "email": "prajwalen100@gmail.com",
+      "role": "student",
+      "full_name": "Prajwal Gulhane",
+      "phone": "6767676888",
+      "dob": "2004-06-08",
+      "gender": "Male",
+      "degree": "B.Tech IT",
+      "college": "pccore",
+      "institution_id": null,
+      "graduation_year": 2027,
+      "cgpa": 9,
+      "skills": "python",
+      "linkedin_url": null,
+      "github_url": null,
+      "created_at": "2026-09-07T21:16:03.671165+00:00",
+      "updated_at": "2026-09-07T21:19:33.941Z",
+      "ai_avatar": {
+        "seed": 4065440650,
+        "style": "aura",
+        "version": 1,
+        "generated_at": "2026-09-07T21:19:24.616Z"
+      },
+      "prn": "67679890"
+    },
+    {
+      "id": "a36c171e-ac6a-42ff-a859-6f992a8c25a1",
+      "email": "prajwalen100@gmail.com",
+      "full_name": "Prajwal Gulhane",
+      "prn": "892894890",
+      "phone": "2919329309",
+      "dob": "2002-10-10",
+      "gender": "Male",
+      "degree": "B.Tech Civil",
+      "college": "Prmit and R",
+      "graduation_year": 2024,
+      "cgpa": 9,
+      "skills": "Python , SQL",
+      "linkedin_url": "",
+      "github_url": "",
+      "ai_avatar": null,
+      "updated_at": "2026-09-08T06:24:52.185Z"
     }
   ],
   "assessment_sessions": [
@@ -742,6 +786,19 @@
       "tab_switches": 2,
       "question_seed": 316328849,
       "created_at": "2026-09-07T20:44:45.652Z"
+    },
+    {
+      "id": "d8b5b202-5f65-417f-a6d4-c9c0c09c256b",
+      "student_id": "1bfed2fb-f2b0-4be8-af14-819bffa277da",
+      "status": "submitted",
+      "started_at": "2026-09-07T21:18:33.273Z",
+      "expires_at": "2026-09-07T23:18:33.273Z",
+      "duration_sec": 7200,
+      "answers": {},
+      "submitted_at": "2026-09-07T21:18:41.219Z",
+      "tab_switches": 0,
+      "question_seed": 591522897,
+      "created_at": "2026-09-07T21:18:33.273Z"
     }
   ],
   "assessment_results": [
@@ -2126,6 +2183,86 @@
       "verifiable_hash": "sha256:18a2e60-07da148e",
       "ai_feedback": {},
       "created_at": "2026-09-07T20:48:38.884Z"
+    },
+    {
+      "id": "res_5a9bf1bd",
+      "session_id": "d8b5b202-5f65-417f-a6d4-c9c0c09c256b",
+      "student_id": "1bfed2fb-f2b0-4be8-af14-819bffa277da",
+      "scores": {
+        "session_id": "d8b5b202-5f65-417f-a6d4-c9c0c09c256b",
+        "english": {
+          "listening": 0,
+          "speaking": 0,
+          "reading": 0,
+          "writing": 0,
+          "total": 0,
+          "max": 200
+        },
+        "problem_solving": 0,
+        "ai_debugging": 0,
+        "ai_feature": 0,
+        "prompt_engineering": 0,
+        "cognitive": {
+          "grid": 0,
+          "logical": 0,
+          "cognitive_score": 0,
+          "behavioral_total": 40,
+          "total": 40,
+          "max": 200,
+          "behavioral": {
+            "teamwork": 40,
+            "accountability": 40,
+            "adaptability": 40,
+            "responsible_ai": 40,
+            "decision_making": 40,
+            "learning_mindset": 40
+          },
+          "traitLabels": {
+            "teamwork": "Teamwork",
+            "accountability": "Accountability",
+            "adaptability": "Adaptability",
+            "responsible_ai": "Responsible AI",
+            "decision_making": "Decision Making",
+            "learning_mindset": "Learning Mindset"
+          }
+        },
+        "detail": {
+          "listeningCorrect": 0,
+          "listeningTotal": 8,
+          "readingCorrect": 0,
+          "readingTotal": 6,
+          "problemCorrect": 0,
+          "problemTotal": 10,
+          "logicalCorrect": 0,
+          "logicalTotal": 7,
+          "debugPer": {
+            "AD1": 0,
+            "AD2": 0,
+            "AD3": 0
+          },
+          "promptPer": {
+            "PE1": 0,
+            "PE2": 0,
+            "PE3": 0
+          },
+          "featureScore100": 0,
+          "speakingCount": 0
+        },
+        "total": 40,
+        "grade": "D",
+        "percentile": 37,
+        "ai_results": {},
+        "verifiable_hash": "sha256:49d7ea8-07dbccf0",
+        "tab_switches": 0,
+        "auto_submitted": false,
+        "submitted_at": "2026-09-07T21:18:40.901Z"
+      },
+      "total": 40,
+      "grade": "D",
+      "percentile": 37,
+      "verifiable_hash": "sha256:49d7ea8-07dbccf0",
+      "ai_feedback": {},
+      "created_at": "2026-09-07T21:18:41.219Z"
     }
   ],
   "resume_analyses": [
@@ -3759,6 +3896,252 @@
         ]
       },
       "word_count": 473
+    },
+    {
+      "id": "res_1788815430517",
+      "student_id": "c631223c-b1c6-44f6-919b-4f41ee806053",
+      "storage_key": "",
+      "file_name": "CalibiAI_SSPU_Kiwale_MoU.pdf",
+      "created_at": "2026-09-07T21:10:30.517Z",
+      "resume_score": 5,
+      "engine": "deepseek",
+      "name_match": false,
+      "detected_name": "MEMORANDUM OF UNDERSTANDING",
+      "flags": [
+        {
+          "level": "error",
+          "text": "The document is a legal MoU between CalibiAI Academy and SSPU, not a resume. No candidate name, contact, or professional experience is present."
+        },
+        {
+          "level": "error",
+          "text": "Candidate name mismatch: Expected 'Prajwal' but no name found in document."
+        },
+        {
+          "level": "error",
+          "text": "No contact information, skills, education, or work experience sections present."
+        }
+      ],
+      "professionalism": 10,
+      "summary": "This submission is not a resume but a legal Memorandum of Understanding between two institutions. It contains no personal information, professional experience, education, or skills relevant to a job application. The candidate appears to have uploaded the wrong document, rendering the application completely non-compliant and unreadable for hiring purposes. Immediate resubmission of a proper resume is required.",
+      "experience": {
+        "years": 0,
+        "entries": []
+      },
+      "education": [],
+      "skills": [],
+      "contact": {},
+      "feedback": {
+        "strengths": [],
+        "gaps": [
+          "No resume content at all; document is a legal agreement.",
+          "Missing candidate name, contact details, and professional summary.",
+          "No work experience, education, skills, or projects listed."
+        ],
+        "suggestions": [
+          "Upload a properly formatted resume with your full name, contact information, and relevant sections.",
+          "Include a professional summary, work experience with quantified achievements, education, and technical skills.",
+          "Ensure the document is a resume, not any other type of file or legal document."
+        ]
+      },
+      "parsed": {
+        "name": "Candidate",
+        "experience_years": 0,
+        "projects": 1,
+        "skills": []
+      },
+      "word_count": 806
+    },
+    {
+      "id": "res_1788815833056",
+      "student_id": "1bfed2fb-f2b0-4be8-af14-819bffa277da",
+      "storage_key": "",
+      "file_name": "Prajwal Gulhane Re.pdf",
+      "created_at": "2026-09-07T21:17:13.056Z",
+      "resume_score": 78,
+      "engine": "deepseek",
+      "name_match": true,
+      "detected_name": "Prajwal Gulhane",
+      "flags": [
+        {
+          "level": "ok",
+          "text": "Strong quantified achievements in work experience."
+        },
+        {
+          "level": "warn",
+          "text": "Projects lack quantified outcomes and links to GitHub or live demos."
+        },
+        {
+          "level": "warn",
+          "text": "Technical skills list is extensive but some are buzzwords without evidence of depth."
+        }
+      ],
+      "professionalism": 85,
+      "summary": "Prajwal is a Java backend developer with 1.5+ years at Cognizant, showing strong engineering impact with quantified metrics like reducing invoice failures by 40% and handling 10k+ daily transactions. His resume is well-structured and ATS-friendly, with relevant certifications. However, his projects are described as task lists without measurable outcomes or links, and his skills section is overly broad, diluting focus. He is a solid mid-level candidate but needs to demonstrate deeper technical complexity and provide proof of work to stand out.",
+      "experience": {
+        "years": 1.5,
+        "entries": [
+          "Software Engineer – Cognizant Technology Solutions (Dec 2023 – Present)"
+        ]
+      },
+      "education": [
+        "Bachelor of Engineering in Computer Science – Prof. Ram Meghe Institute of Technology and Research"
+      ],
+      "skills": [
+        "Java",
+        "Spring Boot",
+        "Spring Security",
+        "Spring Data JPA",
+        "Hibernate",
+        "Apache Kafka",
+        "PostgreSQL",
+        "Neo4j",
+        "AWS",
+        "Docker",
+        "Kubernetes",
+        "Microservices"
+      ],
+      "contact": {
+        "email": "prajwalen100@gmail.com",
+        "phone": "+91 9284364839",
+        "linkedin": "linkedin.com/in/prajwalg90"
+      },
+      "feedback": {
+        "strengths": [
+          "Quantified impact in work experience: reduced invoice failures by 40%, improved query performance by 35%.",
+          "Handled 10,000+ daily transactions with 99.5% uptime, demonstrating production reliability.",
+          "Implemented Kafka for real-time messaging, reducing latency by 60%.",
+          "Strong AWS certifications (Cloud Practitioner, Solutions Architect, AI Practitioner).",
+          "Clean, ATS-friendly formatting with clear sections and consistent structure."
+        ],
+        "gaps": [
+          "Projects lack quantified metrics and measurable outcomes.",
+          "No GitHub or live project URLs provided.",
+          "Skills list is overly broad, including buzzwords like 'Agentic AI' and 'Prompt Engineering' without evidence of depth.",
+          "Only one work experience entry; limited career progression visibility.",
+          "No mention of open-source contributions or side projects."
+        ],
+        "suggestions": [
+          "Rewrite project bullets using the XYZ formula: 'Accomplished [X] as measured by [Y], by doing [Z]'. For example, 'Reduced URL redirect latency by 30% (measured by p95 response time) by implementing caching with Redis.'",
+          "Add GitHub and live demo links for each project to provide verifiable proof of work.",
+          "Narrow down technical skills to core competencies and remove buzzwords; focus on depth over breadth.",
+          "Quantify project impact: mention user counts, performance improvements, or scale handled.",
+          "Add a brief description of the architecture and design decisions for each project to showcase technical complexity."
+        ]
+      },
+      "parsed": {
+        "name": "Prajwal Gulhane",
+        "experience_years": 1.5,
+        "projects": 2,
+        "skills": [
+          "Java",
+          "Spring Boot",
+          "Spring Security",
+          "Spring Data JPA",
+          "Hibernate",
+          "Apache Kafka",
+          "PostgreSQL",
+          "Neo4j"
+        ]
+      },
+      "word_count": 473
+    },
+    {
+      "id": "res_1788848707785",
+      "student_id": "a36c171e-ac6a-42ff-a859-6f992a8c25a1",
+      "storage_key": "",
+      "file_name": "Prajwal Gulhane Re.pdf",
+      "created_at": "2026-09-08T06:25:07.785Z",
+      "resume_score": 82,
+      "engine": "deepseek",
+      "name_match": true,
+      "detected_name": "Prajwal Gulhane",
+      "flags": [
+        {
+          "level": "ok",
+          "text": "Name matches candidate profile."
+        },
+        {
+          "level": "warn",
+          "text": "Missing GitHub or live project URLs for developer roles."
+        },
+        {
+          "level": "warn",
+          "text": "Education listed as B.E. in Computer Science, but profile says B.Tech Civil - inconsistency."
+        },
+        {
+          "level": "ok",
+          "text": "Strong quantified achievements present."
+        }
+      ],
+      "professionalism": 85,
+      "summary": "Prajwal Gulhane presents a strong resume with 1.5+ years of backend development experience at Cognizant, showcasing measurable impact in microservices, API development, and system optimization. The resume is well-structured, ATS-friendly, and demonstrates solid technical skills in Java, Spring Boot, and cloud technologies. However, the lack of GitHub or live project links is a notable gap for a developer role, and the education inconsistency between the profile and resume raises a red flag. Overall, a competitive candidate for junior to mid-level backend positions, but needs to address these minor issues to maximize opportunities.",
+      "experience": {
+        "years": 1.5,
+        "entries": [
+          "Software Engineer – Cognizant Technology Solutions – Dec 2023 – Present"
+        ]
+      },
+      "education": [
+        "Bachelor of Engineering in Computer Science – Prof. Ram Meghe Institute of Technology and Research"
+      ],
+      "skills": [
+        "Java",
+        "Spring Boot",
+        "Spring MVC",
+        "Spring Security",
+        "Spring Data JPA",
+        "Hibernate",
+        "Apache Kafka",
+        "PostgreSQL",
+        "MySQL",
+        "MongoDB",
+        "Neo4j",
+        "Redis"
+      ],
+      "contact": {
+        "email": "prajwalen100@gmail.com",
+        "phone": "+91 9284364839",
+        "linkedin": "linkedin.com/in/prajwalg90"
+      },
+      "feedback": {
+        "strengths": [
+          "Quantified achievements: reduced invoice processing failures by 40%, improved query performance by 35%, reduced latency by 60%.",
+          "Strong technical stack: Java, Spring Boot, microservices, Kafka, AWS, and multiple databases.",
+          "Relevant certifications: AWS Certified Cloud Practitioner, Solutions Architect Associate, and AI Practitioner.",
+          "Clear career progression with 1.5+ years at Cognizant in Life Sciences domain.",
+          "Well-structured resume with professional formatting and ATS-friendly layout."
+        ],
+        "gaps": [
+          "Missing GitHub or live project URLs to verify coding skills and project work.",
+          "Education inconsistency: profile states B.Tech Civil, resume states B.E. Computer Science - must be clarified.",
+          "No mention of open-source contributions or personal projects outside of work.",
+          "Lack of metrics for projects (e.g., AI-Powered Fitness App) - only qualitative descriptions.",
+          "No mention of soft skills or leadership experiences beyond Agile collaboration."
+        ],
+        "suggestions": [
+          "Add GitHub and live project links to the contact section and project descriptions to provide verifiable proof of work.",
+          "Resolve the education discrepancy between the profile and resume to avoid confusion during background checks.",
+          "Quantify project achievements using the XYZ formula: e.g., 'Reduced URL shortening response time by 30% by optimizing database queries and implementing caching.'",
+          "Include specific metrics for the AI-Powered Fitness App, such as number of users, performance improvements, or scalability.",
+          "Consider adding a 'Projects' section with links to deployed applications or repositories to showcase practical implementation."
+        ]
+      },
+      "parsed": {
+        "name": "Prajwal Gulhane",
+        "experience_years": 1.5,
+        "projects": 2,
+        "skills": [
+          "Java",
+          "Spring Boot",
+          "Spring MVC",
+          "Spring Security",
+          "Spring Data JPA",
+          "Hibernate",
+          "Apache Kafka",
+          "PostgreSQL"
+        ]
+      },
+      "word_count": 473
     }
   ],
   "tracking_events": [
@@ -3978,6 +4361,34 @@
       "action": "follow_linkedin",
       "completed": true,
       "completed_at": "2026-09-07T20:49:16.188Z"
+    },
+    {
+      "id": "track_1788815838110",
+      "user_id": "1bfed2fb-f2b0-4be8-af14-819bffa277da",
+      "action": "join_whatsapp",
+      "completed": true,
+      "completed_at": "2026-09-07T21:17:18.110Z"
+    },
+    {
+      "id": "track_1788815841643",
+      "user_id": "1bfed2fb-f2b0-4be8-af14-819bffa277da",
+      "action": "follow_linkedin",
+      "completed": true,
+      "completed_at": "2026-09-07T21:17:21.643Z"
+    },
+    {
+      "id": "track_1788848722835",
+      "user_id": "a36c171e-ac6a-42ff-a859-6f992a8c25a1",
+      "action": "join_whatsapp",
+      "completed": true,
+      "completed_at": "2026-09-08T06:25:22.835Z"
+    },
+    {
+      "id": "track_1788848725634",
+      "user_id": "a36c171e-ac6a-42ff-a859-6f992a8c25a1",
+      "action": "follow_linkedin",
+      "completed": true,
+      "completed_at": "2026-09-08T06:25:25.634Z"
     }
   ]
 }
