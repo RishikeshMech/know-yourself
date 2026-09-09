@@ -1,6 +1,7 @@
 'use client'
 export const dynamic = 'force-dynamic'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { FeedbackGate } from '@/components/FeedbackGate'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Navbar } from '@/components/Navbar'
@@ -260,4 +261,4 @@ function Inner(){
     </div>
   )
 }
-export default function Page(){ return <Inner/> }
+export default function Page(){ return <FeedbackGate><Inner/></FeedbackGate> }
