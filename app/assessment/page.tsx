@@ -427,42 +427,94 @@ function AssessmentInner() {
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3200) }
 
-  // Request fullscreen while pausing the focus/fullscreen proctoring monitors.
-  // The native "Allow fullscreen?" permission prompt blurs the window (and some
-  // browsers briefly report the page as not-fullscreen) — none of that is a real
-  // tab switch or fullscreen exit, so it must not count as a warning. Monitors
-  // are re-armed shortly after the prompt is answered.
-  const enterFullscreen = async (): Promise<boolean> => {
+  /* ------------------------------------------------------------------ */
+  /* Permission-prompt suppression guard                                 */
+  /*                                                                     */
+  /* Asking the browser for a NEW permission (camera, mic, fullscreen,   */
+  /* screen-list) pops a NATIVE prompt that takes focus away from the    */
+  /* page and, in some browsers, briefly drops out of fullscreen. None   */
+  /* of that is a real tab-switch / fullscreen-exit, so it must never    */
+  /* count as a proctoring violation or fire the re-enter-fullscreen     */
+  /* lock. This guard holds `suppressRef` true for the whole native      */
+  /* prompt window (until the browser resolves it, plus a small buffer   */
+  /* for the trailing blur/visibility/fullscreenchange burst) so the     */
+  /* violation monitors stay quiet while the user simply grants a        */
+  /* permission. Every request that can raise a native prompt must run   */
+  /* through it.                                                         */
+  /* ------------------------------------------------------------------ */
+  const withPromptGuard = async <T,>(fn: () => Promise<T>): Promise<T> => {
     suppressRef.current = true
     if (fsSuppressTimerRef.current) { clearTimeout(fsSuppressTimerRef.current); fsSuppressTimerRef.current = null }
-    let engaged = false
     try {
-      engaged = await safeRequestFullscreen(document)
-    } catch {
-      engaged = false
+      return await fn()
     } finally {
-      // Absorb the trailing blur/visibility/fullscreenchange burst that follows
-      // an "Allow" click, then re-arm the monitors.
+      // Absorb the trailing blur/visibility/fullscreenchange burst that
+      // follows the user answering the prompt, then re-arm the monitors.
       fsSuppressTimerRef.current = setTimeout(() => {
         suppressRef.current = false
         fsSuppressTimerRef.current = null
-      }, 1200)
+      }, 1500)
     }
-    return engaged
+  }
+
+  // Request fullscreen while pausing the focus/fullscreen proctoring monitors.
+  // The native "Allow fullscreen?" permission prompt blurs the window (and some
+  // browsers briefly report the page as not-fullscreen) — none of that is a real
+  // tab switch or fullscreen exit, so it must not count as a warning.
+  const enterFullscreen = async (): Promise<boolean> => {
+    return withPromptGuard(async () => {
+      let engaged = false
+      try {
+        engaged = await safeRequestFullscreen(document)
+      } catch {
+        engaged = false
+      }
+      return engaged
+    })
+  }
+
+  // Release the proctoring camera + microphone stream and its preview, and stop
+  // any in-flight speaking MediaRecorder. Call once whenever the assessment
+  // concludes so the camera/mic light turns off and the stream is freed.
+  // This pure version never touches React state, so it is safe to call from an
+  // unmount cleanup (state updates are meaningless once the tree is gone).
+  const stopTracks = () => {
+    // Stop an active speaking-recording MediaRecorder first.
+    try { mediaRef.current?.stop() } catch { /* already stopped */ }
+    mediaRef.current = null
+    // Stop every track of the proctoring stream (camera + mic).
+    proctorStreamRef.current?.getTracks().forEach(t => t.stop())
+    proctorStreamRef.current = null
+    // Detach the preview so the video element fully releases the device.
+    if (videoRef.current) {
+      try { videoRef.current.srcObject = null } catch { /* noop */ }
+    }
+  }
+  // Stateful twin of stopTracks for use while the page is still mounted, so the
+  // live-preview UI reflects the camera being released.
+  const releaseMedia = () => {
+    stopTracks()
+    setVideoOn(false)
+    setMediaReady(false)
+    mediaReadyRef.current = false
   }
 
   const enableMedia = async () => {
     setMediaError('')
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-      proctorStreamRef.current = stream
-      setMediaReady(true); mediaReadyRef.current = true; setVideoOn(true)
-    } catch (e: any) {
-      setMediaError(e?.name === 'NotAllowedError'
-        ? 'Camera/mic permission was denied. The live preview is off, but focus monitoring is still active.'
-        : 'No camera/mic detected on this device. Focus monitoring is still active.')
-      setMediaReady(true); mediaReadyRef.current = true
-    }
+    // Asking for the camera/mic raises a native permission prompt that steals
+    // focus — suppress it so it never becomes a proctoring violation.
+    await withPromptGuard(async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+        proctorStreamRef.current = stream
+        setMediaReady(true); mediaReadyRef.current = true; setVideoOn(true)
+      } catch (e: any) {
+        setMediaError(e?.name === 'NotAllowedError'
+          ? 'Camera/mic permission was denied. The live preview is off, but focus monitoring is still active.'
+          : 'No camera/mic detected on this device. Focus monitoring is still active.')
+        setMediaReady(true); mediaReadyRef.current = true
+      }
+    })
   }
 
   useEffect(() => {
@@ -499,7 +551,9 @@ function AssessmentInner() {
   }, [terminated])
 
   useEffect(() => () => {
-    proctorStreamRef.current?.getTracks().forEach(t => t.stop())
+    // Assessment page is leaving (submit → results, session already finished,
+    // or the user navigated/closed away) — release the camera/mic now.
+    stopTracks()
     if (fsSuppressTimerRef.current) clearTimeout(fsSuppressTimerRef.current)
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current)
   }, [])
@@ -602,9 +656,11 @@ function AssessmentInner() {
     let timer: any = null
 
     const reenter = () => {
-      if (document.fullscreenElement || submittingRef.current) return
+      // Skip while a native permission prompt (camera/mic/fullscreen) is up —
+      // requesting fullscreen then would just re-prompt and could blur-flicker.
+      if (suppressRef.current || document.fullscreenElement || submittingRef.current) return
       const attempt = async () => {
-        if (document.fullscreenElement || submittingRef.current) return
+        if (suppressRef.current || document.fullscreenElement || submittingRef.current) return
         const ok = await safeRequestFullscreen(document)
         if (ok) {
           showToast('Fullscreen restored — it must stay on for the whole test.')
@@ -622,6 +678,7 @@ function AssessmentInner() {
     }
 
     const onFsChange = () => {
+      if (suppressRef.current) return
       if (!document.fullscreenElement) reenter()
     }
     document.addEventListener('fullscreenchange', onFsChange)
@@ -723,7 +780,15 @@ function AssessmentInner() {
   const startRecording = async (id: string) => {
     try {
       const proctorAudio = proctorStreamRef.current?.getAudioTracks()[0]
-      const stream = proctorAudio ? new MediaStream([proctorAudio]) : await navigator.mediaDevices.getUserMedia({ audio: true })
+      // Only request a fresh mic stream when we don't already own one from the
+      // proctor stream — and when we do (e.g. the candidate continued without
+      // camera), wrap it so the NATIVE mic permission prompt that appears
+      // mid-test never counts as a proctoring violation.
+      const acquireStream = () =>
+        proctorAudio
+          ? Promise.resolve(new MediaStream([proctorAudio]))
+          : navigator.mediaDevices.getUserMedia({ audio: true })
+      const stream = await withPromptGuard(acquireStream)
       const ownsStream = !proctorAudio
       const rec = new MediaRecorder(stream)
       chunksRef.current = []
@@ -882,8 +947,9 @@ function AssessmentInner() {
     setSubmitting(true)
     setShowReview(false)
     clearInterval(intervalRef.current)
-    proctorStreamRef.current?.getTracks().forEach(t => t.stop())
-    proctorStreamRef.current = null
+    // The assessment is over — release the camera/mic stream automatically so
+    // the device stops recording the moment submission begins.
+    releaseMedia()
     const scores = computeScores(answers, aiResults, { gridAcc: answers['GRID'], speakingCount })
     const payload = { session_id: sid || 'sess_demo', ...scores, tab_switches: strikes, auto_submitted: !!auto, submitted_at: new Date().toISOString() }
     localStorage.setItem('calibiai_scores', JSON.stringify(payload))
@@ -934,6 +1000,9 @@ function AssessmentInner() {
     setTerminated(true)
     setReviewMode('auto')
     setShowReview(true)
+    // Assessment is over (time-up / 3rd warning) — turn the camera & mic off
+    // now rather than keeping them live through the read-only review page.
+    releaseMedia()
   }
   useEffect(() => { autoSubmitRef.current = beginAutoSubmit })
 
