@@ -8,7 +8,9 @@ import { bank, shuffledOptions, shuffledChoiceOptions, mulberry32 } from '@/lib/
 import { computeScores } from '@/lib/scoring'
 import { getSupabase } from '@/lib/supabase'
 import { AFTER_ASSESSMENT_ROUTE } from '@/lib/nextStep'
+import { FEEDBACK_PENDING_KEY } from '@/lib/feedback'
 import { markJustSubmitted } from '@/lib/justSubmitted'
+import { HelpButton } from '@/components/HelpButton'
 import { Logo } from '@/components/Logo'
 import { AiExamAssistant } from '@/components/AiExamAssistant'
 import { AssessmentReview } from '@/components/AssessmentReview'
@@ -914,8 +916,9 @@ function AssessmentInner() {
     const s = JSON.parse(localStorage.getItem('calibiai_session') || '{}')
     s.status = 'submitted'
     localStorage.setItem('calibiai_session', JSON.stringify(s))
+    localStorage.setItem(FEEDBACK_PENDING_KEY, JSON.stringify({ session_id: sid || 'sess_demo' }))
     markJustSubmitted()
-    router.replace(AFTER_ASSESSMENT_ROUTE)
+    router.replace('/feedback')
   }
   useEffect(() => { submitRef.current = doSubmit })
 
@@ -1548,6 +1551,7 @@ function AssessmentInner() {
             <span className="hidden md:inline text-[11px] text-slate-400 font-mono">{String(sid).slice(0, 13)}…</span>
           </div>
           <div className="flex items-center gap-2.5 sm:gap-3">
+            <HelpButton assessment disabled={terminated || submitting || showViolation || !!reviewMode} />
             <span className="hidden sm:flex items-center gap-1.5 text-xs text-slate-500">
               Warnings
               <span className={`px-2 py-0.5 rounded-full font-bold ${strikes >= 3 ? 'bg-rose-500 text-white' : strikes >= 1 ? 'bg-amber-400 text-slate-900' : 'bg-slate-100 text-slate-500'}`}>{strikes}/3</span>
