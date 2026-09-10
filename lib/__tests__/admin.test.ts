@@ -122,10 +122,10 @@ test('filterRows narrows by college (case-insensitive) and free search', () => {
 
 test('CSV columns cover personal, skills, resume and all module scores', () => {
   const labels = CSV_COLUMNS.map(c => c.label)
-  for (const required of ['Name', 'PRN', 'Mobile Number', 'College', 'Profile Skills', 'All Skills', 'CalibiAI Score (/1000)', 'English (/200)', 'Cognitive (/200)']) {
+  for (const required of ['Name', 'PRN', 'Mobile Number', 'College', 'Profile Skills', 'All Skills', 'CalibiAI Score (/1000)', 'English (/200)', 'Cognitive (/200)', 'Feedback Rating (1-5)', 'Feedback Comment']) {
     assert.ok(labels.includes(required), `missing column ${required}`)
   }
-  assert.equal(CSV_COLUMNS.length, 48)
+  assert.equal(CSV_COLUMNS.length, 52)
 })
 
 test('rowsToCsv adds BOM, CRLF, quotes and guards formula injection', () => {

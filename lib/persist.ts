@@ -171,6 +171,53 @@ export async function persistResumeAnalysis(client: SupabaseClient, rec: any): P
   return true
 }
 
+/**
+ * Candidate feedback about the assessment ("which candidate gave which
+ * feedback") → `public.feedback_submissions`. `student_id` is only written when
+ * it is a real UUID: local demo candidates carry `u_…` ids that Postgres cannot
+ * store, so the raw id is kept in `student_ref` and the email is stored too, so
+ * the admin dashboard can match the feedback either way.
+ */
+export async function persistFeedback(client: SupabaseClient, fb: any): Promise<boolean> {
+  const { error } = await client.from('feedback_submissions').upsert(
+    {
+      id: toUuid(fb.id) || randomUUID(),
+      student_id: UUID_RE.test(String(fb.student_id || '')) ? String(fb.student_id) : null,
+      student_ref: clean(fb.student_id),
+      email: clean(fb.email),
+      session_id: clean(fb.session_id),
+      rating: Number(fb.rating) || null,
+      message: String(fb.message ?? '').trim(),
+      source: clean(fb.source) || 'web',
+      created_at: fb.created_at || new Date().toISOString(),
+    },
+    { onConflict: 'id' },
+  )
+  if (error) {
+    console.warn('[supabase] feedback persist failed:', error.message)
+    return false
+  }
+  return true
+}
+
+/** Every feedback row (admin dashboard) — null when the table is not there yet. */
+export async function fetchAllFeedback(client: SupabaseClient): Promise<any[] | null> {
+  try {
+    const { data, error } = await client
+      .from('feedback_submissions')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (error) {
+      console.warn('[supabase] feedback read failed:', error.message)
+      return null
+    }
+    return data || []
+  } catch (e: any) {
+    console.warn('[supabase] feedback read failed:', e?.message || e)
+    return null
+  }
+}
+
 export async function persistTrackingEvent(client: SupabaseClient, ev: any): Promise<boolean> {
   const { error } = await client.from('tracking_events').upsert(
     {

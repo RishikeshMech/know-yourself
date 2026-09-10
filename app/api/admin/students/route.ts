@@ -11,7 +11,7 @@ export async function GET(req: Request) {
     const url = new URL(req.url)
     const college = url.searchParams.get('college') || ''
     const q = url.searchParams.get('q') || ''
-    const { students, source, warning, sources } = await fetchAllStudents()
+    const { students, source, warning, sources, feedbackFromSupabase, canSync } = await fetchAllStudents()
     const rows = filterRows(students, { college, q })
     return NextResponse.json({
       students: rows,
@@ -19,6 +19,8 @@ export async function GET(req: Request) {
       filtered: rows.length,
       source,
       sources,
+      feedbackFromSupabase,
+      canSync,
       warning,
       updated_at: new Date().toISOString(),
     })

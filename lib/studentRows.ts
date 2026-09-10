@@ -44,6 +44,10 @@ export function buildRow(input: {
   verifiable_hash?: any
   assessed_at?: any
   created_at?: any
+  /** Latest feedback the candidate gave (`{ rating, message, created_at }`). */
+  feedback?: { rating?: any; message?: any; created_at?: any } | null
+  /** How many feedback submissions that candidate has made in total. */
+  feedback_count?: any
 }): AdminStudentRow {
   const p = input.profile || {}
   const s = input.scores
@@ -106,6 +110,30 @@ export function buildRow(input: {
     logical_total: num(detail.logicalTotal),
     verifiable_hash: txt(input.verifiable_hash ?? scoreObj?.verifiable_hash),
     assessed_at: txt(input.assessed_at ?? scoreObj?.submitted_at ?? s?.created_at),
+    feedback_rating: input.feedback?.rating !== undefined && input.feedback?.rating !== null ? num(input.feedback.rating) : '',
+    feedback_message: txt(input.feedback?.message),
+    feedback_at: txt(input.feedback?.created_at),
+    feedback_count: input.feedback_count ? num(input.feedback_count) : '',
+  }
+}
+
+/**
+ * Copy feedback from a shadowed `source` row onto `row` when `row` has none.
+ * Used when a local (demo) row is merged away in favour of a live Supabase row:
+ * the live row wins for identity, but feedback the candidate gave under the
+ * other id/email must not disappear from the dashboard.
+ */
+export function fillFeedbackFrom(row: AdminStudentRow, source: AdminStudentRow): AdminStudentRow {
+  if (!source || (!source.feedback_message && !source.feedback_rating)) return row
+  const missing = !row.feedback_message && !row.feedback_rating
+  const sourceIsNewer = !!source.feedback_at && (!row.feedback_at || source.feedback_at > row.feedback_at)
+  if (!missing && !sourceIsNewer) return row
+  return {
+    ...row,
+    feedback_rating: source.feedback_rating || row.feedback_rating,
+    feedback_message: source.feedback_message || row.feedback_message,
+    feedback_at: source.feedback_at || row.feedback_at,
+    feedback_count: source.feedback_count || row.feedback_count,
   }
 }
 
@@ -144,14 +172,23 @@ export function mergeStudentRows(
   const seenIds = new Set(remote.map(rowId).filter(Boolean))
   const seenEmails = new Set(remote.map(rowEmail).filter(Boolean))
   const extra: AdminStudentRow[] = []
+  const mergedRemote = [...remote]
   for (const row of local) {
     const id = rowId(row)
     const email = rowEmail(row)
     // Only a *live* row can shadow a local one — local rows never shadow each
     // other (see the note above about repeated attempts per email).
-    if (id && seenIds.has(id)) continue // same student, live row wins
-    if (email && seenEmails.has(email)) continue // same person under a different id
+    const shadow = mergedRemote.find(
+      r => (id && rowId(r) === id) || (email && rowEmail(r) === email),
+    )
+    if (shadow) {
+      // The live row wins for identity, but keep the feedback the candidate
+      // gave under the other id/email instead of dropping it.
+      const enriched = fillFeedbackFrom(shadow, row)
+      if (enriched !== shadow) mergedRemote[mergedRemote.indexOf(shadow)] = enriched
+      continue
+    }
     extra.push(row)
   }
-  return { rows: sortRows([...remote, ...extra]), remote: remote.length, local: extra.length }
+  return { rows: sortRows([...mergedRemote, ...extra]), remote: mergedRemote.length, local: extra.length }
 }

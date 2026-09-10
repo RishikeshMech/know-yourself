@@ -60,6 +60,11 @@ export interface AdminStudentRow {
   logical_total: string
   verifiable_hash: string
   assessed_at: string
+  // Feedback the candidate gave about the assessment (latest submission)
+  feedback_rating: string
+  feedback_message: string
+  feedback_at: string
+  feedback_count: string
 }
 
 export const CSV_COLUMNS: { key: keyof AdminStudentRow; label: string }[] = [
@@ -109,6 +114,10 @@ export const CSV_COLUMNS: { key: keyof AdminStudentRow; label: string }[] = [
   { key: 'problem_total', label: 'Problem Solving Total' },
   { key: 'logical_correct', label: 'Logical Correct' },
   { key: 'logical_total', label: 'Logical Total' },
+  { key: 'feedback_rating', label: 'Feedback Rating (1-5)' },
+  { key: 'feedback_message', label: 'Feedback Comment' },
+  { key: 'feedback_at', label: 'Feedback Date' },
+  { key: 'feedback_count', label: 'Feedback Submissions' },
   { key: 'verifiable_hash', label: 'Verifiable Hash' },
   { key: 'assessed_at', label: 'Assessment Date' },
 ]
