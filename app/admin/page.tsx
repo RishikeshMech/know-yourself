@@ -3,9 +3,9 @@
  * Admin dashboard — /admin
  * ------------------------
  * Admin logs in with the fixed credentials (username: `admin`, password:
- * `Admin@123`) via /api/admin/login (HttpOnly signed cookie). Once in, they
- * see every student (profile + latest assessment result + latest resume) and
- * can:
+ * `CalibiAdmin@777`) via /api/admin/login (HttpOnly signed cookie). Once in, they
+ * see every student (profile + latest assessment result + latest resume + the
+ * feedback they submitted) and can:
  *   • filter by college (dropdown) and search (name/email/PRN/mobile/college)
  *   • download the whole student dataset as CSV — every score, skill and
  *     personal field — or just the currently filtered view
@@ -16,7 +16,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Download, Eye, EyeOff,
-  GraduationCap, LogOut, RefreshCw, Search, ShieldCheck, Trophy, Users, X,
+  GraduationCap, LogOut, RefreshCw, Search, ShieldCheck, Star, Trophy, UploadCloud, Users, X,
 } from 'lucide-react'
 import { Logo } from '@/components/Logo'
 import type { AdminStudentRow } from '@/lib/csv'
@@ -170,7 +170,7 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
 
           {isLocalHost() && (
             <p className="mt-4 rounded-xl bg-indigo-50 px-3.5 py-2.5 text-center text-[11px] leading-relaxed text-indigo-600">
-              <b>Demo credentials</b> — username <code className="font-mono">admin</code> · password <code className="font-mono">Admin@123</code>
+              <b>Demo credentials</b> — username <code className="font-mono">admin</code> · password <code className="font-mono">CalibiAdmin@777</code>
             </p>
           )}
         </div>
@@ -210,6 +210,25 @@ function DetailRow({ label, value, mono }: { label: string; value: string; mono?
   )
 }
 
+/** 1–5 star rating as shown to the candidate. */
+function Stars({ rating, size = 13 }: { rating: string; size?: number }) {
+  if (rating === '' || rating === null || rating === undefined) return <span className="text-slate-300">—</span>
+  const value = Math.max(0, Math.min(5, Math.round(Number(rating))))
+  return (
+    <span className="inline-flex items-center gap-0.5" title={`${value}/5`} aria-label={`${value} out of 5`}>
+      {[1, 2, 3, 4, 5].map(i => (
+        <Star
+          key={i}
+          size={size}
+          strokeWidth={1.75}
+          className={i <= value ? 'text-amber-400' : 'text-slate-300'}
+          fill={i <= value ? 'currentColor' : 'none'}
+        />
+      ))}
+    </span>
+  )
+}
+
 function ModuleBar({ label, value, max }: { label: string; value: string; max: number }) {
   const v = value === '' ? 0 : Number(value)
   const pct = Math.min(100, Math.round((v / max) * 100))
@@ -233,7 +252,7 @@ function ExpandedRow({ row }: { row: AdminStudentRow }) {
   ]
   return (
     <tr className="border-t border-slate-100 bg-white/70">
-      <td colSpan={12} className="px-5 py-4">
+      <td colSpan={13} className="px-5 py-4">
         <div className="grid gap-5 lg:grid-cols-3">
           <div className="space-y-2">
             <div className="text-xs font-black uppercase tracking-wide text-slate-400">Personal & college</div>
@@ -284,6 +303,32 @@ function ExpandedRow({ row }: { row: AdminStudentRow }) {
             )}
           </div>
         </div>
+
+        {/* Feedback this candidate gave about the assessment */}
+        <div className="mt-5 space-y-2">
+          <div className="text-xs font-black uppercase tracking-wide text-slate-400">Candidate feedback</div>
+          {row.feedback_message || row.feedback_rating ? (
+            <div className="rounded-2xl border border-amber-100 bg-amber-50/60 p-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <Stars rating={row.feedback_rating} size={15} />
+                <span className="text-xs font-bold text-amber-700">
+                  {row.feedback_rating ? `${row.feedback_rating}/5` : 'rated'}
+                </span>
+                <span className="text-xs text-slate-500">{fmtDate(row.feedback_at)}</span>
+                {Number(row.feedback_count) > 1 && (
+                  <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                    {row.feedback_count} submissions
+                  </span>
+                )}
+              </div>
+              <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{row.feedback_message}</p>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3 text-xs font-semibold text-slate-400">
+              No feedback submitted yet.
+            </div>
+          )}
+        </div>
       </td>
     </tr>
   )
@@ -297,6 +342,10 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const [loadError, setLoadError] = useState('')
   const [refreshing, setRefreshing] = useState(false)
   const [dataSource, setDataSource] = useState<DataSource>('')
+  const [sources, setSources] = useState<{ supabase: number; local: number } | null>(null)
+  const [canSync, setCanSync] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [syncMsg, setSyncMsg] = useState('')
   const [warning, setWarning] = useState('')
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
 
@@ -321,6 +370,8 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
       if (!res.ok) throw new Error(data.error || 'Failed to load students.')
       setStudents(data.students || [])
       setDataSource((data.source as DataSource) || '')
+      setSources(data.sources || null)
+      setCanSync(!!data.canSync)
       setWarning(data.warning || '')
       setLastUpdated(data.updated_at || new Date().toISOString())
     } catch (e: any) {
@@ -412,11 +463,45 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     }
   }, [students])
 
+  // Where the rows on screen came from — both stores are merged server-side.
+  // (`dataSource` is the fallback for an older server that only sent `source`.)
+  const liveCount = sources?.supabase ?? (dataSource === 'supabase' ? students?.length || 0 : 0)
+  const localCount = sources?.local ?? (dataSource === 'local' ? students?.length || 0 : 0)
+
   const toggleSort = (key: SortKey) => {
     if (sortBy === key) setSortDir(d => (d === 'desc' ? 'asc' : 'desc'))
     else {
       setSortBy(key)
       setSortDir(key === 'name' ? 'asc' : 'desc')
+    }
+  }
+
+  /**
+   * Write the local candidates into Supabase (auth user + profile + sessions /
+   * results / resumes / feedback). Needs SUPABASE_SERVICE_ROLE_KEY on the host;
+   * the button only appears when the server says it can do it.
+   */
+  const handleSync = async () => {
+    if (syncing) return
+    setSyncing(true); setSyncMsg('')
+    try {
+      const res = await fetch('/api/admin/sync', { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Sync failed.')
+      const parts = data.summary
+        ? `profiles ${data.summary.profiles}, sessions ${data.summary.assessment_sessions}, results ${data.summary.assessment_results}, resumes ${data.summary.resume_analyses}, feedback ${data.summary.feedback_submissions}`
+        : ''
+      setSyncMsg(
+        data.ok
+          ? `Synced into Supabase — ${parts}${data.reusedAccounts ? ` (${data.reusedAccounts} account(s) reused)` : ''}.`
+          : `Sync finished with ${data.failures?.length || 0} failure(s): ${(data.failures || []).slice(0, 2).map((f: any) => `${f.table} ${f.id}: ${f.error}`).join(' · ')}`,
+      )
+      if (data.feedbackTableMissing) setSyncMsg(m => `${m} Feedback table missing — run supabase/migrations/0004_feedback_submissions.sql.`)
+      load()
+    } catch (e: any) {
+      setSyncMsg(e?.message || 'Sync failed.')
+    } finally {
+      setSyncing(false)
     }
   }
 
@@ -487,27 +572,53 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         )}
 
         {/* Data source / degraded-read banner */}
-        {students && (warning || dataSource === 'local') && (
-          <div
-            className={`flex items-start gap-2 rounded-2xl border px-4 py-3 text-xs font-semibold animate-fade-up ${
-              dataSource === 'local'
-                ? 'border-amber-200 bg-amber-50/80 text-amber-700'
-                : 'border-rose-200 bg-rose-50/80 text-rose-600'
-            }`}
-          >
+        {students && warning && (
+          <div className="flex items-start gap-2 rounded-2xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-xs font-semibold text-rose-600 animate-fade-up">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>
-              {dataSource === 'local'
-                ? 'Showing local demo data. Connect Supabase (set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY on the host) to pull every live student record.'
-                : warning}
+            <span>{warning}</span>
+          </div>
+        )}
+        {students && localCount > 0 && (
+          <div className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-xs font-semibold text-amber-700 animate-fade-up">
+            <span className="flex items-start gap-2">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                {liveCount > 0
+                  ? `Showing ${liveCount} live student${liveCount === 1 ? '' : 's'} from Supabase plus ${localCount} candidate${localCount === 1 ? '' : 's'} that exist only in the local demo store and were never written to Postgres.`
+                  : `Showing ${localCount} local demo candidate${localCount === 1 ? '' : 's'} — no live rows came back from Supabase (see the notice above). Connect Supabase (set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY on the host) to pull every live student record.`}
+              </span>
             </span>
+            {canSync ? (
+              <button
+                onClick={handleSync}
+                disabled={syncing}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-amber-300 bg-white px-3 py-1.5 text-[11px] font-bold text-amber-800 transition hover:bg-amber-100 disabled:opacity-50"
+              >
+                {syncing ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <UploadCloud className="h-3.5 w-3.5" />}
+                {syncing ? 'Syncing…' : 'Write candidates into Supabase'}
+              </button>
+            ) : (
+              <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-amber-700">
+                Set SUPABASE_SERVICE_ROLE_KEY to write them into Supabase
+              </span>
+            )}
+          </div>
+        )}
+        {syncMsg && (
+          <div className="rounded-2xl border border-indigo-200 bg-indigo-50/80 px-4 py-3 text-xs font-semibold text-indigo-700 animate-fade-up">
+            {syncMsg}
           </div>
         )}
 
         {/* Stats */}
         {students && (
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <StatCard icon={<Users className="h-4 w-4" />} label="Total students" value={String(stats.total)} sub="Across all colleges" />
+            <StatCard
+              icon={<Users className="h-4 w-4" />}
+              label="Total students"
+              value={String(stats.total)}
+              sub={localCount > 0 ? `${liveCount} live · ${localCount} local` : 'Across all colleges'}
+            />
             <StatCard icon={<GraduationCap className="h-4 w-4" />} label="Colleges" value={String(stats.colleges)} sub="Distinct institutions" />
             <StatCard icon={<ShieldCheck className="h-4 w-4" />} label="Assessed" value={String(stats.assessed)} sub="Have a CalibiAI score" />
             <StatCard icon={<Trophy className="h-4 w-4" />} label="Average score" value={stats.assessed ? String(stats.avg) : '—'} sub="Top 10%: 900+ · Ready: 750+" />
@@ -602,6 +713,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                     </th>
                     <th className="px-3 py-3 text-center font-black">Grade</th>
                     <th className="px-3 py-3 text-center font-black">%ile</th>
+                    <th className="px-3 py-3 text-center font-black">Feedback</th>
                     <th className="px-3 py-3 text-center font-black">Assessed</th>
                     <th className="px-3 py-3" />
                   </tr>
@@ -645,6 +757,9 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                             {s.grade ? <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${gradeChip(s.grade)}`}>{s.grade}</span> : <span className="text-slate-300">—</span>}
                           </td>
                           <td className="px-3 py-3 text-center font-mono text-slate-600">{s.percentile === '' ? '—' : s.percentile}</td>
+                          <td className="px-3 py-3 text-center">
+                            <Stars rating={s.feedback_rating} />
+                          </td>
                           <td className="px-3 py-3 text-center text-slate-500">{fmtDate(s.assessed_at)}</td>
                           <td className="px-2 py-3 text-slate-400">
                             {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -662,7 +777,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
 
         {students && students.length > 0 && (
           <p className="pb-4 text-center text-[11px] text-slate-400">
-            Data includes personal information — handle responsibly. The CSV exports 48 columns: personal details, college, PRN, mobile, skills, resume and every CalibiAI module score.
+            Data includes personal information — handle responsibly. The CSV exports 52 columns: personal details, college, PRN, mobile, skills, resume, every CalibiAI module score and the candidate's own feedback.
           </p>
         )}
       </main>

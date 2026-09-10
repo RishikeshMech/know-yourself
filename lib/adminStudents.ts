@@ -1,19 +1,26 @@
 // Admin data source — one row per student joining profile + latest assessment
-// result + latest resume analysis. Works against whichever backend the app is
-// running on: the Supabase `student_profiles_full` view when Supabase env vars
-// are set (service-role reads bypass RLS), otherwise the local JSON store.
+// result + latest resume analysis. The admin reads BOTH backends and merges
+// them: the Supabase `student_profiles_full` view (service-role reads bypass
+// RLS) and the local JSON store. Neither store is a complete picture on its
+// own — students who signed up through the deployed app exist only in Postgres,
+// while the curated/demo candidates shipped in `calibiai_db.json` (non-UUID
+// `u_…` ids) were never inserted into Postgres and exist only locally. Reading
+// just one of them is what made the dashboard show a fraction of the students
+// the rest of the app can serve.
+//
 // Both /api/admin/students and /api/admin/export share this module so the
 // on-screen table and the downloaded CSV always agree.
 //
-// fetchAllStudents() returns a richer result object (rows + source + warning)
-// so the dashboard can tell the admin *where* the data came from and surface a
-// clear reason when Supabase is configured but something is off (e.g. the
-// flattened export view has not been created yet). The query always tries the
-// view first and falls back to the base tables, so the admin never silently
-// sees an empty table because of a missing utility view.
-import { getDB } from './db'
+// fetchAllStudents() returns a richer result object (rows + source + per-store
+// counts + warning) so the dashboard can tell the admin *where* the data came
+// from and surface a clear reason when Supabase is configured but something is
+// off (e.g. the flattened export view has not been created yet). The Supabase
+// query always tries the view first and falls back to the base tables, and a
+// Supabase failure never hides the local rows.
+import { getAllFeedback, getDB } from './db'
 import { getServerClient } from './supabaseServer'
-import { buildRow, sortRows } from './studentRows'
+import { fetchAllFeedback } from './persist'
+import { buildRow, mergeStudentRows, sortRows } from './studentRows'
 import type { AdminStudentRow } from './csv'
 
 export interface AdminStudentsResult {
@@ -23,6 +30,112 @@ export interface AdminStudentsResult {
   source: 'supabase' | 'local'
   /** Optional human-readable note about a fallback / degraded read. */
   warning?: string
+  /** How many rows came from each store (after de-duplication). */
+  sources?: { supabase: number; local: number }
+  /** True when feedback rows could be read from Supabase as well. */
+  feedbackFromSupabase?: boolean
+  /** True when the host can write the local candidates into Supabase (service role set). */
+  canSync?: boolean
+}
+
+/** One feedback submission, normalised to the shape the admin matches on. */
+interface FeedbackRow {
+  id: string
+  student_id: string
+  email: string
+  rating: any
+  message: string
+  created_at: string
+}
+
+function toFeedbackRow(r: any): FeedbackRow | null {
+  if (!r) return null
+  const message = String(r.message ?? '').trim()
+  const rating = r.rating ?? null
+  if (!message && (rating === null || rating === undefined)) return null
+  return {
+    id: String(r.id ?? '').trim(),
+    student_id: String(r.student_ref ?? r.student_id ?? '').trim().toLowerCase(),
+    email: String(r.email ?? '').trim().toLowerCase(),
+    rating,
+    message,
+    created_at: String(r.created_at ?? ''),
+  }
+}
+
+/**
+ * Attach "which candidate gave which feedback" to every row: the latest
+ * submission plus the total count, matched by candidate id (`student_id` /
+ * `student_ref`) **or** email, because a candidate may be stored in Postgres
+ * under a UUID while their feedback arrived under a local `u_…` id (or the
+ * other way round). Feedback columns stay empty when the candidate has not
+ * submitted any — the dashboard shows "—".
+ */
+function attachFeedback(rows: AdminStudentRow[], feedback: FeedbackRow[]): AdminStudentRow[] {
+  if (!feedback.length) return rows
+  const byStudent = new Map<string, FeedbackRow[]>()
+  const push = (key: string, row: FeedbackRow) => {
+    if (!key) return
+    const list = byStudent.get(key)
+    if (list) list.push(row)
+    else byStudent.set(key, [row])
+  }
+  for (const row of feedback) {
+    push(row.student_id, row)
+    push(row.email, row)
+  }
+  const newestFirst = (a: FeedbackRow, b: FeedbackRow) =>
+    new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+  // A submission is written to the local store AND Supabase with the same id, so
+  // both reads return it — count it once. Rows without an id fall back to a
+  // content signature.
+  const signature = (f: FeedbackRow) =>
+    f.id || `${f.student_id}|${f.email}|${f.created_at}|${f.message.slice(0, 60)}`
+  return rows.map((r) => {
+    const key = (r.student_id || '').trim().toLowerCase()
+    const mail = (r.email || '').trim().toLowerCase()
+    const seen = new Set<string>()
+    const mine = [...(byStudent.get(key) || []), ...(byStudent.get(mail) || [])]
+      .filter(f => {
+        const sig = signature(f)
+        if (seen.has(sig)) return false
+        seen.add(sig)
+        return true
+      })
+      .sort(newestFirst)
+    if (!mine.length) return r
+    const latest = mine[0]
+    return buildRow({
+      // Rebuild through buildRow so the existing columns are preserved verbatim.
+      student_id: r.student_id,
+      email: r.email,
+      role: r.role,
+      profile: {
+        full_name: r.name,
+        prn: r.prn,
+        phone: r.phone,
+        dob: r.dob,
+        gender: r.gender,
+        degree: r.degree,
+        college: r.college,
+        graduation_year: r.graduation_year,
+        cgpa: r.cgpa,
+        skills: r.skills,
+        linkedin_url: r.linkedin_url,
+        github_url: r.github_url,
+        created_at: r.created_at,
+      },
+      feedback: latest,
+      feedback_count: mine.length,
+    })
+  })
+}
+
+/** Local feedback rows (demo mode / runtime store). */
+function localFeedbackRows(): FeedbackRow[] {
+  return getAllFeedback()
+    .map(toFeedbackRow)
+    .filter((r): r is FeedbackRow => !!r)
 }
 
 /** What could prevent reading every row; collated so the UI can show it. */
@@ -105,11 +218,68 @@ async function fetchFromBaseTables(sb: any): Promise<{ rows: AdminStudentRow[]; 
 }
 
 /**
- * Fetch every student (joined) — Supabase first, local JSON store as fallback.
- * Never throws: returns a result object with a diagnostic `warning` instead.
+ * Rows from the local JSON store (seed `calibiai_db.json` overridden by the
+ * gitignored `calibiai_db.runtime.json` once the app has written live demo
+ * data). Extracted so `fetchAllStudents()` can merge it with Supabase.
+ *
+ * Iterate *profiles* rather than users: in demo/seed data many profiles were
+ * created without a matching row in `users`, so a users-first join would
+ * silently drop most students from the admin view.
+ */
+function fetchLocalStudents(): AdminStudentRow[] {
+  const db = getDB()
+  const rows: AdminStudentRow[] = []
+  const seen = new Set<string>()
+  for (const profile of db.profiles) {
+    seen.add(profile.id)
+    const user = db.users.find(u => u.id === profile.id)
+    const result = db.assessment_results
+      .filter(r => r.student_id === profile.id)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+    const resume = db.resume_analyses
+      .filter(r => r.student_id === profile.id)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+    rows.push(
+      buildRow({
+        student_id: profile.id,
+        email: profile.email || user?.email,
+        role: user?.role || 'student',
+        profile,
+        scores: result || null,
+        resume_score: resume?.resume_score,
+        resume_parsed: resume?.parsed,
+        verifiable_hash: result?.verifiable_hash,
+        assessed_at: result?.created_at,
+        created_at: profile.updated_at || user?.created_at,
+      }),
+    )
+  }
+  // Registered accounts that somehow never got a profile row still count.
+  for (const user of db.users) {
+    if (seen.has(user.id)) continue
+    rows.push(
+      buildRow({
+        student_id: user.id,
+        email: user.email,
+        role: user.role,
+        profile: {},
+        created_at: user.created_at,
+      }),
+    )
+  }
+  return sortRows(rows)
+}
+
+/**
+ * Fetch every student (joined) — Supabase rows merged with the local JSON
+ * store, so a student is missing only if they exist in neither. Never throws:
+ * returns a result object with a diagnostic `warning` instead.
  */
 export async function fetchAllStudents(): Promise<AdminStudentsResult> {
   const sb = getServerClient()
+  let remote: AdminStudentRow[] = []
+  let warning = ''
+
   if (sb) {
     try {
       // 1) Prefer the flattened export view.
@@ -118,98 +288,71 @@ export async function fetchAllStudents(): Promise<AdminStudentsResult> {
         .select('*')
         .eq('role', 'student')
       if (!error) {
-        const rows = sortRows((data || []).map((r: any) => fromViewRow(r)))
+        remote = (data || []).map((r: any) => fromViewRow(r))
         // The view is RLS-protected (security_invoker). With the anon key and no
         // service role, the server-side admin request has no auth context, so
-        // RLS hides every row and the table looks empty. Surface that clearly.
-        if (rows.length === 0 && !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-          return {
-            students: rows,
-            source: 'supabase',
-            warning:
-              'No students were returned. The admin is reading Supabase with the anon key, which is restricted by Row Level Security. Set SUPABASE_SERVICE_ROLE_KEY so the admin can read every student record.',
-          }
+        // RLS hides every row and Postgres looks empty. Surface that clearly.
+        if (remote.length === 0 && !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+          warning =
+            'No live students were returned. The admin is reading Supabase with the anon key, which is restricted by Row Level Security. Set SUPABASE_SERVICE_ROLE_KEY so the admin can read every student record.'
         }
-        return { students: rows, source: 'supabase' }
-      }
-
-      // 2) The view is missing / errored — fall back to the base tables.
-      const viewWarning = `student_profiles_full view: ${error.message}`
-      const fallback = await fetchFromBaseTables(sb)
-      if (!fallback.error) {
-        return {
-          students: fallback.rows,
-          source: 'supabase',
-          warning: `${viewWarning}. Showing results joined from the base tables instead.`,
+      } else {
+        // 2) The view is missing / errored — fall back to the base tables.
+        const viewWarning = `student_profiles_full view: ${error.message}`
+        const fallback = await fetchFromBaseTables(sb)
+        if (!fallback.error) {
+          remote = fallback.rows
+          warning = `${viewWarning}. Showing results joined from the base tables instead.`
+        } else {
+          warning = `Could not load students from Supabase: ${fallback.error.message}`
         }
-      }
-
-      // 3) Both paths failed — report clearly instead of silently returning [].
-      return {
-        students: [],
-        source: 'supabase',
-        warning: `Could not load students from Supabase: ${fallback.error.message}`,
       }
     } catch (e: any) {
-      return {
-        students: [],
-        source: 'supabase',
-        warning: `Could not load students from Supabase: ${e?.message || e}`,
-      }
+      warning = `Could not load students from Supabase: ${e?.message || e}`
     }
   }
 
-  // Local demo store — read the JSON file once per request.
-  // Iterate *profiles* rather than users: in demo/seed data many profiles were
-  // created without a matching row in `users`, so a users-first join would
-  // silently drop most students from the admin view.
+  // 3) Local demo store — always read, then merge. Students seeded into
+  //    calibiai_db.json were never written to Postgres, so a Supabase-only
+  //    read can never show them.
+  let local: AdminStudentRow[] = []
   try {
-    const db = getDB()
-    const rows: AdminStudentRow[] = []
-    const seen = new Set<string>()
-    for (const profile of db.profiles) {
-      seen.add(profile.id)
-      const user = db.users.find(u => u.id === profile.id)
-      const result = db.assessment_results
-        .filter(r => r.student_id === profile.id)
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
-      const resume = db.resume_analyses
-        .filter(r => r.student_id === profile.id)
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
-      rows.push(
-        buildRow({
-          student_id: profile.id,
-          email: profile.email || user?.email,
-          role: user?.role || 'student',
-          profile,
-          scores: result || null,
-          resume_score: resume?.resume_score,
-          resume_parsed: resume?.parsed,
-          verifiable_hash: result?.verifiable_hash,
-          assessed_at: result?.created_at,
-          created_at: profile.updated_at || user?.created_at,
-        }),
-      )
-    }
-    // Registered accounts that somehow never got a profile row still count.
-    for (const user of db.users) {
-      if (seen.has(user.id)) continue
-      rows.push(
-        buildRow({
-          student_id: user.id,
-          email: user.email,
-          role: user.role,
-          profile: {},
-          created_at: user.created_at,
-        }),
-      )
-    }
-    return { students: sortRows(rows), source: 'local' }
+    local = fetchLocalStudents()
   } catch (e: any) {
-    return {
-      students: [],
-      source: 'local',
-      warning: `Could not load students from the local store: ${e?.message || e}`,
+    const localError = `Could not load students from the local store: ${e?.message || e}`
+    warning = warning ? `${warning} ${localError}` : localError
+  }
+
+  const merged = mergeStudentRows(remote, local)
+
+  // 4) Feedback ("which candidate gave which feedback") — read from both stores
+  //    and attach the latest submission to each row. Best-effort: the dashboard
+  //    still works when migration 0004 has not been applied yet.
+  let feedback: FeedbackRow[] = []
+  let feedbackFromSupabase = false
+  try {
+    feedback = localFeedbackRows()
+  } catch (e: any) {
+    warning = warning || `Could not read local feedback: ${e?.message || e}`
+  }
+  if (sb) {
+    const remoteFeedback = await fetchAllFeedback(sb)
+    if (remoteFeedback) {
+      feedbackFromSupabase = true
+      feedback.push(
+        ...remoteFeedback
+          .map(toFeedbackRow)
+          .filter((r): r is FeedbackRow => !!r),
+      )
     }
+  }
+
+  return {
+    students: attachFeedback(merged.rows, feedback),
+    source: sb ? 'supabase' : 'local',
+    sources: { supabase: merged.remote, local: merged.local },
+    feedbackFromSupabase,
+    canSync: !!sb && !!(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim(),
+    warning: warning || undefined,
   }
 }

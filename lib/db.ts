@@ -68,6 +68,7 @@ const COLLECTIONS = [
   'assessment_results',
   'resume_analyses',
   'tracking_events',
+  'feedback',
 ] as const
 
 export interface User {
@@ -146,6 +147,27 @@ export interface TrackingEvent {
   completed_at?: string
 }
 
+/**
+ * Post-assessment feedback a candidate submits about the experience ("which
+ * candidate gave which feedback"). Stored here so it survives in demo mode and
+ * mirrored to Supabase (`feedback_submissions`) when configured — the admin
+ * dashboard reads both.
+ */
+export interface FeedbackSubmission {
+  id: string
+  /** Candidate id — a Supabase UUID, or a local `u_…` demo id. */
+  student_id: string
+  /** The assessment session the feedback belongs to. */
+  session_id?: string
+  email?: string
+  /** 1–5 stars. */
+  rating: number
+  message: string
+  /** 'web' | 'ai-suggested' | … — how the text was produced. */
+  source?: string
+  created_at: string
+}
+
 export interface DBData {
   users: User[]
   profiles: Profile[]
@@ -153,6 +175,7 @@ export interface DBData {
   assessment_results: AssessmentResult[]
   resume_analyses: ResumeAnalysis[]
   tracking_events: TrackingEvent[]
+  feedback: FeedbackSubmission[]
 }
 
 function emptyDB(): DBData {
@@ -163,6 +186,7 @@ function emptyDB(): DBData {
     assessment_results: [],
     resume_analyses: [],
     tracking_events: [],
+    feedback: [],
   }
 }
 
@@ -529,4 +553,30 @@ export function saveTrackingEvent(event: TrackingEvent) {
 export function getTrackingEvents(userId: string): TrackingEvent[] {
   const db = getDB()
   return db.tracking_events.filter(e => e.user_id === userId)
+}
+
+export function saveFeedback(submission: FeedbackSubmission) {
+  const db = getDB()
+  const idx = db.feedback.findIndex(f => f.id === submission.id)
+  if (idx >= 0) db.feedback[idx] = submission
+  else db.feedback.push(submission)
+  saveDB(db)
+}
+
+/** Newest-first feedback for one candidate (matched by id or, failing that, email). */
+export function getFeedbackForStudent(studentId: string, email?: string): FeedbackSubmission[] {
+  const db = getDB()
+  const id = String(studentId || '').trim().toLowerCase()
+  const mail = String(email || '').trim().toLowerCase()
+  return db.feedback
+    .filter(f => {
+      const fId = String(f.student_id || '').trim().toLowerCase()
+      const fMail = String(f.email || '').trim().toLowerCase()
+      return (id && fId === id) || (mail && fMail === mail)
+    })
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+}
+
+export function getAllFeedback(): FeedbackSubmission[] {
+  return [...getDB().feedback]
 }

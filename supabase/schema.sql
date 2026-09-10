@@ -275,3 +275,43 @@ left join lateral (
   order by ar.created_at desc
   limit 1
 ) a on true;
+
+-- ---------------------------------------------------------------------------
+-- Feedback submissions (post-assessment candidate feedback)
+-- "Which candidate gave which feedback" — written by /api/feedback, read back
+-- per student by the admin dashboard. Kept here as well as in
+-- supabase/migrations/0004_feedback_submissions.sql (that file is the one to
+-- run against an existing database).
+
+create table if not exists public.feedback_submissions (
+  id           uuid primary key default gen_random_uuid(),
+  -- Real Supabase user (null for local demo ids — see student_ref).
+  student_id   uuid references public.profiles(id) on delete set null,
+  -- Raw candidate id as sent by the client (`u_84368932`, a UUID, …).
+  student_ref  text,
+  email        text,
+  session_id   text,
+  rating       int  not null check (rating between 1 and 5),
+  message      text not null check (char_length(btrim(message)) >= 10),
+  source       text not null default 'web',
+  created_at   timestamptz not null default now()
+);
+
+create index if not exists feedback_submissions_student_id_idx
+  on public.feedback_submissions (student_id);
+create index if not exists feedback_submissions_student_ref_idx
+  on public.feedback_submissions (lower(student_ref));
+create index if not exists feedback_submissions_email_idx
+  on public.feedback_submissions (lower(email));
+create index if not exists feedback_submissions_created_at_idx
+  on public.feedback_submissions (created_at desc);
+
+alter table public.feedback_submissions enable row level security;
+
+drop policy if exists feedback_insert_any on public.feedback_submissions;
+create policy feedback_insert_any on public.feedback_submissions
+  for insert with check (true);
+
+drop policy if exists feedback_select_own on public.feedback_submissions;
+create policy feedback_select_own on public.feedback_submissions
+  for select using (student_id = auth.uid());

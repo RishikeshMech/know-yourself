@@ -44,6 +44,10 @@ export function buildRow(input: {
   verifiable_hash?: any
   assessed_at?: any
   created_at?: any
+  /** Latest feedback the candidate gave (`{ rating, message, created_at }`). */
+  feedback?: { rating?: any; message?: any; created_at?: any } | null
+  /** How many feedback submissions that candidate has made in total. */
+  feedback_count?: any
 }): AdminStudentRow {
   const p = input.profile || {}
   const s = input.scores
@@ -106,6 +110,30 @@ export function buildRow(input: {
     logical_total: num(detail.logicalTotal),
     verifiable_hash: txt(input.verifiable_hash ?? scoreObj?.verifiable_hash),
     assessed_at: txt(input.assessed_at ?? scoreObj?.submitted_at ?? s?.created_at),
+    feedback_rating: input.feedback?.rating !== undefined && input.feedback?.rating !== null ? num(input.feedback.rating) : '',
+    feedback_message: txt(input.feedback?.message),
+    feedback_at: txt(input.feedback?.created_at),
+    feedback_count: input.feedback_count ? num(input.feedback_count) : '',
+  }
+}
+
+/**
+ * Copy feedback from a shadowed `source` row onto `row` when `row` has none.
+ * Used when a local (demo) row is merged away in favour of a live Supabase row:
+ * the live row wins for identity, but feedback the candidate gave under the
+ * other id/email must not disappear from the dashboard.
+ */
+export function fillFeedbackFrom(row: AdminStudentRow, source: AdminStudentRow): AdminStudentRow {
+  if (!source || (!source.feedback_message && !source.feedback_rating)) return row
+  const missing = !row.feedback_message && !row.feedback_rating
+  const sourceIsNewer = !!source.feedback_at && (!row.feedback_at || source.feedback_at > row.feedback_at)
+  if (!missing && !sourceIsNewer) return row
+  return {
+    ...row,
+    feedback_rating: source.feedback_rating || row.feedback_rating,
+    feedback_message: source.feedback_message || row.feedback_message,
+    feedback_at: source.feedback_at || row.feedback_at,
+    feedback_count: source.feedback_count || row.feedback_count,
   }
 }
 
@@ -116,4 +144,51 @@ export function sortRows(rows: AdminStudentRow[]): AdminStudentRow[] {
     if (t !== 0) return t
     return (a.name || '').localeCompare(b.name || '')
   })
+}
+
+const rowId = (r: AdminStudentRow) => (r.student_id || '').trim().toLowerCase()
+const rowEmail = (r: AdminStudentRow) => (r.email || '').trim().toLowerCase()
+
+/**
+ * Merge live (Supabase) rows with rows from the local JSON store.
+ *
+ * The two stores are not mirrors: students who signed up through the deployed
+ * app live in Postgres with a real UUID id, while the curated/demo candidates
+ * in `calibiai_db.json` (`u_…` ids, not valid UUIDs) were never written to
+ * Postgres and therefore only exist locally. Reading one of the two made the
+ * admin dashboard silently incomplete, so both are now merged:
+ *
+ *   • a live row always wins over a local row for the same student;
+ *   • "same student" = same `student_id`, or — when the ids differ (the demo
+ *     file and Postgres minted different ids) — the same email address;
+ *   • local rows are otherwise never de-duplicated against each other, because
+ *     the seeded dataset legitimately holds several attempts per email that
+ *     the dashboard has always shown separately.
+ */
+export function mergeStudentRows(
+  remote: AdminStudentRow[],
+  local: AdminStudentRow[],
+): { rows: AdminStudentRow[]; remote: number; local: number } {
+  const seenIds = new Set(remote.map(rowId).filter(Boolean))
+  const seenEmails = new Set(remote.map(rowEmail).filter(Boolean))
+  const extra: AdminStudentRow[] = []
+  const mergedRemote = [...remote]
+  for (const row of local) {
+    const id = rowId(row)
+    const email = rowEmail(row)
+    // Only a *live* row can shadow a local one — local rows never shadow each
+    // other (see the note above about repeated attempts per email).
+    const shadow = mergedRemote.find(
+      r => (id && rowId(r) === id) || (email && rowEmail(r) === email),
+    )
+    if (shadow) {
+      // The live row wins for identity, but keep the feedback the candidate
+      // gave under the other id/email instead of dropping it.
+      const enriched = fillFeedbackFrom(shadow, row)
+      if (enriched !== shadow) mergedRemote[mergedRemote.indexOf(shadow)] = enriched
+      continue
+    }
+    extra.push(row)
+  }
+  return { rows: sortRows([...mergedRemote, ...extra]), remote: mergedRemote.length, local: extra.length }
 }
