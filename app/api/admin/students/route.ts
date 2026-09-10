@@ -11,13 +11,14 @@ export async function GET(req: Request) {
     const url = new URL(req.url)
     const college = url.searchParams.get('college') || ''
     const q = url.searchParams.get('q') || ''
-    const { students, source, warning } = await fetchAllStudents()
+    const { students, source, warning, sources } = await fetchAllStudents()
     const rows = filterRows(students, { college, q })
     return NextResponse.json({
       students: rows,
       total: students.length,
       filtered: rows.length,
       source,
+      sources,
       warning,
       updated_at: new Date().toISOString(),
     })

@@ -117,3 +117,41 @@ export function sortRows(rows: AdminStudentRow[]): AdminStudentRow[] {
     return (a.name || '').localeCompare(b.name || '')
   })
 }
+
+const rowId = (r: AdminStudentRow) => (r.student_id || '').trim().toLowerCase()
+const rowEmail = (r: AdminStudentRow) => (r.email || '').trim().toLowerCase()
+
+/**
+ * Merge live (Supabase) rows with rows from the local JSON store.
+ *
+ * The two stores are not mirrors: students who signed up through the deployed
+ * app live in Postgres with a real UUID id, while the curated/demo candidates
+ * in `calibiai_db.json` (`u_…` ids, not valid UUIDs) were never written to
+ * Postgres and therefore only exist locally. Reading one of the two made the
+ * admin dashboard silently incomplete, so both are now merged:
+ *
+ *   • a live row always wins over a local row for the same student;
+ *   • "same student" = same `student_id`, or — when the ids differ (the demo
+ *     file and Postgres minted different ids) — the same email address;
+ *   • local rows are otherwise never de-duplicated against each other, because
+ *     the seeded dataset legitimately holds several attempts per email that
+ *     the dashboard has always shown separately.
+ */
+export function mergeStudentRows(
+  remote: AdminStudentRow[],
+  local: AdminStudentRow[],
+): { rows: AdminStudentRow[]; remote: number; local: number } {
+  const seenIds = new Set(remote.map(rowId).filter(Boolean))
+  const seenEmails = new Set(remote.map(rowEmail).filter(Boolean))
+  const extra: AdminStudentRow[] = []
+  for (const row of local) {
+    const id = rowId(row)
+    const email = rowEmail(row)
+    // Only a *live* row can shadow a local one — local rows never shadow each
+    // other (see the note above about repeated attempts per email).
+    if (id && seenIds.has(id)) continue // same student, live row wins
+    if (email && seenEmails.has(email)) continue // same person under a different id
+    extra.push(row)
+  }
+  return { rows: sortRows([...remote, ...extra]), remote: remote.length, local: extra.length }
+}

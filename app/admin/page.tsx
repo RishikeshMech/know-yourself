@@ -297,6 +297,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const [loadError, setLoadError] = useState('')
   const [refreshing, setRefreshing] = useState(false)
   const [dataSource, setDataSource] = useState<DataSource>('')
+  const [sources, setSources] = useState<{ supabase: number; local: number } | null>(null)
   const [warning, setWarning] = useState('')
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
 
@@ -321,6 +322,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
       if (!res.ok) throw new Error(data.error || 'Failed to load students.')
       setStudents(data.students || [])
       setDataSource((data.source as DataSource) || '')
+      setSources(data.sources || null)
       setWarning(data.warning || '')
       setLastUpdated(data.updated_at || new Date().toISOString())
     } catch (e: any) {
@@ -412,6 +414,11 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     }
   }, [students])
 
+  // Where the rows on screen came from — both stores are merged server-side.
+  // (`dataSource` is the fallback for an older server that only sent `source`.)
+  const liveCount = sources?.supabase ?? (dataSource === 'supabase' ? students?.length || 0 : 0)
+  const localCount = sources?.local ?? (dataSource === 'local' ? students?.length || 0 : 0)
+
   const toggleSort = (key: SortKey) => {
     if (sortBy === key) setSortDir(d => (d === 'desc' ? 'asc' : 'desc'))
     else {
@@ -487,19 +494,19 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         )}
 
         {/* Data source / degraded-read banner */}
-        {students && (warning || dataSource === 'local') && (
-          <div
-            className={`flex items-start gap-2 rounded-2xl border px-4 py-3 text-xs font-semibold animate-fade-up ${
-              dataSource === 'local'
-                ? 'border-amber-200 bg-amber-50/80 text-amber-700'
-                : 'border-rose-200 bg-rose-50/80 text-rose-600'
-            }`}
-          >
+        {students && warning && (
+          <div className="flex items-start gap-2 rounded-2xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-xs font-semibold text-rose-600 animate-fade-up">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{warning}</span>
+          </div>
+        )}
+        {students && localCount > 0 && (
+          <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-xs font-semibold text-amber-700 animate-fade-up">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>
-              {dataSource === 'local'
-                ? 'Showing local demo data. Connect Supabase (set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY on the host) to pull every live student record.'
-                : warning}
+              {liveCount > 0
+                ? `Showing ${liveCount} live student${liveCount === 1 ? '' : 's'} from Supabase plus ${localCount} candidate${localCount === 1 ? '' : 's'} that exist only in the local demo store and were never written to Postgres.`
+                : `Showing ${localCount} local demo candidate${localCount === 1 ? '' : 's'} — no live rows came back from Supabase (see the notice above). Connect Supabase (set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY on the host) to pull every live student record.`}
             </span>
           </div>
         )}
@@ -507,7 +514,12 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         {/* Stats */}
         {students && (
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <StatCard icon={<Users className="h-4 w-4" />} label="Total students" value={String(stats.total)} sub="Across all colleges" />
+            <StatCard
+              icon={<Users className="h-4 w-4" />}
+              label="Total students"
+              value={String(stats.total)}
+              sub={localCount > 0 ? `${liveCount} live · ${localCount} local` : 'Across all colleges'}
+            />
             <StatCard icon={<GraduationCap className="h-4 w-4" />} label="Colleges" value={String(stats.colleges)} sub="Distinct institutions" />
             <StatCard icon={<ShieldCheck className="h-4 w-4" />} label="Assessed" value={String(stats.assessed)} sub="Have a CalibiAI score" />
             <StatCard icon={<Trophy className="h-4 w-4" />} label="Average score" value={stats.assessed ? String(stats.avg) : '—'} sub="Top 10%: 900+ · Ready: 750+" />
