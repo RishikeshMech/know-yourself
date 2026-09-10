@@ -22,7 +22,7 @@ No external keys required. With no keys set the app runs in **fully local demo m
 
 Admin-only view of **every student** (works on any domain — `http://localhost:3000/admin` locally, `https://<your-domain>/admin` when deployed):
 
-- **Login:** username `admin`, password `Admin@123` (fixed; session is an HttpOnly signed cookie, expires after 8 h).
+- **Login:** username `admin`, password `CalibiAdmin@777` (fixed; session is an HttpOnly signed cookie, expires after 8 h).
 - **Filters:** by college (dropdown) and free search across name / email / PRN / mobile / college, plus an "assessed only" toggle.
 - **Download CSV:** one click exports the full dataset or the currently filtered view — Name, PRN, mobile number, email, college, degree, CGPA, profile + resume + merged skills, resume score and **every** CalibiAI module/sub-skill score (English listening/speaking/reading/writing, Problem Solving, AI Debugging, AI Feature, Prompt Eng, Cognitive grid/logical + 6 behavioural traits), percentile, grade and assessment date (48 columns, Excel/Sheets ready).
 - **Live:** the table auto-refreshes every 15 s while the tab is open (and instantly on tab focus), so new sign-ups, scores and resumes appear without a manual reload. Set `NEXT_PUBLIC_ADMIN_REFRESH_MS` (e.g. `5000` for 5 s) to change the interval. A `Live` badge shows the last sync time.

@@ -3,7 +3,7 @@
  * Admin dashboard — /admin
  * ------------------------
  * Admin logs in with the fixed credentials (username: `admin`, password:
- * `Admin@123`) via /api/admin/login (HttpOnly signed cookie). Once in, they
+ * `CalibiAdmin@777`) via /api/admin/login (HttpOnly signed cookie). Once in, they
  * see every student (profile + latest assessment result + latest resume) and
  * can:
  *   • filter by college (dropdown) and search (name/email/PRN/mobile/college)
@@ -170,7 +170,7 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
 
           {isLocalHost() && (
             <p className="mt-4 rounded-xl bg-indigo-50 px-3.5 py-2.5 text-center text-[11px] leading-relaxed text-indigo-600">
-              <b>Demo credentials</b> — username <code className="font-mono">admin</code> · password <code className="font-mono">Admin@123</code>
+              <b>Demo credentials</b> — username <code className="font-mono">admin</code> · password <code className="font-mono">CalibiAdmin@777</code>
             </p>
           )}
         </div>
