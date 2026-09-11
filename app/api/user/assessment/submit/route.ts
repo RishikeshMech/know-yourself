@@ -11,7 +11,16 @@ export async function POST(req: Request) {
     // the result row actually lands in Supabase (the row-level mirror silently
     // failed before, so returners looked like they never took the assessment).
     const sessionId = toUuid(body.session_id) || randomUUID()
-    const studentId = body.student_id || body.user_id || (body.result?.student_id) || ''
+    // A hydrated client normally sends the user id. If the final submit races
+    // the client store hydration, recover it from the already-saved session
+    // instead of writing the result under "unknown" / a random UUID. That
+    // mismatch is what made completed tests appear as "Not taken" in admin.
+    // Keep the local JSON store in sync under the same uuid.
+    let s: AssessmentSession | undefined = getAssessmentSession(body.session_id || '') || getAssessmentSession(sessionId)
+    const suppliedStudentId = String(body.student_id || body.user_id || body.result?.student_id || '').trim()
+    const studentId = suppliedStudentId && suppliedStudentId !== 'unknown'
+      ? suppliedStudentId
+      : String(s?.student_id || '').trim()
     const result = {
       id: toUuid(body.id) || 'res_' + Math.random().toString(16).slice(2, 10),
       session_id: sessionId,
@@ -24,8 +33,6 @@ export async function POST(req: Request) {
       ai_feedback: body.ai_feedback || {},
       created_at: new Date().toISOString(),
     }
-    // Keep the local JSON store in sync under the same uuid.
-    let s: AssessmentSession | undefined = getAssessmentSession(body.session_id || '') || getAssessmentSession(sessionId)
     if (!s) {
       s = {
         id: sessionId,

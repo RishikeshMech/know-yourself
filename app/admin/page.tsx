@@ -458,7 +458,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     const list = (students || []).filter(s => {
       if (college !== 'all' && s.college.trim().toLowerCase() !== college.toLowerCase()) return false
       if (needle && !hay(s).includes(needle)) return false
-      if (withScoreOnly && !s.has_assessment) return false
+      if (withScoreOnly && s.has_assessment !== 'Yes') return false
       return true
     })
     const dir = sortDir === 'desc' ? -1 : 1
@@ -776,7 +776,9 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                           <td className="px-3 py-3 text-center font-mono font-bold text-slate-700">{n(s.resume_score)}</td>
                           <td className="px-3 py-3 text-center">
                             {s.has_assessment === 'Yes' ? (
-                              <span className="font-mono text-sm font-black text-slate-900">{s.score}</span>
+                              s.score
+                                ? <span className="font-mono text-sm font-black text-slate-900">{s.score}</span>
+                                : <span className="font-semibold text-amber-600">Taken · result pending</span>
                             ) : <span className="text-slate-300">Not taken</span>}
                           </td>
                           <td className="px-3 py-3 text-center">

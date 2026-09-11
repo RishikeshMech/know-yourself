@@ -2,11 +2,11 @@
 -- Migration 0004 — candidate feedback (`feedback_submissions`)
 -- Run in the Supabase SQL editor (or `supabase db push`). Idempotent.
 --
--- "Which candidate gave which feedback": until now the post-assessment
--- feedback form posted straight to Formspree and nothing was stored in our own
--- database, so the admin dashboard could not show it. The app now writes every
--- submission here (and mirrors it into the local JSON store so demo mode still
--- works), and /admin reads it back per student.
+-- "Which candidate gave which feedback": the post-assessment form now writes
+-- every submission here (and mirrors it into the local JSON store so demo mode
+-- still works), and /admin reads it back per student. Supabase is the only
+-- destination for assessment feedback; the former external notification is no
+-- longer used.
 --
 -- Notes on the shape:
 --   * `student_id` is nullable: the seeded/demo candidates carry short `u_…`

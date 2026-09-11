@@ -160,8 +160,16 @@ export interface FetchError {
   message: string
 }
 
+/** A completed/expired session is evidence that the candidate took the test,
+ * even when the result write failed or is still being evaluated. */
+function sessionCountsAsAssessment(session: any): boolean {
+  if (!session) return false
+  const status = String(session.status || '').toLowerCase()
+  return status === 'submitted' || status === 'expired' || !!session.submitted_at
+}
+
 /** Build one AdminStudentRow from a Supabase `student_profiles_full` view row. */
-function fromViewRow(r: any): AdminStudentRow {
+function fromViewRow(r: any, assessmentSession?: any): AdminStudentRow {
   return buildRow({
     student_id: r.student_id,
     email: r.email,
@@ -179,10 +187,33 @@ function fromViewRow(r: any): AdminStudentRow {
       : null,
     resume_score: r.resume_score,
     resume_parsed: r.resume_parsed,
+    assessment_attempted: sessionCountsAsAssessment(assessmentSession) || !!r.assessment_session_id,
     verifiable_hash: r.verifiable_hash,
-    assessed_at: r.assessment_created_at,
+    assessed_at: r.assessment_created_at || assessmentSession?.submitted_at || assessmentSession?.created_at,
     created_at: r.profile_created_at,
   })
+}
+
+/** The export view only has an assessment session id when a result exists.
+ * Read sessions separately so a submitted/expired attempt with a missing or
+ * delayed result is still marked as taken in the admin dashboard. */
+async function latestAssessmentSessions(sb: any): Promise<Map<string, any>> {
+  try {
+    const { data, error } = await sb
+      .from('assessment_sessions')
+      .select('id,student_id,status,submitted_at,created_at')
+      .order('created_at', { ascending: false })
+    if (error) return new Map()
+    const latest = new Map<string, any>()
+    for (const session of data || []) {
+      if (!sessionCountsAsAssessment(session)) continue
+      const id = String(session?.student_id || '')
+      if (id && !latest.has(id)) latest.set(id, session)
+    }
+    return latest
+  } catch {
+    return new Map()
+  }
 }
 
 /**
@@ -192,15 +223,19 @@ function fromViewRow(r: any): AdminStudentRow {
  */
 async function fetchFromBaseTables(sb: any): Promise<{ rows: AdminStudentRow[]; error?: FetchError }> {
   try {
-    const [profilesQ, resumesQ, resultsQ] = await Promise.all([
+    const [profilesQ, resumesQ, resultsQ, sessionsQ] = await Promise.all([
       sb.from('profiles').select('*').eq('role', 'student'),
       sb.from('resume_analyses').select('*').order('created_at', { ascending: false }),
       sb.from('assessment_results').select('*').order('created_at', { ascending: false }),
+      sb.from('assessment_sessions')
+        .select('id,student_id,status,submitted_at,created_at')
+        .order('created_at', { ascending: false }),
     ])
     if (profilesQ.error) return { rows: [], error: { message: profilesQ.error.message } }
     // Resumes / results are best-effort — keep profiles even if these fail.
     const resumes: any[] = resumesQ.data || []
     const results: any[] = resultsQ.data || []
+    const sessions: any[] = sessionsQ.data || []
     const byStudent = (arr: any[]) => {
       const map = new Map<string, any>()
       for (const row of arr) {
@@ -213,21 +248,25 @@ async function fetchFromBaseTables(sb: any): Promise<{ rows: AdminStudentRow[]; 
     }
     const latestResume = byStudent(resumes)
     const latestResult = byStudent(results)
+    const latestSession = byStudent(sessions.filter(sessionCountsAsAssessment))
 
-    const rows = (profilesQ.data || []).map((p: any) =>
-      buildRow({
+    const rows = (profilesQ.data || []).map((p: any) => {
+      const result = latestResult.get(p.id)
+      const session = latestSession.get(p.id)
+      return buildRow({
         student_id: p.id,
         email: p.email,
         role: p.role,
         profile: p,
-        scores: latestResult.get(p.id) || null,
+        scores: result || null,
         resume_score: latestResume.get(p.id)?.resume_score,
         resume_parsed: latestResume.get(p.id)?.parsed,
-        verifiable_hash: latestResult.get(p.id)?.verifiable_hash,
-        assessed_at: latestResult.get(p.id)?.created_at,
+        assessment_attempted: sessionCountsAsAssessment(session),
+        verifiable_hash: result?.verifiable_hash,
+        assessed_at: result?.created_at || session?.submitted_at || session?.created_at,
         created_at: p.created_at,
-      }),
-    )
+      })
+    })
     return { rows: sortRows(rows) }
   } catch (e: any) {
     return { rows: [], error: { message: e?.message || 'Base-table fallback failed.' } }
@@ -253,6 +292,9 @@ function fetchLocalStudents(): AdminStudentRow[] {
     const result = db.assessment_results
       .filter(r => r.student_id === profile.id)
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+    const session = db.assessment_sessions
+      .filter(s => s.student_id === profile.id && sessionCountsAsAssessment(s))
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
     const resume = db.resume_analyses
       .filter(r => r.student_id === profile.id)
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
@@ -265,8 +307,9 @@ function fetchLocalStudents(): AdminStudentRow[] {
         scores: result || null,
         resume_score: resume?.resume_score,
         resume_parsed: resume?.parsed,
+        assessment_attempted: sessionCountsAsAssessment(session),
         verifiable_hash: result?.verifiable_hash,
-        assessed_at: result?.created_at,
+        assessed_at: result?.created_at || session?.submitted_at || session?.created_at,
         created_at: profile.updated_at || user?.created_at,
       }),
     )
@@ -305,7 +348,11 @@ export async function fetchAllStudents(): Promise<AdminStudentsResult> {
         .select('*')
         .eq('role', 'student')
       if (!error) {
-        remote = (data || []).map((r: any) => fromViewRow(r))
+        const sessions = await latestAssessmentSessions(sb)
+        remote = (data || []).map((r: any) => {
+          const session = sessions.get(String(r.student_id || ''))
+          return fromViewRow(r, session)
+        })
         // The view is RLS-protected (security_invoker). With the anon key and no
         // service role, the server-side admin request has no auth context, so
         // RLS hides every row and Postgres looks empty. Surface that clearly.
