@@ -4,6 +4,17 @@
 // CSV from the rows it already fetched, so a download always matches the
 // filters on screen exactly.
 
+export interface AdminFeedbackEntry {
+  id: string
+  student_id: string
+  email: string
+  rating: string
+  message: string
+  session_id: string
+  source: string
+  created_at: string
+}
+
 export interface AdminStudentRow {
   student_id: string
   email: string
@@ -65,6 +76,8 @@ export interface AdminStudentRow {
   feedback_message: string
   feedback_at: string
   feedback_count: string
+  /** Every submission, newest first; the table fields above are the latest one. */
+  feedback_history?: AdminFeedbackEntry[]
 }
 
 export const CSV_COLUMNS: { key: keyof AdminStudentRow; label: string }[] = [

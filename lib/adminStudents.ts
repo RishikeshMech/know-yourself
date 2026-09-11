@@ -21,7 +21,7 @@ import { getAllFeedback, getDB } from './db'
 import { getServerClient } from './supabaseServer'
 import { fetchAllFeedback } from './persist'
 import { buildRow, mergeStudentRows, sortRows } from './studentRows'
-import type { AdminStudentRow } from './csv'
+import type { AdminFeedbackEntry, AdminStudentRow } from './csv'
 
 export interface AdminStudentsResult {
   /** Fully joined rows, ready for the table / CSV. */
@@ -45,6 +45,8 @@ interface FeedbackRow {
   email: string
   rating: any
   message: string
+  session_id: string
+  source: string
   created_at: string
 }
 
@@ -59,17 +61,19 @@ function toFeedbackRow(r: any): FeedbackRow | null {
     email: String(r.email ?? '').trim().toLowerCase(),
     rating,
     message,
+    session_id: String(r.session_id ?? '').trim(),
+    source: String(r.source ?? '').trim(),
     created_at: String(r.created_at ?? ''),
   }
 }
 
 /**
- * Attach "which candidate gave which feedback" to every row: the latest
- * submission plus the total count, matched by candidate id (`student_id` /
- * `student_ref`) **or** email, because a candidate may be stored in Postgres
- * under a UUID while their feedback arrived under a local `u_…` id (or the
- * other way round). Feedback columns stay empty when the candidate has not
- * submitted any — the dashboard shows "—".
+ * Attach every submission to its candidate row, matched by candidate id
+ * (`student_id` / `student_ref`) **or** email, because a candidate may be stored
+ * in Postgres under a UUID while their feedback arrived under a local `u_…` id
+ * (or the other way round). The flat columns remain the latest submission for
+ * the table and CSV; `feedback_history` keeps the complete newest-first list
+ * for the expanded admin view.
  */
 function attachFeedback(rows: AdminStudentRow[], feedback: FeedbackRow[]): AdminStudentRow[] {
   if (!feedback.length) return rows
@@ -86,26 +90,38 @@ function attachFeedback(rows: AdminStudentRow[], feedback: FeedbackRow[]): Admin
   }
   const newestFirst = (a: FeedbackRow, b: FeedbackRow) =>
     new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
-  // A submission is written to the local store AND Supabase with the same id, so
-  // both reads return it — count it once. Rows without an id fall back to a
-  // content signature.
-  const signature = (f: FeedbackRow) =>
-    f.id || `${f.student_id}|${f.email}|${f.created_at}|${f.message.slice(0, 60)}`
+  // A submission is written to the local store and Supabase with the same id,
+  // so both reads return it. Seeded rows can have different ids after the sync,
+  // therefore also use the submission content as a mirror-safe signature.
+  const signatures = (f: FeedbackRow) => [
+    f.id ? `id:${f.id}` : '',
+    `content:${f.student_id}|${f.email}|${f.session_id}|${f.created_at}|${f.rating}|${f.message}`,
+  ].filter(Boolean)
+  const asAdminEntry = (f: FeedbackRow): AdminFeedbackEntry => ({
+    id: f.id,
+    student_id: f.student_id,
+    email: f.email,
+    rating: f.rating === null || f.rating === undefined ? '' : String(f.rating),
+    message: f.message,
+    session_id: f.session_id,
+    source: f.source,
+    created_at: f.created_at,
+  })
   return rows.map((r) => {
     const key = (r.student_id || '').trim().toLowerCase()
     const mail = (r.email || '').trim().toLowerCase()
     const seen = new Set<string>()
     const mine = [...(byStudent.get(key) || []), ...(byStudent.get(mail) || [])]
       .filter(f => {
-        const sig = signature(f)
-        if (seen.has(sig)) return false
-        seen.add(sig)
+        const sigs = signatures(f)
+        if (sigs.some(sig => seen.has(sig))) return false
+        sigs.forEach(sig => seen.add(sig))
         return true
       })
       .sort(newestFirst)
     if (!mine.length) return r
     const latest = mine[0]
-    return buildRow({
+    const row = buildRow({
       // Rebuild through buildRow so the existing columns are preserved verbatim.
       student_id: r.student_id,
       email: r.email,
@@ -128,6 +144,7 @@ function attachFeedback(rows: AdminStudentRow[], feedback: FeedbackRow[]): Admin
       feedback: latest,
       feedback_count: mine.length,
     })
+    return { ...row, feedback_history: mine.map(asAdminEntry) }
   })
 }
 

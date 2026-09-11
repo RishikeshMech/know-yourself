@@ -306,8 +306,39 @@ function ExpandedRow({ row }: { row: AdminStudentRow }) {
 
         {/* Feedback this candidate gave about the assessment */}
         <div className="mt-5 space-y-2">
-          <div className="text-xs font-black uppercase tracking-wide text-slate-400">Candidate feedback</div>
-          {row.feedback_message || row.feedback_rating ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="text-xs font-black uppercase tracking-wide text-slate-400">Candidate feedback</div>
+            {Number(row.feedback_count) > 1 && (
+              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                {row.feedback_count} submissions
+              </span>
+            )}
+          </div>
+          {row.feedback_history?.length ? (
+            <div className="space-y-2">
+              {row.feedback_history.map((feedback, index) => (
+                <div
+                  key={feedback.id || `${feedback.created_at}-${index}`}
+                  className="rounded-2xl border border-amber-100 bg-amber-50/60 p-4"
+                >
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Stars rating={feedback.rating} size={15} />
+                    <span className="text-xs font-bold text-amber-700">
+                      {feedback.rating ? `${feedback.rating}/5` : 'rated'}
+                    </span>
+                    {index === 0 && (
+                      <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-amber-700">Latest</span>
+                    )}
+                    <span className="text-xs text-slate-500">{fmtDate(feedback.created_at)}</span>
+                    {feedback.session_id && (
+                      <span className="font-mono text-[10px] text-slate-400">{feedback.session_id}</span>
+                    )}
+                  </div>
+                  <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{feedback.message}</p>
+                </div>
+              ))}
+            </div>
+          ) : row.feedback_message || row.feedback_rating ? (
             <div className="rounded-2xl border border-amber-100 bg-amber-50/60 p-4">
               <div className="flex flex-wrap items-center gap-3">
                 <Stars rating={row.feedback_rating} size={15} />
@@ -315,11 +346,6 @@ function ExpandedRow({ row }: { row: AdminStudentRow }) {
                   {row.feedback_rating ? `${row.feedback_rating}/5` : 'rated'}
                 </span>
                 <span className="text-xs text-slate-500">{fmtDate(row.feedback_at)}</span>
-                {Number(row.feedback_count) > 1 && (
-                  <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-amber-700">
-                    {row.feedback_count} submissions
-                  </span>
-                )}
               </div>
               <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{row.feedback_message}</p>
             </div>
