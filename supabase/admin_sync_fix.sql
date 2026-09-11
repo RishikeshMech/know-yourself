@@ -60,7 +60,8 @@ select
   (select count(*) from public.assessment_sessions)                     as assessment_sessions,
   (select count(*) from public.assessment_results)                      as assessment_results,
   (select count(*) from public.resume_analyses)                         as resume_analyses,
-  (select count(*) from public.feedback_submissions)                    as feedback_submissions;
+  (select count(*) from public.feedback_submissions)                    as feedback_submissions,
+  (select count(*) from public.help_requests)                           as help_requests;
 
 -- Exact rows the Admin dashboard reads (profile + latest result + resume):
 -- select * from public.student_profiles_full order by email;

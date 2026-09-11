@@ -69,6 +69,7 @@ const COLLECTIONS = [
   'resume_analyses',
   'tracking_events',
   'feedback',
+  'help_requests',
 ] as const
 
 export interface User {
@@ -149,9 +150,14 @@ export interface TrackingEvent {
 
 /**
  * Post-assessment feedback a candidate submits about the experience ("which
- * candidate gave which feedback"). Stored here so it survives in demo mode and
- * mirrored to Supabase (`feedback_submissions`) when configured — the admin
- * dashboard reads both.
+ * candidate gave which feedback").
+ *
+ * Supabase (`feedback_submissions`) is the destination; this record is the copy
+ * the app can always write. It doubles as the retry queue: `synced: false`
+ * means "accepted from the candidate, not in Postgres yet", and
+ * `POST /api/feedback/flush` pushes those rows across as soon as the database is
+ * reachable again. A candidate is therefore never blocked on the DB — and the
+ * feedback is never lost either.
  */
 export interface FeedbackSubmission {
   id: string
@@ -166,6 +172,34 @@ export interface FeedbackSubmission {
   /** 'web' | 'ai-suggested' | … — how the text was produced. */
   source?: string
   created_at: string
+  /** `true` once the row exists in `public.feedback_submissions`. */
+  synced?: boolean
+  /** Why the last Supabase attempt failed (diagnostics only). */
+  sync_error?: string
+  /** How many Supabase attempts have been made for this row. */
+  attempts?: number
+}
+
+/**
+ * A support request raised through the in-app help form ("A little help, right
+ * here"). Stored in `public.help_requests` — the same "Supabase is the
+ * destination, this file is the queue" arrangement as feedback, so the form
+ * depends on no third-party inbox and its free-tier limits.
+ */
+export interface HelpRequest {
+  id: string
+  /** Candidate id when signed in (a Supabase UUID or a local `u_…` demo id). */
+  student_id?: string
+  email?: string
+  phone?: string
+  message: string
+  /** Pathname the request was sent from (no query string). */
+  page?: string
+  source?: string
+  created_at: string
+  synced?: boolean
+  sync_error?: string
+  attempts?: number
 }
 
 export interface DBData {
@@ -176,6 +210,7 @@ export interface DBData {
   resume_analyses: ResumeAnalysis[]
   tracking_events: TrackingEvent[]
   feedback: FeedbackSubmission[]
+  help_requests: HelpRequest[]
 }
 
 function emptyDB(): DBData {
@@ -187,6 +222,7 @@ function emptyDB(): DBData {
     resume_analyses: [],
     tracking_events: [],
     feedback: [],
+    help_requests: [],
   }
 }
 
@@ -558,8 +594,43 @@ export function getTrackingEvents(userId: string): TrackingEvent[] {
 export function saveFeedback(submission: FeedbackSubmission) {
   const db = getDB()
   const idx = db.feedback.findIndex(f => f.id === submission.id)
-  if (idx >= 0) db.feedback[idx] = submission
-  else db.feedback.push(submission)
+  // Keep a row's earlier sync bookkeeping when a caller re-saves the same
+  // submission without it (e.g. a retry that only carries the payload).
+  const previous = idx >= 0 ? db.feedback[idx] : undefined
+  const next = {
+    ...submission,
+    synced: submission.synced ?? previous?.synced,
+    sync_error: submission.sync_error ?? previous?.sync_error,
+    attempts: submission.attempts ?? previous?.attempts,
+  }
+  if (idx >= 0) db.feedback[idx] = next
+  else db.feedback.push(next)
+  saveDB(db)
+}
+
+/**
+ * Feedback that was accepted from a candidate but has not reached
+ * `public.feedback_submissions` yet (the retry queue). Only rows explicitly
+ * marked `synced: false` are returned, so seeded/legacy rows are left to the
+ * admin "Write candidates into Supabase" job instead of being replayed here.
+ */
+export function getUnsyncedFeedback(limit = 25): FeedbackSubmission[] {
+  const db = getDB()
+  return db.feedback
+    .filter(f => f.synced === false)
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    .slice(0, Math.max(1, limit))
+}
+
+/** Mark a queued submission as delivered (or record why the attempt failed). */
+export function markFeedbackSynced(id: string, error?: string) {
+  const db = getDB()
+  const idx = db.feedback.findIndex(f => f.id === id)
+  if (idx < 0) return
+  const previous = db.feedback[idx]
+  db.feedback[idx] = error
+    ? { ...previous, synced: false, sync_error: error, attempts: (previous.attempts || 0) + 1 }
+    : { ...previous, synced: true, sync_error: undefined, attempts: (previous.attempts || 0) + 1 }
   saveDB(db)
 }
 
@@ -579,4 +650,48 @@ export function getFeedbackForStudent(studentId: string, email?: string): Feedba
 
 export function getAllFeedback(): FeedbackSubmission[] {
   return [...getDB().feedback]
+}
+
+/* ------------------------------ help requests ----------------------------- */
+
+export function saveHelpRequest(request: HelpRequest) {
+  const db = getDB()
+  const idx = db.help_requests.findIndex(h => h.id === request.id)
+  const previous = idx >= 0 ? db.help_requests[idx] : undefined
+  const next = {
+    ...request,
+    synced: request.synced ?? previous?.synced,
+    sync_error: request.sync_error ?? previous?.sync_error,
+    attempts: request.attempts ?? previous?.attempts,
+  }
+  if (idx >= 0) db.help_requests[idx] = next
+  else db.help_requests.push(next)
+  saveDB(db)
+}
+
+export function getAllHelpRequests(): HelpRequest[] {
+  const db = getDB()
+  return [...db.help_requests].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  )
+}
+
+/** Help requests accepted but not yet in `public.help_requests` (retry queue). */
+export function getUnsyncedHelpRequests(limit = 25): HelpRequest[] {
+  const db = getDB()
+  return db.help_requests
+    .filter(h => h.synced === false)
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    .slice(0, Math.max(1, limit))
+}
+
+export function markHelpRequestSynced(id: string, error?: string) {
+  const db = getDB()
+  const idx = db.help_requests.findIndex(h => h.id === id)
+  if (idx < 0) return
+  const previous = db.help_requests[idx]
+  db.help_requests[idx] = error
+    ? { ...previous, synced: false, sync_error: error, attempts: (previous.attempts || 0) + 1 }
+    : { ...previous, synced: true, sync_error: undefined, attempts: (previous.attempts || 0) + 1 }
+  saveDB(db)
 }

@@ -363,6 +363,91 @@ function ExpandedRow({ row }: { row: AdminStudentRow }) {
 // ===========================================================================
 // Main dashboard (authed)
 // ===========================================================================
+/* ---------------------------------------------------------------------------
+ * Help requests — messages sent through the in-app help form. They used to go
+ * to an external form service (and were lost once its monthly limit was hit);
+ * they now live in `public.help_requests`, so the team can read them here.
+ * ------------------------------------------------------------------------- */
+interface HelpRequestRow {
+  id?: string
+  email?: string
+  phone?: string
+  message?: string
+  page?: string
+  created_at?: string
+  synced?: boolean
+  sync_error?: string
+}
+
+function HelpRequests() {
+  const [open, setOpen] = useState(false)
+  const [rows, setRows] = useState<HelpRequestRow[] | null>(null)
+  const [error, setError] = useState('')
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch('/api/help')
+      if (!res.ok) return
+      const data = await res.json()
+      setRows(data.requests || [])
+    } catch (e: any) {
+      setError(e?.message || 'Could not load help requests.')
+    }
+  }, [])
+
+  // Only fetched when the panel is opened, so the dashboard stays fast.
+  useEffect(() => { if (open && rows === null && !error) load() }, [open, rows, error, load])
+
+  return (
+    <section className="glass-card !p-5 mb-6">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="flex w-full items-center justify-between gap-3 text-left"
+        aria-expanded={open}
+      >
+        <span className="flex items-center gap-2 text-sm font-black text-slate-700">
+          <AlertCircle size={16} className="text-indigo-600" /> Help requests
+          <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-600">
+            stored in Supabase · help_requests
+          </span>
+        </span>
+        {open ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+      </button>
+
+      {open && (
+        <div className="mt-4">
+          {error && <p className="text-xs text-rose-600">{error}</p>}
+          {rows === null && !error && <p className="text-xs text-slate-500">Loading…</p>}
+          {rows && rows.length === 0 && (
+            <p className="text-xs text-slate-500">No help requests yet.</p>
+          )}
+          {rows && rows.length > 0 && (
+            <ul className="space-y-3">
+              {rows.map((row, index) => (
+                <li key={row.id || `${row.created_at}-${index}`} className="rounded-2xl border border-slate-200 bg-white/70 p-4">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-bold text-slate-700">
+                    <span>{row.email || '—'}</span>
+                    {row.phone && <span className="font-normal text-slate-500">{row.phone}</span>}
+                    <span className="text-slate-500 font-normal">{fmtDate(row.created_at || '')}</span>
+                    {row.page && <span className="font-mono text-[10px] text-slate-400">{row.page}</span>}
+                    {row.synced === false && (
+                      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700" title={row.sync_error || ''}>
+                        queued — waiting for Supabase
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{row.message}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </section>
+  )
+}
+
 function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const [students, setStudents] = useState<AdminStudentRow[] | null>(null)
   const [loadError, setLoadError] = useState('')
@@ -808,6 +893,8 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
             Data includes personal information — handle responsibly. The CSV exports 52 columns: personal details, college, PRN, mobile, skills, resume, every CalibiAI module score and the candidate's own feedback.
           </p>
         )}
+
+        <HelpRequests />
       </main>
     </div>
   )

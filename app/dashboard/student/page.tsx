@@ -8,6 +8,7 @@ import { Navbar } from '@/components/Navbar'
 import { useStore } from '@/lib/store'
 import { isProfileComplete } from '@/lib/validate'
 import { consumeJustSubmittedTicket } from '@/lib/justSubmitted'
+import { readFeedbackDraft } from '@/lib/feedback'
 import { flattenAssessmentResult } from '@/lib/resultShape'
 import { getLiveUser } from '@/lib/session'
 import { ReportModal } from '@/components/ReportModal'
@@ -21,6 +22,9 @@ function Inner(){
   const [downloading, setDownloading] = useState(false)
   // True only on the landing right after the assessment was submitted.
   const [justCompleted, setJustCompleted] = useState(false)
+  // True when the candidate left the feedback step unfinished ("Skip for now"),
+  // so the dashboard can offer to finish it — without ever forcing them back.
+  const [feedbackPendingDraft, setFeedbackPendingDraft] = useState(false)
   const ticketChecked = useRef(false)
   // True once the cached account has been validated against Supabase Auth.
   const [validated, setValidated] = useState(false)
@@ -57,6 +61,18 @@ function Inner(){
     if (ticketChecked.current) return
     ticketChecked.current = true
     setJustCompleted(consumeJustSubmittedTicket())
+  },[])
+
+  // Two housekeeping jobs on arrival:
+  //  1. push any feedback/help request the server had to queue (a failed
+  //     Supabase write is retried here, so nothing is ever lost), and
+  //  2. notice an unfinished feedback draft so we can offer to complete it.
+  useEffect(()=>{
+    fetch('/api/feedback/flush', { method: 'POST' }).catch(()=>{})
+    const checkDraft = () => setFeedbackPendingDraft(!!readFeedbackDraft())
+    checkDraft()
+    window.addEventListener('storage', checkDraft)
+    return () => window.removeEventListener('storage', checkDraft)
   },[])
 
   // Enrich the (locally hydrated) store with the latest DB data when signed in.
@@ -152,6 +168,25 @@ function Inner(){
                   View my full report →
                 </button>
               )}
+            </div>
+          </div>
+        )}
+
+        {feedbackPendingDraft && (
+          <div className="mt-6 animate-fade-up rounded-3xl border border-violet-200 bg-violet-50/80 p-5 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl" aria-hidden>💬</span>
+                <div>
+                  <div className="text-sm font-black text-violet-800">You skipped the feedback step</div>
+                  <p className="mt-1 text-xs text-violet-700">
+                    It takes 20 seconds and tells us what to improve. We kept what you typed.
+                  </p>
+                </div>
+              </div>
+              <Link href="/feedback" className="btn-primary !py-2.5 text-xs" onClick={()=>setFeedbackPendingDraft(false)}>
+                Give feedback →
+              </Link>
             </div>
           </div>
         )}

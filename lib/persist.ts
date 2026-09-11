@@ -2,8 +2,19 @@
 // Every function receives the server client explicitly and degrades to a
 // logged no-op on failure — the local JSON store remains the source of truth
 // in demo mode, Supabase mirrors everything when configured.
+//
+// Feedback and help requests are the exception, and deliberately so: for those
+// two Supabase is the DESTINATION and the local store is only the retry queue
+// used while Postgres is unreachable (see lib/feedbackStore.ts /
+// lib/helpStore.ts). Both write with a plain INSERT plus explicit
+// unique-violation handling rather than `.upsert()`, so they work with the
+// anon key against insert-only RLS policies.
 import { randomUUID } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
+// Same deterministic id mapping the "Write candidates into Supabase" job uses,
+// so a feedback row written at runtime and the same row replayed by the seed
+// job share one primary key (no duplicates).
+import { mapId } from './supabaseSeed.ts'
 
 export interface AuthResult {
   user: { id: string; email: string; name?: string }
@@ -171,33 +182,176 @@ export async function persistResumeAnalysis(client: SupabaseClient, rec: any): P
   return true
 }
 
+/** What happened when a row was written to Postgres (or why it was not). */
+export interface PersistOutcome {
+  ok: boolean
+  /** SQLSTATE from Postgres (`23505`, `42501`, `42P01`, `23503`, …). */
+  code?: string
+  message?: string
+  /** The row was already there — a retry of the same submission id. */
+  duplicate?: boolean
+  /** The table does not exist yet (the migration has not been applied). */
+  tableMissing?: boolean
+  /** `student_id` had to be dropped because the referenced profile is missing. */
+  detachedFromProfile?: boolean
+}
+
+const DUPLICATE_KEY = '23505'
+const FK_VIOLATION = '23503'
+const UNDEFINED_TABLE = '42P01'
+
+function outcomeOf(error: any): PersistOutcome {
+  const code = String(error?.code ?? '').trim() || undefined
+  return {
+    ok: false,
+    code,
+    message: String(error?.message ?? error ?? 'Unknown database error'),
+    tableMissing: code === UNDEFINED_TABLE,
+  }
+}
+
 /**
  * Candidate feedback about the assessment ("which candidate gave which
  * feedback") → `public.feedback_submissions`. `student_id` is only written when
  * it is a real UUID: local demo candidates carry `u_…` ids that Postgres cannot
  * store, so the raw id is kept in `student_ref` and the email is stored too, so
  * the admin dashboard can match the feedback either way.
+ *
+ * The id is mapped with `mapId('feedback', …)` — the same function the
+ * "Write candidates into Supabase" seed job uses — so a submission written here
+ * and a submission written by the seed job land on the same primary key instead
+ * of duplicating.
  */
-export async function persistFeedback(client: SupabaseClient, fb: any): Promise<boolean> {
-  const { error } = await client.from('feedback_submissions').upsert(
-    {
-      id: toUuid(fb.id) || randomUUID(),
-      student_id: UUID_RE.test(String(fb.student_id || '')) ? String(fb.student_id) : null,
-      student_ref: clean(fb.student_id),
-      email: clean(fb.email),
-      session_id: clean(fb.session_id),
-      rating: Number(fb.rating) || null,
-      message: String(fb.message ?? '').trim(),
-      source: clean(fb.source) || 'web',
-      created_at: fb.created_at || new Date().toISOString(),
-    },
-    { onConflict: 'id' },
-  )
-  if (error) {
-    console.warn('[supabase] feedback persist failed:', error.message)
-    return false
+export function feedbackRow(fb: any): Record<string, any> {
+  return {
+    id: mapId('feedback', fb.id) || randomUUID(),
+    student_id: UUID_RE.test(String(fb.student_id || '')) ? String(fb.student_id) : null,
+    student_ref: clean(fb.student_id),
+    email: clean(fb.email),
+    session_id: clean(fb.session_id),
+    rating: Number(fb.rating) || null,
+    message: String(fb.message ?? '').trim(),
+    source: clean(fb.source) || 'web',
+    created_at: fb.created_at || new Date().toISOString(),
   }
-  return true
+}
+
+/**
+ * One write attempt.
+ *
+ * A plain `insert` is tried first — `feedback_submissions` has an insert policy
+ * for everyone and postgrest-js sends no `return=representation`, so an
+ * anonymous (non-service-role) server key is enough.
+ *
+ * The old code used `.upsert(…, { onConflict: 'id' })`, which PostgREST turns
+ * into `INSERT … ON CONFLICT DO UPDATE`. That statement also needs an UPDATE
+ * RLS policy, and the table only has insert + select-own — so every write made
+ * with the anon key failed with `42501 new row violates row-level security
+ * policy`, the route answered 503, and the candidate was left stuck on
+ * `/feedback` with their report unreachable. Duplicates are handled by reading
+ * the `23505` error instead of asking the database to merge rows, and an
+ * ignore-duplicates upsert (which needs only INSERT) is kept as a fallback.
+ */
+async function insertWithFallback(
+  client: SupabaseClient,
+  table: string,
+  row: Record<string, any>,
+): Promise<PersistOutcome> {
+  const { error } = await client.from(table).insert(row)
+  if (!error) return { ok: true }
+  if (String(error.code) === DUPLICATE_KEY) return { ok: true, duplicate: true }
+
+  const retry = await client.from(table).upsert(row, { onConflict: 'id', ignoreDuplicates: true })
+  if (!retry.error) return { ok: true }
+  if (String(retry.error.code) === DUPLICATE_KEY) return { ok: true, duplicate: true }
+
+  // Prefer the more actionable of the two errors: a missing table explains every
+  // other failure, so that is the one an operator should see.
+  const primary = [error, retry.error].find(e => String(e?.code) === UNDEFINED_TABLE) || error
+  return outcomeOf(primary)
+}
+
+async function writeFeedbackRow(client: SupabaseClient, row: Record<string, any>): Promise<PersistOutcome> {
+  return insertWithFallback(client, 'feedback_submissions', row)
+}
+
+/** Write one feedback row, with the recoveries above. Never throws. */
+export async function persistFeedbackDetailed(client: SupabaseClient, fb: any): Promise<PersistOutcome> {
+  try {
+    const row = feedbackRow(fb)
+    const attempt = await writeFeedbackRow(client, row)
+    if (attempt.ok) return attempt
+    // The candidate's id can be a perfectly valid UUID with no `profiles` row
+    // (a local account whose profile never reached Postgres). Drop the FK and
+    // keep `student_ref` + `email` — the admin dashboard matches on both.
+    if (attempt.code === FK_VIOLATION && row.student_id) {
+      const detached = await writeFeedbackRow(client, { ...row, student_id: null })
+      if (detached.ok) return { ...detached, detachedFromProfile: true }
+    }
+    return attempt
+  } catch (e: any) {
+    return { ok: false, message: e?.message || String(e) }
+  }
+}
+
+/** Boolean wrapper kept for callers that only need "did it land?". */
+export async function persistFeedback(client: SupabaseClient, fb: any): Promise<boolean> {
+  const outcome = await persistFeedbackDetailed(client, fb)
+  if (!outcome.ok) console.warn('[supabase] feedback persist failed:', outcome.code || '', outcome.message)
+  return outcome.ok
+}
+
+/**
+ * A support request from the in-app help form → `public.help_requests`.
+ * Same insert-first strategy as feedback: no third-party form service, no
+ * monthly submission limit, and the row is readable by the team in Supabase.
+ */
+export function helpRequestRow(req: any): Record<string, any> {
+  return {
+    id: mapId('help', req.id) || randomUUID(),
+    student_id: UUID_RE.test(String(req.student_id || '')) ? String(req.student_id) : null,
+    student_ref: clean(req.student_id),
+    email: clean(req.email),
+    phone: clean(req.phone),
+    message: String(req.message ?? '').trim(),
+    page: clean(req.page),
+    source: clean(req.source) || 'web',
+    created_at: req.created_at || new Date().toISOString(),
+  }
+}
+
+export async function persistHelpRequestDetailed(client: SupabaseClient, req: any): Promise<PersistOutcome> {
+  try {
+    const row = helpRequestRow(req)
+    const attempt = await insertWithFallback(client, 'help_requests', row)
+    if (attempt.ok) return attempt
+    if (attempt.code === FK_VIOLATION && row.student_id) {
+      const detached = await client.from('help_requests').insert({ ...row, student_id: null })
+      if (!detached.error) return { ok: true, detachedFromProfile: true }
+    }
+    return attempt
+  } catch (e: any) {
+    return { ok: false, message: e?.message || String(e) }
+  }
+}
+
+/** Every help request (admin view) — null when the table is not there yet. */
+export async function fetchAllHelpRequests(client: SupabaseClient): Promise<any[] | null> {
+  try {
+    const { data, error } = await client
+      .from('help_requests')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(200)
+    if (error) {
+      console.warn('[supabase] help request read failed:', error.message)
+      return null
+    }
+    return data || []
+  } catch (e: any) {
+    console.warn('[supabase] help request read failed:', e?.message || e)
+    return null
+  }
 }
 
 /** Every feedback row (admin dashboard) — null when the table is not there yet. */
