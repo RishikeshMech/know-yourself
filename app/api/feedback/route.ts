@@ -32,7 +32,9 @@ export async function POST(req: Request) {
     }
 
     const submission = {
-      id: randomUUID(),
+      // The client reuses this id when retrying, so a transient Supabase error
+      // cannot create duplicate local/remote feedback rows.
+      id: String(body?.id ?? '').trim() || randomUUID(),
       student_id: String(body?.student_id ?? body?.user_id ?? '').trim() || 'sess_demo',
       session_id: String(body?.session_id ?? '').trim() || undefined,
       email: String(body?.email ?? '').trim().toLowerCase() || undefined,
@@ -46,7 +48,23 @@ export async function POST(req: Request) {
 
     let supabase = false
     const sb = getServerClient()
-    if (sb) supabase = await persistFeedback(sb, submission)
+    if (sb) {
+      supabase = await persistFeedback(sb, submission)
+      // Do not report success when Supabase is configured but the mirror failed.
+      // The local write above is retained for recovery, and the client keeps the
+      // form open so the same submission id can be retried without duplication.
+      if (!supabase) {
+        return NextResponse.json(
+          {
+            error: 'Feedback could not be saved to Supabase. Please try again; your feedback is still kept for retry.',
+            feedback: submission,
+            saved_local: true,
+            supabase: false,
+          },
+          { status: 503 },
+        )
+      }
+    }
 
     return NextResponse.json({ ok: true, feedback: submission, saved: true, supabase })
   } catch (e: any) {

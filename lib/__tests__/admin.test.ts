@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 
 import { CSV_COLUMNS, rowsToCsv, downloadFilename } from '../csv.ts'
 import { filterRows } from '../adminFilters.ts'
-import { buildRow, mergeSkills, mergeStudentRows } from '../studentRows.ts'
+import { buildRow, fillAssessmentFrom, mergeSkills, mergeStudentRows } from '../studentRows.ts'
 
 /* ------------------------------------------------------------------ */
 /* mergeSkills                                                         */
@@ -95,6 +95,37 @@ test('buildRow leaves an unassessed student blank rather than zeroed', () => {
   assert.equal(row.grade, '')
   assert.equal(row.english, '')
   assert.equal(row.resume_score, '')
+})
+
+test('buildRow marks a submitted session as taken even when the result is pending', () => {
+  const row = buildRow({
+    student_id: 'u_submitted',
+    email: 'submitted@college.edu',
+    profile: { full_name: 'Submitted Student' },
+    scores: null,
+    assessment_attempted: true,
+  })
+  assert.equal(row.has_assessment, 'Yes')
+  assert.equal(row.score, '')
+})
+
+test('fillAssessmentFrom keeps a completed local result when the live profile has no result yet', () => {
+  const live = buildRow({
+    student_id: '11111111-1111-1111-1111-111111111111',
+    email: 'same@college.edu',
+    profile: { full_name: 'Live Student' },
+    scores: null,
+  })
+  const local = buildRow({
+    student_id: 'u_same',
+    email: 'same@college.edu',
+    profile: { full_name: 'Local Student' },
+    scores: { total: 780, grade: 'A', percentile: 90 },
+  })
+  const merged = fillAssessmentFrom(live, local)
+  assert.equal(merged.has_assessment, 'Yes')
+  assert.equal(merged.score, '780')
+  assert.equal(merged.grade, 'A')
 })
 
 /* ------------------------------------------------------------------ */

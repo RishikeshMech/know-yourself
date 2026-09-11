@@ -24,6 +24,7 @@ export default function FeedbackPage() {
   const [sent, setSent] = useState(false)
   const lock = useRef(false)
   const version = useRef(0)
+  const submissionId = useRef('')
 
   useEffect(() => {
     const pending = localStorage.getItem(FEEDBACK_PENDING_KEY)
@@ -61,7 +62,9 @@ export default function FeedbackPage() {
     event.preventDefault()
     if (lock.current || !validFeedback(rating, message) || !session) return
     lock.current = true; setBusy(true); setError('')
+    if (!submissionId.current) submissionId.current = crypto.randomUUID()
     const payload = {
+      id: submissionId.current,
       student_id: user?.id || '',
       email: user?.email || '',
       session_id: session,
@@ -76,12 +79,9 @@ export default function FeedbackPage() {
       }, 20000)
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data.error || 'Your feedback could not be saved. Please try again; your text is still here.')
-      // Best-effort: keep the existing Formspree notification e-mail flowing, but
-      // never block or fail the submission on it.
-      fetchWithTimeout('https://formspree.io/f/maeyajza', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ ...payload, _subject: 'CalibiAI assessment feedback' }),
-      }, 15000).catch(() => {})
+      // Feedback is stored by our API in Supabase (with the local store as the
+      // existing demo-mode fallback). Do not send assessment feedback to a
+      // second external form provider.
       localStorage.removeItem(FEEDBACK_PENDING_KEY)
       markJustSubmitted()
       setSent(true)
@@ -134,7 +134,7 @@ export default function FeedbackPage() {
               <textarea id="feedback" required minLength={10} maxLength={1000} rows={5} disabled={busy} value={message} onChange={e => { version.current++; setMessage(e.target.value); setNotice('') }} placeholder="Choose a star and we’ll suggest a starting point. Make it your own." className="field resize-y leading-relaxed" aria-describedby="feedback-help feedback-notice" />
               <div id="feedback-help" className="mt-2 flex justify-between gap-4 text-xs text-slate-500"><span>Your opinion, your words. 10 characters minimum.</span><span className="shrink-0 tabular-nums">{message.length}/1,000</span></div>
               <p id="feedback-notice" role="status" className="mt-3 text-xs leading-relaxed text-indigo-600">{notice}</p>
-              <div className="mt-5 flex gap-2.5 rounded-xl bg-white/60 p-3 text-xs leading-relaxed text-slate-500"><ShieldCheck size={17} className="shrink-0 text-indigo-500" /><span>Feedback won’t affect your score. Your rating, comments and assessment ID are stored with your CalibiAI account and are visible to CalibiAI admins; a copy is e-mailed to the team via Formspree. AI polishing shares only your rating and comments with our AI provider.</span></div>
+              <div className="mt-5 flex gap-2.5 rounded-xl bg-white/60 p-3 text-xs leading-relaxed text-slate-500"><ShieldCheck size={17} className="shrink-0 text-indigo-500" /><span>Feedback won’t affect your score. Your rating, comments and assessment ID are stored with your CalibiAI account and are visible to CalibiAI admins. AI polishing shares only your rating and comments with our AI provider.</span></div>
               {error && <p role="alert" className="mt-4 rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
               <button type="submit" disabled={!validFeedback(rating, message) || busy || polishing} className="btn-primary w-full mt-6">{busy ? <><Loader2 size={16} className="animate-spin" />Sending feedback…</> : <>Submit feedback <ArrowRight size={16} /></>}</button>
               <p className="text-center text-xs text-slate-500 mt-3">Submit your feedback to continue to your dashboard.</p>

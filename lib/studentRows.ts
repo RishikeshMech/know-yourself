@@ -44,6 +44,8 @@ export function buildRow(input: {
   verifiable_hash?: any
   assessed_at?: any
   created_at?: any
+  /** True when a submitted/expired assessment session exists even if its result is missing. */
+  assessment_attempted?: boolean
   /** Latest feedback the candidate gave (`{ rating, message, created_at }`). */
   feedback?: { rating?: any; message?: any; created_at?: any } | null
   /** How many feedback submissions that candidate has made in total. */
@@ -77,7 +79,7 @@ export function buildRow(input: {
     github_url: txt(p.github_url),
     created_at: txt(input.created_at ?? p.created_at ?? p.updated_at),
     resume_score: num(input.resume_score ?? p.resume_score),
-    has_assessment: s ? 'Yes' : 'No',
+    has_assessment: s || input.assessment_attempted ? 'Yes' : 'No',
     score: s ? num(scoreObj?.total ?? s.total) : '',
     grade: s ? txt(scoreObj?.grade ?? s.grade) : '',
     percentile: s ? num(scoreObj?.percentile ?? s.percentile) : '',
@@ -150,6 +152,34 @@ const rowId = (r: AdminStudentRow) => (r.student_id || '').trim().toLowerCase()
 const rowEmail = (r: AdminStudentRow) => (r.email || '').trim().toLowerCase()
 
 /**
+ * Prefer a real result over a profile-only row when the same candidate exists in
+ * both stores. Supabase can contain the profile while the result is still being
+ * evaluated, while the local store may still have the completed result (or vice
+ * versa). The live profile remains the identity winner; only missing assessment
+ * fields are filled from the other store.
+ */
+export function fillAssessmentFrom(row: AdminStudentRow, source: AdminStudentRow): AdminStudentRow {
+  const resultFields: (keyof AdminStudentRow)[] = [
+    'score', 'grade', 'percentile', 'english', 'english_listening', 'english_speaking',
+    'english_reading', 'english_writing', 'problem_solving', 'ai_debugging', 'ai_feature',
+    'prompt_engineering', 'cognitive', 'cognitive_grid', 'cognitive_logical',
+    'behavioral_total', 'teamwork', 'accountability', 'adaptability', 'responsible_ai',
+    'decision_making', 'learning_mindset', 'listening_correct', 'listening_total',
+    'reading_correct', 'reading_total', 'problem_correct', 'problem_total',
+    'logical_correct', 'logical_total', 'verifiable_hash', 'assessed_at',
+  ]
+  const rank = (candidate: AdminStudentRow) => {
+    const hasResult = candidate.score !== '' || candidate.grade !== '' || candidate.percentile !== ''
+      || candidate.verifiable_hash !== ''
+    return hasResult ? 2 : candidate.has_assessment === 'Yes' ? 1 : 0
+  }
+  if (rank(source) <= rank(row)) return row
+  const merged = { ...row, has_assessment: 'Yes' }
+  for (const field of resultFields) merged[field] = source[field] as never
+  return merged
+}
+
+/**
  * Merge live (Supabase) rows with rows from the local JSON store.
  *
  * The two stores are not mirrors: students who signed up through the deployed
@@ -158,7 +188,8 @@ const rowEmail = (r: AdminStudentRow) => (r.email || '').trim().toLowerCase()
  * Postgres and therefore only exist locally. Reading one of the two made the
  * admin dashboard silently incomplete, so both are now merged:
  *
- *   • a live row always wins over a local row for the same student;
+ *   • a live row wins for identity/profile fields; missing feedback and
+ *     assessment data are filled from the local row when it is more complete;
  *   • "same student" = same `student_id`, or — when the ids differ (the demo
  *     file and Postgres minted different ids) — the same email address;
  *   • local rows are otherwise never de-duplicated against each other, because
@@ -182,9 +213,11 @@ export function mergeStudentRows(
       r => (id && rowId(r) === id) || (email && rowEmail(r) === email),
     )
     if (shadow) {
-      // The live row wins for identity, but keep the feedback the candidate
-      // gave under the other id/email instead of dropping it.
-      const enriched = fillFeedbackFrom(shadow, row)
+      // The live row wins for identity, but keep feedback and any completed
+      // assessment from the other store instead of dropping it when the live
+      // profile has not received the result yet.
+      let enriched = fillFeedbackFrom(shadow, row)
+      enriched = fillAssessmentFrom(enriched, row)
       if (enriched !== shadow) mergedRemote[mergedRemote.indexOf(shadow)] = enriched
       continue
     }

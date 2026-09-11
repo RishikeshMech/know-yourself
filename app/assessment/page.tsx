@@ -417,12 +417,12 @@ function AssessmentInner() {
           fetch('/api/user/assessment', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ session_id: sid, answers, status: 'in_progress' }),
+            body: JSON.stringify({ session_id: sid, student_id: user?.id || '', answers, status: 'in_progress' }),
           })
         } catch { /* demo mode */ }
       }, 1500)
     }
-  }, [answers, sid])
+  }, [answers, sid, user?.id])
   useEffect(() => { if (sid) localStorage.setItem('calibiai_ai_' + sid, JSON.stringify(aiResults)) }, [aiResults, sid])
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3200) }
@@ -959,7 +959,7 @@ function AssessmentInner() {
       await fetch('/api/user/assessment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sid, answers, status: auto ? 'expired' : 'submitted', tab_switches: strikes, submitted_at: new Date().toISOString() }),
+        body: JSON.stringify({ session_id: sid, student_id: user?.id || '', answers, status: auto ? 'expired' : 'submitted', tab_switches: strikes, submitted_at: new Date().toISOString() }),
       })
       await fetch('/api/user/assessment/submit', {
         method: 'POST',
