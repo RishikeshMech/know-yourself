@@ -208,9 +208,14 @@ test('CSV exports the feedback columns', () => {
   }
 })
 
-test('attachFeedback-equivalent behaviour: a submission stored twice counts once', () => {
+test('mergeStudentRows: a student present in both stores is one row', () => {
   // The API writes each submission to the local store AND Supabase with the same
   // id, so the admin reads it twice. The rows must still show count 1.
+  //
+  // NOTE: this only covers mergeStudentRows. It used to be titled
+  // "attachFeedback-equivalent behaviour", which is how a real bug in
+  // attachFeedback shipped unnoticed — the actual function is covered by
+  // adminReports.test.ts / adminSupabase.test.ts, which call fetchAllStudents().
   const id = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'
   const remote = [buildRow({
     student_id: 'u_1', email: 'a@b.com', profile: { full_name: 'A' },
