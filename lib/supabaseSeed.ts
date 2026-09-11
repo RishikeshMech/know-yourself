@@ -283,6 +283,31 @@ export interface SyncReport {
 export const SEED_PASSWORD = process.env.SEED_PASSWORD || 'CalibiDemo@123'
 
 /**
+ * Re-point every data row at the auth id that ACTUALLY exists in auth.users.
+ *
+ * New accounts are created with the plan's deterministic id, but accounts that
+ * already existed (reused) may live under a different id — upserting against
+ * the planned id would then violate the profiles_id_fkey constraint. Pure and
+ * exported for tests.
+ */
+export function remapRowsToAuthIds(rows: SeedPlanRow[], authIdByEmail: Map<string, string>): void {
+  for (const row of rows) {
+    if (!row.email) continue
+    const realId = authIdByEmail.get(String(row.email).toLowerCase())
+    if (!realId || realId === row.id) continue
+    if (row.table === 'auth') {
+      row.id = realId
+      continue
+    }
+    if (row.table === 'profiles') {
+      row.id = realId
+      row.payload.id = realId
+    }
+    if ('student_id' in row.payload) row.payload.student_id = realId
+  }
+}
+
+/**
  * Apply a seed plan to Supabase using the service-role client:
  *   1. `auth.admin.createUser` for each candidate (existing email → reuse),
  *   2. upsert `profiles`, then sessions → results → resumes → feedback.
@@ -296,22 +321,28 @@ export async function applySeedPlan(
   const failures: SyncReport['failures'] = []
   let reusedAccounts = 0
   let feedbackTableMissing = false
+  // email (lower-case) → the auth.users id that actually exists for it.
+  const authIdByEmail = new Map<string, string>()
 
   const record = (table: string, id: string, error: string) => {
     if (failures.length < 25) failures.push({ table, id, error })
     log(`  ✗ ${table} ${id}: ${error}`)
   }
 
-  // 1) Auth accounts (profiles.id is an FK to auth.users).
+  // 1) Auth accounts (profiles.id is an FK to auth.users). The account MUST be
+  //    created with the plan's deterministic id — profiles/sessions/results
+  //    reference that exact id and would otherwise all fail profiles_id_fkey.
   for (const row of plan.rows.filter(r => r.table === 'auth')) {
     try {
-      const { error } = await client.auth.admin.createUser({
+      const { data, error } = await client.auth.admin.createUser({
+        id: row.id,
         email: row.email!,
         password: SEED_PASSWORD,
         email_confirm: true,
         user_metadata: { full_name: row.payload.full_name, role: 'student', seeded: true },
       })
       if (!error) {
+        if (data?.user?.id) authIdByEmail.set(String(row.email!).toLowerCase(), data.user.id)
         log(`  ✓ auth ${row.email}`)
         continue
       }
@@ -325,6 +356,31 @@ export async function applySeedPlan(
       record('auth', row.email!, e?.message || String(e))
     }
   }
+
+  // 1b) Reused accounts may live under a DIFFERENT auth id (created before the
+  //     sync passed an explicit id, or via normal sign-up). Resolve their real
+  //     ids and re-point the data rows, or every upsert would fail the FK.
+  const unresolved = plan.rows
+    .filter(r => r.table === 'auth')
+    .map(r => String(r.email!).toLowerCase())
+    .filter(email => !authIdByEmail.has(email))
+  if (unresolved.length) {
+    const wanted = new Set(unresolved)
+    for (let page = 1; page <= 50; page++) {
+      const { data, error } = await client.auth.admin.listUsers({ page, perPage: 200 })
+      if (error) break
+      const users = data?.users || []
+      for (const u of users) {
+        const email = String((u as any).email ?? '').toLowerCase()
+        if (u.id && wanted.has(email) && !authIdByEmail.has(email)) authIdByEmail.set(email, u.id)
+      }
+      if (!users.length || users.length < 200 || authIdByEmail.size >= wanted.size) break
+    }
+    for (const email of unresolved) {
+      if (!authIdByEmail.has(email)) record('auth', email, 'email exists in auth but could not be resolved via listUsers')
+    }
+  }
+  remapRowsToAuthIds(plan.rows, authIdByEmail)
 
   // 2) Data rows, parents first (sessions before results, profiles before all).
   const order = ['profiles', 'assessment_sessions', 'assessment_results', 'resume_analyses', 'feedback_submissions'] as const

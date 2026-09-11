@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { buildSeedPlan, mapId, seedUuid, describePlan } from '../supabaseSeed.ts'
+import { buildSeedPlan, mapId, seedUuid, describePlan, remapRowsToAuthIds } from '../supabaseSeed.ts'
 import { CSV_COLUMNS } from '../csv.ts'
 import { buildRow, fillFeedbackFrom, mergeStudentRows } from '../studentRows.ts'
 
@@ -66,6 +66,43 @@ test('buildSeedPlan is idempotent — same local ids produce the same uuids', ()
   const b = buildSeedPlan(store)
   const ids = (p: ReturnType<typeof buildSeedPlan>) => p.rows.map(r => `${r.table}:${r.id}`).sort()
   assert.deepEqual(ids(a), ids(b))
+})
+
+test('remapRowsToAuthIds re-points rows at the auth id that really exists', () => {
+  const plan = buildSeedPlan(store)
+  const plannedProfileId = plan.rows.find(r => r.table === 'profiles' && r.email === 'prajwal@gmail.com')!.id
+  // The account for this email already exists under a different (random) id.
+  const realAuthId = '5f0c1a2b-3d4e-4f5a-8b9c-0d1e2f3a4b5c'
+  remapRowsToAuthIds(plan.rows, new Map([['prajwal@gmail.com', realAuthId]]))
+
+  const auth = plan.rows.find(r => r.table === 'auth' && r.email === 'prajwal@gmail.com')!
+  const profile = plan.rows.find(r => r.table === 'profiles' && r.email === 'prajwal@gmail.com')!
+  const session = plan.rows.find(r => r.table === 'assessment_sessions' && r.email === 'prajwal@gmail.com')!
+  const result = plan.rows.find(r => r.table === 'assessment_results' && r.email === 'prajwal@gmail.com')!
+  const resume = plan.rows.find(r => r.table === 'resume_analyses' && r.email === 'prajwal@gmail.com')!
+  const feedback = plan.rows.find(r => r.table === 'feedback_submissions' && r.email === 'prajwal@gmail.com')!
+
+  assert.equal(auth.id, realAuthId)
+  assert.equal(profile.id, realAuthId)
+  assert.equal(profile.payload.id, realAuthId)
+  // Child rows keep their own deterministic ids but reference the real student.
+  assert.notEqual(session.id, plannedProfileId)
+  assert.equal(session.payload.student_id, realAuthId)
+  assert.equal(result.payload.student_id, realAuthId)
+  assert.equal(resume.payload.student_id, realAuthId)
+  assert.equal(feedback.payload.student_id, realAuthId)
+
+  // Other candidates are untouched.
+  const other = plan.rows.find(r => r.table === 'profiles' && r.email === 'priya@iitm.ac.in')!
+  assert.notEqual(other.id, realAuthId)
+})
+
+test('remapRowsToAuthIds leaves rows alone when ids already match', () => {
+  const plan = buildSeedPlan(store)
+  const before = JSON.stringify(plan.rows)
+  const planned = plan.rows.find(r => r.table === 'auth' && r.email === 'prajwal@gmail.com')!
+  remapRowsToAuthIds(plan.rows, new Map([['prajwal@gmail.com', planned.id]]))
+  assert.equal(JSON.stringify(plan.rows), before)
 })
 
 test('buildSeedPlan links every child row to its candidate and session', () => {
