@@ -17,10 +17,10 @@
 // off (e.g. the flattened export view has not been created yet). The Supabase
 // query always tries the view first and falls back to the base tables, and a
 // Supabase failure never hides the local rows.
-import { getAllFeedback, getDB } from './db'
-import { getServerClient } from './supabaseServer'
-import { fetchAllFeedback } from './persist'
-import { buildRow, mergeStudentRows, sortRows } from './studentRows'
+import { getAllFeedback, getDB } from './db.ts'
+import { getServerClient } from './supabaseServer.ts'
+import { fetchAllFeedback } from './persist.ts'
+import { buildRow, mergeStudentRows, sortRows } from './studentRows.ts'
 import type { AdminFeedbackEntry, AdminStudentRow } from './csv'
 
 export interface AdminStudentsResult {
@@ -121,30 +121,21 @@ function attachFeedback(rows: AdminStudentRow[], feedback: FeedbackRow[]): Admin
       .sort(newestFirst)
     if (!mine.length) return r
     const latest = mine[0]
-    const row = buildRow({
-      // Rebuild through buildRow so the existing columns are preserved verbatim.
-      student_id: r.student_id,
-      email: r.email,
-      role: r.role,
-      profile: {
-        full_name: r.name,
-        prn: r.prn,
-        phone: r.phone,
-        dob: r.dob,
-        gender: r.gender,
-        degree: r.degree,
-        college: r.college,
-        graduation_year: r.graduation_year,
-        cgpa: r.cgpa,
-        skills: r.skills,
-        linkedin_url: r.linkedin_url,
-        github_url: r.github_url,
-        created_at: r.created_at,
-      },
-      feedback: latest,
-      feedback_count: mine.length,
-    })
-    return { ...row, feedback_history: mine.map(asAdminEntry) }
+    // Attach onto the row that is already fully built. This used to re-run
+    // buildRow() with only the profile + feedback, which silently threw away
+    // every assessment column — score, grade, percentile, all module and
+    // behavioural scores, resume score, assessment date, and `has_assessment`
+    // flipped to "No". So the moment a candidate submitted feedback their
+    // report vanished from the dashboard and the CSV. Spreading the existing
+    // row keeps all of it and only overwrites the feedback columns.
+    return {
+      ...r,
+      feedback_rating: latest.rating === null || latest.rating === undefined ? '' : String(latest.rating),
+      feedback_message: String(latest.message ?? ''),
+      feedback_at: String(latest.created_at ?? ''),
+      feedback_count: String(mine.length),
+      feedback_history: mine.map(asAdminEntry),
+    }
   })
 }
 
