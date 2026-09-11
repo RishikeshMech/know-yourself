@@ -8,7 +8,7 @@ import { bank, shuffledOptions, shuffledChoiceOptions, mulberry32 } from '@/lib/
 import { computeScores } from '@/lib/scoring'
 import { getSupabase } from '@/lib/supabase'
 import { AFTER_ASSESSMENT_ROUTE } from '@/lib/nextStep'
-import { FEEDBACK_PENDING_KEY } from '@/lib/feedback'
+import { markFeedbackPending } from '@/lib/feedback'
 import { markJustSubmitted } from '@/lib/justSubmitted'
 import { HelpButton } from '@/components/HelpButton'
 import { Logo } from '@/components/Logo'
@@ -982,7 +982,9 @@ function AssessmentInner() {
     const s = JSON.parse(localStorage.getItem('calibiai_session') || '{}')
     s.status = 'submitted'
     localStorage.setItem('calibiai_session', JSON.stringify(s))
-    localStorage.setItem(FEEDBACK_PENDING_KEY, JSON.stringify({ session_id: sid || 'sess_demo' }))
+    // Timestamped ticket: it expires, and a stale one is cleared by
+    // FeedbackGate, so a failed feedback save can never strand the candidate.
+    markFeedbackPending(sid || 'sess_demo')
     markJustSubmitted()
     router.replace('/feedback')
   }

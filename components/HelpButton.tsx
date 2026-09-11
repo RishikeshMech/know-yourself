@@ -15,6 +15,8 @@ export function HelpButton({ assessment = false, disabled = false }: { assessmen
   const dialog = useRef<HTMLDialogElement>(null)
   const emailField = useRef<HTMLInputElement>(null)
   const requestLock = useRef(false)
+  // Reused while retrying, so a duplicated click cannot store the request twice.
+  const requestId = useRef('')
   const [host, setHost] = useState<Element | null>(null)
   const [open, setOpen] = useState(false)
   const [email, setEmail] = useState('')
@@ -56,16 +58,30 @@ export function HelpButton({ assessment = false, disabled = false }: { assessmen
     if (!validHelpMessage(message)) { setError('Please describe your issue in 10–3,000 characters.'); return }
     requestLock.current = true
     setBusy(true); setError('')
+    if (!requestId.current) requestId.current = crypto.randomUUID()
     try {
-      const response = await fetchWithTimeout('https://formspree.io/f/xdeoyzrp', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ email: email.trim(), phone: phone.trim(), message: message.trim(), page: window.location.pathname, _subject: 'CalibiAI help request' }),
+      // Our own API: the request is stored in Supabase (`help_requests`) instead
+      // of an external form service with a monthly submission limit, and the
+      // server queues + retries it if the database is momentarily unreachable.
+      const response = await fetchWithTimeout('/api/help', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: requestId.current,
+          student_id: user?.id || '',
+          email: email.trim(),
+          phone: phone.trim(),
+          message: message.trim(),
+          page: window.location.pathname,
+        }),
       }, 20000)
-      if (!response.ok) throw new Error('Your request could not be sent. Please try again. Your message has been kept.')
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.error || 'Your request could not be sent. Please try again. Your message has been kept.')
       setSent(true)
       setMessage('')
-    } catch {
-      setError('Your request could not be sent. Check your connection and try again. Your message has been kept.')
+      requestId.current = ''
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Your request could not be sent. Check your connection and try again. Your message has been kept.')
     } finally {
       setBusy(false)
       requestLock.current = false
@@ -107,7 +123,7 @@ export function HelpButton({ assessment = false, disabled = false }: { assessmen
               <textarea id={`${id}-message`} name="message" required minLength={10} maxLength={3000} rows={4} disabled={busy} value={message} onChange={event => setMessage(event.target.value)} placeholder="Describe the issue and what you were trying to do…" className="field resize-y" aria-describedby={`${id}-message-hint`} />
               <div id={`${id}-message-hint`} className="mt-1.5 flex justify-between gap-3 text-xs text-slate-500"><span>At least 10 characters. Don’t share passwords.</span><span className="shrink-0 tabular-nums">{message.length}/3,000</span></div>
             </div>
-            <p className="flex gap-2 text-xs leading-relaxed text-slate-500"><Mail size={15} className="mt-0.5 shrink-0" /><span>Your contact details, message and current page are sent securely via Formspree to our support team.</span></p>
+            <p className="flex gap-2 text-xs leading-relaxed text-slate-500"><Mail size={15} className="mt-0.5 shrink-0" /><span>Your contact details, message and current page are stored securely in your CalibiAI account for our support team.</span></p>
             {error && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
             <button type="submit" disabled={busy} className="btn-primary w-full">{busy ? <><Loader2 size={16} className="animate-spin" />Sending request…</> : <><Send size={16} />Send help request</>}</button>
             <p className="text-center text-xs text-slate-400">{busy ? 'You can close this form; sending will continue.' : 'All fields are required.'}</p>

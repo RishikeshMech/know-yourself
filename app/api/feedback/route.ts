@@ -1,8 +1,7 @@
-import { randomUUID } from 'crypto'
 import { NextResponse } from 'next/server'
-import { getAllFeedback, getFeedbackForStudent, saveFeedback } from '@/lib/db'
-import { validFeedback } from '@/lib/feedback'
-import { fetchAllFeedback, persistFeedback } from '@/lib/persist'
+import { getAllFeedback, getFeedbackForStudent } from '@/lib/db'
+import { flushQueuedFeedback, saveFeedbackSubmission } from '@/lib/feedbackStore'
+import { fetchAllFeedback } from '@/lib/persist'
 import { getServerClient } from '@/lib/supabaseServer'
 
 export const runtime = 'nodejs'
@@ -11,65 +10,55 @@ export const dynamic = 'force-dynamic'
 /**
  * Candidate feedback ("which candidate gave which feedback").
  *
- *   POST /api/feedback   { student_id, session_id?, email?, rating, message, source? }
+ *   POST /api/feedback   { id?, student_id, session_id?, email?, rating, message, source? }
  *   GET  /api/feedback?student_id=&email=        → that candidate's submissions
  *
- * The JSON store is always written (so demo mode and offline hosts keep the
- * data), and Supabase `feedback_submissions` is mirrored when configured. The
- * response reports whether the Supabase mirror succeeded, mirroring the
- * `supabase: true` convention used by the other routes.
+ * Supabase `feedback_submissions` is the destination. The local store is written
+ * too — as the demo-mode store when Supabase is not configured, and as the retry
+ * queue when a write fails — so the endpoint answers `200` for every accepted
+ * submission instead of leaving a candidate stuck on `/feedback` (see
+ * `lib/feedbackStore.ts` for why a 5xx here used to strand them).
  */
 export async function POST(req: Request) {
+  let body: any = {}
   try {
-    const body = await req.json()
-    const rating = Number(body?.rating)
-    const message = String(body?.message ?? '').trim()
-    if (!validFeedback(rating, message)) {
-      return NextResponse.json(
-        { error: 'Feedback needs a rating from 1 to 5 and at least 10 characters.' },
-        { status: 400 },
-      )
-    }
-
-    const submission = {
-      // The client reuses this id when retrying, so a transient Supabase error
-      // cannot create duplicate local/remote feedback rows.
-      id: String(body?.id ?? '').trim() || randomUUID(),
-      student_id: String(body?.student_id ?? body?.user_id ?? '').trim() || 'sess_demo',
-      session_id: String(body?.session_id ?? '').trim() || undefined,
-      email: String(body?.email ?? '').trim().toLowerCase() || undefined,
-      rating,
-      message,
-      source: String(body?.source ?? '').trim() || 'web',
-      created_at: new Date().toISOString(),
-    }
-
-    saveFeedback(submission)
-
-    let supabase = false
-    const sb = getServerClient()
-    if (sb) {
-      supabase = await persistFeedback(sb, submission)
-      // Do not report success when Supabase is configured but the mirror failed.
-      // The local write above is retained for recovery, and the client keeps the
-      // form open so the same submission id can be retried without duplication.
-      if (!supabase) {
-        return NextResponse.json(
-          {
-            error: 'Feedback could not be saved to Supabase. Please try again; your feedback is still kept for retry.',
-            feedback: submission,
-            saved_local: true,
-            supabase: false,
-          },
-          { status: 503 },
-        )
-      }
-    }
-
-    return NextResponse.json({ ok: true, feedback: submission, saved: true, supabase })
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'Could not save feedback.' }, { status: 500 })
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'Expected a JSON body.' }, { status: 400 })
   }
+
+  const client = getServerClient()
+  const result = await saveFeedbackSubmission(body, client)
+
+  // A rejected payload is the only failure the candidate can act on.
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error }, { status: result.status })
+  }
+
+  // Best-effort: deliver anything queued by an earlier failed write while the
+  // connection is already open. Failures here change nothing for the caller.
+  let flushed = { attempted: 0, synced: 0, failed: 0 }
+  try {
+    if (client) flushed = await flushQueuedFeedback(client)
+  } catch (e: any) {
+    console.warn('[feedback] queue flush failed:', e?.message || e)
+  }
+
+  return NextResponse.json({
+    ok: true,
+    saved: true,
+    /** False only in fully local demo mode, where the local store *is* the store. */
+    supabase_configured: !!client,
+    feedback: result.submission,
+    /** True when the row is in Postgres right now. */
+    supabase: result.stored === 'supabase',
+    /** True when it was accepted and is waiting for the database to come back. */
+    queued: result.stored === 'queue',
+    stored: result.stored,
+    reason: result.reason,
+    duplicate: !!result.duplicate,
+    flushed,
+  })
 }
 
 export async function GET(req: Request) {

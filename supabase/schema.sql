@@ -315,3 +315,39 @@ create policy feedback_insert_any on public.feedback_submissions
 drop policy if exists feedback_select_own on public.feedback_submissions;
 create policy feedback_select_own on public.feedback_submissions
   for select using (student_id = auth.uid());
+
+-- ---------------------------------------------------------------------------
+-- Help requests (in-app support form)
+-- Written by POST /api/help. Kept here as well as in
+-- supabase/migrations/0005_help_requests.sql (that file is the one to run
+-- against an existing database). Replaces the old direct browser POST to an
+-- external form service, which had a monthly submission limit.
+-- ---------------------------------------------------------------------------
+create table if not exists public.help_requests (
+  id           uuid primary key default gen_random_uuid(),
+  -- Real Supabase user (null when the request came from a local/demo id).
+  student_id   uuid references public.profiles(id) on delete set null,
+  -- Raw candidate id as sent by the client (`u_84368932`, a UUID, …).
+  student_ref  text,
+  email        text not null,
+  phone        text,
+  message      text not null check (char_length(btrim(message)) >= 10),
+  page         text,
+  source       text not null default 'web',
+  created_at   timestamptz not null default now()
+);
+
+create index if not exists help_requests_email_idx       on public.help_requests (lower(email));
+create index if not exists help_requests_created_at_idx  on public.help_requests (created_at desc);
+
+alter table public.help_requests enable row level security;
+
+-- Anyone may submit (contact form); the app writes with INSERT only, so no
+-- update policy exists and a submitted request cannot be rewritten.
+drop policy if exists help_requests_insert_any on public.help_requests;
+create policy help_requests_insert_any on public.help_requests
+  for insert with check (true);
+
+drop policy if exists help_requests_select_own on public.help_requests;
+create policy help_requests_select_own on public.help_requests
+  for select using (student_id = auth.uid());
