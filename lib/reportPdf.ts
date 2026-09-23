@@ -32,8 +32,35 @@ export function num(v: any): number {
   return Number.isFinite(n) ? n : 0
 }
 
+/** Readable name + note for every scored section of the Capgemini mock. */
+function reportSections2(scores: any): SectionDatum[] {
+  const eng = scores?.english || {}
+  const detail = scores?.detail || {}
+  const sections: Omit<SectionDatum, 'pct'>[] = [
+    {
+      key: 'english', label: 'English Communication', score: num(eng.total), max: 200,
+      note: `Listening ${num(eng.listening)} · Speaking ${num(eng.speaking)} · Reading ${num(eng.reading)} · Writing ${num(eng.writing)} (each /50)`,
+    },
+    {
+      key: 'ai_literacy', label: 'AI Literacy', score: num(scores?.ai_literacy), max: 400,
+      note: num(detail.aiLiteracyTotal) ? `${num(detail.aiLiteracyCorrect)} / ${num(detail.aiLiteracyTotal)} scenario questions correct` : '',
+    },
+    {
+      key: 'debug_mcq', label: 'Debugging — C/C++/Java', score: num(scores?.debug_mcq), max: 250,
+      note: num(detail.debugMcqTotal) ? `${num(detail.debugMcqCorrect)} / ${num(detail.debugMcqTotal)} code questions correct` : '',
+    },
+    {
+      key: 'debug_lab', label: 'Debugging Lab', score: num(scores?.debug_lab), max: 150,
+      note: '3 bug-fix tasks · in-built compiler hidden tests + AI rubric',
+    },
+  ]
+  return sections.map(s => ({ ...s, pct: s.max ? Math.round((s.score / s.max) * 100) : 0 }))
+}
+
 /** Readable name + English/behavioural note for every scored section. */
 export function reportSections(scores: any): SectionDatum[] {
+  // The Capgemini 2027 mock has its own four-section layout.
+  if (Number(scores?.assessment_no) === 2) return reportSections2(scores)
   const eng = scores?.english || {}
   const cog = scores?.cognitive || {}
   const detail = scores?.detail || {}
@@ -63,6 +90,7 @@ export function aiTaskLabel(key: string): string {
     WRITING: 'Writing Task', SP_speaking: 'Speaking Task',
     AD1: 'Debugging — Pagination', AD2: 'Debugging — Race condition', AD3: 'Debugging — List mutation',
     AF1: 'Feature — Rate limiter', AF2: 'Feature — Retry logic',
+    CG1: 'Lab — First repeated character', CG2: 'Lab — Array rotation', CG3: 'Lab — Binary search first position',
     PE1: 'Prompt — Summary', PE2: 'Prompt — CSV dedup', PE3: 'Prompt — Email critique',
   }
   return map[key] || String(key).replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
@@ -151,7 +179,9 @@ export async function generateReportPdf({ scores, profile = {}, user = {}, sampl
 
   const fullName = String(profile?.full_name || user?.name || 'Student').trim() || 'Student'
   const email = String(profile?.email || user?.email || '').trim()
-  doc.setProperties({ title: `CalibiAI Talent Report — ${fullName}` })
+  const isA2 = Number(scores?.assessment_no) === 2
+  const reportName = isA2 ? 'Capgemini 2027 Mock Report' : 'CalibiAI Talent Report'
+  doc.setProperties({ title: `${reportName} — ${fullName}` })
 
   const dateLine = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
   const fmtPhone = (p: any) => {
@@ -206,7 +236,7 @@ export async function generateReportPdf({ scores, profile = {}, user = {}, sampl
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(7)
     doc.setTextColor(...INDIGO_TXT)
-    doc.text('TALENT REPORT', 210 - MR, 7.2, { align: 'right' })
+    doc.text(isA2 ? 'ASSESSMENT 2 REPORT' : 'TALENT REPORT', 210 - MR, 7.2, { align: 'right' })
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(8.4)
     doc.setTextColor(...WHITE)
@@ -316,7 +346,7 @@ export async function generateReportPdf({ scores, profile = {}, user = {}, sampl
   doc.setFillColor(...INDIGO)
   doc.rect(ML, heroY, 2.6, heroH, 'F')
   // left — score
-  labelText('Calibiai Talent Score', ML + 11, heroY + 11, INDIGO_TXT, 8)
+  labelText(isA2 ? 'Capgemini 2027 Mock Score' : 'Calibiai Talent Score', ML + 11, heroY + 11, INDIGO_TXT, 8)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(44)
   doc.setTextColor(...WHITE)
@@ -441,7 +471,7 @@ export async function generateReportPdf({ scores, profile = {}, user = {}, sampl
   }
 
   /* ---- module performance ---- */
-  y = sectionTitle('Section-wise Analysis', y, 'six modules on the 1000-point scale')
+  y = sectionTitle('Section-wise Analysis', y, isA2 ? 'four modules on the 1000-point scale' : 'six modules on the 1000-point scale')
   y = fit(y, 4)
   y += 5
   const sections = reportSections(scores)
@@ -497,12 +527,19 @@ export async function generateReportPdf({ scores, profile = {}, user = {}, sampl
 
   /* ---- objective accuracy ---- */
   const detail = scores?.detail || {}
-  const accRaw: [string, number, number][] = [
-    ['Listening accuracy', num(detail.listeningCorrect), num(detail.listeningTotal)],
-    ['Reading accuracy', num(detail.readingCorrect), num(detail.readingTotal)],
-    ['Problem solving', num(detail.problemCorrect), num(detail.problemTotal)],
-    ['Logical reasoning', num(detail.logicalCorrect), num(detail.logicalTotal)],
-  ]
+  const accRaw: [string, number, number][] = isA2
+    ? [
+      ['Listening accuracy', num(detail.listeningCorrect), num(detail.listeningTotal)],
+      ['Reading accuracy', num(detail.readingCorrect), num(detail.readingTotal)],
+      ['AI Literacy', num(detail.aiLiteracyCorrect), num(detail.aiLiteracyTotal)],
+      ['Debugging MCQ', num(detail.debugMcqCorrect), num(detail.debugMcqTotal)],
+    ]
+    : [
+      ['Listening accuracy', num(detail.listeningCorrect), num(detail.listeningTotal)],
+      ['Reading accuracy', num(detail.readingCorrect), num(detail.readingTotal)],
+      ['Problem solving', num(detail.problemCorrect), num(detail.problemTotal)],
+      ['Logical reasoning', num(detail.logicalCorrect), num(detail.logicalTotal)],
+    ]
   const acc = accRaw.filter(([, , t]) => t > 0)
   if (acc.length) {
     y = fit(y, 6)

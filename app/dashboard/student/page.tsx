@@ -17,8 +17,10 @@ import { WhatsAppCommunityCard } from '@/components/WhatsAppCommunity'
 
 function Inner(){
   const router = useRouter()
-  const { user, profile, setProfile, resume, setResume, scores, setScores, hydrated, setUser, reconcileForUser } = useStore()
+  const { user, profile, setProfile, resume, setResume, scores, setScores, scores2, setScores2, hydrated, setUser, reconcileForUser } = useStore()
   const [showReport, setShowReport] = useState(false)
+  // Which assessment the report pop-up is showing (1 = CalibiAI, 2 = Capgemini mock).
+  const [reportFor, setReportFor] = useState<1 | 2>(1)
   const [downloading, setDownloading] = useState(false)
   // True only on the landing right after the assessment was submitted.
   const [justCompleted, setJustCompleted] = useState(false)
@@ -109,6 +111,9 @@ function Inner(){
       // screen or in the downloaded PDF.
       setScores(flattenAssessmentResult(data.result))
     }).catch(()=>{})
+    fetch('/api/user/scores?student_id='+user.id+'&assessment=2').then(r=>r.json()).then(data=>{
+      setScores2(flattenAssessmentResult(data.result))
+    }).catch(()=>{})
   // The setters are intentionally omitted: they are context wrappers whose
   // identity changes when the store updates. Including them recreates `refresh`,
   // which re-runs the forced refresh effect and loops back into Supabase.
@@ -157,6 +162,11 @@ function Inner(){
 
   const onboarded = isProfileComplete(profile)
   const startHref = onboarded ? '/instructions' : '/onboarding'
+  // Assessment 2 (the Capgemini 2027 mock) is unlocked only once the first
+  // assessment has produced a result — a first-time user must take that one
+  // first. Once unlocked it is, like the first, a single attempt.
+  const assessment1Done = !!scores
+  const assessment2Done = !!scores2
 
   return (
     <div>
@@ -181,7 +191,7 @@ function Inner(){
                 </div>
               </div>
               {scores && (
-                <button onClick={() => setShowReport(true)} className="btn-primary !py-2.5 text-xs">
+                <button onClick={() => { setReportFor(1); setShowReport(true) }} className="btn-primary !py-2.5 text-xs">
                   View my full report →
                 </button>
               )}
@@ -232,7 +242,7 @@ function Inner(){
                   ))}
                 </div>
                 <div className="mt-5 flex flex-wrap gap-3">
-                  <button onClick={() => setShowReport(true)} className="btn-primary !py-2.5 text-xs">View report</button>
+                  <button onClick={() => { setReportFor(1); setShowReport(true) }} className="btn-primary !py-2.5 text-xs">View report</button>
                   <button
                     onClick={async () => {
                       setDownloading(true)
@@ -291,9 +301,76 @@ function Inner(){
           </div>
         </div>
 
-        {/* Report pop-up */}
-        {showReport && scores && (
-          <ReportModal scores={scores} onClose={() => setShowReport(false)} />
+        {/* ---------------- Assessment 2 — Capgemini 2027 mock ---------------- */}
+        <div className="mt-6 glass-card animate-fade-up" style={{animationDelay:'.18s'}}>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-slate-700">Assessment 2 · Capgemini 2027 mock</span>
+                {assessment2Done ? (
+                  <span className="chip text-emerald-700 border-emerald-200 bg-emerald-50/70">Completed</span>
+                ) : assessment1Done ? (
+                  <span className="chip text-violet-700 border-violet-200 bg-violet-50/70">Unlocked</span>
+                ) : (
+                  <span className="chip text-slate-500 border-slate-200 bg-slate-50">🔒 Locked</span>
+                )}
+              </div>
+              <p className="mt-1 text-xs text-slate-500">
+                90 minutes · English Communication, AI Literacy, Debugging (C/C++/Java) and a Debugging Lab with the in-built compiler.
+                Same fullscreen proctoring as your first assessment.
+              </p>
+            </div>
+          </div>
+
+          {assessment2Done ? (
+            <div className="mt-4">
+              <div className="flex items-baseline gap-3 flex-wrap">
+                <span className="text-4xl font-black text-gradient">{scores2.total}</span>
+                <span className="text-slate-400 font-bold">/1000</span>
+                <span className="chip text-violet-700 border-violet-200 bg-violet-50/70">Grade {scores2.grade} · {scores2.percentile}th percentile</span>
+              </div>
+              <div className="mt-4 grid sm:grid-cols-2 gap-2.5">
+                {[
+                  ['English', scores2.english?.total ?? 0, 200],
+                  ['AI Literacy', scores2.ai_literacy ?? 0, 400],
+                  ['Debugging MCQ', scores2.debug_mcq ?? 0, 250],
+                  ['Debugging Lab', scores2.debug_lab ?? 0, 150],
+                ].map(([k,v,m])=>(
+                  <div key={k as string} className="panel p-3">
+                    <div className="flex justify-between text-xs mb-1"><span className="text-slate-600 font-medium">{k}</span><span className="font-mono font-bold text-slate-700">{v}/{m}</span></div>
+                    <div className="h-2 rounded-full bg-slate-100 overflow-hidden"><div className="h-full calibiai-gradient rounded-full" style={{width:`${(Number(v))/(Number(m))*100}%`}}/></div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4">
+                <button onClick={() => { setReportFor(2); setShowReport(true) }} className="btn-primary !py-2.5 text-xs">
+                  View assessment 2 report
+                </button>
+              </div>
+            </div>
+          ) : assessment1Done ? (
+            <div className="mt-4 rounded-2xl border-2 border-dashed border-violet-200 bg-violet-50/40 p-6 text-center">
+              <div className="text-3xl">🚀</div>
+              <p className="mt-2 text-sm text-slate-600">Your second assessment is ready — 4 sections, 1000 points, one attempt.</p>
+              <Link href="/instructions2" className="btn-primary mt-4 inline-flex">Start assessment 2 →</Link>
+            </div>
+          ) : (
+            <div className="mt-4 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/60 p-6 text-center">
+              <div className="text-3xl">🔒</div>
+              <p className="mt-2 text-sm text-slate-500">
+                Complete your first assessment to unlock the Capgemini 2027 mock.
+              </p>
+              <Link href={startHref} className="btn-soft mt-4 inline-flex !py-2.5 text-xs">Start your first assessment →</Link>
+            </div>
+          )}
+        </div>
+
+        {/* Report pop-up — assessment 1 or 2 depending on which card opened it */}
+        {showReport && (reportFor === 2 ? scores2 : scores) && (
+          <ReportModal
+            scores={reportFor === 2 ? scores2 : scores}
+            onClose={() => setShowReport(false)}
+          />
         )}
 
         {/* Profile strip */}

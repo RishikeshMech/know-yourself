@@ -21,6 +21,10 @@ export async function POST(req: Request) {
     const studentId = suppliedStudentId && suppliedStudentId !== 'unknown'
       ? suppliedStudentId
       : String(s?.student_id || '').trim()
+    // Which assessment this result belongs to: the explicit field wins, then
+    // the scores payload, then the session row (legacy rows are assessment 1).
+    const assessmentNo =
+      Number(body.assessment_no ?? body.scores?.assessment_no ?? s?.assessment_no ?? 1) === 2 ? 2 : 1
     const result = {
       id: toUuid(body.id, 'result') || 'res_' + Math.random().toString(16).slice(2, 10),
       session_id: sessionId,
@@ -31,23 +35,27 @@ export async function POST(req: Request) {
       percentile: body.percentile || 0,
       verifiable_hash: body.verifiable_hash || '',
       ai_feedback: body.ai_feedback || {},
+      assessment_no: assessmentNo,
       created_at: new Date().toISOString(),
     }
     if (!s) {
+      const durationSec = body.duration_sec || (assessmentNo === 2 ? 5400 : 7200)
       s = {
         id: sessionId,
         student_id: studentId,
         status: 'submitted',
         started_at: body.started_at || new Date().toISOString(),
-        expires_at: body.expires_at || new Date(Date.now() + 7200 * 1000).toISOString(),
-        duration_sec: body.duration_sec || 7200,
+        expires_at: body.expires_at || new Date(Date.now() + durationSec * 1000).toISOString(),
+        duration_sec: durationSec,
         answers: body.answers || {},
         submitted_at: new Date().toISOString(),
         tab_switches: body.tab_switches || 0,
         question_seed: body.question_seed,
+        assessment_no: assessmentNo,
         created_at: new Date().toISOString(),
       }
     }
+    s.assessment_no = assessmentNo
     s.id = sessionId
     s.status = 'submitted'
     s.submitted_at = new Date().toISOString()

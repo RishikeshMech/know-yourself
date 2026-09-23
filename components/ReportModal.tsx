@@ -21,11 +21,16 @@ const ADVICE: Record<string, string> = {
   ai_feature: 'Build small features end-to-end and cover them with edge cases and tests.',
   prompt_engineering: 'Iterate prompts with roles, constraints, examples and output formats.',
   cognitive: 'Train memory grids, logical reasoning and behavioural scenario judgement.',
+  // Assessment 2 — Capgemini 2027 mock
+  ai_literacy: 'Revise GenAI fundamentals, prompting, RAG, agents, responsible AI and evaluation.',
+  debug_mcq: 'Trace C/C++/Java programs by hand: pointers, bounds, recursion, DP and graph invariants.',
+  debug_lab: 'Fix bugs against hidden tests — check empty, boundary, duplicate and adversarial inputs.',
 }
 
 const SECTION_SHORT: Record<string, string> = {
   english: 'English', problem_solving: 'Problem Solving', ai_debugging: 'AI Debugging',
   ai_feature: 'AI Feature Dev', prompt_engineering: 'Prompt Eng', cognitive: 'Cognitive',
+  ai_literacy: 'AI Literacy', debug_mcq: 'Debugging MCQ', debug_lab: 'Debugging Lab',
 }
 
 const GRADE_CHIP: Record<string, string> = {
@@ -113,7 +118,9 @@ export function ReportModal({ scores, onClose }: Props) {
           >
             <X className="h-4 w-4" />
           </button>
-          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">CalibiAI · Verified score report</div>
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">
+            {Number(scores?.assessment_no) === 2 ? 'Assessment 2 · Capgemini 2027 mock report' : 'CalibiAI · Verified score report'}
+          </div>
           <h2 className="mt-1 truncate pr-10 text-xl font-black text-white sm:text-2xl">{displayName}</h2>
           {email && <p className="mt-0.5 truncate text-xs text-slate-400">{email}</p>}
         </div>
@@ -212,6 +219,8 @@ export function ReportModal({ scores, onClose }: Props) {
                 ['Reading', scores.detail.readingCorrect, scores.detail.readingTotal],
                 ['Problem solving', scores.detail.problemCorrect, scores.detail.problemTotal],
                 ['Logical reasoning', scores.detail.logicalCorrect, scores.detail.logicalTotal],
+                ['AI Literacy', scores.detail.aiLiteracyCorrect, scores.detail.aiLiteracyTotal],
+                ['Debugging MCQ', scores.detail.debugMcqCorrect, scores.detail.debugMcqTotal],
               ].filter(([, c, t]) => Number(t) > 0).map(([label, c, t]) => (
                 <div key={label as string} className="rounded-xl border border-slate-200/70 bg-white p-2.5 text-center">
                   <div className="font-mono text-lg font-black text-slate-800">{Number(c)}<span className="text-slate-400">/{Number(t)}</span></div>

@@ -21,8 +21,8 @@ export interface TestRunResult {
 }
 
 const TIMEOUT_MS = 4000
-const TOTALS: Record<string, number> = { AD1: 4, AD2: 4, AD3: 3, AF1: 5 }
-const PY_TASKS: Record<string, boolean> = { AD1: true, AD3: true }
+const TOTALS: Record<string, number> = { AD1: 4, AD2: 4, AD3: 3, AF1: 5, CG1: 4, CG2: 4, CG3: 4 }
+const PY_TASKS: Record<string, boolean> = { AD1: true, AD3: true, CG1: true, CG2: true }
 
 function runStdin(engine: 'node' | 'python', harness: string, candidate: string): Promise<TestRunResult> {
   return new Promise((resolve) => {
@@ -118,6 +118,35 @@ for name, fn in TESTS:
     results.append({"name": name, "passed": ok(fn)})
 print(json.dumps({"results": results}))
 `,
+  // Assessment 2 — Debugging Lab (Capgemini 2027 mock). Same harness contract
+  // as AD*: candidate code is exec'd into a namespace, tests call the function.
+  CG1: PY_COMMON + `
+TESTS = [
+  ("returns the first char appearing exactly twice", lambda ns: ns.get("first_repeated")("aabbc") == "a"),
+  ("returns the first such char in string order", lambda ns: ns.get("first_repeated")("abab") == "a" and ns.get("first_repeated")("bbaa") == "b"),
+  ("chars appearing once or 3+ times are never returned", lambda ns: ns.get("first_repeated")("aaab") == "" and ns.get("first_repeated")("abc") == ""),
+  ("handles empty string and no-repeat strings", lambda ns: ns.get("first_repeated")("") == "" and ns.get("first_repeated")("abcdefg") == ""),
+]
+for name, fn in TESTS:
+    results.append({"name": name, "passed": ok(fn)})
+print(json.dumps({"results": results}))
+`,
+  CG2: PY_COMMON + `
+def _same(fn, a, k, expected):
+    try:
+        return fn(list(a), k) == expected
+    except Exception:
+        return False
+TESTS = [
+  ("rotates right by k within length", lambda ns: _same(ns.get("rotate"), [1,2,3,4,5], 2, [4,5,1,2,3])),
+  ("handles k greater than the length", lambda ns: _same(ns.get("rotate"), [1,2,3,4,5], 7, [4,5,1,2,3]) and _same(ns.get("rotate"), [1,2], 3, [2,1])),
+  ("k = 0 leaves the array unchanged", lambda ns: _same(ns.get("rotate"), [1,2,3,4,5], 0, [1,2,3,4,5])),
+  ("empty list does not crash", lambda ns: _same(ns.get("rotate"), [], 3, [])),
+]
+for name, fn in TESTS:
+    results.append({"name": name, "passed": ok(fn)})
+print(json.dumps({"results": results}))
+`,
 }
 
 // ---------------------------------------------------------------------------
@@ -134,7 +163,7 @@ try {
 try { (0, eval)(code); } catch (e) { console.log(JSON.stringify({error:'Your code failed to run: ' + e.message})); process.exit(0); }
 function env() {
   const o = {};
-  ['isAllowed','get'].forEach(k => {
+  ['isAllowed','get','firstPos'].forEach(k => {
     try { o[k] = (typeof globalThis[k] !== 'undefined') ? globalThis[k] : undefined; } catch(e){}
   });
   return o;
@@ -156,6 +185,12 @@ setTimeout(() => { console.log(JSON.stringify({error:'Timed out'})); process.exi
 `
 
 const NODE_TESTS: Record<string, Array<{ name: string; fn: string }>> = {
+  CG3: [
+    { name: 'returns the FIRST index of a duplicated key', fn: `async (env) => { const f = env.firstPos; if (typeof f !== 'function') return false; return f([1,2,2,2,3], 2) === 1; }` },
+    { name: 'returns -1 when the key is absent', fn: `async (env) => { const f = env.firstPos; if (typeof f !== 'function') return false; return f([1,2,2,2,3], 9) === -1 && f([], 5) === -1; }` },
+    { name: 'all-equal array returns index 0', fn: `async (env) => { const f = env.firstPos; if (typeof f !== 'function') return false; return f([5,5,5,5], 5) === 0; }` },
+    { name: 'works at the boundaries', fn: `async (env) => { const f = env.firstPos; if (typeof f !== 'function') return false; return f([7], 7) === 0 && f([1,2,3,4,5,6,7], 1) === 0 && f([1,2,3,4,5,6,7], 7) === 6; }` },
+  ],
   AD2: [
     { name: 'concurrent calls fetch exactly once', fn: `async (env) => { const get = env.get; if (typeof get !== 'function') return false; let calls = 0; const fetcher = () => { calls++; return new Promise(r => setTimeout(() => r('val'), 5)); }; const rs = await Promise.all([get('k',fetcher),get('k',fetcher),get('k',fetcher)]); return calls === 1 && rs.every(v => v === 'val'); }` },
     { name: 'all callers receive the same value', fn: `async (env) => { const get = env.get; if (typeof get !== 'function') return false; const fetcher = () => Promise.resolve('shared'); const [a,b] = await Promise.all([get('x',fetcher),get('x',fetcher)]); return a === 'shared' && b === 'shared'; }` },
