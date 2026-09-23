@@ -1226,7 +1226,7 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
               <textarea value={answers['WRITING'] || ''} onChange={e => handleAnswer('WRITING', e.target.value)} placeholder="Dear [Client], ..." className="field mt-3 min-h-[180px] leading-relaxed" />
               <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
                 <span>{(answers['WRITING'] || '').trim().split(/\s+/).filter(Boolean).length} words · target {isA2 ? '120–180' : '150–300'}</span>
-                <EvalButton id="WRITING" busy={busy['WRITING']} onRun={() => runAi('WRITING', 'writing', { text: answers['WRITING'] || '', scenario: w.scenario })} />
+                <EvalButton id="WRITING" busy={busy['WRITING']} onRun={() => runAi('WRITING', 'writing', { text: answers['WRITING'] || '', scenario: w.scenario, minWords: isA2 ? 120 : 150, maxWords: isA2 ? 180 : 300 })} />
               </div>
               <AiFeedback r={aiResults['WRITING']} />
             </div>
@@ -1545,6 +1545,7 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
                   busy={busy[fid]}
                   onRun={() =>
                     runAi(fid, 'feature', {
+                      taskId: fid,
                       spec: f.spec,
                       code: answers[fid + '_code'] || '',
                     })

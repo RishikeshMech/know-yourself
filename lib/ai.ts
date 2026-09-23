@@ -8,7 +8,7 @@
 // guard clauses below run BEFORE the model so a blank answer can never be
 // inflated by a lenient LLM.
 
-import { fetchWithTimeout } from './fetchTimeout.ts'
+import { callLlmJson, isLlmConfigured } from './llm.ts'
 
 export type AiKind = 'writing' | 'speaking' | 'debugging' | 'feature' | 'prompt'
 
@@ -21,10 +21,6 @@ export interface AiEval {
   engine: 'calibiai' | 'heuristic'
 }
 
-const AI_KEY = process.env.CALIBIAI_API_KEY || process.env.DEEPSEEK_API_KEY || ''
-const AI_BASE = process.env.CALIBIAI_BASE_URL || process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com'
-const AI_MODEL = process.env.CALIBIAI_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-chat'
-
 // Hard ceiling on the upstream grader. A hung model must degrade to the local
 // heuristic engine (callCalibiAi catches the abort and returns null) instead
 // of holding the request handler open under load.
@@ -35,7 +31,7 @@ const AI_TIMEOUT_MS = 15000
 const MIN_PROMPT_CHARS = 100
 
 export function isCalibiAiConfigured(): boolean {
-  return !!AI_KEY
+  return isLlmConfigured()
 }
 
 function clamp(n: number, lo = 0, hi = 100) {
@@ -62,33 +58,15 @@ function zero(improvements: string[], summary: string): AiEval {
 // CalibiAI grader call
 // ---------------------------------------------------------------------------
 async function callCalibiAi(systemPrompt: string, userPrompt: string): Promise<any | null> {
-  if (!AI_KEY) return null
-  try {
-    const res = await fetchWithTimeout(`${AI_BASE}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${AI_KEY}` },
-      body: JSON.stringify({
-        model: AI_MODEL,
-        temperature: 0.2,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-      }),
-    }, AI_TIMEOUT_MS)
-    if (!res.ok) {
-      console.error('CalibiAI grader error', res.status, await res.text().catch(() => ''))
-      return null
-    }
-    const data = await res.json()
-    const content: string = data?.choices?.[0]?.message?.content
-    if (!content) return null
-    return JSON.parse(content)
-  } catch (e) {
-    console.error('CalibiAI grader call failed', e)
-    return null
-  }
+  return callLlmJson({
+    label: 'grader',
+    temperature: 0.2,
+    timeoutMs: AI_TIMEOUT_MS,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ],
+  })
 }
 
 const JSON_CONTRACT = `Respond ONLY with a JSON object of exactly this shape:
@@ -107,30 +85,39 @@ and specific — never generic praise.`
 // ---------------------------------------------------------------------------
 // Per-kind evaluation
 // ---------------------------------------------------------------------------
-export async function evaluateWriting(text: string, scenario: string): Promise<AiEval> {
+export async function evaluateWriting(
+  text: string,
+  scenario: string,
+  opts: { minWords?: number; maxWords?: number } = {},
+): Promise<AiEval> {
+  // Assessment 1 asks for 150–300 words; the Capgemini paper asks for 120–180.
+  const minWords = opts.minWords && opts.minWords > 0 ? opts.minWords : 150
+  const maxWords = opts.maxWords && opts.maxWords > minWords ? opts.maxWords : 300
+  const range = `${minWords}–${maxWords}`
   const t = (text || '').trim()
   const words = t.split(/\s+/).filter(Boolean).length
   // Brutal guard: no meaningful answer => 0.
   if (words < 15) {
-    return zero(['Write a substantive email — aim for 150–300 words covering impact, mitigation and a revised timeline.'], 'No meaningful answer submitted — scored 0.')
+    return zero([`Write a substantive email — aim for ${range} words covering impact, mitigation and a revised timeline.`], 'No meaningful answer submitted — scored 0.')
   }
   const sys = `You are an expert IELTS/Cambridge-certified English assessor for a graduate hiring assessment.
 Evaluate the candidate's email against the scenario on four criteria, each 0-100:
 clarity, grammar, structure, professional_tone. Also judge whether it addresses impact, mitigation and a revised timeline.
+The task asks for roughly ${range} words — penalise answers far outside that range.
 ${JSON_CONTRACT}`
   const ai = await callCalibiAi(sys, `Scenario:\n${scenario}\n\nCandidate's email:\n"""\n${text}\n"""`)
   if (ai) return normalize(ai, 'calibiai', ['clarity', 'grammar', 'structure', 'professional_tone'])
 
   // heuristic fallback
-  const clarity = words >= 150 && words <= 300 ? 82 : words >= 90 ? 70 : words >= 30 ? 52 : 25
+  const clarity = words >= minWords && words <= maxWords ? 82 : words >= minWords * 0.6 ? 70 : words >= 30 ? 52 : 25
   const grammar = t.length ? clamp(55 + Math.min(25, words / 10)) : 10
   const structure = /dear|hi|hello|regards|sincerely|thanks/i.test(t) ? 80 : t.length > 200 ? 66 : 45
   const tone = /please|thank|apolog|regret|understand|committed/i.test(t) ? 82 : 55
   return {
     score: avg([clarity, grammar, structure, tone]),
     rubric: { clarity, grammar, structure, professional_tone: tone },
-    strengths: words >= 150 ? ['Meets the target length (150–300 words)'] : [],
-    improvements: words < 150 ? ['Expand to 150–300 words covering impact, mitigation and timeline'] : ['Tighten tone and proofread for grammar'],
+    strengths: words >= minWords ? [`Meets the target length (${range} words)`] : [],
+    improvements: words < minWords ? [`Expand to ${range} words covering impact, mitigation and timeline`] : ['Tighten tone and proofread for grammar'],
     summary: 'Rule-based evaluation (connect CalibiAI for full AI grading).',
     engine: 'heuristic',
   }
@@ -189,6 +176,25 @@ ${JSON_CONTRACT}`
   else if (taskId === 'AD1' && /page\s*-\s*1/.test(fl)) correctness = 70
   if (taskId === 'AD2' && /promise|inflight|in-flight|pending/.test(fl)) correctness = 85
   if (taskId === 'AD3' && /\[.*for.*in.*if.*active|not u\[|reversed|copy\(|\[:\]/.test(fl)) correctness = 84
+  // Assessment 2 — Capgemini debugging lab tasks.
+  if (taskId === 'CG1') {
+    // Must compare the frequency against exactly 2 (not 1, not >= 2).
+    if (/==\s*2/.test(fl) && /freq|count/.test(fl)) correctness = 88
+    else if (/==\s*2/.test(fl)) correctness = 70
+    else correctness = 25
+  }
+  if (taskId === 'CG2') {
+    // Must normalise k against the length before slicing.
+    if (/%\s*len\(|k\s*%=/.test(fl) && /if\s+not\s+arr|len\(arr\)\s*==\s*0/.test(fl)) correctness = 88
+    else if (/%\s*len\(|k\s*%=/.test(fl)) correctness = 74
+    else correctness = 28
+  }
+  if (taskId === 'CG3') {
+    // Must record the hit and keep searching left for the FIRST position.
+    if (/hi\s*=\s*mid\s*-\s*1/.test(fl) && /(res|ans|result|first)\s*=\s*mid/.test(fl)) correctness = 88
+    else if (/hi\s*=\s*mid\s*-\s*1/.test(fl)) correctness = 62
+    else correctness = 28
+  }
   if (f.length < 25) correctness = 0
   const rubric = {
     correctness,
@@ -202,43 +208,84 @@ ${JSON_CONTRACT}`
     rubric,
     strengths: correctness >= 70 ? ['Core bug appears fixed'] : correctness >= 40 ? ['Partial fix attempted'] : [],
     improvements: ['Add explicit handling for invalid inputs and boundary cases', 'Include tests proving the fix'],
-    summary: 'Rule-based static heuristic (connect CalibiAI for semantic grading of the fix).',
+    summary: 'Rule-based static heuristic (connect the model for semantic grading of the fix).',
     engine: 'heuristic',
   }
 }
 
-export async function evaluateFeature(spec: string, code: string): Promise<AiEval> {
+export async function evaluateFeature(spec: string, code: string, taskId = 'AF1'): Promise<AiEval> {
   const c = (code || '').trim()
   // Brutal guard: no implementation => 0.
   if (c.length < 40) {
-    return zero(['Implement the rate limiter (isAllowed) and wire the Express middleware — a stub earns nothing.'], 'No real implementation submitted — scored 0.')
+    return zero([
+      taskId === 'CG4'
+        ? 'Implement mergeIntervals(intervals) — a stub earns nothing.'
+        : 'Implement the rate limiter (isAllowed) and wire the Express middleware — a stub earns nothing.',
+    ], 'No real implementation submitted — scored 0.')
   }
   const sys = `You are a staff engineer grading an "AI-assisted feature development" task in a hiring assessment.
 Grade the candidate's implementation against the spec, 0-100 on:
-requirement_understanding, functional_correctness, edge_cases, code_quality, api_integration (the Express middleware / 429 + Retry-After wiring).
+requirement_understanding, functional_correctness, edge_cases, code_quality, api_integration
+(how well the code would slot into a real service: clean signature, no mutation of caller data, no side effects).
 Working, complete implementations score 75-95; stubs or partial logic score lower. Non-functional code scores near 0.
 ${JSON_CONTRACT}`
   const ai = await callCalibiAi(sys, `Spec:\n${spec}\n\nCandidate's implementation:\n"""\n${code}\n"""`)
   if (ai) return normalize(ai, 'calibiai', ['requirement_understanding', 'functional_correctness', 'edge_cases', 'code_quality', 'api_integration'])
 
   const cl = c.toLowerCase()
-  let functional = /isallowed|is_allowed/.test(cl) ? 62 : 30
-  if (/filter|timestamp|date\.now|performance\.now/.test(cl)) functional += 18
-  if (/429|retry-after|retryafter|middleware/.test(cl)) functional += 12
-  functional = clamp(functional)
+  let functional: number
+  let edgeBonus: number
+  let integration: number
+  let strengths: string[]
+  let improvements: string[]
+
+  if (taskId === 'CG4') {
+    // Assessment 2 — merge overlapping booking intervals.
+    functional = /mergeintervals/.test(cl) ? 55 : 25
+    if (/sort\s*\(/.test(cl)) functional += 18
+    if (/<=/.test(cl)) functional += 12          // touching intervals merge
+    if (/math\.max|max\(/.test(cl)) functional += 8
+    functional = clamp(functional)
+    const copies = /\[\s*\.\.\.|\.slice\(\)|\.map\s*\(/.test(cl)
+    edgeBonus = (copies ? 8 : 0) + (/length\s*===?\s*0|!intervals|\.length\b/.test(cl) ? 6 : 0)
+    integration = copies ? 80 : 45               // not mutating the caller's array
+    strengths = functional >= 75
+      ? ['Sorts then folds overlapping ranges correctly']
+      : functional >= 45 ? ['Attempts the merge logic'] : []
+    improvements = [
+      copies ? 'Cover the empty-input case explicitly' : 'Copy the array before sorting — the hidden tests check the input is not mutated',
+      'Use `start <= last[1]` so intervals that merely touch are merged',
+    ]
+  } else {
+    // Assessment 1 — sliding-window rate limiter + Express middleware.
+    functional = /isallowed|is_allowed/.test(cl) ? 62 : 30
+    if (/filter|timestamp|date\.now|performance\.now/.test(cl)) functional += 18
+    if (/429|retry-after|retryafter|middleware/.test(cl)) functional += 12
+    functional = clamp(functional)
+    edgeBonus = /clean|prune|shift|splice|delete/.test(cl) ? 8 : 0
+    integration = /429|retry-after|app\.(use|get|post)|middleware/.test(cl) ? 80 : 40
+    strengths = functional >= 75
+      ? ['Sliding-window logic and HTTP wiring present']
+      : functional >= 45 ? ['Attempts the limiter logic'] : []
+    improvements = [
+      'Wire the 429 response with a Retry-After header in middleware',
+      'Add tests for window expiry and concurrent calls',
+    ]
+  }
+
   const rubric = {
     requirement_understanding: clamp(functional + 4),
     functional_correctness: functional,
-    edge_cases: clamp(functional - 14 + (/clean|prune|shift|splice|delete/.test(cl) ? 8 : 0)),
+    edge_cases: clamp(functional - 14 + edgeBonus),
     code_quality: clamp(50 + Math.min(35, c.length / 14)),
-    api_integration: /429|retry-after|app\.(use|get|post)|middleware/.test(cl) ? 80 : 40,
+    api_integration: integration,
   }
   return {
     score: avg(Object.values(rubric)),
     rubric,
-    strengths: functional >= 75 ? ['Sliding-window logic and HTTP wiring present'] : functional >= 45 ? ['Attempts the limiter logic'] : [],
-    improvements: ['Wire the 429 response with a Retry-After header in middleware', 'Add tests for window expiry and concurrent calls'],
-    summary: 'Rule-based static heuristic (connect CalibiAI for semantic grading).',
+    strengths,
+    improvements,
+    summary: 'Rule-based static heuristic (connect the model for semantic grading).',
     engine: 'heuristic',
   }
 }

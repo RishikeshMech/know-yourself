@@ -7,7 +7,7 @@
 
 import mammoth from 'mammoth'
 import { PDFParse } from 'pdf-parse'
-import { fetchWithTimeout } from './fetchTimeout.ts'
+import { callLlmJson, isLlmConfigured } from './llm.ts'
 
 export const MAX_RESUME_BYTES = 5 * 1024 * 1024
 
@@ -41,7 +41,7 @@ export interface CandidateContext {
 }
 
 export function isCalibiAiConfigured(): boolean {
-  return !!(process.env.CALIBIAI_API_KEY || process.env.DEEPSEEK_API_KEY)
+  return isLlmConfigured()
 }
 
 // ---------------------------------------------------------------------------
@@ -71,8 +71,6 @@ export async function extractResumeText(buffer: Buffer, filename: string): Promi
 // ---------------------------------------------------------------------------
 // CalibiAI Integration — Brutal & Honest Technical Recruiter Evaluation
 // ---------------------------------------------------------------------------
-const AI_BASE = process.env.CALIBIAI_BASE_URL || process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com'
-const AI_MODEL = process.env.CALIBIAI_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-chat'
 
 const BRUTAL_RECRUITER_CONTRACT = `Respond ONLY with a valid JSON object matching exactly this schema:
 {
@@ -113,36 +111,18 @@ Strict Rules:
 5. Provide actionable suggestions that tell the candidate exactly how to rewrite bullet points using the Google XYZ formula: 'Accomplished [X] as measured by [Y], by doing [Z]'.`
 
 async function callCalibiAi(text: string, ctx: CandidateContext): Promise<any | null> {
-  const key = process.env.CALIBIAI_API_KEY || process.env.DEEPSEEK_API_KEY
-  if (!key) return null
-  try {
-    const res = await fetchWithTimeout(`${AI_BASE}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-      body: JSON.stringify({
-        model: AI_MODEL,
-        temperature: 0.15,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: BRUTAL_RECRUITER_CONTRACT },
-          {
-            role: 'user',
-            content: `Candidate context from application profile:\n${JSON.stringify(ctx, null, 2)}\n\nActual Resume Text extracted from document:\n"""\n${text.slice(0, 10000)}\n"""`,
-          },
-        ],
-      }),
-    }, 20000)
-    if (!res.ok) {
-      console.error('CalibiAI resume error:', res.status, await res.text().catch(() => ''))
-      return null
-    }
-    const data = await res.json()
-    const content: string = data?.choices?.[0]?.message?.content
-    return content ? JSON.parse(content) : null
-  } catch (e) {
-    console.error('CalibiAI resume call failed:', e)
-    return null
-  }
+  return callLlmJson({
+    label: 'resume',
+    temperature: 0.15,
+    timeoutMs: 20000,
+    messages: [
+      { role: 'system', content: BRUTAL_RECRUITER_CONTRACT },
+      {
+        role: 'user',
+        content: `Candidate context from application profile:\n${JSON.stringify(ctx, null, 2)}\n\nActual Resume Text extracted from document:\n"""\n${text.slice(0, 10000)}\n"""`,
+      },
+    ],
+  })
 }
 
 // ---------------------------------------------------------------------------
