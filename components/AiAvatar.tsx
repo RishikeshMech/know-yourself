@@ -1,6 +1,6 @@
 'use client'
 import { useMemo } from 'react'
-import { mulberry32 } from '@/lib/questions'
+import { mulberry32 } from '@/lib/shuffle'
 
 /**
  * AiAvatar — a generated, animated "AI avatar" for the student profile.

@@ -25,12 +25,15 @@ const ADVICE: Record<string, string> = {
   ai_literacy: 'Revise GenAI fundamentals, prompting, RAG, agents, responsible AI and evaluation.',
   debug_mcq: 'Trace C/C++/Java programs by hand: pointers, bounds, recursion, DP and graph invariants.',
   debug_lab: 'Fix bugs against hidden tests — check empty, boundary, duplicate and adversarial inputs.',
+  debugging: 'Trace C/C++/Java programs by hand, then fix real bugs against hidden tests in the compiler.',
+  ai_coding: 'Practise directing an AI assistant: state constraints, demand edge cases, then review its code.',
 }
 
 const SECTION_SHORT: Record<string, string> = {
   english: 'English', problem_solving: 'Problem Solving', ai_debugging: 'AI Debugging',
   ai_feature: 'AI Feature Dev', prompt_engineering: 'Prompt Eng', cognitive: 'Cognitive',
   ai_literacy: 'AI Literacy', debug_mcq: 'Debugging MCQ', debug_lab: 'Debugging Lab',
+  debugging: 'Debugging', ai_coding: 'AI-assisted Coding',
 }
 
 const GRADE_CHIP: Record<string, string> = {

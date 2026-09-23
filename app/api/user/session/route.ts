@@ -51,8 +51,8 @@ export async function POST(req: Request) {
     // per save instead of updating the same session.
     const id = toUuid(body.id, 'session') || toUuid(body.session_id, 'session') || randomUUID()
     const assessmentNo = normalizeAssessmentNo(body.assessment_no)
-    // Assessment 2 is a 90-minute paper; assessment 1 stays at 120 minutes.
-    const defaultDuration = assessmentNo === 2 ? 5400 : 7200
+    // Both assessments run a 120-minute timer.
+    const defaultDuration = 7200
     const durationSec = Number(body.duration_sec) || defaultDuration
     const session: AssessmentSession = {
       id,

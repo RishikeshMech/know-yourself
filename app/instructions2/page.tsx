@@ -5,20 +5,23 @@ import { useStore } from '@/lib/store'
 import { useEffect, useRef, useState } from 'react'
 import { resolveInstructions2Redirect, safeRead } from '@/lib/attemptAccess2'
 import { AFTER_ASSESSMENT_ROUTE } from '@/lib/nextStep'
-import { ASSESSMENT_2 } from '@/lib/assessmentConfig'
+import { ASSESSMENT_2 } from '@/lib/assessment2Config'
 
+// The 5 stages of the Capgemini "Assessment Journey".
 const ALLOCATION = [
   [1, 'English Communication', '30 min'],
-  [2, 'AI Literacy', '25 min'],
-  [3, 'Debugging — C/C++/Java', '15 min'],
-  [4, 'Debugging Lab (in-built compiler)', '20 min'],
+  [2, 'Technical Module (AI Literacy)', '25 min'],
+  [3, 'Debugging Assessment', '25 min'],
+  [4, 'AI-assisted Coding', '20 min'],
+  [5, 'Cognitive Assessment', '20 min'],
 ]
 
 const MODULES = [
-  ['English Communication', '200 pts · Listening, Speaking, Reading, Writing'],
-  ['AI Literacy', '400 pts · 50 scenario MCQs — GenAI, prompting, RAG, agents, responsible AI'],
-  ['Debugging — C/C++/Java', '250 pts · 30 code questions, mid to advanced'],
-  ['Debugging Lab', '150 pts · 3 bug-fix tasks · in-built compiler + In-Exam AI Assistant'],
+  ['English Communication', '200 pts · Listening, Speaking, Reading and Writing'],
+  ['Technical Module', '250 pts · 50 AI-literacy scenario MCQs — situational and problem-solving'],
+  ['Debugging Assessment', '200 pts · identify and correct code issues — 30 code MCQs + 3 compiler tasks'],
+  ['AI-assisted Coding', '200 pts · use AI effectively to solve a coding task in the in-built compiler'],
+  ['Cognitive Assessment', '150 pts · Motion & Grid Challenge, Logical Reasoning and Behavioural Module'],
 ]
 
 /** If the scores lookup stalls we still let the page through rather than
@@ -154,21 +157,21 @@ function Inner() {
             </div>
             <h1 className="mt-3 text-2xl font-black text-slate-900">Capgemini 2027 mock — instructions</h1>
             <p className="text-sm text-slate-500 mt-1">
-              90 minutes · 4 sections · 1000 points. Take it somewhere quiet with a working camera and microphone.
+              120 minutes · 5 stages · 1000 points. Take it somewhere quiet with a working camera and microphone.
             </p>
 
             <div className="mt-6 grid sm:grid-cols-2 gap-3 text-sm">
               {[
-                ['⏱ Duration', '90 min · auto-submits when time runs out · no pause'],
+                ['⏱ Duration', '120 min · auto-submits when time runs out · no pause'],
                 ['🎥 Proctoring', 'Live camera preview · fullscreen lock · focus monitoring'],
                 ['🎧 Listening', 'One audio passage with 10 questions — plays up to 2 times'],
-                ['⌨️ In-built compiler', 'Debugging Lab runs your code against hidden tests'],
+                ['⌨️ In-built compiler', 'Debugging Lab and AI-assisted Coding run your code against hidden tests'],
               ].map(([t, d]) => (
                 <div key={t} className="panel p-3"><div className="font-bold text-slate-800">{t}</div><div className="text-slate-500 text-xs mt-0.5">{d}</div></div>
               ))}
             </div>
 
-            <h3 className="mt-7 font-black text-slate-900">The 4 sections</h3>
+            <h3 className="mt-7 font-black text-slate-900">The 5 stages</h3>
             <div className="mt-3 grid sm:grid-cols-2 gap-2.5">
               {MODULES.map(([t, d]) => (
                 <div key={t} className="panel p-3"><div className="font-bold text-sm text-slate-800">{t}</div><div className="text-slate-500 text-xs mt-0.5">{d}</div></div>
@@ -191,7 +194,7 @@ function Inner() {
                   ))}
                   <tr className="border-t-2 border-slate-200 bg-indigo-50/60 font-bold text-indigo-700">
                     <td className="px-4 py-2.5" colSpan={2}>TOTAL</td>
-                    <td className="px-4 py-2.5 text-right font-mono">90 min</td>
+                    <td className="px-4 py-2.5 text-right font-mono">120 min</td>
                   </tr>
                 </tbody>
               </table>
@@ -203,8 +206,8 @@ function Inner() {
                 <li><b>No tab switching:</b> Keep this tab/window focused — switching windows/tabs 3 times terminates and submits your test automatically.</li>
                 <li><b>Close other tabs before starting:</b> When you start, the app will ask you to close every other tab/window and confirm.</li>
                 <li><b>Fullscreen is required:</b> The test locks you into fullscreen with right-click disabled. If you press Esc, fullscreen re-enters automatically, and leaving fullscreen mid-test is recorded as a violation. Disconnect any external or second display — if one is detected the test won't start, and connecting one mid-test terminates the assessment as cheating.</li>
-                <li><b>In-built compiler:</b> In the Debugging Lab you write the corrected code and press <b>Run hidden tests</b> — your code is executed against the real test cases, exactly like the first assessment.</li>
-                <li><b>In-Exam AI Assistant:</b> Embedded below each Debugging Lab task. <b>It answers a maximum of 5 prompts per task and then locks</b> — plan your best questions before asking.</li>
+                <li><b>In-built compiler:</b> In the Debugging Lab and AI-assisted Coding stages you write the corrected code and press <b>Run hidden tests</b> — your code is executed against the real test cases, exactly like the first assessment.</li>
+                <li><b>In-Exam AI Assistant:</b> Embedded below each Debugging Lab and AI-assisted Coding task. <b>It answers a maximum of 5 prompts per task and then locks</b> — plan your best questions before asking.</li>
                 <li>Your answers are saved automatically as you go.</li>
                 <li>This is a one-time attempt — once submitted you can't retake it. You land back on your student dashboard, where both reports stay available.</li>
               </ul>
@@ -216,7 +219,7 @@ function Inner() {
             </label>
             <button onClick={start} disabled={!checked || starting}
               className={`mt-4 w-full sm:w-auto px-8 py-3.5 rounded-full font-black text-sm transition ${checked && !starting ? 'btn-primary !py-3.5' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
-              {starting ? 'Creating your session…' : 'START 90-MIN TIMER →'}
+              {starting ? 'Creating your session…' : 'START 120-MIN TIMER →'}
             </button>
           </div>
 
@@ -224,8 +227,8 @@ function Inner() {
             <div className="glass-card animate-fade-up !p-5" style={{ animationDelay: '.1s' }}>
               <div className="text-sm font-black text-slate-800">What happens next?</div>
               <ol className="mt-3 text-xs space-y-2 text-slate-500 list-decimal ml-4">
-                <li>Your 90-minute timer starts</li>
-                <li>Answer each of the 4 sections</li>
+                <li>Your 120-minute timer starts</li>
+                <li>Answer each of the 5 stages</li>
                 <li>Submit when done (or it auto-submits)</li>
                 <li>Get your Capgemini mock score out of 1000 + a PDF report</li>
               </ol>
@@ -233,7 +236,7 @@ function Inner() {
             <div className="rounded-3xl calibiai-gradient p-5 text-white shadow-xl shadow-indigo-200 animate-fade-up" style={{ animationDelay: '.18s' }}>
               <div className="text-xs font-bold opacity-80">Score breakdown</div>
               <div className="mt-3 text-xs space-y-1.5 font-mono">
-                {[['English', '200'], ['AI Literacy', '400'], ['Debugging MCQ', '250'], ['Debugging Lab', '150']].map(([k, v]) => (
+                {[['English', '200'], ['Technical', '250'], ['Debugging', '200'], ['AI Coding', '200'], ['Cognitive', '150']].map(([k, v]) => (
                   <div key={k} className="flex justify-between"><span>{k}</span><span>{v}</span></div>
                 ))}
                 <div className="flex justify-between font-black border-t border-white/30 pt-1.5"><span>Total</span><span>1000</span></div>

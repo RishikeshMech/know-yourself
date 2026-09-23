@@ -1,7 +1,7 @@
 'use client'
 export const dynamic = 'force-dynamic'
 import { AssessmentRunner } from '@/components/AssessmentRunner'
-import { ASSESSMENT_2 } from '@/lib/assessmentConfig'
+import { ASSESSMENT_2 } from '@/lib/assessment2Config'
 
 /**
  * Assessment 2 — the Capgemini 2027 mock test.

@@ -35,23 +35,29 @@ export function num(v: any): number {
 /** Readable name + note for every scored section of the Capgemini mock. */
 function reportSections2(scores: any): SectionDatum[] {
   const eng = scores?.english || {}
+  const cog = scores?.cognitive || {}
   const detail = scores?.detail || {}
+  // The five stages of the Capgemini "Assessment Journey".
   const sections: Omit<SectionDatum, 'pct'>[] = [
     {
       key: 'english', label: 'English Communication', score: num(eng.total), max: 200,
       note: `Listening ${num(eng.listening)} · Speaking ${num(eng.speaking)} · Reading ${num(eng.reading)} · Writing ${num(eng.writing)} (each /50)`,
     },
     {
-      key: 'ai_literacy', label: 'AI Literacy', score: num(scores?.ai_literacy), max: 400,
+      key: 'ai_literacy', label: 'Technical Module — AI Literacy', score: num(scores?.ai_literacy), max: 250,
       note: num(detail.aiLiteracyTotal) ? `${num(detail.aiLiteracyCorrect)} / ${num(detail.aiLiteracyTotal)} scenario questions correct` : '',
     },
     {
-      key: 'debug_mcq', label: 'Debugging — C/C++/Java', score: num(scores?.debug_mcq), max: 250,
-      note: num(detail.debugMcqTotal) ? `${num(detail.debugMcqCorrect)} / ${num(detail.debugMcqTotal)} code questions correct` : '',
+      key: 'debugging', label: 'Debugging Assessment', score: num(scores?.debugging_total), max: 200,
+      note: `Code MCQs ${num(scores?.debug_mcq)}/120${num(detail.debugMcqTotal) ? ` (${num(detail.debugMcqCorrect)}/${num(detail.debugMcqTotal)} correct)` : ''} · Debugging Lab ${num(scores?.debug_lab)}/80`,
     },
     {
-      key: 'debug_lab', label: 'Debugging Lab', score: num(scores?.debug_lab), max: 150,
-      note: '3 bug-fix tasks · in-built compiler hidden tests + AI rubric',
+      key: 'ai_coding', label: 'AI-assisted Coding', score: num(scores?.ai_coding), max: 200,
+      note: 'AI-assisted build task · in-built compiler hidden tests + AI rubric',
+    },
+    {
+      key: 'cognitive', label: 'Cognitive Assessment', score: num(cog.total), max: 150,
+      note: `Motion & Grid ${num(cog.grid)}/40 · Logical reasoning ${num(cog.logical)}/50 · Behavioural ${num(cog.behavioural)}/60`,
     },
   ]
   return sections.map(s => ({ ...s, pct: s.max ? Math.round((s.score / s.max) * 100) : 0 }))
@@ -59,7 +65,7 @@ function reportSections2(scores: any): SectionDatum[] {
 
 /** Readable name + English/behavioural note for every scored section. */
 export function reportSections(scores: any): SectionDatum[] {
-  // The Capgemini 2027 mock has its own four-section layout.
+  // The Capgemini 2027 mock has its own five-stage layout.
   if (Number(scores?.assessment_no) === 2) return reportSections2(scores)
   const eng = scores?.english || {}
   const cog = scores?.cognitive || {}
@@ -90,7 +96,7 @@ export function aiTaskLabel(key: string): string {
     WRITING: 'Writing Task', SP_speaking: 'Speaking Task',
     AD1: 'Debugging — Pagination', AD2: 'Debugging — Race condition', AD3: 'Debugging — List mutation',
     AF1: 'Feature — Rate limiter', AF2: 'Feature — Retry logic',
-    CG1: 'Lab — First repeated character', CG2: 'Lab — Array rotation', CG3: 'Lab — Binary search first position',
+    CG1: 'Lab — First repeated character', CG2: 'Lab — Array rotation', CG3: 'Lab — Binary search first position', CG4: 'AI-assisted Coding — Merge intervals',
     PE1: 'Prompt — Summary', PE2: 'Prompt — CSV dedup', PE3: 'Prompt — Email critique',
   }
   return map[key] || String(key).replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase())

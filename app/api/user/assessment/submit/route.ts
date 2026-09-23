@@ -39,7 +39,7 @@ export async function POST(req: Request) {
       created_at: new Date().toISOString(),
     }
     if (!s) {
-      const durationSec = body.duration_sec || (assessmentNo === 2 ? 5400 : 7200)
+      const durationSec = body.duration_sec || 7200
       s = {
         id: sessionId,
         student_id: studentId,

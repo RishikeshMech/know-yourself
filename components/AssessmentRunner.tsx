@@ -3,7 +3,7 @@ import { useEffect, useState, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useStore } from '@/lib/store'
 import { Maximize2, TriangleAlert } from 'lucide-react'
-import { shuffledOptions, shuffledChoiceOptions, mulberry32 } from '@/lib/questions'
+import { shuffledOptions, shuffledChoiceOptions, mulberry32 } from '@/lib/shuffle'
 import { getSupabase } from '@/lib/supabase'
 import { AFTER_ASSESSMENT_ROUTE } from '@/lib/nextStep'
 import { markFeedbackPending } from '@/lib/feedback'
@@ -70,6 +70,7 @@ function getSubProgress(
   subIdx: number,
   answers: Record<string, any>,
   gridInfo: { rounds: number; doneRounds: number },
+  bankKey?: string,
 ): SubProgress {
   if (stageId === 'english') {
     if (subIdx === 0) {
@@ -89,6 +90,27 @@ function getSubProgress(
     }
     const words = wordCount(answers['WRITING'] || '')
     return { answered: Math.min(words, WRITING_AUTONEXT_WORDS), total: WRITING_AUTONEXT_WORDS, complete: words >= WRITING_AUTONEXT_WORDS }
+  }
+  if (stageId === 'mcq') {
+    const qs: any[] = bank[bankKey || 'debugmcq'] || []
+    const answered = qs.filter(q => answers[q.id] != null && answers[q.id] !== '').length
+    return { answered, total: qs.length, complete: answered >= qs.length }
+  }
+  if (stageId === 'debugging') {
+    // Assessment 2: subsection 0 is the code-MCQ paper, subsection 1 the lab.
+    if (subIdx === 0 && bankKey) {
+      const qs: any[] = bank[bankKey] || []
+      const answered = qs.filter(q => answers[q.id] != null && answers[q.id] !== '').length
+      return { answered, total: qs.length, complete: answered >= qs.length }
+    }
+    const tasks: any[] = bank.debugging || []
+    const answered = tasks.filter(t => String(answers[t.id + '_fix'] ?? '').trim()).length
+    return { answered, total: tasks.length, complete: answered >= tasks.length }
+  }
+  if (stageId === 'feature' && bank.feature) {
+    const fid = bank.feature.id || 'AF1'
+    const done = String(answers[fid + '_code'] ?? '').trim().length > 0
+    return { answered: done ? 1 : 0, total: 1, complete: done }
   }
   if (stageId === 'cognitive' && bank.cognitive) {
     if (subIdx === 0) {
@@ -898,7 +920,7 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
 
   // Current-subsection progress (English + Cognitive have subsections).
   const gridInfo = { rounds: gridCfg.rounds, doneRounds: gridScores.length }
-  const currentProgress: SubProgress = getSubProgress(bank, STAGES[stage].id, sub, answers, gridInfo)
+  const currentProgress: SubProgress = getSubProgress(bank, STAGES[stage].id, sub, answers, gridInfo, STAGES[stage].bankKey)
   const stageHasSubs = STAGES[stage].sub.length > 0
 
   // Whenever we ARRIVE at a (stage, sub), snapshot its completion state so
@@ -908,7 +930,7 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
   useEffect(() => {
     clearPendingAdvance()
     wasCompleteRef.current = getSubProgress(
-      bank, STAGES[stage].id, sub, answers, { rounds: gridCfg.rounds, doneRounds: gridScores.length },
+      bank, STAGES[stage].id, sub, answers, { rounds: gridCfg.rounds, doneRounds: gridScores.length }, STAGES[stage].bankKey,
     ).complete
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, sub])
@@ -1058,6 +1080,36 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
 
   if (!session) return <div className="p-16 text-center text-slate-500">Loading your session…</div>
 
+  const renderMcqList = () => {
+    const key = STAGES[stage].bankKey || 'debugmcq'
+        const items: any[] = bank[key] || []
+        return (
+          <div className="space-y-3">
+            <p className="text-xs text-slate-500">
+              Read each program carefully, locate the syntax, logical, runtime or design issue, and select the best correction. Options are shuffled for your session.
+            </p>
+            {items.map((q: any, i: number) => (
+              <div key={q.id} className="panel p-3.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="text-sm font-semibold text-slate-800">{i + 1}. {q.q}</div>
+                  {q.tag && (
+                    <span className="shrink-0 text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100">
+                      {q.tag}
+                    </span>
+                  )}
+                </div>
+                {q.code && (
+                  <pre className="code-panel mt-2.5 p-3 text-xs overflow-x-auto whitespace-pre leading-relaxed">{q.code}</pre>
+                )}
+                <div className="mt-2.5">
+                  <OptionList qid={q.id} options={q.options} seed={seed} value={answers[q.id]} onChange={(v) => handleAnswer(q.id, v)} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+  }
+
   const renderStage = () => {
     switch (STAGES[stage].id) {
       case 'english':
@@ -1181,54 +1233,14 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
           </div>
         )
 
-      case 'problem':
-        return (
-          <div className="space-y-3">
-            <p className="text-xs text-slate-500">
-              {isA2
-                ? 'Scenario-based multiple choice on AI foundations, prompting, RAG, agents, responsible AI, security and evaluation. Options are shuffled for your session.'
-                : 'Logic, approach, correctness and data interpretation. Options are shuffled for your session.'}
-            </p>
-            {bank.problem.map((q: any, i: number) => (
-              <div key={q.id} className="panel p-3.5">
-                <div className="text-sm font-semibold text-slate-800 mb-2.5">{i + 1}. {q.q}</div>
-                <OptionList qid={q.id} options={q.options} seed={seed} value={answers[q.id]} onChange={(v) => handleAnswer(q.id, v)} />
-              </div>
-            ))}
-          </div>
-        )
+      case 'mcq':
+        return renderMcqList()
 
-      case 'mcq': {
-        const key = STAGES[stage].bankKey || 'debugmcq'
-        const items: any[] = bank[key] || []
-        return (
-          <div className="space-y-3">
-            <p className="text-xs text-slate-500">
-              Read each program carefully, locate the syntax, logical, runtime or design issue, and select the best correction. Options are shuffled for your session.
-            </p>
-            {items.map((q: any, i: number) => (
-              <div key={q.id} className="panel p-3.5">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="text-sm font-semibold text-slate-800">{i + 1}. {q.q}</div>
-                  {q.tag && (
-                    <span className="shrink-0 text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100">
-                      {q.tag}
-                    </span>
-                  )}
-                </div>
-                {q.code && (
-                  <pre className="code-panel mt-2.5 p-3 text-xs overflow-x-auto whitespace-pre leading-relaxed">{q.code}</pre>
-                )}
-                <div className="mt-2.5">
-                  <OptionList qid={q.id} options={q.options} seed={seed} value={answers[q.id]} onChange={(v) => handleAnswer(q.id, v)} />
-                </div>
-              </div>
-            ))}
-          </div>
-        )
-      }
 
       case 'debugging': {
+        // Assessment 2 folds the 30 code MCQs and the compiler lab into one
+        // "Debugging Assessment" stage (journey step 3) as two subsections.
+        if (STAGES[stage].sub.length && sub === 0) return renderMcqList()
         const d = bank.debugging[activeDebuggingTask] || bank.debugging[0]
 
         return (
@@ -1434,6 +1446,7 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
 
       case 'feature': {
         const f = bank.feature
+        const fid: string = f.id || 'AF1'
         return (
           <div className="space-y-4">
             {/* Stage Banner */}
@@ -1444,13 +1457,13 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
                 </div>
                 <div>
                   <div className="text-xs font-black tracking-wide flex items-center gap-2">
-                    <span>AI-Assisted Feature Development Stage</span>
+                    <span>{isA2 ? 'AI-assisted Coding — In-built Compiler' : 'AI-Assisted Feature Development Stage'}</span>
                     <span className="px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-300 text-[10px] font-bold border border-emerald-400/30">
                       In-Exam Assistant Active
                     </span>
                   </div>
                   <div className="text-[11px] text-indigo-200 mt-0.5">
-                    Proctored mode active. Build the sliding-window rate limiter & Express middleware. Ask the AI assistant below for architecture, code examples, or reviews without switching tabs. <b className="text-white">You have 5 assistant prompts for this task — use them wisely.</b>
+                    Proctored mode active. {isA2 ? 'Use AI effectively to solve the coding task below — you are assessed on how well you direct the assistant and on the code that results.' : 'Build the sliding-window rate limiter & Express middleware.'} Ask the AI assistant below for architecture, code examples, or reviews without switching tabs. <b className="text-white">You have 5 assistant prompts for this task — use them wisely.</b>
                   </div>
                 </div>
               </div>
@@ -1469,7 +1482,7 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
                     {f.tests} tests
                   </span>
                   <span className="text-[11px] font-mono px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-                    Node.js + Express
+                    {f.lang || 'Node.js + Express'}
                   </span>
                 </div>
               </div>
@@ -1484,12 +1497,12 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
                 </div>
                 <div>
                   <button
-                    onClick={() => setShowHint((h) => ({ ...h, AF1: !h.AF1 }))}
+                    onClick={() => setShowHint((h) => ({ ...h, [fid]: !h[fid] }))}
                     className="text-[11px] text-indigo-600 font-bold hover:underline inline-flex items-center gap-1"
                   >
-                    {showHint.AF1 ? '▲ Hide hint' : '💡 Show hint'}
+                    {showHint[fid] ? '▲ Hide hint' : '💡 Show hint'}
                   </button>
-                  {showHint.AF1 && (
+                  {showHint[fid] && (
                     <div className="mt-1.5 text-[11px] text-indigo-800 bg-indigo-50/90 border border-indigo-100 rounded-xl p-2.5 animate-fade-in">
                       {f.hint}
                     </div>
@@ -1504,13 +1517,15 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
                     <span className="text-emerald-500 font-mono font-bold">●</span> Your Node / Express Implementation:
                   </span>
                   <span className="text-[11px] font-mono text-slate-400">
-                    {(answers['AF1_code'] || '').length} chars
+                    {(answers[fid + '_code'] || '').length} chars
                   </span>
                 </div>
                 <textarea
-                  value={answers['AF1_code'] || ''}
-                  onChange={(e) => handleAnswer('AF1_code', e.target.value)}
-                  placeholder={`// Implement sliding-window rate limiter function:\nfunction isAllowed(userId, maxRequests = 5, windowMs = 60000) {\n  // Store and clean timestamps per user\n}\n\n// Express middleware wiring (return 429 + Retry-After header):\nfunction rateLimitMiddleware(req, res, next) {\n  // ...\n}`}
+                  value={answers[fid + '_code'] || ''}
+                  onChange={(e) => handleAnswer(fid + '_code', e.target.value)}
+                  placeholder={isA2
+                    ? `// Implement the feature described above:\nfunction mergeIntervals(intervals) {\n  // sort a copy by start, then fold overlapping/touching ranges\n}`
+                    : `// Implement sliding-window rate limiter function:\nfunction isAllowed(userId, maxRequests = 5, windowMs = 60000) {\n  // Store and clean timestamps per user\n}\n\n// Express middleware wiring (return 429 + Retry-After header):\nfunction rateLimitMiddleware(req, res, next) {\n  // ...\n}`}
                   className="field min-h-[220px] font-mono !text-xs leading-relaxed shadow-sm"
                   spellCheck={false}
                 />
@@ -1519,37 +1534,37 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-2 pt-1">
                 <button
-                  onClick={() => runTests('AF1', answers['AF1_code'] || '')}
-                  disabled={busy['AF1_tests']}
+                  onClick={() => runTests(fid, answers[fid + '_code'] || '')}
+                  disabled={busy[fid + '_tests']}
                   className="btn-soft !py-2 !px-4 !text-xs font-bold disabled:opacity-50 inline-flex items-center gap-1.5 shadow-sm"
                 >
-                  {busy['AF1_tests'] ? 'Running tests…' : '▶ Run feature tests'}
+                  {busy[fid + '_tests'] ? 'Running tests…' : '▶ Run feature tests'}
                 </button>
                 <EvalButton
-                  id="AF1"
-                  busy={busy['AF1']}
+                  id={fid}
+                  busy={busy[fid]}
                   onRun={() =>
-                    runAi('AF1', 'feature', {
+                    runAi(fid, 'feature', {
                       spec: f.spec,
-                      code: answers['AF1_code'] || '',
+                      code: answers[fid + '_code'] || '',
                     })
                   }
                 />
               </div>
 
               {/* Real Test & AI Evaluation Feedback */}
-              <TestFeedback r={testResults['AF1']} taskId="AF1" />
-              <AiFeedback r={aiResults['AF1']} />
+              <TestFeedback r={testResults[fid]} taskId={fid} />
+              <AiFeedback r={aiResults[fid]} />
 
               {/* Embedded In-Exam AI Assistant */}
               <AiExamAssistant
-                taskId="AF1"
+                taskId={fid}
                 taskTitle={f.title}
                 taskPrompt={f.spec}
                 buggyOrSpec={f.sample}
-                currentCode={answers['AF1_code'] || ''}
+                currentCode={answers[fid + '_code'] || ''}
                 onApplyCode={(codeSnippet) => {
-                  handleAnswer('AF1_code', codeSnippet)
+                  handleAnswer(fid + '_code', codeSnippet)
                   showToast('✨ Applied AI implementation to your editor!')
                 }}
               />
@@ -1745,7 +1760,7 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
               // How many subsections of this stage are fully done (for the
               // English + Cognitive stages that have them).
               const doneSubs = s.sub.length
-                ? s.sub.filter((_, si) => getSubProgress(bank, s.id, si, answers, gridInfo).complete).length
+                ? s.sub.filter((_, si) => getSubProgress(bank, s.id, si, answers, gridInfo, s.bankKey).complete).length
                 : 0
               return (
                 <button key={s.id} onClick={() => navigateTo(i, 0, i > stage ? 'next' : i < stage ? 'prev' : null)}
@@ -1794,7 +1809,7 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
               <div className="mt-3">
                 <div className="flex gap-2 flex-wrap">
                   {subs.map((label, i) => {
-                    const p = getSubProgress(bank, STAGES[stage].id, i, answers, gridInfo)
+                    const p = getSubProgress(bank, STAGES[stage].id, i, answers, gridInfo, STAGES[stage].bankKey)
                     const done = p.complete
                     const active = i === sub
                     return (

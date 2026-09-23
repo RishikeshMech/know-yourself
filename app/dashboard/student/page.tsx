@@ -316,7 +316,7 @@ function Inner(){
                 )}
               </div>
               <p className="mt-1 text-xs text-slate-500">
-                90 minutes · English Communication, AI Literacy, Debugging (C/C++/Java) and a Debugging Lab with the in-built compiler.
+                120 minutes · 5 stages — English Communication, Technical Module (AI Literacy), Debugging Assessment, AI-assisted Coding and a Cognitive Assessment.
                 Same fullscreen proctoring as your first assessment.
               </p>
             </div>
@@ -331,10 +331,11 @@ function Inner(){
               </div>
               <div className="mt-4 grid sm:grid-cols-2 gap-2.5">
                 {[
-                  ['English', scores2.english?.total ?? 0, 200],
-                  ['AI Literacy', scores2.ai_literacy ?? 0, 400],
-                  ['Debugging MCQ', scores2.debug_mcq ?? 0, 250],
-                  ['Debugging Lab', scores2.debug_lab ?? 0, 150],
+                  ['English Communication', scores2.english?.total ?? 0, 200],
+                  ['Technical Module', scores2.ai_literacy ?? 0, 250],
+                  ['Debugging Assessment', scores2.debugging_total ?? ((scores2.debug_mcq ?? 0) + (scores2.debug_lab ?? 0)), 200],
+                  ['AI-assisted Coding', scores2.ai_coding ?? 0, 200],
+                  ['Cognitive Assessment', scores2.cognitive?.total ?? 0, 150],
                 ].map(([k,v,m])=>(
                   <div key={k as string} className="panel p-3">
                     <div className="flex justify-between text-xs mb-1"><span className="text-slate-600 font-medium">{k}</span><span className="font-mono font-bold text-slate-700">{v}/{m}</span></div>
@@ -351,7 +352,7 @@ function Inner(){
           ) : assessment1Done ? (
             <div className="mt-4 rounded-2xl border-2 border-dashed border-violet-200 bg-violet-50/40 p-6 text-center">
               <div className="text-3xl">🚀</div>
-              <p className="mt-2 text-sm text-slate-600">Your second assessment is ready — 4 sections, 1000 points, one attempt.</p>
+              <p className="mt-2 text-sm text-slate-600">Your second assessment is ready — 5 stages, 1000 points, one attempt.</p>
               <Link href="/instructions2" className="btn-primary mt-4 inline-flex">Start assessment 2 →</Link>
             </div>
           ) : (

@@ -5,8 +5,9 @@
  * assessment-2 bank and targets the assessment-2 stage layout:
  *   0 english   (0 Listening, 1 Speaking, 2 Reading, 3 Writing)
  *   1 problem   — AI Literacy (50 scenario MCQs)
- *   2 mcq       — Debugging C/C++/Java (30 code MCQs)
- *   3 debugging — Debugging Lab (compiler tasks 0..2)
+ *   2 debugging — Debugging Assessment (0 Code MCQs, 1 Debugging Lab)
+ *   3 feature   — AI-assisted Coding (in-exam AI assistant + compiler)
+ *   4 cognitive — Cognitive Assessment (0 Grid, 1 Logical, 2 Behavioural)
  */
 import type {
   ReviewModel, ReviewQuestion, ReviewSection,
@@ -114,16 +115,7 @@ export function buildReview2(bank: any, answers: Record<string, any>): ReviewMod
       target: { stage: 2, sub: 0 },
     }
   })
-  sections.push({
-    answered: 0,
-    total: 0,
-    key: 'debug_mcq',
-    label: 'Debugging — C/C++/Java',
-    icon: '🐞',
-    groups: [{ key: 'debugmcq', label: `${debugMcq.length} code questions`, questions: debugMcq }],
-  })
 
-  /* ---------------- Debugging Lab (compiler tasks) ---------------- */
   const debugLab: ReviewQuestion[] = bank.debugging.map((t: any, i: number) => {
     const answered = isAnswered(a[t.id + '_fix'])
     const len = String(a[t.id + '_fix'] ?? '').length
@@ -132,16 +124,85 @@ export function buildReview2(bank: any, answers: Record<string, any>): ReviewMod
       prompt: t.title,
       answered,
       preview: answered ? `${len} chars of code` : '',
-      target: { stage: 3, sub: 0, task: i },
+      target: { stage: 2, sub: 1, task: i },
     }
   })
   sections.push({
     answered: 0,
     total: 0,
-    key: 'debug_lab',
-    label: 'Debugging Lab',
-    icon: '⌨️',
-    groups: [{ key: 'debuglab', label: `${debugLab.length} bug-fix tasks (in-built compiler)`, questions: debugLab }],
+    key: 'debugging',
+    label: 'Debugging Assessment',
+    icon: '🐞',
+    groups: [
+      { key: 'debugmcq', label: `${debugMcq.length} code questions`, questions: debugMcq },
+      { key: 'debuglab', label: `${debugLab.length} bug-fix tasks (in-built compiler)`, questions: debugLab },
+    ],
+  })
+
+  /* ---------------- AI-assisted Coding (journey stage 4) ---------------- */
+  const fid: string = bank.feature?.id || 'CG4'
+  const featureAnswered = isAnswered(a[fid + '_code'])
+  const featureLen = String(a[fid + '_code'] ?? '').length
+  sections.push({
+    answered: 0,
+    total: 0,
+    key: 'ai_coding',
+    label: 'AI-assisted Coding',
+    icon: '🚀',
+    groups: [{
+      key: 'feature',
+      label: 'AI-assisted build task',
+      questions: [{
+        key: fid,
+        prompt: bank.feature?.title || 'AI-assisted coding task',
+        answered: featureAnswered,
+        preview: featureAnswered ? `${featureLen} chars of code` : '',
+        target: { stage: 3, sub: 0, task: 0 },
+      }],
+    }],
+  })
+
+  /* ---------------- Cognitive Assessment (journey stage 5) ---------------- */
+  const gridAnswered = isAnswered(a['GRID'])
+  const grid: ReviewQuestion[] = [{
+    key: 'GRID',
+    prompt: 'Motion & Grid Challenge — memorise the highlighted pattern and reproduce it.',
+    answered: gridAnswered,
+    preview: gridAnswered ? `Completed · ${Math.round(Number(a['GRID']) * 100)}% average` : '',
+    target: { stage: 4, sub: 0 },
+  }]
+  const logical: ReviewQuestion[] = (bank.cognitive?.logical || []).map((q: any) => {
+    const answered = isAnswered(a[q.id])
+    return {
+      key: q.id,
+      prompt: q.q,
+      answered,
+      preview: answered ? clip(String(a[q.id])) : '',
+      target: { stage: 4, sub: 1 },
+    }
+  })
+  const behavioural: ReviewQuestion[] = (bank.cognitive?.behavioral || []).map((b: any) => {
+    const answered = isAnswered(a[b.id])
+    const opt = b.options?.find((o: any) => o.score === a[b.id])
+    return {
+      key: b.id,
+      prompt: b.q,
+      answered,
+      preview: answered ? clip(opt?.text || `Score ${a[b.id]}`) : '',
+      target: { stage: 4, sub: 2 },
+    }
+  })
+  sections.push({
+    answered: 0,
+    total: 0,
+    key: 'cognitive',
+    label: 'Cognitive Assessment',
+    icon: '🧠',
+    groups: [
+      { key: 'grid', label: 'Motion & Grid Challenge', questions: grid },
+      { key: 'logical', label: 'Logical Reasoning', questions: logical },
+      { key: 'behavioural', label: 'Behavioural', questions: behavioural },
+    ],
   })
 
   /* ---------------- Totals ---------------- */

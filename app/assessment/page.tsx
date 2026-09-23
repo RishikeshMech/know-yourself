@@ -1,7 +1,7 @@
 'use client'
 export const dynamic = 'force-dynamic'
 import { AssessmentRunner } from '@/components/AssessmentRunner'
-import { ASSESSMENT_1 } from '@/lib/assessmentConfig'
+import { ASSESSMENT_1 } from '@/lib/assessment1Config'
 
 /**
  * Assessment 1 — the CalibiAI 120-minute assessment.

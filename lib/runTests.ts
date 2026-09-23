@@ -21,7 +21,7 @@ export interface TestRunResult {
 }
 
 const TIMEOUT_MS = 4000
-const TOTALS: Record<string, number> = { AD1: 4, AD2: 4, AD3: 3, AF1: 5, CG1: 4, CG2: 4, CG3: 4 }
+const TOTALS: Record<string, number> = { AD1: 4, AD2: 4, AD3: 3, AF1: 5, CG1: 4, CG2: 4, CG3: 4, CG4: 5 }
 const PY_TASKS: Record<string, boolean> = { AD1: true, AD3: true, CG1: true, CG2: true }
 
 function runStdin(engine: 'node' | 'python', harness: string, candidate: string): Promise<TestRunResult> {
@@ -163,7 +163,7 @@ try {
 try { (0, eval)(code); } catch (e) { console.log(JSON.stringify({error:'Your code failed to run: ' + e.message})); process.exit(0); }
 function env() {
   const o = {};
-  ['isAllowed','get','firstPos'].forEach(k => {
+  ['isAllowed','get','firstPos','mergeIntervals'].forEach(k => {
     try { o[k] = (typeof globalThis[k] !== 'undefined') ? globalThis[k] : undefined; } catch(e){}
   });
   return o;
@@ -185,6 +185,13 @@ setTimeout(() => { console.log(JSON.stringify({error:'Timed out'})); process.exi
 `
 
 const NODE_TESTS: Record<string, Array<{ name: string; fn: string }>> = {
+  CG4: [
+    { name: 'merges overlapping intervals', fn: `async (env) => { const f = env.mergeIntervals; if (typeof f !== 'function') return false; const eq=(a,b)=>JSON.stringify(a)===JSON.stringify(b); return eq(f([[1,3],[2,6],[8,10],[15,18]]), [[1,6],[8,10],[15,18]]); }` },
+    { name: 'merges touching intervals', fn: `async (env) => { const f = env.mergeIntervals; if (typeof f !== 'function') return false; const eq=(a,b)=>JSON.stringify(a)===JSON.stringify(b); return eq(f([[1,4],[4,5]]), [[1,5]]); }` },
+    { name: 'sorts unsorted input', fn: `async (env) => { const f = env.mergeIntervals; if (typeof f !== 'function') return false; const eq=(a,b)=>JSON.stringify(a)===JSON.stringify(b); return eq(f([[8,10],[1,3],[2,6]]), [[1,6],[8,10]]); }` },
+    { name: 'empty input returns empty array', fn: `async (env) => { const f = env.mergeIntervals; if (typeof f !== 'function') return false; const eq=(a,b)=>JSON.stringify(a)===JSON.stringify(b); return eq(f([]), []); }` },
+    { name: 'does not mutate the input array', fn: `async (env) => { const f = env.mergeIntervals; if (typeof f !== 'function') return false; const eq=(a,b)=>JSON.stringify(a)===JSON.stringify(b); const input=[[5,7],[1,3],[2,4]]; const snap=JSON.stringify(input); const out=f(input); return JSON.stringify(input)===snap && eq(out,[[1,4],[5,7]]); }` },
+  ],
   CG3: [
     { name: 'returns the FIRST index of a duplicated key', fn: `async (env) => { const f = env.firstPos; if (typeof f !== 'function') return false; return f([1,2,2,2,3], 2) === 1; }` },
     { name: 'returns -1 when the key is absent', fn: `async (env) => { const f = env.firstPos; if (typeof f !== 'function') return false; return f([1,2,2,2,3], 9) === -1 && f([], 5) === -1; }` },

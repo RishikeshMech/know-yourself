@@ -57,14 +57,6 @@ export interface AssessmentConfig {
   fallbackRoute: () => string
 }
 
-import bank1 from '@/data/questions.json'
-import { computeScores } from './scoring'
-import { buildReview } from './reviewModel'
-import bank2 from '@/data/questions2.json'
-import { computeScores2 } from './scoring2'
-import { buildReview2 } from './reviewModel2'
-import { AFTER_ASSESSMENT_ROUTE } from './nextStep'
-
 /** localStorage helpers that never throw (private mode / SSR). */
 export function readLocal(key: string): string | null {
   try {
@@ -73,58 +65,4 @@ export function readLocal(key: string): string | null {
   } catch {
     return null
   }
-}
-
-export const ASSESSMENT_1: AssessmentConfig = {
-  no: 1,
-  title: 'CalibiAI Assessment',
-  durationSec: 7200,
-  stages: [
-    { id: 'english', label: 'English Communication', sub: ['Listening', 'Speaking', 'Reading', 'Writing'], min: 15 },
-    { id: 'problem', label: 'Problem Solving', sub: [], min: 20 },
-    { id: 'debugging', label: 'AI-Assisted Debugging', sub: [], min: 20 },
-    { id: 'feature', label: 'AI Feature Development', sub: [], min: 25 },
-    { id: 'prompt', label: 'Prompt Engineering', sub: [], min: 15 },
-    { id: 'cognitive', label: 'Cognitive Assessment', sub: ['Grid Challenge', 'Logical Reasoning', 'Behavioural'], min: 25 },
-  ],
-  bank: bank1,
-  keys: {
-    session: 'calibiai_session',
-    answers: (sid) => `calibiai_answers_${sid}`,
-    ai: (sid) => `calibiai_ai_${sid}`,
-    scores: 'calibiai_scores',
-  },
-  computeScores,
-  buildReview,
-  fallbackRoute: () => (readLocal('calibiai_scores') ? AFTER_ASSESSMENT_ROUTE : '/instructions'),
-}
-
-export const ASSESSMENT_2: AssessmentConfig = {
-  no: 2,
-  title: 'Capgemini 2027 Mock',
-  durationSec: 5400,
-  stages: [
-    { id: 'english', label: 'English Communication', sub: ['Listening', 'Speaking', 'Reading', 'Writing'], min: 30 },
-    { id: 'problem', label: 'AI Literacy', sub: [], min: 25 },
-    { id: 'mcq', label: 'Debugging — C/C++/Java', sub: [], min: 15, bankKey: 'debugmcq' },
-    { id: 'debugging', label: 'Debugging Lab', sub: [], min: 20 },
-  ],
-  bank: bank2,
-  keys: {
-    session: 'calibiai2_session',
-    answers: (sid) => `calibiai2_answers_${sid}`,
-    ai: (sid) => `calibiai2_ai_${sid}`,
-    scores: 'calibiai2_scores',
-  },
-  computeScores: computeScores2,
-  buildReview: buildReview2,
-  // No local assessment-2 session: a finished candidate goes to the dashboard;
-  // someone who finished assessment 1 belongs on the assessment-2 instructions;
-  // anyone else is routed through the assessment-1 flow (which gates itself).
-  fallbackRoute: () =>
-    readLocal('calibiai2_scores')
-      ? AFTER_ASSESSMENT_ROUTE
-      : readLocal('calibiai_scores')
-        ? '/instructions2'
-        : '/instructions',
 }

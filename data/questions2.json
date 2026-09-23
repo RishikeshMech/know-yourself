@@ -2,12 +2,38 @@
   "version": 1,
   "assessmentNo": 2,
   "title": "Capgemini 2027 Mock Assessment",
-  "totalDurationMin": 90,
+  "totalDurationMin": 120,
   "sections": [
-    { "id": "english", "label": "English Communication", "suggestedMin": 30, "maxScore": 200 },
-    { "id": "aiLiteracy", "label": "AI Literacy", "suggestedMin": 25, "maxScore": 400 },
-    { "id": "debugmcq", "label": "Debugging — C/C++/Java", "suggestedMin": 15, "maxScore": 250 },
-    { "id": "debuglab", "label": "Debugging Lab", "suggestedMin": 20, "maxScore": 150 }
+    {
+      "id": "english",
+      "label": "English Communication",
+      "suggestedMin": 30,
+      "maxScore": 200
+    },
+    {
+      "id": "aiLiteracy",
+      "label": "Technical Module — AI Literacy",
+      "suggestedMin": 25,
+      "maxScore": 250
+    },
+    {
+      "id": "debugmcq",
+      "label": "Debugging Assessment",
+      "suggestedMin": 25,
+      "maxScore": 200
+    },
+    {
+      "id": "aicoding",
+      "label": "AI-assisted Coding",
+      "suggestedMin": 20,
+      "maxScore": 200
+    },
+    {
+      "id": "cognitive",
+      "label": "Cognitive Assessment",
+      "suggestedMin": 20,
+      "maxScore": 150
+    }
   ],
   "english": {
     "listening": {
@@ -18,16 +44,126 @@
           "audio": "/audio/listening2-1.mp3",
           "title": "Clip 1 — Hybrid Work: The Operating Model (~1:24)",
           "questions": [
-            { "id": "EL1", "question": "What was the original central question in the hybrid-work debate?", "options": ["Whether employees could remain productive outside the office.", "Whether offices should be closed permanently.", "Whether salaries should be reduced.", "Whether technology was affordable."], "answer": "Whether employees could remain productive outside the office.", "weight": 1 },
-            { "id": "EL2", "question": "According to the passage, what has the debate increasingly focused on?", "options": ["Employee attendance records", "Collaboration, trust, and shared purpose", "Office decoration", "Reducing annual leave"], "answer": "Collaboration, trust, and shared purpose", "weight": 1 },
-            { "id": "EL3", "question": "Why may increasing meetings create an illusion of control?", "options": ["Meetings are always unnecessary", "They may measure activity rather than meaningful engagement", "Employees dislike calendars", "Managers cannot use technology"], "answer": "They may measure activity rather than meaningful engagement", "weight": 1 },
-            { "id": "EL4", "question": "Which action is presented as a more sustainable approach?", "options": ["Monitoring every minute", "Avoiding written decisions", "Defining outcomes and documenting decisions", "Requiring identical schedules"], "answer": "Defining outcomes and documenting decisions", "weight": 1 },
-            { "id": "EL5", "question": "What inequality does hybrid work expose?", "options": ["Different levels of technical vocabulary", "Different access to quiet and suitable working environments", "Different commuting preferences only", "Different holiday calendars"], "answer": "Different access to quiet and suitable working environments", "weight": 1 },
-            { "id": "EL6", "question": "The phrase 'flexible without becoming vague' implies that policies should be:", "options": ["Unclear but popular", "Adaptable yet sufficiently defined", "Identical in every case", "Changed every day"], "answer": "Adaptable yet sufficiently defined", "weight": 1 },
-            { "id": "EL7", "question": "What assumption does the passage reject?", "options": ["All employees have identical circumstances", "Hybrid work needs review", "Trust matters", "Documentation is useful"], "answer": "All employees have identical circumstances", "weight": 1 },
-            { "id": "EL8", "question": "What is the author's overall attitude toward hybrid work?", "options": ["Entirely negative", "Uncritically enthusiastic", "Pragmatic and evaluative", "Indifferent"], "answer": "Pragmatic and evaluative", "weight": 1 },
-            { "id": "EL9", "question": "What does 'operating model' suggest in the final sentence?", "options": ["A temporary experiment with no rules", "A structured way of organizing work", "A software application", "A financial product"], "answer": "A structured way of organizing work", "weight": 1 },
-            { "id": "EL10", "question": "Which statement best summarizes the passage?", "options": ["Hybrid work succeeds through surveillance alone.", "Hybrid work is simple if meetings increase.", "Hybrid work requires thoughtful systems and ongoing adjustment.", "Hybrid work should replace all offices."], "answer": "Hybrid work requires thoughtful systems and ongoing adjustment.", "weight": 1 }
+            {
+              "id": "EL1",
+              "question": "What was the original central question in the hybrid-work debate?",
+              "options": [
+                "Whether employees could remain productive outside the office.",
+                "Whether offices should be closed permanently.",
+                "Whether salaries should be reduced.",
+                "Whether technology was affordable."
+              ],
+              "answer": "Whether employees could remain productive outside the office.",
+              "weight": 1
+            },
+            {
+              "id": "EL2",
+              "question": "According to the passage, what has the debate increasingly focused on?",
+              "options": [
+                "Employee attendance records",
+                "Collaboration, trust, and shared purpose",
+                "Office decoration",
+                "Reducing annual leave"
+              ],
+              "answer": "Collaboration, trust, and shared purpose",
+              "weight": 1
+            },
+            {
+              "id": "EL3",
+              "question": "Why may increasing meetings create an illusion of control?",
+              "options": [
+                "Meetings are always unnecessary",
+                "They may measure activity rather than meaningful engagement",
+                "Employees dislike calendars",
+                "Managers cannot use technology"
+              ],
+              "answer": "They may measure activity rather than meaningful engagement",
+              "weight": 1
+            },
+            {
+              "id": "EL4",
+              "question": "Which action is presented as a more sustainable approach?",
+              "options": [
+                "Monitoring every minute",
+                "Avoiding written decisions",
+                "Defining outcomes and documenting decisions",
+                "Requiring identical schedules"
+              ],
+              "answer": "Defining outcomes and documenting decisions",
+              "weight": 1
+            },
+            {
+              "id": "EL5",
+              "question": "What inequality does hybrid work expose?",
+              "options": [
+                "Different levels of technical vocabulary",
+                "Different access to quiet and suitable working environments",
+                "Different commuting preferences only",
+                "Different holiday calendars"
+              ],
+              "answer": "Different access to quiet and suitable working environments",
+              "weight": 1
+            },
+            {
+              "id": "EL6",
+              "question": "The phrase 'flexible without becoming vague' implies that policies should be:",
+              "options": [
+                "Unclear but popular",
+                "Adaptable yet sufficiently defined",
+                "Identical in every case",
+                "Changed every day"
+              ],
+              "answer": "Adaptable yet sufficiently defined",
+              "weight": 1
+            },
+            {
+              "id": "EL7",
+              "question": "What assumption does the passage reject?",
+              "options": [
+                "All employees have identical circumstances",
+                "Hybrid work needs review",
+                "Trust matters",
+                "Documentation is useful"
+              ],
+              "answer": "All employees have identical circumstances",
+              "weight": 1
+            },
+            {
+              "id": "EL8",
+              "question": "What is the author's overall attitude toward hybrid work?",
+              "options": [
+                "Entirely negative",
+                "Uncritically enthusiastic",
+                "Pragmatic and evaluative",
+                "Indifferent"
+              ],
+              "answer": "Pragmatic and evaluative",
+              "weight": 1
+            },
+            {
+              "id": "EL9",
+              "question": "What does 'operating model' suggest in the final sentence?",
+              "options": [
+                "A temporary experiment with no rules",
+                "A structured way of organizing work",
+                "A software application",
+                "A financial product"
+              ],
+              "answer": "A structured way of organizing work",
+              "weight": 1
+            },
+            {
+              "id": "EL10",
+              "question": "Which statement best summarizes the passage?",
+              "options": [
+                "Hybrid work succeeds through surveillance alone.",
+                "Hybrid work is simple if meetings increase.",
+                "Hybrid work requires thoughtful systems and ongoing adjustment.",
+                "Hybrid work should replace all offices."
+              ],
+              "answer": "Hybrid work requires thoughtful systems and ongoing adjustment.",
+              "weight": 1
+            }
           ]
         }
       ]
@@ -35,25 +171,147 @@
     "speaking": {
       "instruction": "Record 60–120 seconds for each task. You may re-record once. Audio is evaluated on Fluency, Pronunciation, Confidence and Grammar (AI rubric): 5 criteria × 4 points, maximum 20 marks.",
       "tasks": [
-        { "id": "SP1", "label": "Task 1 — Structured Introduction (5 min)", "prompt": "Speak for 90–120 seconds on: \"A professional skill I am currently developing and how I am measuring improvement.\" Include a clear opening, two specific examples, and a concluding statement." },
-        { "id": "SP2", "label": "Task 2 — Opinion & Justification (10 min)", "prompt": "Choose ONE prompt and speak for 2–3 minutes: 1) Should organizations prioritize employee flexibility or standardization? Explain the trade-offs. 2) Is artificial intelligence more likely to improve or weaken critical thinking in the workplace? 3) Should communication training be compulsory for technically strong employees? 4) Does remote communication require more discipline than face-to-face communication? 5) Is constructive disagreement a sign of a healthy team? Defend your position." },
-        { "id": "SP3", "label": "Task 3 — Situational Role-play (10 min)", "prompt": "Respond naturally to ONE of the situations (the evaluator may interrupt with realistic follow-ups): 1) You are leading a project that is behind schedule. One team member repeatedly misses deadlines but believes the workload is unfair. Address the issue without damaging the relationship. 2) A client says your team's proposal is too complicated and asks for a simpler solution. Explain the value of the proposal while remaining open to revision. 3) You disagree with your manager's decision during a meeting. Present your concern respectfully, support it with evidence, and suggest an alternative. 4) You must explain a technical problem to a non-technical stakeholder who is anxious about its impact. Make the explanation accurate, calm, and easy to understand." }
+        {
+          "id": "SP1",
+          "label": "Task 1 — Structured Introduction (5 min)",
+          "prompt": "Speak for 90–120 seconds on: \"A professional skill I am currently developing and how I am measuring improvement.\" Include a clear opening, two specific examples, and a concluding statement."
+        },
+        {
+          "id": "SP2",
+          "label": "Task 2 — Opinion & Justification (10 min)",
+          "prompt": "Choose ONE prompt and speak for 2–3 minutes: 1) Should organizations prioritize employee flexibility or standardization? Explain the trade-offs. 2) Is artificial intelligence more likely to improve or weaken critical thinking in the workplace? 3) Should communication training be compulsory for technically strong employees? 4) Does remote communication require more discipline than face-to-face communication? 5) Is constructive disagreement a sign of a healthy team? Defend your position."
+        },
+        {
+          "id": "SP3",
+          "label": "Task 3 — Situational Role-play (10 min)",
+          "prompt": "Respond naturally to ONE of the situations (the evaluator may interrupt with realistic follow-ups): 1) You are leading a project that is behind schedule. One team member repeatedly misses deadlines but believes the workload is unfair. Address the issue without damaging the relationship. 2) A client says your team's proposal is too complicated and asks for a simpler solution. Explain the value of the proposal while remaining open to revision. 3) You disagree with your manager's decision during a meeting. Present your concern respectfully, support it with evidence, and suggest an alternative. 4) You must explain a technical problem to a non-technical stakeholder who is anxious about its impact. Make the explanation accurate, calm, and easy to understand."
+        }
       ]
     },
     "reading": {
       "instruction": "Read the passage carefully. Questions test main idea, inference, vocabulary and critical reading — not just keyword matching.",
       "passage": "In professional environments, clarity is often mistaken for simplicity. A message can be short and still be unclear if it leaves key assumptions unstated. Conversely, a detailed message can be highly efficient when its structure allows readers to locate the information they need. The real objective of effective communication is not to minimize words but to minimize avoidable interpretation. This requires the writer to anticipate the reader's questions, distinguish facts from judgments, and make the requested action explicit. It also requires restraint: adding every possible detail may protect the writer from being misunderstood, but it can burden the reader with irrelevant information. Strong communicators therefore make deliberate choices about emphasis. They know what must be stated, what can be implied, and what should be omitted. In this sense, clarity is less a matter of vocabulary than of judgment.",
       "questions": [
-        { "id": "ER1", "question": "What is the central argument of the passage?", "options": ["Shorter messages are always better.", "Clarity depends on judgment and structure, not just brevity.", "Detailed messages should be avoided.", "Readers should infer the action themselves."], "answer": "Clarity depends on judgment and structure, not just brevity.", "weight": 1 },
-        { "id": "ER2", "question": "The phrase 'avoidable interpretation' refers to:", "options": ["Creative imagination", "Unnecessary uncertainty about meaning", "Translation errors only", "A reader's personal opinion"], "answer": "Unnecessary uncertainty about meaning", "weight": 1 },
-        { "id": "ER3", "question": "Why can a detailed message be efficient?", "options": ["It contains every possible fact", "Its structure helps readers find needed information", "It avoids making requests", "It uses complex vocabulary"], "answer": "Its structure helps readers find needed information", "weight": 1 },
-        { "id": "ER4", "question": "Which of the following should a writer distinguish?", "options": ["Facts from judgments", "Readers from writers", "Short sentences from long sentences", "Emails from reports"], "answer": "Facts from judgments", "weight": 1 },
-        { "id": "ER5", "question": "What does the author mean by 'make the requested action explicit'?", "options": ["Use more adjectives", "Clearly state what the reader should do", "Avoid deadlines", "Ask the reader to guess"], "answer": "Clearly state what the reader should do", "weight": 1 },
-        { "id": "ER6", "question": "Why can too much detail be harmful?", "options": ["It is always inaccurate", "It may burden the reader with irrelevant information", "It makes the message shorter", "It prevents any interpretation"], "answer": "It may burden the reader with irrelevant information", "weight": 1 },
-        { "id": "ER7", "question": "The word 'restraint' most nearly means:", "options": ["Careful limitation", "Aggressive persuasion", "Complete silence", "Rapid delivery"], "answer": "Careful limitation", "weight": 1 },
-        { "id": "ER8", "question": "What does the passage suggest about vocabulary?", "options": ["Advanced words guarantee clarity", "Vocabulary is irrelevant in all cases", "Judgment is more important than vocabulary alone", "Simple words should never be used"], "answer": "Judgment is more important than vocabulary alone", "weight": 1 },
-        { "id": "ER9", "question": "Which statement is consistent with the passage?", "options": ["Every detail should be included.", "A well-organized long message can be clearer than a short one.", "Readers should supply missing actions.", "Facts and judgments should be mixed."], "answer": "A well-organized long message can be clearer than a short one.", "weight": 1 },
-        { "id": "ER10", "question": "Which title best fits the passage?", "options": ["Why Short Emails Always Win", "The Hidden Cost of Vocabulary", "Clarity as a Matter of Judgment", "How to Avoid Professional Communication"], "answer": "Clarity as a Matter of Judgment", "weight": 1 }
+        {
+          "id": "ER1",
+          "question": "What is the central argument of the passage?",
+          "options": [
+            "Shorter messages are always better.",
+            "Clarity depends on judgment and structure, not just brevity.",
+            "Detailed messages should be avoided.",
+            "Readers should infer the action themselves."
+          ],
+          "answer": "Clarity depends on judgment and structure, not just brevity.",
+          "weight": 1
+        },
+        {
+          "id": "ER2",
+          "question": "The phrase 'avoidable interpretation' refers to:",
+          "options": [
+            "Creative imagination",
+            "Unnecessary uncertainty about meaning",
+            "Translation errors only",
+            "A reader's personal opinion"
+          ],
+          "answer": "Unnecessary uncertainty about meaning",
+          "weight": 1
+        },
+        {
+          "id": "ER3",
+          "question": "Why can a detailed message be efficient?",
+          "options": [
+            "It contains every possible fact",
+            "Its structure helps readers find needed information",
+            "It avoids making requests",
+            "It uses complex vocabulary"
+          ],
+          "answer": "Its structure helps readers find needed information",
+          "weight": 1
+        },
+        {
+          "id": "ER4",
+          "question": "Which of the following should a writer distinguish?",
+          "options": [
+            "Facts from judgments",
+            "Readers from writers",
+            "Short sentences from long sentences",
+            "Emails from reports"
+          ],
+          "answer": "Facts from judgments",
+          "weight": 1
+        },
+        {
+          "id": "ER5",
+          "question": "What does the author mean by 'make the requested action explicit'?",
+          "options": [
+            "Use more adjectives",
+            "Clearly state what the reader should do",
+            "Avoid deadlines",
+            "Ask the reader to guess"
+          ],
+          "answer": "Clearly state what the reader should do",
+          "weight": 1
+        },
+        {
+          "id": "ER6",
+          "question": "Why can too much detail be harmful?",
+          "options": [
+            "It is always inaccurate",
+            "It may burden the reader with irrelevant information",
+            "It makes the message shorter",
+            "It prevents any interpretation"
+          ],
+          "answer": "It may burden the reader with irrelevant information",
+          "weight": 1
+        },
+        {
+          "id": "ER7",
+          "question": "The word 'restraint' most nearly means:",
+          "options": [
+            "Careful limitation",
+            "Aggressive persuasion",
+            "Complete silence",
+            "Rapid delivery"
+          ],
+          "answer": "Careful limitation",
+          "weight": 1
+        },
+        {
+          "id": "ER8",
+          "question": "What does the passage suggest about vocabulary?",
+          "options": [
+            "Advanced words guarantee clarity",
+            "Vocabulary is irrelevant in all cases",
+            "Judgment is more important than vocabulary alone",
+            "Simple words should never be used"
+          ],
+          "answer": "Judgment is more important than vocabulary alone",
+          "weight": 1
+        },
+        {
+          "id": "ER9",
+          "question": "Which statement is consistent with the passage?",
+          "options": [
+            "Every detail should be included.",
+            "A well-organized long message can be clearer than a short one.",
+            "Readers should supply missing actions.",
+            "Facts and judgments should be mixed."
+          ],
+          "answer": "A well-organized long message can be clearer than a short one.",
+          "weight": 1
+        },
+        {
+          "id": "ER10",
+          "question": "Which title best fits the passage?",
+          "options": [
+            "Why Short Emails Always Win",
+            "The Hidden Cost of Vocabulary",
+            "Clarity as a Matter of Judgment",
+            "How to Avoid Professional Communication"
+          ],
+          "answer": "Clarity as a Matter of Judgment",
+          "weight": 1
+        }
       ]
     },
     "writing": {
@@ -62,88 +320,1009 @@
     }
   },
   "problem": [
-    { "id": "AL1", "q": "A company deploys a generative AI assistant to summarize incident reports. The assistant produces fluent summaries but occasionally combines details from two different incidents into one account. Which explanation is most appropriate?", "options": ["Generative AI always merges documents when they contain similar words.", "The model may generate a plausible response without reliably preserving the identity and boundaries of each source.", "Incident reports cannot be summarized by language models.", "Fluency guarantees that the summary is factually consistent."], "answer": "The model may generate a plausible response without reliably preserving the identity and boundaries of each source.", "weight": 1 },
-    { "id": "AL2", "q": "A foundation model is adapted for a specialized engineering support application using a smaller collection of domain-specific examples. What is the primary purpose of this adaptation?", "options": ["To replace all model training with database indexing.", "To make the model independent of user instructions.", "To improve performance for the target domain or task.", "To guarantee that the model will never hallucinate."], "answer": "To improve performance for the target domain or task.", "weight": 1 },
-    { "id": "AL3", "q": "An AI system generates a design explanation that is technically plausible but uses a standard that was withdrawn several years ago. Which control would most directly reduce this risk?", "options": ["Increase the length of the response.", "Ask the model to sound more certain.", "Use current authoritative sources and verify time-sensitive claims.", "Remove technical terminology from the prompt."], "answer": "Use current authoritative sources and verify time-sensitive claims.", "weight": 1 },
-    { "id": "AL4", "q": "A language model is asked to answer a question containing an ambiguous abbreviation used differently by two engineering departments. What should the user do to improve the response?", "options": ["Provide the department context and define the intended abbreviation.", "Ask for the longest possible answer.", "Repeat the same ambiguous prompt several times.", "Assume the model will always infer the correct meaning."], "answer": "Provide the department context and define the intended abbreviation.", "weight": 1 },
-    { "id": "AL5", "q": "A student asks an AI assistant to solve a circuit problem, but the assistant assumes an ideal component even though the question specifies non-ideal behavior. What is the best interpretation?", "options": ["The model has necessarily calculated the problem correctly.", "The prompt may have been misunderstood or an assumption may have been introduced incorrectly.", "Non-ideal components cannot be represented in language.", "The student should accept the assumption because it simplifies the calculation."], "answer": "The prompt may have been misunderstood or an assumption may have been introduced incorrectly.", "weight": 1 },
-    { "id": "AL6", "q": "A company uses an LLM to draft compliance responses. The responses are grammatically strong but sometimes omit mandatory exceptions. Which approach is most reliable?", "options": ["Ask the model to write more confidently.", "Use a checklist of required elements and validate each response against approved policy.", "Remove exception clauses from the source documents.", "Use only the model's general training knowledge."], "answer": "Use a checklist of required elements and validate each response against approved policy.", "weight": 1 },
-    { "id": "AL7", "q": "A prompt asks an AI system to \"make the report better.\" The user actually wants fewer words, a formal tone, and stronger evidence. Which change would most improve the prompt?", "options": ["Add precise criteria describing the desired improvement.", "Remove the report from the prompt.", "Ask for a creative response without constraints.", "Repeat the same phrase many times."], "answer": "Add precise criteria describing the desired improvement.", "weight": 1 },
-    { "id": "AL8", "q": "A developer asks an AI coding assistant to optimize a function. The resulting code is faster on the sample input but fails on large inputs. What should happen next?", "options": ["Deploy it because the benchmark improved once.", "Review complexity, test at scale, and compare behavior against requirements.", "Assume the AI has optimized all edge cases.", "Remove the large-input tests."], "answer": "Review complexity, test at scale, and compare behavior against requirements.", "weight": 1 },
-    { "id": "AL9", "q": "A user supplies three examples of the required output format before asking the model to process a fourth case. Which technique is being used?", "options": ["Zero-shot prompting", "Few-shot prompting", "Model pruning", "Data encryption"], "answer": "Few-shot prompting", "weight": 1 },
-    { "id": "AL10", "q": "A prompt includes a role, objective, constraints, evaluation criteria, examples, and output schema. What is the main advantage?", "options": ["It guarantees factual accuracy regardless of the task.", "It gives the model clearer expectations and reduces ambiguity.", "It permanently changes the model's parameters.", "It eliminates the need for testing."], "answer": "It gives the model clearer expectations and reduces ambiguity.", "weight": 1 },
-    { "id": "AL11", "q": "A 200-page technical document is summarized in one pass, but important definitions near the middle are missing. Which workflow is most appropriate?", "options": ["Divide the document into meaningful sections, summarize them, and verify the combined result.", "Ask the model to invent missing definitions.", "Remove headings before processing.", "Use a shorter prompt with no document context."], "answer": "Divide the document into meaningful sections, summarize them, and verify the combined result.", "weight": 1 },
-    { "id": "AL12", "q": "A model receives a prompt containing more information than it can effectively use. Which outcome is possible even if the input is technically accepted?", "options": ["The model may underuse or lose track of some information.", "The model automatically stores every detail permanently.", "The model becomes a relational database.", "The model must reject every long input."], "answer": "The model may underuse or lose track of some information.", "weight": 1 },
-    { "id": "AL13", "q": "A student asks an AI assistant to compare four research papers. The response cites only two papers and appears to mix findings. What is the best first step?", "options": ["Assume all four papers support the same conclusion.", "Map each claim to the correct paper and verify the cited passages.", "Ask the model to increase confidence.", "Remove the citations to make the answer simpler."], "answer": "Map each claim to the correct paper and verify the cited passages.", "weight": 1 },
-    { "id": "AL14", "q": "An AI assistant invents a plausible journal article, complete with author names and a DOI-like string. What does this most clearly demonstrate?", "options": ["Tokenization", "Hallucination", "Classification", "Fine-tuning"], "answer": "Hallucination", "weight": 1 },
-    { "id": "AL15", "q": "A policy chatbot receives a question that is not supported by its approved documents. Which behavior is safest?", "options": ["Provide the most likely answer from general knowledge.", "State that the available sources do not support an answer and route the question if necessary.", "Create a citation that looks realistic.", "Use an unrelated policy as evidence."], "answer": "State that the available sources do not support an answer and route the question if necessary.", "weight": 1 },
-    { "id": "AL16", "q": "An AI assistant gives two different answers to the same question after small wording changes. What should the user conclude?", "options": ["At least one answer should be treated as needing verification.", "The longer answer is automatically correct.", "The latest answer must be correct.", "Variation proves that neither answer can ever be useful."], "answer": "At least one answer should be treated as needing verification.", "weight": 1 },
-    { "id": "AL17", "q": "A company asks an AI system to generate customer refund decisions. Some cases involve legal exceptions and high-value claims. What is the most appropriate design?", "options": ["Allow fully automatic decisions for all cases.", "Use AI for assistance, with policy checks and human review for high-risk or exceptional cases.", "Hide the model's uncertainty from reviewers.", "Remove exception handling to simplify deployment."], "answer": "Use AI for assistance, with policy checks and human review for high-risk or exceptional cases.", "weight": 1 },
-    { "id": "AL18", "q": "An employee pastes a confidential architecture diagram and credentials into a public chatbot. Which concern is most serious?", "options": ["The response may be too short.", "Confidential information and credentials may be exposed or mishandled.", "The diagram may lose its original colors.", "The chatbot may not recognize the file name."], "answer": "Confidential information and credentials may be exposed or mishandled.", "weight": 1 },
-    { "id": "AL19", "q": "A company wants to use an AI tool with customer data. Which control is most appropriate before adoption?", "options": ["Confirm approved data handling, retention, access, and contractual requirements.", "Upload a small amount of real customer data without review.", "Assume all public tools provide enterprise confidentiality.", "Remove only the customer names and ignore other identifiers."], "answer": "Confirm approved data handling, retention, access, and contractual requirements.", "weight": 1 },
-    { "id": "AL20", "q": "An AI hiring model shows similar overall accuracy across groups but rejects qualified candidates from one group at a higher rate. What should the organization do?", "options": ["Treat overall accuracy as sufficient.", "Examine group-specific error rates, selection outcomes, and possible causes.", "Increase the model's response length.", "Remove demographic analysis from evaluation."], "answer": "Examine group-specific error rates, selection outcomes, and possible causes.", "weight": 1 },
-    { "id": "AL21", "q": "Historical hiring data reflects unequal access to opportunities. A model trained on it reproduces the same pattern. What does this illustrate?", "options": ["More historical data automatically removes bias.", "Training data can encode and reproduce historical inequities.", "Bias exists only in prompts.", "A model cannot learn patterns from historical records."], "answer": "Training data can encode and reproduce historical inequities.", "weight": 1 },
-    { "id": "AL22", "q": "A team evaluates an AI system only on examples it saw during development. Why is this insufficient?", "options": ["It may not reveal how the system generalizes to unseen situations.", "Training examples are always irrelevant.", "It guarantees a low score.", "It tests privacy more effectively than separate security testing."], "answer": "It may not reveal how the system generalizes to unseen situations.", "weight": 1 },
-    { "id": "AL23", "q": "An AI model performs well on average but fails badly on rare safety-critical cases. Which evaluation principle is most relevant?", "options": ["Evaluate only the average score.", "Evaluate important subgroups, edge cases, and high-impact failure modes.", "Remove rare cases from the test set.", "Prefer fluent outputs over correct outputs."], "answer": "Evaluate important subgroups, edge cases, and high-impact failure modes.", "weight": 1 },
-    { "id": "AL24", "q": "A company wants to reduce bias in an image-generation system. Which action is most useful?", "options": ["Inspect training data and outputs for stereotypes and unequal representation.", "Increase image resolution only.", "Remove all evaluation criteria.", "Ask the model to produce longer captions."], "answer": "Inspect training data and outputs for stereotypes and unequal representation.", "weight": 1 },
-    { "id": "AL25", "q": "A model's output changes after the underlying data pipeline is modified. What should a responsible team do?", "options": ["Track the change, test the new pipeline, and compare performance and risks.", "Assume the model is unaffected by data changes.", "Delete the evaluation records.", "Deploy immediately because the change was automated."], "answer": "Track the change, test the new pipeline, and compare performance and risks.", "weight": 1 },
-    { "id": "AL26", "q": "A user wants an AI assistant to return exactly three fields: risk, evidence, and recommended action. Which prompt element is most important?", "options": ["Output schema or format specification", "More decorative language", "Model retraining instruction", "Screen resolution"], "answer": "Output schema or format specification", "weight": 1 },
-    { "id": "AL27", "q": "A RAG assistant retrieves documents that contain the correct policy but also several outdated versions. What is the key risk?", "options": ["The model may combine conflicting versions or select the wrong policy.", "Retrieval always improves accuracy regardless of document quality.", "The model will automatically delete old documents.", "Outdated documents cannot affect generation."], "answer": "The model may combine conflicting versions or select the wrong policy.", "weight": 1 },
-    { "id": "AL28", "q": "A company updates its safety procedure but the retrieval index is not refreshed. What is the likely result?", "options": ["The assistant may continue grounding answers in the older procedure.", "The model automatically learns the update from the file name.", "The context window becomes unlimited.", "The assistant will always refuse to answer."], "answer": "The assistant may continue grounding answers in the older procedure.", "weight": 1 },
-    { "id": "AL29", "q": "A RAG system retrieves relevant passages but the generated answer adds a requirement not present in any passage. Which improvement is most appropriate?", "options": ["Require claim-level grounding and allow the system to abstain when evidence is insufficient.", "Increase creativity settings without evaluation.", "Remove source citations.", "Ask the model to infer additional requirements."], "answer": "Require claim-level grounding and allow the system to abstain when evidence is insufficient.", "weight": 1 },
-    { "id": "AL30", "q": "A university chatbot must answer questions using only approved course regulations. Which architecture best supports this requirement?", "options": ["Retrieval from approved documents with source attribution and unsupported-answer handling.", "A model that relies only on general pretraining.", "A system that retrieves random web pages.", "A chatbot that suppresses document metadata."], "answer": "Retrieval from approved documents with source attribution and unsupported-answer handling.", "weight": 1 },
-    { "id": "AL31", "q": "An AI agent receives a goal, creates a plan, calls tools, observes results, and revises the next step. What capability is demonstrated?", "options": ["Static text completion", "Goal-directed multi-step action", "File compression", "Simple keyword matching"], "answer": "Goal-directed multi-step action", "weight": 1 },
-    { "id": "AL32", "q": "An agent can send emails, update records, and approve payments. Which design principle is most important?", "options": ["Give it unrestricted access to maximize autonomy.", "Use least privilege, approval gates, logging, and monitoring.", "Allow it to modify its own permissions.", "Disable authentication for internal users."], "answer": "Use least privilege, approval gates, logging, and monitoring.", "weight": 1 },
-    { "id": "AL33", "q": "A travel-booking agent finds a suitable flight but the fare changes before purchase. What should the agent do?", "options": ["Complete the booking silently at any price.", "Re-check the price and request confirmation when the change affects the user's decision.", "Assume the earlier price remains valid.", "Cancel all future searches."], "answer": "Re-check the price and request confirmation when the change affects the user's decision.", "weight": 1 },
-    { "id": "AL34", "q": "An AI agent is asked to prepare a market report. It searches, compares sources, identifies gaps, and drafts a report. Which step is most important before final delivery?", "options": ["Verify important claims and ensure the report reflects the requested scope.", "Remove all source links.", "Assume the first retrieved source is authoritative.", "Allow the agent to publish without review."], "answer": "Verify important claims and ensure the report reflects the requested scope.", "weight": 1 },
-    { "id": "AL35", "q": "A coding assistant generates a database query that runs successfully but exposes records belonging to other users. What failed?", "options": ["Syntax parsing only", "Authorization and data-access reasoning", "Tokenization", "Text summarization"], "answer": "Authorization and data-access reasoning", "weight": 1 },
-    { "id": "AL36", "q": "A developer asks AI to review a payment-processing function. The assistant reports no vulnerabilities, but no security tests were run. What is the correct conclusion?", "options": ["No vulnerabilities exist.", "The result is only one input to security assurance and requires independent testing.", "AI review replaces penetration testing.", "Payment code cannot be reviewed by humans."], "answer": "The result is only one input to security assurance and requires independent testing.", "weight": 1 },
-    { "id": "AL37", "q": "A model achieves very high training accuracy and substantially lower validation accuracy. Which explanation is most likely?", "options": ["Overfitting", "Encryption", "Retrieval", "Tokenization"], "answer": "Overfitting", "weight": 1 },
-    { "id": "AL38", "q": "A dataset contains mislabeled examples concentrated in one category. What may happen?", "options": ["The model may learn misleading patterns and perform poorly for that category.", "The model automatically corrects all labels.", "The model becomes unbiased by default.", "The dataset becomes more representative."], "answer": "The model may learn misleading patterns and perform poorly for that category.", "weight": 1 },
-    { "id": "AL39", "q": "A model is tested on data that was accidentally included in training. Why is the test result misleading?", "options": ["Data leakage can make performance appear better than it is on truly unseen data.", "Training data always produces lower scores.", "Leakage affects only image models.", "The model cannot use duplicate examples."], "answer": "Data leakage can make performance appear better than it is on truly unseen data.", "weight": 1 },
-    { "id": "AL40", "q": "A company evaluates an AI assistant before broad deployment. Which evaluation set is most complete?", "options": ["Fluency only", "Speed only", "Accuracy, robustness, bias, privacy, security, reliability, and human-oversight requirements", "Number of words generated"], "answer": "Accuracy, robustness, bias, privacy, security, reliability, and human-oversight requirements", "weight": 1 },
-    { "id": "AL41", "q": "An attacker places instructions inside a retrieved document telling the AI agent to ignore its system rules and send confidential files. What threat is this closest to?", "options": ["Prompt injection through external content", "Model compression", "Overfitting", "Data normalization"], "answer": "Prompt injection through external content", "weight": 1 },
-    { "id": "AL42", "q": "A company connects an AI agent to internal tools. Which control best limits the impact of a compromised or mistaken agent?", "options": ["Broad administrator access", "Least-privilege permissions and restricted tool scopes", "No audit logs", "Automatic approval of every action"], "answer": "Least-privilege permissions and restricted tool scopes", "weight": 1 },
-    { "id": "AL43", "q": "An AI assistant produces a numerical forecast used in a board presentation. The number differs from the source spreadsheet. What should the employee do?", "options": ["Use the AI number because it is more recent-looking.", "Reconcile the number against the authoritative data and correct or explain the difference.", "Remove the source spreadsheet.", "Ask AI to make the number more realistic."], "answer": "Reconcile the number against the authoritative data and correct or explain the difference.", "weight": 1 },
-    { "id": "AL44", "q": "A manager uses AI to rank employees using attendance, project results, and unrelated personal information. What is the main concern?", "options": ["The model may rely on irrelevant or unfair factors.", "More factors always improve fairness.", "Personal information is always relevant to performance.", "AI rankings do not require criteria."], "answer": "The model may rely on irrelevant or unfair factors.", "weight": 1 },
-    { "id": "AL45", "q": "A student uses AI to prepare an explanation that conflicts with official technical documentation. Which source should take priority?", "options": ["The longer AI response", "The more confident AI response", "The official documentation, subject to checking version and context", "The response with more examples"], "answer": "The official documentation, subject to checking version and context", "weight": 1 },
-    { "id": "AL46", "q": "An organization wants employees to use AI safely and productively. Which policy is strongest?", "options": ["Ban all AI tools.", "Permit unrestricted use of any public chatbot.", "Define approved tools, data rules, verification, training, security controls, and escalation paths.", "Allow AI to make all high-impact decisions independently."], "answer": "Define approved tools, data rules, verification, training, security controls, and escalation paths.", "weight": 1 },
-    { "id": "AL47", "q": "A model is accurate in a laboratory test but performs poorly after deployment because user inputs differ from the test data. What should the team investigate?", "options": ["Distribution shift and whether evaluation reflects real-world use.", "Whether the model should generate longer answers.", "Whether all test data should be deleted.", "Whether deployment makes models incapable of learning patterns."], "answer": "Distribution shift and whether evaluation reflects real-world use.", "weight": 1 },
-    { "id": "AL48", "q": "A company wants an AI assistant to answer only when evidence is sufficient. Which behavior should be explicitly designed and evaluated?", "options": ["Confident guessing", "Abstention or escalation when evidence is missing or conflicting", "Maximum response length", "Automatic acceptance of retrieved text"], "answer": "Abstention or escalation when evidence is missing or conflicting", "weight": 1 },
-    { "id": "AL49", "q": "An AI-generated report includes a correct conclusion but unsupported intermediate reasoning. Why does this matter?", "options": ["Unsupported reasoning can make the conclusion difficult to trust or reproduce.", "Correct conclusions never need evidence.", "Intermediate reasoning is always irrelevant.", "A fluent explanation is sufficient proof."], "answer": "Unsupported reasoning can make the conclusion difficult to trust or reproduce.", "weight": 1 },
-    { "id": "AL50", "q": "Before deploying an AI system that affects customers, what is the most appropriate final step?", "options": ["Conduct documented testing, review risks, define monitoring, and establish human accountability.", "Deploy first and investigate only after complaints.", "Measure only response speed.", "Remove all human escalation routes."], "answer": "Conduct documented testing, review risks, define monitoring, and establish human accountability.", "weight": 1 }
+    {
+      "id": "AL1",
+      "q": "A company deploys a generative AI assistant to summarize incident reports. The assistant produces fluent summaries but occasionally combines details from two different incidents into one account. Which explanation is most appropriate?",
+      "options": [
+        "Generative AI always merges documents when they contain similar words.",
+        "The model may generate a plausible response without reliably preserving the identity and boundaries of each source.",
+        "Incident reports cannot be summarized by language models.",
+        "Fluency guarantees that the summary is factually consistent."
+      ],
+      "answer": "The model may generate a plausible response without reliably preserving the identity and boundaries of each source.",
+      "weight": 1
+    },
+    {
+      "id": "AL2",
+      "q": "A foundation model is adapted for a specialized engineering support application using a smaller collection of domain-specific examples. What is the primary purpose of this adaptation?",
+      "options": [
+        "To replace all model training with database indexing.",
+        "To make the model independent of user instructions.",
+        "To improve performance for the target domain or task.",
+        "To guarantee that the model will never hallucinate."
+      ],
+      "answer": "To improve performance for the target domain or task.",
+      "weight": 1
+    },
+    {
+      "id": "AL3",
+      "q": "An AI system generates a design explanation that is technically plausible but uses a standard that was withdrawn several years ago. Which control would most directly reduce this risk?",
+      "options": [
+        "Increase the length of the response.",
+        "Ask the model to sound more certain.",
+        "Use current authoritative sources and verify time-sensitive claims.",
+        "Remove technical terminology from the prompt."
+      ],
+      "answer": "Use current authoritative sources and verify time-sensitive claims.",
+      "weight": 1
+    },
+    {
+      "id": "AL4",
+      "q": "A language model is asked to answer a question containing an ambiguous abbreviation used differently by two engineering departments. What should the user do to improve the response?",
+      "options": [
+        "Provide the department context and define the intended abbreviation.",
+        "Ask for the longest possible answer.",
+        "Repeat the same ambiguous prompt several times.",
+        "Assume the model will always infer the correct meaning."
+      ],
+      "answer": "Provide the department context and define the intended abbreviation.",
+      "weight": 1
+    },
+    {
+      "id": "AL5",
+      "q": "A student asks an AI assistant to solve a circuit problem, but the assistant assumes an ideal component even though the question specifies non-ideal behavior. What is the best interpretation?",
+      "options": [
+        "The model has necessarily calculated the problem correctly.",
+        "The prompt may have been misunderstood or an assumption may have been introduced incorrectly.",
+        "Non-ideal components cannot be represented in language.",
+        "The student should accept the assumption because it simplifies the calculation."
+      ],
+      "answer": "The prompt may have been misunderstood or an assumption may have been introduced incorrectly.",
+      "weight": 1
+    },
+    {
+      "id": "AL6",
+      "q": "A company uses an LLM to draft compliance responses. The responses are grammatically strong but sometimes omit mandatory exceptions. Which approach is most reliable?",
+      "options": [
+        "Ask the model to write more confidently.",
+        "Use a checklist of required elements and validate each response against approved policy.",
+        "Remove exception clauses from the source documents.",
+        "Use only the model's general training knowledge."
+      ],
+      "answer": "Use a checklist of required elements and validate each response against approved policy.",
+      "weight": 1
+    },
+    {
+      "id": "AL7",
+      "q": "A prompt asks an AI system to \"make the report better.\" The user actually wants fewer words, a formal tone, and stronger evidence. Which change would most improve the prompt?",
+      "options": [
+        "Add precise criteria describing the desired improvement.",
+        "Remove the report from the prompt.",
+        "Ask for a creative response without constraints.",
+        "Repeat the same phrase many times."
+      ],
+      "answer": "Add precise criteria describing the desired improvement.",
+      "weight": 1
+    },
+    {
+      "id": "AL8",
+      "q": "A developer asks an AI coding assistant to optimize a function. The resulting code is faster on the sample input but fails on large inputs. What should happen next?",
+      "options": [
+        "Deploy it because the benchmark improved once.",
+        "Review complexity, test at scale, and compare behavior against requirements.",
+        "Assume the AI has optimized all edge cases.",
+        "Remove the large-input tests."
+      ],
+      "answer": "Review complexity, test at scale, and compare behavior against requirements.",
+      "weight": 1
+    },
+    {
+      "id": "AL9",
+      "q": "A user supplies three examples of the required output format before asking the model to process a fourth case. Which technique is being used?",
+      "options": [
+        "Zero-shot prompting",
+        "Few-shot prompting",
+        "Model pruning",
+        "Data encryption"
+      ],
+      "answer": "Few-shot prompting",
+      "weight": 1
+    },
+    {
+      "id": "AL10",
+      "q": "A prompt includes a role, objective, constraints, evaluation criteria, examples, and output schema. What is the main advantage?",
+      "options": [
+        "It guarantees factual accuracy regardless of the task.",
+        "It gives the model clearer expectations and reduces ambiguity.",
+        "It permanently changes the model's parameters.",
+        "It eliminates the need for testing."
+      ],
+      "answer": "It gives the model clearer expectations and reduces ambiguity.",
+      "weight": 1
+    },
+    {
+      "id": "AL11",
+      "q": "A 200-page technical document is summarized in one pass, but important definitions near the middle are missing. Which workflow is most appropriate?",
+      "options": [
+        "Divide the document into meaningful sections, summarize them, and verify the combined result.",
+        "Ask the model to invent missing definitions.",
+        "Remove headings before processing.",
+        "Use a shorter prompt with no document context."
+      ],
+      "answer": "Divide the document into meaningful sections, summarize them, and verify the combined result.",
+      "weight": 1
+    },
+    {
+      "id": "AL12",
+      "q": "A model receives a prompt containing more information than it can effectively use. Which outcome is possible even if the input is technically accepted?",
+      "options": [
+        "The model may underuse or lose track of some information.",
+        "The model automatically stores every detail permanently.",
+        "The model becomes a relational database.",
+        "The model must reject every long input."
+      ],
+      "answer": "The model may underuse or lose track of some information.",
+      "weight": 1
+    },
+    {
+      "id": "AL13",
+      "q": "A student asks an AI assistant to compare four research papers. The response cites only two papers and appears to mix findings. What is the best first step?",
+      "options": [
+        "Assume all four papers support the same conclusion.",
+        "Map each claim to the correct paper and verify the cited passages.",
+        "Ask the model to increase confidence.",
+        "Remove the citations to make the answer simpler."
+      ],
+      "answer": "Map each claim to the correct paper and verify the cited passages.",
+      "weight": 1
+    },
+    {
+      "id": "AL14",
+      "q": "An AI assistant invents a plausible journal article, complete with author names and a DOI-like string. What does this most clearly demonstrate?",
+      "options": [
+        "Tokenization",
+        "Hallucination",
+        "Classification",
+        "Fine-tuning"
+      ],
+      "answer": "Hallucination",
+      "weight": 1
+    },
+    {
+      "id": "AL15",
+      "q": "A policy chatbot receives a question that is not supported by its approved documents. Which behavior is safest?",
+      "options": [
+        "Provide the most likely answer from general knowledge.",
+        "State that the available sources do not support an answer and route the question if necessary.",
+        "Create a citation that looks realistic.",
+        "Use an unrelated policy as evidence."
+      ],
+      "answer": "State that the available sources do not support an answer and route the question if necessary.",
+      "weight": 1
+    },
+    {
+      "id": "AL16",
+      "q": "An AI assistant gives two different answers to the same question after small wording changes. What should the user conclude?",
+      "options": [
+        "At least one answer should be treated as needing verification.",
+        "The longer answer is automatically correct.",
+        "The latest answer must be correct.",
+        "Variation proves that neither answer can ever be useful."
+      ],
+      "answer": "At least one answer should be treated as needing verification.",
+      "weight": 1
+    },
+    {
+      "id": "AL17",
+      "q": "A company asks an AI system to generate customer refund decisions. Some cases involve legal exceptions and high-value claims. What is the most appropriate design?",
+      "options": [
+        "Allow fully automatic decisions for all cases.",
+        "Use AI for assistance, with policy checks and human review for high-risk or exceptional cases.",
+        "Hide the model's uncertainty from reviewers.",
+        "Remove exception handling to simplify deployment."
+      ],
+      "answer": "Use AI for assistance, with policy checks and human review for high-risk or exceptional cases.",
+      "weight": 1
+    },
+    {
+      "id": "AL18",
+      "q": "An employee pastes a confidential architecture diagram and credentials into a public chatbot. Which concern is most serious?",
+      "options": [
+        "The response may be too short.",
+        "Confidential information and credentials may be exposed or mishandled.",
+        "The diagram may lose its original colors.",
+        "The chatbot may not recognize the file name."
+      ],
+      "answer": "Confidential information and credentials may be exposed or mishandled.",
+      "weight": 1
+    },
+    {
+      "id": "AL19",
+      "q": "A company wants to use an AI tool with customer data. Which control is most appropriate before adoption?",
+      "options": [
+        "Confirm approved data handling, retention, access, and contractual requirements.",
+        "Upload a small amount of real customer data without review.",
+        "Assume all public tools provide enterprise confidentiality.",
+        "Remove only the customer names and ignore other identifiers."
+      ],
+      "answer": "Confirm approved data handling, retention, access, and contractual requirements.",
+      "weight": 1
+    },
+    {
+      "id": "AL20",
+      "q": "An AI hiring model shows similar overall accuracy across groups but rejects qualified candidates from one group at a higher rate. What should the organization do?",
+      "options": [
+        "Treat overall accuracy as sufficient.",
+        "Examine group-specific error rates, selection outcomes, and possible causes.",
+        "Increase the model's response length.",
+        "Remove demographic analysis from evaluation."
+      ],
+      "answer": "Examine group-specific error rates, selection outcomes, and possible causes.",
+      "weight": 1
+    },
+    {
+      "id": "AL21",
+      "q": "Historical hiring data reflects unequal access to opportunities. A model trained on it reproduces the same pattern. What does this illustrate?",
+      "options": [
+        "More historical data automatically removes bias.",
+        "Training data can encode and reproduce historical inequities.",
+        "Bias exists only in prompts.",
+        "A model cannot learn patterns from historical records."
+      ],
+      "answer": "Training data can encode and reproduce historical inequities.",
+      "weight": 1
+    },
+    {
+      "id": "AL22",
+      "q": "A team evaluates an AI system only on examples it saw during development. Why is this insufficient?",
+      "options": [
+        "It may not reveal how the system generalizes to unseen situations.",
+        "Training examples are always irrelevant.",
+        "It guarantees a low score.",
+        "It tests privacy more effectively than separate security testing."
+      ],
+      "answer": "It may not reveal how the system generalizes to unseen situations.",
+      "weight": 1
+    },
+    {
+      "id": "AL23",
+      "q": "An AI model performs well on average but fails badly on rare safety-critical cases. Which evaluation principle is most relevant?",
+      "options": [
+        "Evaluate only the average score.",
+        "Evaluate important subgroups, edge cases, and high-impact failure modes.",
+        "Remove rare cases from the test set.",
+        "Prefer fluent outputs over correct outputs."
+      ],
+      "answer": "Evaluate important subgroups, edge cases, and high-impact failure modes.",
+      "weight": 1
+    },
+    {
+      "id": "AL24",
+      "q": "A company wants to reduce bias in an image-generation system. Which action is most useful?",
+      "options": [
+        "Inspect training data and outputs for stereotypes and unequal representation.",
+        "Increase image resolution only.",
+        "Remove all evaluation criteria.",
+        "Ask the model to produce longer captions."
+      ],
+      "answer": "Inspect training data and outputs for stereotypes and unequal representation.",
+      "weight": 1
+    },
+    {
+      "id": "AL25",
+      "q": "A model's output changes after the underlying data pipeline is modified. What should a responsible team do?",
+      "options": [
+        "Track the change, test the new pipeline, and compare performance and risks.",
+        "Assume the model is unaffected by data changes.",
+        "Delete the evaluation records.",
+        "Deploy immediately because the change was automated."
+      ],
+      "answer": "Track the change, test the new pipeline, and compare performance and risks.",
+      "weight": 1
+    },
+    {
+      "id": "AL26",
+      "q": "A user wants an AI assistant to return exactly three fields: risk, evidence, and recommended action. Which prompt element is most important?",
+      "options": [
+        "Output schema or format specification",
+        "More decorative language",
+        "Model retraining instruction",
+        "Screen resolution"
+      ],
+      "answer": "Output schema or format specification",
+      "weight": 1
+    },
+    {
+      "id": "AL27",
+      "q": "A RAG assistant retrieves documents that contain the correct policy but also several outdated versions. What is the key risk?",
+      "options": [
+        "The model may combine conflicting versions or select the wrong policy.",
+        "Retrieval always improves accuracy regardless of document quality.",
+        "The model will automatically delete old documents.",
+        "Outdated documents cannot affect generation."
+      ],
+      "answer": "The model may combine conflicting versions or select the wrong policy.",
+      "weight": 1
+    },
+    {
+      "id": "AL28",
+      "q": "A company updates its safety procedure but the retrieval index is not refreshed. What is the likely result?",
+      "options": [
+        "The assistant may continue grounding answers in the older procedure.",
+        "The model automatically learns the update from the file name.",
+        "The context window becomes unlimited.",
+        "The assistant will always refuse to answer."
+      ],
+      "answer": "The assistant may continue grounding answers in the older procedure.",
+      "weight": 1
+    },
+    {
+      "id": "AL29",
+      "q": "A RAG system retrieves relevant passages but the generated answer adds a requirement not present in any passage. Which improvement is most appropriate?",
+      "options": [
+        "Require claim-level grounding and allow the system to abstain when evidence is insufficient.",
+        "Increase creativity settings without evaluation.",
+        "Remove source citations.",
+        "Ask the model to infer additional requirements."
+      ],
+      "answer": "Require claim-level grounding and allow the system to abstain when evidence is insufficient.",
+      "weight": 1
+    },
+    {
+      "id": "AL30",
+      "q": "A university chatbot must answer questions using only approved course regulations. Which architecture best supports this requirement?",
+      "options": [
+        "Retrieval from approved documents with source attribution and unsupported-answer handling.",
+        "A model that relies only on general pretraining.",
+        "A system that retrieves random web pages.",
+        "A chatbot that suppresses document metadata."
+      ],
+      "answer": "Retrieval from approved documents with source attribution and unsupported-answer handling.",
+      "weight": 1
+    },
+    {
+      "id": "AL31",
+      "q": "An AI agent receives a goal, creates a plan, calls tools, observes results, and revises the next step. What capability is demonstrated?",
+      "options": [
+        "Static text completion",
+        "Goal-directed multi-step action",
+        "File compression",
+        "Simple keyword matching"
+      ],
+      "answer": "Goal-directed multi-step action",
+      "weight": 1
+    },
+    {
+      "id": "AL32",
+      "q": "An agent can send emails, update records, and approve payments. Which design principle is most important?",
+      "options": [
+        "Give it unrestricted access to maximize autonomy.",
+        "Use least privilege, approval gates, logging, and monitoring.",
+        "Allow it to modify its own permissions.",
+        "Disable authentication for internal users."
+      ],
+      "answer": "Use least privilege, approval gates, logging, and monitoring.",
+      "weight": 1
+    },
+    {
+      "id": "AL33",
+      "q": "A travel-booking agent finds a suitable flight but the fare changes before purchase. What should the agent do?",
+      "options": [
+        "Complete the booking silently at any price.",
+        "Re-check the price and request confirmation when the change affects the user's decision.",
+        "Assume the earlier price remains valid.",
+        "Cancel all future searches."
+      ],
+      "answer": "Re-check the price and request confirmation when the change affects the user's decision.",
+      "weight": 1
+    },
+    {
+      "id": "AL34",
+      "q": "An AI agent is asked to prepare a market report. It searches, compares sources, identifies gaps, and drafts a report. Which step is most important before final delivery?",
+      "options": [
+        "Verify important claims and ensure the report reflects the requested scope.",
+        "Remove all source links.",
+        "Assume the first retrieved source is authoritative.",
+        "Allow the agent to publish without review."
+      ],
+      "answer": "Verify important claims and ensure the report reflects the requested scope.",
+      "weight": 1
+    },
+    {
+      "id": "AL35",
+      "q": "A coding assistant generates a database query that runs successfully but exposes records belonging to other users. What failed?",
+      "options": [
+        "Syntax parsing only",
+        "Authorization and data-access reasoning",
+        "Tokenization",
+        "Text summarization"
+      ],
+      "answer": "Authorization and data-access reasoning",
+      "weight": 1
+    },
+    {
+      "id": "AL36",
+      "q": "A developer asks AI to review a payment-processing function. The assistant reports no vulnerabilities, but no security tests were run. What is the correct conclusion?",
+      "options": [
+        "No vulnerabilities exist.",
+        "The result is only one input to security assurance and requires independent testing.",
+        "AI review replaces penetration testing.",
+        "Payment code cannot be reviewed by humans."
+      ],
+      "answer": "The result is only one input to security assurance and requires independent testing.",
+      "weight": 1
+    },
+    {
+      "id": "AL37",
+      "q": "A model achieves very high training accuracy and substantially lower validation accuracy. Which explanation is most likely?",
+      "options": [
+        "Overfitting",
+        "Encryption",
+        "Retrieval",
+        "Tokenization"
+      ],
+      "answer": "Overfitting",
+      "weight": 1
+    },
+    {
+      "id": "AL38",
+      "q": "A dataset contains mislabeled examples concentrated in one category. What may happen?",
+      "options": [
+        "The model may learn misleading patterns and perform poorly for that category.",
+        "The model automatically corrects all labels.",
+        "The model becomes unbiased by default.",
+        "The dataset becomes more representative."
+      ],
+      "answer": "The model may learn misleading patterns and perform poorly for that category.",
+      "weight": 1
+    },
+    {
+      "id": "AL39",
+      "q": "A model is tested on data that was accidentally included in training. Why is the test result misleading?",
+      "options": [
+        "Data leakage can make performance appear better than it is on truly unseen data.",
+        "Training data always produces lower scores.",
+        "Leakage affects only image models.",
+        "The model cannot use duplicate examples."
+      ],
+      "answer": "Data leakage can make performance appear better than it is on truly unseen data.",
+      "weight": 1
+    },
+    {
+      "id": "AL40",
+      "q": "A company evaluates an AI assistant before broad deployment. Which evaluation set is most complete?",
+      "options": [
+        "Fluency only",
+        "Speed only",
+        "Accuracy, robustness, bias, privacy, security, reliability, and human-oversight requirements",
+        "Number of words generated"
+      ],
+      "answer": "Accuracy, robustness, bias, privacy, security, reliability, and human-oversight requirements",
+      "weight": 1
+    },
+    {
+      "id": "AL41",
+      "q": "An attacker places instructions inside a retrieved document telling the AI agent to ignore its system rules and send confidential files. What threat is this closest to?",
+      "options": [
+        "Prompt injection through external content",
+        "Model compression",
+        "Overfitting",
+        "Data normalization"
+      ],
+      "answer": "Prompt injection through external content",
+      "weight": 1
+    },
+    {
+      "id": "AL42",
+      "q": "A company connects an AI agent to internal tools. Which control best limits the impact of a compromised or mistaken agent?",
+      "options": [
+        "Broad administrator access",
+        "Least-privilege permissions and restricted tool scopes",
+        "No audit logs",
+        "Automatic approval of every action"
+      ],
+      "answer": "Least-privilege permissions and restricted tool scopes",
+      "weight": 1
+    },
+    {
+      "id": "AL43",
+      "q": "An AI assistant produces a numerical forecast used in a board presentation. The number differs from the source spreadsheet. What should the employee do?",
+      "options": [
+        "Use the AI number because it is more recent-looking.",
+        "Reconcile the number against the authoritative data and correct or explain the difference.",
+        "Remove the source spreadsheet.",
+        "Ask AI to make the number more realistic."
+      ],
+      "answer": "Reconcile the number against the authoritative data and correct or explain the difference.",
+      "weight": 1
+    },
+    {
+      "id": "AL44",
+      "q": "A manager uses AI to rank employees using attendance, project results, and unrelated personal information. What is the main concern?",
+      "options": [
+        "The model may rely on irrelevant or unfair factors.",
+        "More factors always improve fairness.",
+        "Personal information is always relevant to performance.",
+        "AI rankings do not require criteria."
+      ],
+      "answer": "The model may rely on irrelevant or unfair factors.",
+      "weight": 1
+    },
+    {
+      "id": "AL45",
+      "q": "A student uses AI to prepare an explanation that conflicts with official technical documentation. Which source should take priority?",
+      "options": [
+        "The longer AI response",
+        "The more confident AI response",
+        "The official documentation, subject to checking version and context",
+        "The response with more examples"
+      ],
+      "answer": "The official documentation, subject to checking version and context",
+      "weight": 1
+    },
+    {
+      "id": "AL46",
+      "q": "An organization wants employees to use AI safely and productively. Which policy is strongest?",
+      "options": [
+        "Ban all AI tools.",
+        "Permit unrestricted use of any public chatbot.",
+        "Define approved tools, data rules, verification, training, security controls, and escalation paths.",
+        "Allow AI to make all high-impact decisions independently."
+      ],
+      "answer": "Define approved tools, data rules, verification, training, security controls, and escalation paths.",
+      "weight": 1
+    },
+    {
+      "id": "AL47",
+      "q": "A model is accurate in a laboratory test but performs poorly after deployment because user inputs differ from the test data. What should the team investigate?",
+      "options": [
+        "Distribution shift and whether evaluation reflects real-world use.",
+        "Whether the model should generate longer answers.",
+        "Whether all test data should be deleted.",
+        "Whether deployment makes models incapable of learning patterns."
+      ],
+      "answer": "Distribution shift and whether evaluation reflects real-world use.",
+      "weight": 1
+    },
+    {
+      "id": "AL48",
+      "q": "A company wants an AI assistant to answer only when evidence is sufficient. Which behavior should be explicitly designed and evaluated?",
+      "options": [
+        "Confident guessing",
+        "Abstention or escalation when evidence is missing or conflicting",
+        "Maximum response length",
+        "Automatic acceptance of retrieved text"
+      ],
+      "answer": "Abstention or escalation when evidence is missing or conflicting",
+      "weight": 1
+    },
+    {
+      "id": "AL49",
+      "q": "An AI-generated report includes a correct conclusion but unsupported intermediate reasoning. Why does this matter?",
+      "options": [
+        "Unsupported reasoning can make the conclusion difficult to trust or reproduce.",
+        "Correct conclusions never need evidence.",
+        "Intermediate reasoning is always irrelevant.",
+        "A fluent explanation is sufficient proof."
+      ],
+      "answer": "Unsupported reasoning can make the conclusion difficult to trust or reproduce.",
+      "weight": 1
+    },
+    {
+      "id": "AL50",
+      "q": "Before deploying an AI system that affects customers, what is the most appropriate final step?",
+      "options": [
+        "Conduct documented testing, review risks, define monitoring, and establish human accountability.",
+        "Deploy first and investigate only after complaints.",
+        "Measure only response speed.",
+        "Remove all human escalation routes."
+      ],
+      "answer": "Conduct documented testing, review risks, define monitoring, and establish human accountability.",
+      "weight": 1
+    }
   ],
   "debugmcq": [
-    { "id": "DM1", "tag": "C — String Parsing with Boundaries", "q": "The function should return the first character that appears exactly twice in a string. If no such character exists, return '\\0'. Identify and correct the logical issue in the code.", "code": "char firstRepeated(string s) {\n    unordered_map<char,int> freq;\n    for(char ch : s) freq[ch]++;\n    for(char ch : s)\n        if(freq[ch] == 2)\n            return ch;\n    return '\\0';\n}", "options": ["Replace freq[ch] == 2 with freq[ch] > 1", "The function is correct for the stated requirement", "Iterate over the map instead of the string", "Sort the string before counting"], "answer": "The function is correct for the stated requirement", "weight": 1 },
-    { "id": "DM2", "tag": "C — Array Rotation", "q": "The function should rotate an array to the right by k positions. For k greater than the array length, it should still work correctly. Identify the issue.", "code": "void rotate(vector<int>& a, int k) {\n    k = k % a.size();\n    reverse(a.begin(), a.end());\n    reverse(a.begin(), a.begin()+k);\n    reverse(a.begin()+k, a.end());\n}", "options": ["k must be reduced using a.size()-1", "The reversal sequence is invalid for right rotation", "The array must be sorted first", "reverse cannot be used with vectors"], "answer": "The reversal sequence is invalid for right rotation", "weight": 1 },
-    { "id": "DM3", "tag": "C++ — Binary Search First Occurrence", "q": "The function should return the first index of key in a sorted array containing duplicates. It currently returns an arbitrary matching index. What change is required?", "code": "int firstPos(vector<int>& a, int key) {\n    int l=0, r=a.size()-1, ans=-1;\n    while(l<=r) {\n        int mid=l+(r-l)/2;\n        if(a[mid]==key) {\n            ans=mid;\n            l=mid+1;\n        } else if(a[mid]<key) l=mid+1;\n        else r=mid-1;\n    }\n    return ans;\n}", "options": ["Change l = mid + 1 to r = mid - 1 after a match", "Change r = mid - 1 to l = mid", "Return mid immediately", "Start l at 1"], "answer": "Change l = mid + 1 to r = mid - 1 after a match", "weight": 1 },
-    { "id": "DM4", "tag": "C++ — Pointer Lifetime", "q": "The function returns a pointer to the maximum element. Identify the issue.", "code": "int* maxElement(vector<int> a) {\n    int* p = &a[0];\n    for(int i=1;i<a.size();i++)\n        if(a[i] > *p) p=&a[i];\n    return p;\n}", "options": ["The pointer must be initialized to NULL", "The vector is passed by value, so the returned pointer refers to destroyed storage", "p must be a double pointer", "The comparison must use >= only"], "answer": "The vector is passed by value, so the returned pointer refers to destroyed storage", "weight": 1 },
-    { "id": "DM5", "tag": "C++ — Linked List Deletion", "q": "The function deletes the first node containing key. It crashes when the head itself contains key. Identify the missing case.", "code": "void deleteKey(Node*& head, int key) {\n    Node* cur=head;\n    while(cur && cur->next) {\n        if(cur->next->data==key) {\n            Node* t=cur->next;\n            cur->next=t->next;\n            delete t;\n            return;\n        }\n        cur=cur->next;\n    }\n}", "options": ["Handle deletion when head is NULL only", "Handle deletion of head before traversing from head->next", "Move cur two nodes at a time", "Delete cur instead of cur->next"], "answer": "Handle deletion of head before traversing from head->next", "weight": 1 },
-    { "id": "DM6", "tag": "C++ — Stack Underflow", "q": "The function evaluates a postfix expression. It sometimes crashes on malformed input. Which validation is required before applying an operator?", "code": "int apply(stack<int>& st, char op) {\n    int b=st.top(); st.pop();\n    int a=st.top(); st.pop();\n    return a+b;\n}", "options": ["Check that at least two operands exist before popping", "Check that the stack is sorted", "Push zero before every operator", "Replace stack with queue"], "answer": "Check that at least two operands exist before popping", "weight": 1 },
-    { "id": "DM7", "tag": "C++ — Tree Diameter", "q": "A binary-tree diameter implementation returns the longest path measured in edges, but the code returns a value one greater than expected. Identify the likely issue.", "code": "int diameter(Node* root) {\n    if(!root) return 0;\n    return max(height(root->left)+height(root->right)+1,\n        max(diameter(root->left), diameter(root->right)));\n}", "options": ["The diameter formula counts nodes while the expected measure counts edges", "height must always return -1", "The left subtree must be ignored", "diameter cannot be recursive"], "answer": "The diameter formula counts nodes while the expected measure counts edges", "weight": 1 },
-    { "id": "DM8", "tag": "C++ — BST Validation", "q": "The following validation incorrectly accepts some invalid BSTs. What is the robust correction?", "code": "bool valid(Node* root, int low, int high) {\n    if(!root) return true;\n    if(root->data <= low || root->data >= high) return false;\n    return valid(root->left, low, root->data) &&\n           valid(root->right, root->data, high);\n}", "options": ["Use a wider numeric type or optional bounds to avoid sentinel collisions", "Replace && with ||", "Remove all bounds", "Compare only each node with its parent"], "answer": "Use a wider numeric type or optional bounds to avoid sentinel collisions", "weight": 1 },
-    { "id": "DM9", "tag": "C++ — BFS Distance", "q": "A BFS shortest-distance function uses a queue but assigns distance when a node is removed. It may enqueue the same vertex many times. What is the best correction?", "code": "for(int v : adj[u]) {\n    if(dist[v] == -1) {\n        q.push(v);\n    }\n}", "options": ["Mark dist[v] when enqueueing, before pushing it", "Mark dist[v] only after the entire BFS", "Set every distance to zero", "Use DFS instead"], "answer": "Mark dist[v] when enqueueing, before pushing it", "weight": 1 },
-    { "id": "DM10", "tag": "C++ — DFS Backtracking", "q": "A recursive path-search function leaves visited nodes marked after returning, causing valid paths to be skipped. What should be considered?", "code": "bool path(Node* u) {\n    visited[u]=true;\n    for(Node* v : adj[u])\n        if(!visited[v] && path(v)) return true;\n    return false;\n}", "options": ["Always unmark visited on return, regardless of graph type", "Distinguish global graph visitation from path-local backtracking state", "Remove the visited array", "Mark only the destination"], "answer": "Distinguish global graph visitation from path-local backtracking state", "weight": 1 },
-    { "id": "DM11", "tag": "C++ — Grid DP Obstacles", "q": "A robot must count paths through a grid containing blocked cells marked -1. The implementation adds paths from blocked cells. What is the required rule?", "code": "if(grid[i][j] == -1)\n    dp[i][j] = 1;\nelse\n    dp[i][j] = dp[i-1][j] + dp[i][j-1];", "options": ["Set blocked-cell paths to 0 and do not use them in transitions", "Set blocked-cell paths to 1", "Skip only the first row", "Replace addition with multiplication"], "answer": "Set blocked-cell paths to 0 and do not use them in transitions", "weight": 1 },
-    { "id": "DM12", "tag": "C++ — LCS Reconstruction", "q": "The LCS length is correct, but reconstruction produces a reversed string. What should be done after tracing from dp[m][n]?", "options": ["Reverse the reconstructed sequence before returning it", "Sort the reconstructed sequence", "Add every unmatched character", "Use the DP table's first row only"], "answer": "Reverse the reconstructed sequence before returning it", "weight": 1 },
-    { "id": "DM13", "tag": "Java — Mutable String Keys", "q": "A developer stores objects as keys in a HashMap. After inserting a key, a field used by hashCode() is changed. Lookups may fail. Why?", "options": ["HashMap keys must remain stable with respect to equals() and hashCode() while stored", "HashMap supports only String keys", "hashCode() must return a random value", "Changing a key always updates its bucket automatically"], "answer": "HashMap keys must remain stable with respect to equals() and hashCode() while stored", "weight": 1 },
-    { "id": "DM14", "tag": "Java — Integer Comparison", "q": "A program compares two Integer objects using == and gets inconsistent results for larger values. What is the correct fix?", "options": ["Use == because Integer objects are primitive", "Use equals() for value comparison or unbox safely", "Convert both values to String", "Compare their hash codes"], "answer": "Use equals() for value comparison or unbox safely", "weight": 1 },
-    { "id": "DM15", "tag": "Java — Exception Safety", "q": "A method opens a file and may throw an exception before close() is reached. Which construct is most appropriate?", "options": ["try-with-resources", "A larger finally block without closing", "Ignore the exception", "Open the file repeatedly"], "answer": "try-with-resources", "weight": 1 },
-    { "id": "DM16", "tag": "Java — Concurrent Modification", "q": "A program removes elements from an ArrayList inside an enhanced for-loop and throws ConcurrentModificationException. Which solution is generally valid?", "options": ["Use Iterator.remove() or collect items for removal after iteration", "Replace remove with get", "Catch the exception and continue blindly", "Iterate beyond list.size()"], "answer": "Use Iterator.remove() or collect items for removal after iteration", "weight": 1 },
-    { "id": "DM17", "tag": "Java — Recursion Stack", "q": "A recursive function processes a linked list but causes StackOverflowError for very large lists. Which improvement is most appropriate when recursion is unnecessary?", "options": ["Convert the traversal to an iterative loop", "Add more recursive calls", "Increase the number of local variables", "Remove the termination condition"], "answer": "Convert the traversal to an iterative loop", "weight": 1 },
-    { "id": "DM18", "tag": "Java — HashMap Frequency", "q": "A frequency counter uses get(x) + 1 without checking whether x exists. What is the safest concise correction?", "options": ["map.put(x, map.getOrDefault(x, 0) + 1)", "map.put(x, map.get(x) - 1)", "map.clear() before each insertion", "Use containsKey(x) and never update existing values"], "answer": "map.put(x, map.getOrDefault(x, 0) + 1)", "weight": 1 },
-    { "id": "DM19", "tag": "Java — Binary Search Overflow", "q": "A binary search computes mid as (low + high) / 2. With very large indexes, the sum may overflow. What is the safer expression?", "options": ["low + (high - low) / 2", "(low * high) / 2", "high + low * 2", "low - high / 2"], "answer": "low + (high - low) / 2", "weight": 1 },
-    { "id": "DM20", "tag": "Java — Two-Dimensional Arrays", "q": "A Java matrix may be jagged, meaning rows have different lengths. Which loop is correct?", "options": ["j < matrix.length for every row", "j < matrix[i].length for each row i", "j <= matrix[i].length", "j < matrix[0].length for all rows"], "answer": "j < matrix[i].length for each row i", "weight": 1 },
-    { "id": "DM21", "tag": "Advanced — Sliding Window", "q": "A function finds the longest substring without repeating characters but moves the left pointer backward when a duplicate is found. What invariant should be maintained?", "options": ["The left pointer should never move backward; it should advance beyond the previous occurrence", "The window must always have even length", "The right pointer must reset to zero", "Every duplicate should be deleted from the string"], "answer": "The left pointer should never move backward; it should advance beyond the previous occurrence", "weight": 1 },
-    { "id": "DM22", "tag": "Advanced — Monotonic Stack", "q": "A next-greater-element solution pops smaller values from a stack. What must be true about the stack after each iteration?", "options": ["It maintains a monotonic order suitable for future greater-element queries", "It contains every array element exactly once forever", "It must always be sorted in ascending order regardless of the problem", "It stores only negative values"], "answer": "It maintains a monotonic order suitable for future greater-element queries", "weight": 1 },
-    { "id": "DM23", "tag": "Advanced — Dijkstra Stale Entries", "q": "A priority queue may contain multiple distances for one vertex. Which condition prevents processing stale entries?", "options": ["Skip when poppedDistance != dist[node]", "Reset dist[node] to zero", "Process only the largest distance", "Clear the queue after every edge"], "answer": "Skip when poppedDistance != dist[node]", "weight": 1 },
-    { "id": "DM24", "tag": "Advanced — Union Find", "q": "A Disjoint Set Union structure becomes slow because find() follows long parent chains. Which optimizations are appropriate?", "options": ["Path compression and union by rank/size", "Sorting all vertices after every union", "Rebuilding the graph after every find", "Removing parent pointers"], "answer": "Path compression and union by rank/size", "weight": 1 },
-    { "id": "DM25", "tag": "Advanced — Topological Sort", "q": "A topological sort using Kahn's algorithm processes fewer than V vertices. What does this indicate?", "options": ["The graph contains a directed cycle or the input graph is not fully represented", "The graph must be complete", "Every vertex has indegree zero", "BFS has failed because queues cannot process DAGs"], "answer": "The graph contains a directed cycle or the input graph is not fully represented", "weight": 1 },
-    { "id": "DM26", "tag": "Advanced — Merge Sort", "q": "A merge function copies temporary values back using arr[k] = temp[k]. The merged segment starts at l rather than zero. What is the correction?", "options": ["Use temp[k-l] when writing back", "Use temp[k+l]", "Always write to arr[0]", "Copy only the first half"], "answer": "Use temp[k-l] when writing back", "weight": 1 },
-    { "id": "DM27", "tag": "Advanced — DP Unreachable State", "q": "A minimum-cost DP uses Integer.MAX_VALUE as infinity and computes dp[x] + cost. What can go wrong?", "options": ["Integer overflow can occur; add cost only when dp[x] is reachable", "MAX_VALUE behaves exactly like zero", "The DP becomes greedy automatically", "The array must be sorted"], "answer": "Integer overflow can occur; add cost only when dp[x] is reachable", "weight": 1 },
-    { "id": "DM28", "tag": "Advanced — Memoization Key", "q": "A recursive solution memoizes results for a state described by (index, remainingCapacity), but uses only index as the cache key. What is the consequence?", "options": ["Results for different capacities can overwrite or incorrectly reuse each other", "Memoization becomes more accurate", "The recursion becomes iterative", "The capacity is automatically inferred"], "answer": "Results for different capacities can overwrite or incorrectly reuse each other", "weight": 1 },
-    { "id": "DM29", "tag": "Advanced — Graph Recursion", "q": "A recursive DFS on a graph uses visited[node] = true only after exploring all neighbors. What is the principal risk?", "options": ["Cycles can cause repeated recursion or infinite recursion before the node is marked", "DFS becomes breadth-first", "The graph becomes disconnected", "The stack is automatically cleared"], "answer": "Cycles can cause repeated recursion or infinite recursion before the node is marked", "weight": 1 },
-    { "id": "DM30", "tag": "Advanced — Debugging Strategy", "q": "A corrected program passes the sample input but fails on hidden tests. Which debugging sequence is strongest?", "options": ["Test empty, minimum, maximum, duplicate, negative, boundary, and adversarial cases; then inspect invariants", "Increase the code length", "Remove assertions and tests", "Trust the sample because it passed"], "answer": "Test empty, minimum, maximum, duplicate, negative, boundary, and adversarial cases; then inspect invariants", "weight": 1 }
+    {
+      "id": "DM1",
+      "tag": "C — String Parsing with Boundaries",
+      "q": "The function should return the first character that appears exactly twice in a string. If no such character exists, return '\\0'. Identify and correct the logical issue in the code.",
+      "code": "char firstRepeated(string s) {\n    unordered_map<char,int> freq;\n    for(char ch : s) freq[ch]++;\n    for(char ch : s)\n        if(freq[ch] == 2)\n            return ch;\n    return '\\0';\n}",
+      "options": [
+        "Replace freq[ch] == 2 with freq[ch] > 1",
+        "The function is correct for the stated requirement",
+        "Iterate over the map instead of the string",
+        "Sort the string before counting"
+      ],
+      "answer": "The function is correct for the stated requirement",
+      "weight": 1
+    },
+    {
+      "id": "DM2",
+      "tag": "C — Array Rotation",
+      "q": "The function should rotate an array to the right by k positions. For k greater than the array length, it should still work correctly. Identify the issue.",
+      "code": "void rotate(vector<int>& a, int k) {\n    k = k % a.size();\n    reverse(a.begin(), a.end());\n    reverse(a.begin(), a.begin()+k);\n    reverse(a.begin()+k, a.end());\n}",
+      "options": [
+        "k must be reduced using a.size()-1",
+        "The reversal sequence is invalid for right rotation",
+        "The array must be sorted first",
+        "reverse cannot be used with vectors"
+      ],
+      "answer": "The reversal sequence is invalid for right rotation",
+      "weight": 1
+    },
+    {
+      "id": "DM3",
+      "tag": "C++ — Binary Search First Occurrence",
+      "q": "The function should return the first index of key in a sorted array containing duplicates. It currently returns an arbitrary matching index. What change is required?",
+      "code": "int firstPos(vector<int>& a, int key) {\n    int l=0, r=a.size()-1, ans=-1;\n    while(l<=r) {\n        int mid=l+(r-l)/2;\n        if(a[mid]==key) {\n            ans=mid;\n            l=mid+1;\n        } else if(a[mid]<key) l=mid+1;\n        else r=mid-1;\n    }\n    return ans;\n}",
+      "options": [
+        "Change l = mid + 1 to r = mid - 1 after a match",
+        "Change r = mid - 1 to l = mid",
+        "Return mid immediately",
+        "Start l at 1"
+      ],
+      "answer": "Change l = mid + 1 to r = mid - 1 after a match",
+      "weight": 1
+    },
+    {
+      "id": "DM4",
+      "tag": "C++ — Pointer Lifetime",
+      "q": "The function returns a pointer to the maximum element. Identify the issue.",
+      "code": "int* maxElement(vector<int> a) {\n    int* p = &a[0];\n    for(int i=1;i<a.size();i++)\n        if(a[i] > *p) p=&a[i];\n    return p;\n}",
+      "options": [
+        "The pointer must be initialized to NULL",
+        "The vector is passed by value, so the returned pointer refers to destroyed storage",
+        "p must be a double pointer",
+        "The comparison must use >= only"
+      ],
+      "answer": "The vector is passed by value, so the returned pointer refers to destroyed storage",
+      "weight": 1
+    },
+    {
+      "id": "DM5",
+      "tag": "C++ — Linked List Deletion",
+      "q": "The function deletes the first node containing key. It crashes when the head itself contains key. Identify the missing case.",
+      "code": "void deleteKey(Node*& head, int key) {\n    Node* cur=head;\n    while(cur && cur->next) {\n        if(cur->next->data==key) {\n            Node* t=cur->next;\n            cur->next=t->next;\n            delete t;\n            return;\n        }\n        cur=cur->next;\n    }\n}",
+      "options": [
+        "Handle deletion when head is NULL only",
+        "Handle deletion of head before traversing from head->next",
+        "Move cur two nodes at a time",
+        "Delete cur instead of cur->next"
+      ],
+      "answer": "Handle deletion of head before traversing from head->next",
+      "weight": 1
+    },
+    {
+      "id": "DM6",
+      "tag": "C++ — Stack Underflow",
+      "q": "The function evaluates a postfix expression. It sometimes crashes on malformed input. Which validation is required before applying an operator?",
+      "code": "int apply(stack<int>& st, char op) {\n    int b=st.top(); st.pop();\n    int a=st.top(); st.pop();\n    return a+b;\n}",
+      "options": [
+        "Check that at least two operands exist before popping",
+        "Check that the stack is sorted",
+        "Push zero before every operator",
+        "Replace stack with queue"
+      ],
+      "answer": "Check that at least two operands exist before popping",
+      "weight": 1
+    },
+    {
+      "id": "DM7",
+      "tag": "C++ — Tree Diameter",
+      "q": "A binary-tree diameter implementation returns the longest path measured in edges, but the code returns a value one greater than expected. Identify the likely issue.",
+      "code": "int diameter(Node* root) {\n    if(!root) return 0;\n    return max(height(root->left)+height(root->right)+1,\n        max(diameter(root->left), diameter(root->right)));\n}",
+      "options": [
+        "The diameter formula counts nodes while the expected measure counts edges",
+        "height must always return -1",
+        "The left subtree must be ignored",
+        "diameter cannot be recursive"
+      ],
+      "answer": "The diameter formula counts nodes while the expected measure counts edges",
+      "weight": 1
+    },
+    {
+      "id": "DM8",
+      "tag": "C++ — BST Validation",
+      "q": "The following validation incorrectly accepts some invalid BSTs. What is the robust correction?",
+      "code": "bool valid(Node* root, int low, int high) {\n    if(!root) return true;\n    if(root->data <= low || root->data >= high) return false;\n    return valid(root->left, low, root->data) &&\n           valid(root->right, root->data, high);\n}",
+      "options": [
+        "Use a wider numeric type or optional bounds to avoid sentinel collisions",
+        "Replace && with ||",
+        "Remove all bounds",
+        "Compare only each node with its parent"
+      ],
+      "answer": "Use a wider numeric type or optional bounds to avoid sentinel collisions",
+      "weight": 1
+    },
+    {
+      "id": "DM9",
+      "tag": "C++ — BFS Distance",
+      "q": "A BFS shortest-distance function uses a queue but assigns distance when a node is removed. It may enqueue the same vertex many times. What is the best correction?",
+      "code": "for(int v : adj[u]) {\n    if(dist[v] == -1) {\n        q.push(v);\n    }\n}",
+      "options": [
+        "Mark dist[v] when enqueueing, before pushing it",
+        "Mark dist[v] only after the entire BFS",
+        "Set every distance to zero",
+        "Use DFS instead"
+      ],
+      "answer": "Mark dist[v] when enqueueing, before pushing it",
+      "weight": 1
+    },
+    {
+      "id": "DM10",
+      "tag": "C++ — DFS Backtracking",
+      "q": "A recursive path-search function leaves visited nodes marked after returning, causing valid paths to be skipped. What should be considered?",
+      "code": "bool path(Node* u) {\n    visited[u]=true;\n    for(Node* v : adj[u])\n        if(!visited[v] && path(v)) return true;\n    return false;\n}",
+      "options": [
+        "Always unmark visited on return, regardless of graph type",
+        "Distinguish global graph visitation from path-local backtracking state",
+        "Remove the visited array",
+        "Mark only the destination"
+      ],
+      "answer": "Distinguish global graph visitation from path-local backtracking state",
+      "weight": 1
+    },
+    {
+      "id": "DM11",
+      "tag": "C++ — Grid DP Obstacles",
+      "q": "A robot must count paths through a grid containing blocked cells marked -1. The implementation adds paths from blocked cells. What is the required rule?",
+      "code": "if(grid[i][j] == -1)\n    dp[i][j] = 1;\nelse\n    dp[i][j] = dp[i-1][j] + dp[i][j-1];",
+      "options": [
+        "Set blocked-cell paths to 0 and do not use them in transitions",
+        "Set blocked-cell paths to 1",
+        "Skip only the first row",
+        "Replace addition with multiplication"
+      ],
+      "answer": "Set blocked-cell paths to 0 and do not use them in transitions",
+      "weight": 1
+    },
+    {
+      "id": "DM12",
+      "tag": "C++ — LCS Reconstruction",
+      "q": "The LCS length is correct, but reconstruction produces a reversed string. What should be done after tracing from dp[m][n]?",
+      "options": [
+        "Reverse the reconstructed sequence before returning it",
+        "Sort the reconstructed sequence",
+        "Add every unmatched character",
+        "Use the DP table's first row only"
+      ],
+      "answer": "Reverse the reconstructed sequence before returning it",
+      "weight": 1
+    },
+    {
+      "id": "DM13",
+      "tag": "Java — Mutable String Keys",
+      "q": "A developer stores objects as keys in a HashMap. After inserting a key, a field used by hashCode() is changed. Lookups may fail. Why?",
+      "options": [
+        "HashMap keys must remain stable with respect to equals() and hashCode() while stored",
+        "HashMap supports only String keys",
+        "hashCode() must return a random value",
+        "Changing a key always updates its bucket automatically"
+      ],
+      "answer": "HashMap keys must remain stable with respect to equals() and hashCode() while stored",
+      "weight": 1
+    },
+    {
+      "id": "DM14",
+      "tag": "Java — Integer Comparison",
+      "q": "A program compares two Integer objects using == and gets inconsistent results for larger values. What is the correct fix?",
+      "options": [
+        "Use == because Integer objects are primitive",
+        "Use equals() for value comparison or unbox safely",
+        "Convert both values to String",
+        "Compare their hash codes"
+      ],
+      "answer": "Use equals() for value comparison or unbox safely",
+      "weight": 1
+    },
+    {
+      "id": "DM15",
+      "tag": "Java — Exception Safety",
+      "q": "A method opens a file and may throw an exception before close() is reached. Which construct is most appropriate?",
+      "options": [
+        "try-with-resources",
+        "A larger finally block without closing",
+        "Ignore the exception",
+        "Open the file repeatedly"
+      ],
+      "answer": "try-with-resources",
+      "weight": 1
+    },
+    {
+      "id": "DM16",
+      "tag": "Java — Concurrent Modification",
+      "q": "A program removes elements from an ArrayList inside an enhanced for-loop and throws ConcurrentModificationException. Which solution is generally valid?",
+      "options": [
+        "Use Iterator.remove() or collect items for removal after iteration",
+        "Replace remove with get",
+        "Catch the exception and continue blindly",
+        "Iterate beyond list.size()"
+      ],
+      "answer": "Use Iterator.remove() or collect items for removal after iteration",
+      "weight": 1
+    },
+    {
+      "id": "DM17",
+      "tag": "Java — Recursion Stack",
+      "q": "A recursive function processes a linked list but causes StackOverflowError for very large lists. Which improvement is most appropriate when recursion is unnecessary?",
+      "options": [
+        "Convert the traversal to an iterative loop",
+        "Add more recursive calls",
+        "Increase the number of local variables",
+        "Remove the termination condition"
+      ],
+      "answer": "Convert the traversal to an iterative loop",
+      "weight": 1
+    },
+    {
+      "id": "DM18",
+      "tag": "Java — HashMap Frequency",
+      "q": "A frequency counter uses get(x) + 1 without checking whether x exists. What is the safest concise correction?",
+      "options": [
+        "map.put(x, map.getOrDefault(x, 0) + 1)",
+        "map.put(x, map.get(x) - 1)",
+        "map.clear() before each insertion",
+        "Use containsKey(x) and never update existing values"
+      ],
+      "answer": "map.put(x, map.getOrDefault(x, 0) + 1)",
+      "weight": 1
+    },
+    {
+      "id": "DM19",
+      "tag": "Java — Binary Search Overflow",
+      "q": "A binary search computes mid as (low + high) / 2. With very large indexes, the sum may overflow. What is the safer expression?",
+      "options": [
+        "low + (high - low) / 2",
+        "(low * high) / 2",
+        "high + low * 2",
+        "low - high / 2"
+      ],
+      "answer": "low + (high - low) / 2",
+      "weight": 1
+    },
+    {
+      "id": "DM20",
+      "tag": "Java — Two-Dimensional Arrays",
+      "q": "A Java matrix may be jagged, meaning rows have different lengths. Which loop is correct?",
+      "options": [
+        "j < matrix.length for every row",
+        "j < matrix[i].length for each row i",
+        "j <= matrix[i].length",
+        "j < matrix[0].length for all rows"
+      ],
+      "answer": "j < matrix[i].length for each row i",
+      "weight": 1
+    },
+    {
+      "id": "DM21",
+      "tag": "Advanced — Sliding Window",
+      "q": "A function finds the longest substring without repeating characters but moves the left pointer backward when a duplicate is found. What invariant should be maintained?",
+      "options": [
+        "The left pointer should never move backward; it should advance beyond the previous occurrence",
+        "The window must always have even length",
+        "The right pointer must reset to zero",
+        "Every duplicate should be deleted from the string"
+      ],
+      "answer": "The left pointer should never move backward; it should advance beyond the previous occurrence",
+      "weight": 1
+    },
+    {
+      "id": "DM22",
+      "tag": "Advanced — Monotonic Stack",
+      "q": "A next-greater-element solution pops smaller values from a stack. What must be true about the stack after each iteration?",
+      "options": [
+        "It maintains a monotonic order suitable for future greater-element queries",
+        "It contains every array element exactly once forever",
+        "It must always be sorted in ascending order regardless of the problem",
+        "It stores only negative values"
+      ],
+      "answer": "It maintains a monotonic order suitable for future greater-element queries",
+      "weight": 1
+    },
+    {
+      "id": "DM23",
+      "tag": "Advanced — Dijkstra Stale Entries",
+      "q": "A priority queue may contain multiple distances for one vertex. Which condition prevents processing stale entries?",
+      "options": [
+        "Skip when poppedDistance != dist[node]",
+        "Reset dist[node] to zero",
+        "Process only the largest distance",
+        "Clear the queue after every edge"
+      ],
+      "answer": "Skip when poppedDistance != dist[node]",
+      "weight": 1
+    },
+    {
+      "id": "DM24",
+      "tag": "Advanced — Union Find",
+      "q": "A Disjoint Set Union structure becomes slow because find() follows long parent chains. Which optimizations are appropriate?",
+      "options": [
+        "Path compression and union by rank/size",
+        "Sorting all vertices after every union",
+        "Rebuilding the graph after every find",
+        "Removing parent pointers"
+      ],
+      "answer": "Path compression and union by rank/size",
+      "weight": 1
+    },
+    {
+      "id": "DM25",
+      "tag": "Advanced — Topological Sort",
+      "q": "A topological sort using Kahn's algorithm processes fewer than V vertices. What does this indicate?",
+      "options": [
+        "The graph contains a directed cycle or the input graph is not fully represented",
+        "The graph must be complete",
+        "Every vertex has indegree zero",
+        "BFS has failed because queues cannot process DAGs"
+      ],
+      "answer": "The graph contains a directed cycle or the input graph is not fully represented",
+      "weight": 1
+    },
+    {
+      "id": "DM26",
+      "tag": "Advanced — Merge Sort",
+      "q": "A merge function copies temporary values back using arr[k] = temp[k]. The merged segment starts at l rather than zero. What is the correction?",
+      "options": [
+        "Use temp[k-l] when writing back",
+        "Use temp[k+l]",
+        "Always write to arr[0]",
+        "Copy only the first half"
+      ],
+      "answer": "Use temp[k-l] when writing back",
+      "weight": 1
+    },
+    {
+      "id": "DM27",
+      "tag": "Advanced — DP Unreachable State",
+      "q": "A minimum-cost DP uses Integer.MAX_VALUE as infinity and computes dp[x] + cost. What can go wrong?",
+      "options": [
+        "Integer overflow can occur; add cost only when dp[x] is reachable",
+        "MAX_VALUE behaves exactly like zero",
+        "The DP becomes greedy automatically",
+        "The array must be sorted"
+      ],
+      "answer": "Integer overflow can occur; add cost only when dp[x] is reachable",
+      "weight": 1
+    },
+    {
+      "id": "DM28",
+      "tag": "Advanced — Memoization Key",
+      "q": "A recursive solution memoizes results for a state described by (index, remainingCapacity), but uses only index as the cache key. What is the consequence?",
+      "options": [
+        "Results for different capacities can overwrite or incorrectly reuse each other",
+        "Memoization becomes more accurate",
+        "The recursion becomes iterative",
+        "The capacity is automatically inferred"
+      ],
+      "answer": "Results for different capacities can overwrite or incorrectly reuse each other",
+      "weight": 1
+    },
+    {
+      "id": "DM29",
+      "tag": "Advanced — Graph Recursion",
+      "q": "A recursive DFS on a graph uses visited[node] = true only after exploring all neighbors. What is the principal risk?",
+      "options": [
+        "Cycles can cause repeated recursion or infinite recursion before the node is marked",
+        "DFS becomes breadth-first",
+        "The graph becomes disconnected",
+        "The stack is automatically cleared"
+      ],
+      "answer": "Cycles can cause repeated recursion or infinite recursion before the node is marked",
+      "weight": 1
+    },
+    {
+      "id": "DM30",
+      "tag": "Advanced — Debugging Strategy",
+      "q": "A corrected program passes the sample input but fails on hidden tests. Which debugging sequence is strongest?",
+      "options": [
+        "Test empty, minimum, maximum, duplicate, negative, boundary, and adversarial cases; then inspect invariants",
+        "Increase the code length",
+        "Remove assertions and tests",
+        "Trust the sample because it passed"
+      ],
+      "answer": "Test empty, minimum, maximum, duplicate, negative, boundary, and adversarial cases; then inspect invariants",
+      "weight": 1
+    }
   ],
   "debugging": [
     {
@@ -173,5 +1352,261 @@
       "hint": "After recording a match at mid, keep searching the LEFT half (r = mid - 1) so the last recorded ans is the first occurrence.",
       "tests": 4
     }
-  ]
+  ],
+  "feature": {
+    "id": "CG4",
+    "title": "Feature: Merge overlapping booking intervals",
+    "lang": "JavaScript",
+    "spec": "A scheduling service receives raw booking windows that may overlap or touch. Implement mergeIntervals(intervals) which takes an array of [start, end] pairs (integers, start <= end) and returns a NEW array of non-overlapping intervals sorted by start, where any intervals that overlap or merely touch (e.g. [1,3] and [3,5]) are merged into one. The input array must not be mutated. An empty input returns an empty array. You may use the in-exam AI assistant to design, write and review the solution — you are assessed on how effectively you direct the AI and on the code that results.",
+    "sample": "mergeIntervals([[1,3],[2,6],[8,10],[15,18]]) -> [[1,6],[8,10],[15,18]]\nmergeIntervals([[1,4],[4,5]]) -> [[1,5]]\nmergeIntervals([]) -> []",
+    "hint": "Copy the array before sorting by start; then fold left, extending the last interval when the next start is <= the last end.",
+    "tests": 5
+  },
+  "cognitive": {
+    "grid": {
+      "rounds": 5,
+      "patternSize": 4,
+      "gridCells": 16,
+      "showMs": 2600,
+      "note": "Motion Challenge — memorize the highlighted cells, then reproduce them. Accuracy weighted 70%, speed 30%."
+    },
+    "logical": [
+      {
+        "id": "CG_L1",
+        "q": "Series: 3, 7, 16, 35, 74, ? — what comes next?",
+        "options": [
+          "148",
+          "151",
+          "153",
+          "160"
+        ],
+        "answer": "153",
+        "weight": 1
+      },
+      {
+        "id": "CG_L2",
+        "q": "If all analysts are reviewers, and no reviewer is an auditor, which must be true?",
+        "options": [
+          "No analyst is an auditor",
+          "Some auditors are analysts",
+          "All reviewers are analysts",
+          "Some analysts are auditors"
+        ],
+        "answer": "No analyst is an auditor",
+        "weight": 1
+      },
+      {
+        "id": "CG_L3",
+        "q": "A task takes 6 engineers 12 days. Assuming equal output, how long for 9 engineers?",
+        "options": [
+          "8 days",
+          "9 days",
+          "10 days",
+          "18 days"
+        ],
+        "answer": "8 days",
+        "weight": 1
+      },
+      {
+        "id": "CG_L4",
+        "q": "Pseudocode: n=5; r=1; while n>1: r=r*n; n=n-2; print r",
+        "options": [
+          "15",
+          "120",
+          "60",
+          "10"
+        ],
+        "answer": "15",
+        "weight": 1
+      },
+      {
+        "id": "CG_L5",
+        "q": "In a code, TEAM is written as UFBN. How is WORK written?",
+        "options": [
+          "XPSL",
+          "XPTL",
+          "VNQJ",
+          "XQSL"
+        ],
+        "answer": "XPSL",
+        "weight": 1
+      },
+      {
+        "id": "CG_L6",
+        "q": "A deployment succeeds only if tests pass AND the approval is signed. The deployment failed. Which conclusion is valid?",
+        "options": [
+          "Tests failed",
+          "The approval was not signed",
+          "At least one of the two conditions was not met",
+          "Both conditions failed"
+        ],
+        "answer": "At least one of the two conditions was not met",
+        "weight": 1
+      },
+      {
+        "id": "CG_L7",
+        "q": "A queue drains 40 tickets/hour while 25 arrive/hour. Starting at 90 tickets, when is it empty?",
+        "options": [
+          "After 3 hours",
+          "After 4 hours",
+          "After 6 hours",
+          "After 9 hours"
+        ],
+        "answer": "After 6 hours",
+        "weight": 1
+      },
+      {
+        "id": "CG_L8",
+        "q": "Odd one out: Array, Stack, Queue, Compiler",
+        "options": [
+          "Array",
+          "Stack",
+          "Queue",
+          "Compiler"
+        ],
+        "answer": "Compiler",
+        "weight": 1
+      }
+    ],
+    "behavioral": [
+      {
+        "id": "CG_B1",
+        "trait": "teamwork",
+        "q": "A peer's pull request blocks your release and they are on leave. What do you do?",
+        "options": [
+          {
+            "text": "Fix the branch yourself, document every change and notify them on return",
+            "score": 95
+          },
+          {
+            "text": "Wait for them so no one is upset",
+            "score": 35
+          },
+          {
+            "text": "Revert their work without telling anyone",
+            "score": 20
+          },
+          {
+            "text": "Escalate to their manager first",
+            "score": 50
+          }
+        ]
+      },
+      {
+        "id": "CG_B2",
+        "trait": "responsible_ai",
+        "q": "An AI assistant produces code that works but you cannot explain one function. What do you do?",
+        "options": [
+          {
+            "text": "Ship it — the tests pass",
+            "score": 25
+          },
+          {
+            "text": "Study it, add tests and comments, and only then ship",
+            "score": 97
+          },
+          {
+            "text": "Delete it and hand-write something slower",
+            "score": 55
+          },
+          {
+            "text": "Ask the AI to rewrite it until it looks simpler, without verifying",
+            "score": 35
+          }
+        ]
+      },
+      {
+        "id": "CG_B3",
+        "trait": "accountability",
+        "q": "You realise an estimate you gave the client is off by two weeks. What do you do?",
+        "options": [
+          {
+            "text": "Raise it immediately with a revised plan and options",
+            "score": 96
+          },
+          {
+            "text": "Work extra hours quietly and hope to catch up",
+            "score": 45
+          },
+          {
+            "text": "Wait for the client to ask",
+            "score": 20
+          },
+          {
+            "text": "Blame the unclear requirements",
+            "score": 15
+          }
+        ]
+      },
+      {
+        "id": "CG_B4",
+        "trait": "adaptability",
+        "q": "Mid-sprint the client changes a core requirement. Your reaction?",
+        "options": [
+          {
+            "text": "Refuse — the sprint is locked",
+            "score": 30
+          },
+          {
+            "text": "Assess the impact, re-prioritise with the team and confirm the trade-offs",
+            "score": 95
+          },
+          {
+            "text": "Accept everything silently and absorb the overrun",
+            "score": 40
+          },
+          {
+            "text": "Implement it without telling the team",
+            "score": 20
+          }
+        ]
+      },
+      {
+        "id": "CG_B5",
+        "trait": "decision_making",
+        "q": "Two designs: one fast to build but hard to scale, one slower but durable. The deadline is tight.",
+        "options": [
+          {
+            "text": "Always pick the fast one",
+            "score": 40
+          },
+          {
+            "text": "Always pick the durable one",
+            "score": 55
+          },
+          {
+            "text": "Ship the fast one behind a clear interface and log the migration path",
+            "score": 93
+          },
+          {
+            "text": "Defer the decision until someone else decides",
+            "score": 20
+          }
+        ]
+      },
+      {
+        "id": "CG_B6",
+        "trait": "learning_mindset",
+        "q": "You are assigned to a stack you have never used, starting Monday.",
+        "options": [
+          {
+            "text": "Ask to be reassigned",
+            "score": 25
+          },
+          {
+            "text": "Build a small prototype, read the docs and pair with an expert in week one",
+            "score": 96
+          },
+          {
+            "text": "Rely entirely on AI generation without learning the stack",
+            "score": 35
+          },
+          {
+            "text": "Start coding and figure it out only when something breaks",
+            "score": 45
+          }
+        ]
+      }
+    ]
+  }
 }

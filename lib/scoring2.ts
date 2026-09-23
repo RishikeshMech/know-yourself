@@ -1,10 +1,12 @@
 // Scoring engine for Assessment 2 — the Capgemini 2027 mock test.
 // Mirrors computeScores() in lib/scoring.ts but walks the assessment-2 bank:
 //
-//   English Communication .... /200  (Listening 50 · Speaking 50 · Reading 50 · Writing 50)
-//   AI Literacy .............. /400  (50 scenario MCQs, from the AI Literacy paper)
-//   Debugging C/C++/Java ..... /250  (30 code MCQs, from the Section-2 paper)
-//   Debugging Lab ............ /150  (3 compiler tasks × 50 — hidden tests + AI rubric)
+// The five stages of the Capgemini "Assessment Journey":
+//   1 English Communication .. /200  (Listening 50 · Speaking 50 · Reading 50 · Writing 50)
+//   2 Technical Module ....... /250  (50 AI-literacy scenario MCQs)
+//   3 Debugging Assessment ... /200  (30 code MCQs 120 + 3 compiler lab tasks 80)
+//   4 AI-assisted Coding ..... /200  (1 AI-assisted build task — hidden tests + AI rubric)
+//   5 Cognitive Assessment ... /150  (Motion & Grid 40 · Logical Reasoning 50 · Behavioural 60)
 //   TOTAL .................... /1000
 //
 // MCQ answers are stored as the chosen option TEXT (order-independent because
@@ -69,12 +71,12 @@ export function computeScores2(
   // ---------------- AI Literacy (max 400, 50 MCQs) ----------------
   const alQs = bank2.problem
   const alCorrect = alQs.filter((q: any) => answers[q.id] === q.answer).length
-  const ai_literacy = round((alCorrect / alQs.length) * 400)
+  const ai_literacy = round((alCorrect / alQs.length) * 250)
 
   // ---------------- Debugging C/C++/Java MCQs (max 250, 30 questions) ----------------
   const dmQs = bank2.debugmcq
   const dmCorrect = dmQs.filter((q: any) => answers[q.id] === q.answer).length
-  const debug_mcq = round((dmCorrect / dmQs.length) * 250)
+  const debug_mcq = round((dmCorrect / dmQs.length) * 120)
 
   // ---------------- Debugging Lab (max 150, 3 compiler tasks × 50) ----------------
   // Each task is scored out of 100 first. The hidden test-runner result is the
@@ -94,12 +96,56 @@ export function computeScores2(
     else if (r) s = r.score
     else s = fix.trim().length > 60 ? 72 : fix.trim().length > 20 ? 48 : fix.trim() ? 30 : 0
     labPer[t.id] = s
-    labPts += (s / 100) * 50 // 3 tasks × 50 = 150
+    labPts += (s / 100) * (80 / bank2.debugging.length) // 3 tasks share 80 pts
   })
   const debug_lab = round(labPts)
+  const debugging_total = debug_mcq + debug_lab // /200 — journey stage 3
+
+  // ---------------- AI-assisted Coding (max 200) ----------------
+  // Journey stage 4: one build task solved with the in-exam AI assistant.
+  const featureDef = bank2.feature
+  const fid: string = featureDef?.id || 'CG4'
+  const fCode: string = answers[fid + '_code'] || ''
+  const fAi = ai[fid]
+  const fTests = meta.testResults?.[fid]
+  const fTestPct = fTests && fTests.total > 0 ? (fTests.passed / fTests.total) * 100 : null
+  let feature100 = 0
+  if (fTestPct != null && fAi) feature100 = round(fTestPct * 0.6 + fAi.score * 0.4)
+  else if (fTestPct != null) feature100 = round(fTestPct)
+  else if (fAi) feature100 = fAi.score
+  else feature100 = fCode.trim().length > 120 ? 60 : fCode.trim().length > 30 ? 40 : fCode.trim() ? 25 : 0
+  const ai_coding = round((feature100 / 100) * 200)
+
+  // ---------------- Cognitive Assessment (max 150) ----------------
+  // Motion & Grid 40 · Logical Reasoning 50 · Behavioural 60.
+  const gridAcc = typeof answers['GRID'] === 'number' ? answers['GRID'] : 0
+  const grid = round(Math.max(0, Math.min(1, gridAcc)) * 40)
+
+  const clQs = bank2.cognitive?.logical || []
+  const clCorrect = clQs.filter((q: any) => answers[q.id] === q.answer).length
+  const logical = clQs.length ? round((clCorrect / clQs.length) * 50) : 0
+
+  const behaviors = bank2.cognitive?.behavioral || []
+  const traitScores: Record<string, number> = {}
+  const traitLabels: Record<string, string> = {
+    teamwork: 'Teamwork', accountability: 'Accountability', adaptability: 'Adaptability',
+    responsible_ai: 'Responsible AI', decision_making: 'Decision Making', learning_mindset: 'Learning Mindset',
+  }
+  let bSum = 0
+  behaviors.forEach((b: any) => {
+    const val = answers[b.id]
+    // Unlike assessment 1, an unanswered item earns nothing — an empty paper
+    // must score exactly zero.
+    const sc = typeof val === 'number' ? clamp(val) : 0
+    traitScores[b.trait] = sc
+    bSum += sc
+  })
+  const behaviouralPct = behaviors.length ? bSum / behaviors.length : 0
+  const behavioural = round((behaviouralPct / 100) * 60)
+  const cognitive_total = grid + logical + behavioural // /150
 
   // ---------------- Total ----------------
-  const total = english_total + ai_literacy + debug_mcq + debug_lab
+  const total = english_total + ai_literacy + debugging_total + ai_coding + cognitive_total
   const grade = total >= 900 ? 'S' : total >= 750 ? 'A' : total >= 600 ? 'B' : total >= 400 ? 'C' : 'D'
   const percentile = clamp(35 + (total / 1000) * 60 + (total > 750 ? 4 : 0), 1, 99.9)
 
@@ -110,12 +156,21 @@ export function computeScores2(
     ai_literacy,
     debug_mcq,
     debug_lab,
+    debugging_total,
+    ai_coding,
+    cognitive: {
+      grid, logical, behavioural,
+      total: cognitive_total, max: 150,
+      behavioral: traitScores, traitLabels,
+    },
     detail: {
       listeningCorrect: listenCorrect, listeningTotal: listenQs.length,
       readingCorrect: readCorrect, readingTotal: readQs.length,
       aiLiteracyCorrect: alCorrect, aiLiteracyTotal: alQs.length,
       debugMcqCorrect: dmCorrect, debugMcqTotal: dmQs.length,
       labPer, speakingCount,
+      logicalCorrect: clCorrect, logicalTotal: clQs.length,
+      featureScore100: feature100,
     },
     total, grade, percentile: Number(percentile.toFixed(1)),
     ai_results: ai,
