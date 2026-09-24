@@ -110,6 +110,12 @@ function getSubProgress(
     const answered = tasks.filter(t => String(answers[t.id + '_fix'] ?? '').trim()).length
     return { answered, total: tasks.length, complete: answered >= tasks.length }
   }
+  if (stageId === 'prompt' && bank.prompt) {
+    // Assessment 1's Prompt Engineering stage: one written prompt per task.
+    const tasks: any[] = bank.prompt
+    const answered = tasks.filter(t => String(answers[t.id] ?? '').trim()).length
+    return { answered, total: tasks.length, complete: answered >= tasks.length }
+  }
   if (stageId === 'feature' && bank.feature) {
     const fid = bank.feature.id || 'AF1'
     const done = String(answers[fid + '_code'] ?? '').trim().length > 0

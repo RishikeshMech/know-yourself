@@ -3,7 +3,13 @@
 // options are shuffled per session). Behavioral answers store the option's
 // own trait score (0-100). Subjective sections use CalibiAI results when
 // present (aiResults), else a deterministic heuristic.
-import { bank } from './questions'
+// The bank is imported directly (relative + import attribute) rather than
+// through './questions', so that this module also loads under Node's
+// type-stripping test runner, which cannot resolve the '@/' path alias.
+// A caller may still override it through `meta.bank`.
+import rawBank from '../data/questions.json' with { type: 'json' }
+
+const defaultBank: any = rawBank
 
 export type Answers = Record<string, any>
 export type AiResults = Record<string, { score: number; rubric?: Record<string, number>; summary?: string; strengths?: string[]; improvements?: string[]; engine?: string }>
@@ -18,7 +24,12 @@ function round(n: number) {
   return Math.round(n)
 }
 
-export function computeScores(answers: Answers, ai: AiResults = {}, meta: { gridAcc?: number; speakingCount?: number } = {}) {
+export function computeScores(
+  answers: Answers,
+  ai: AiResults = {},
+  meta: { gridAcc?: number; speakingCount?: number; bank?: any } = {},
+) {
+  const bank: any = meta.bank || defaultBank
   // ---------------- English: Listening (max 50) ----------------
   const listenQs = bank.english.listening.clips.flatMap((c: any) => c.questions)
   const listenCorrect = listenQs.filter((q: any) => answers[q.id] === q.answer).length
@@ -123,7 +134,10 @@ export function computeScores(answers: Answers, ai: AiResults = {}, meta: { grid
   let bSum = 0, bCount = 0
   behaviors.forEach((b: any) => {
     const val = answers[b.id]
-    const s = typeof val === 'number' ? clamp(val) : 40 // unanswered -> neutral-low
+    // An unanswered behavioural item earns nothing, so a blank paper scores
+    // exactly zero (this matches computeScores2 / assessment 2; the old
+    // "neutral-low 40" baseline handed ~40 free points to an empty paper).
+    const s = typeof val === 'number' ? clamp(val) : 0
     traitScores[b.trait] = s
     bSum += s
     bCount++
