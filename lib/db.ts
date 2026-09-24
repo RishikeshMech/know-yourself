@@ -114,6 +114,12 @@ export interface AssessmentSession {
   submitted_at?: string
   tab_switches: number
   question_seed?: number
+  /**
+   * Which assessment this attempt belongs to: 1 = the original CalibiAI
+   * 120-minute test, 2 = the Capgemini 2027 mock (unlocked after 1). Absent on
+   * legacy rows, which are always assessment 1.
+   */
+  assessment_no?: number
   created_at: string
 }
 
@@ -127,6 +133,8 @@ export interface AssessmentResult {
   percentile: number
   verifiable_hash: string
   ai_feedback?: any
+  /** 1 = CalibiAI assessment, 2 = Capgemini 2027 mock. Legacy rows are 1. */
+  assessment_no?: number
   created_at: string
 }
 
@@ -539,9 +547,21 @@ export function getAssessmentSession(id: string): AssessmentSession | undefined 
   return db.assessment_sessions.find(s => s.id === id)
 }
 
-export function getActiveSessionForStudent(studentId: string): AssessmentSession | undefined {
+/**
+ * Which assessment a stored row belongs to. Legacy rows (written before the
+ * second assessment existed) carry no marker and are always assessment 1; the
+ * scores payload is also consulted because the client stamps it there too.
+ */
+export function assessmentNoOf(row: any): number {
+  const n = Number(row?.assessment_no ?? row?.scores?.assessment_no ?? 1)
+  return Number.isFinite(n) && n >= 1 ? n : 1
+}
+
+export function getActiveSessionForStudent(studentId: string, assessmentNo = 1): AssessmentSession | undefined {
   const db = getDB()
-  return db.assessment_sessions.find(s => s.student_id === studentId && s.status === 'in_progress')
+  return db.assessment_sessions.find(
+    s => s.student_id === studentId && s.status === 'in_progress' && assessmentNoOf(s) === assessmentNo,
+  )
 }
 
 export function saveAssessmentResult(result: AssessmentResult) {
@@ -557,9 +577,11 @@ export function getAssessmentResultBySession(sessionId: string): AssessmentResul
   return db.assessment_results.find(r => r.session_id === sessionId)
 }
 
-export function getLatestAssessmentResultForStudent(studentId: string): AssessmentResult | undefined {
+export function getLatestAssessmentResultForStudent(studentId: string, assessmentNo = 1): AssessmentResult | undefined {
   const db = getDB()
-  const results = db.assessment_results.filter(r => r.student_id === studentId)
+  const results = db.assessment_results.filter(
+    r => r.student_id === studentId && assessmentNoOf(r) === assessmentNo,
+  )
   if (results.length === 0) return undefined
   return results.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
 }

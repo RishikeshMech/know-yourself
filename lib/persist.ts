@@ -37,6 +37,21 @@ export const ASSESSMENT_RESULT_SELECT = [
   'verifiable_hash', 'ai_feedback', 'report_storage_key', 'created_at',
 ].join(',')
 
+/**
+ * Which assessment a row belongs to: 1 = the CalibiAI assessment, 2 = the
+ * Capgemini 2027 mock. The marker is written into the `scores` / `answers`
+ * JSONB (always available) and, when migration 0008 has been applied, into a
+ * real `assessment_no` column too. Reading falls back to the JSONB so the
+ * feature works even before the migration runs.
+ */
+export function assessmentNoOf(row: any): number {
+  const n = Number(row?.assessment_no ?? row?.scores?.assessment_no ?? row?.answers?.__assessment_no ?? 1)
+  return Number.isFinite(n) && n >= 1 ? n : 1
+}
+
+/** Postgres error for "column does not exist" — migration 0008 not applied yet. */
+const UNDEFINED_COLUMN = '42703'
+
 function clean(v: any): string | null {
   const s = String(v ?? '').trim()
   return s ? s : null
@@ -448,6 +463,7 @@ export async function expireActiveAssessmentSessions(
   client: SupabaseClient,
   studentId: string,
   exceptId?: string,
+  assessmentNo?: number,
 ): Promise<void> {
   try {
     let q = client
@@ -456,6 +472,21 @@ export async function expireActiveAssessmentSessions(
       .eq('student_id', studentId)
       .eq('status', 'in_progress')
     if (exceptId) q = q.neq('id', exceptId)
+    // Only close sessions of the SAME assessment — starting the Capgemini mock
+    // must never expire an unfinished CalibiAI attempt (or vice versa).
+    if (assessmentNo) {
+      const scoped = await q.eq('assessment_no', assessmentNo)
+      if (!scoped.error || String((scoped.error as any)?.code) !== UNDEFINED_COLUMN) return
+      // Column missing (migration 0008 not applied) — fall through unscoped.
+      let retry = client
+        .from('assessment_sessions')
+        .update({ status: 'expired' })
+        .eq('student_id', studentId)
+        .eq('status', 'in_progress')
+      if (exceptId) retry = retry.neq('id', exceptId)
+      await retry
+      return
+    }
     await q
   } catch (e) {
     console.warn('[supabase] session expiry failed:', (e as Error)?.message || e)
@@ -474,7 +505,11 @@ export async function persistAssessmentSession(client: SupabaseClient, s: any): 
     console.warn('[supabase] session persist skipped: invalid student_id')
     return false
   }
-  const row = {
+  const assessmentNo = assessmentNoOf(s)
+  // The marker also rides inside the answers JSONB so the assessment can be
+  // identified even when migration 0008 (the real column) has not been run.
+  const answers = { ...(s.answers || {}), __assessment_no: assessmentNo }
+  const row: Record<string, any> = {
     id: toUuid(s.id, 'session') || randomUUID(),
     student_id: studentId,
     started_at: s.started_at ? new Date(s.started_at).toISOString() : new Date().toISOString(),
@@ -483,14 +518,22 @@ export async function persistAssessmentSession(client: SupabaseClient, s: any): 
     status: s.status || 'in_progress',
     question_seed: s.question_seed ? Number(s.question_seed) : undefined,
     tab_switches: Number(s.tab_switches) || 0,
-    answers: s.answers || {},
+    answers,
     submitted_at: s.submitted_at ? new Date(s.submitted_at).toISOString() : null,
+    assessment_no: assessmentNo,
   }
-  const { error } = await client.from('assessment_sessions').upsert(row, { onConflict: 'id' })
+  const write = (r: Record<string, any>) => client.from('assessment_sessions').upsert(r, { onConflict: 'id' })
+  let { error } = await write(row)
+  if (error && String((error as any).code) === UNDEFINED_COLUMN) {
+    // Migration 0008 not applied — retry without the dedicated column. The
+    // JSONB marker above still identifies the assessment.
+    const { assessment_no, ...legacy } = row
+    ;({ error } = await write(legacy))
+  }
   if (error) {
     if ((error as any).code === '23505') {
-      await expireActiveAssessmentSessions(client, studentId, row.id)
-      const retry = await client.from('assessment_sessions').upsert(row, { onConflict: 'id' })
+      await expireActiveAssessmentSessions(client, studentId, row.id, assessmentNo)
+      const retry = await write(row)
       if (!retry.error) return true
     }
     console.warn('[supabase] session persist failed:', error.message)
@@ -507,20 +550,28 @@ export async function persistAssessmentResult(client: SupabaseClient, r: any): P
     console.warn('[supabase] result persist skipped: invalid student_id/session_id')
     return false
   }
-  const { error } = await client.from('assessment_results').upsert(
-    {
-      session_id: sessionId,
-      student_id: studentId,
-      scores: r.scores || {},
-      total: Number(r.total) || 0,
-      grade: clean(r.grade) || undefined,
-      percentile: r.percentile != null ? Number(r.percentile) : undefined,
-      verifiable_hash: clean(r.verifiable_hash) || undefined,
-      ai_feedback: r.ai_feedback || {},
-      created_at: r.created_at ? new Date(r.created_at).toISOString() : undefined,
-    },
-    { onConflict: 'session_id' },
-  )
+  const assessmentNo = assessmentNoOf(r)
+  const row: Record<string, any> = {
+    session_id: sessionId,
+    student_id: studentId,
+    // Stamp the marker inside the JSONB too, so the assessment is identifiable
+    // even when migration 0008 (the dedicated column) has not been applied.
+    scores: { ...(r.scores || {}), assessment_no: assessmentNo },
+    total: Number(r.total) || 0,
+    grade: clean(r.grade) || undefined,
+    percentile: r.percentile != null ? Number(r.percentile) : undefined,
+    verifiable_hash: clean(r.verifiable_hash) || undefined,
+    ai_feedback: r.ai_feedback || {},
+    created_at: r.created_at ? new Date(r.created_at).toISOString() : undefined,
+    assessment_no: assessmentNo,
+  }
+  const write = (x: Record<string, any>) =>
+    client.from('assessment_results').upsert(x, { onConflict: 'session_id' })
+  let { error } = await write(row)
+  if (error && String((error as any).code) === UNDEFINED_COLUMN) {
+    const { assessment_no, ...legacy } = row
+    ;({ error } = await write(legacy))
+  }
   if (error) {
     console.warn('[supabase] result persist failed:', error.message)
     return false
@@ -543,33 +594,48 @@ export async function fetchAssessmentSession(client: SupabaseClient, sessionId: 
 }
 
 /** Loads the student's active (in-progress) session from Supabase. */
-export async function fetchActiveAssessmentSession(client: SupabaseClient, studentId: string): Promise<any | null> {
+export async function fetchActiveAssessmentSession(
+  client: SupabaseClient,
+  studentId: string,
+  assessmentNo = 1,
+): Promise<any | null> {
   try {
+    // Fetch the recent active sessions and pick the one for this assessment.
+    // Filtering in Node (rather than `.eq('assessment_no', …)`) keeps this
+    // working before migration 0008 is applied, where the marker only exists
+    // inside the answers JSONB.
     const { data } = await client
       .from('assessment_sessions')
       .select('*')
       .eq('student_id', studentId)
       .eq('status', 'in_progress')
       .order('started_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    return data || null
+      .limit(5)
+    const rows = Array.isArray(data) ? data : []
+    return rows.find(row => assessmentNoOf(row) === assessmentNo) || null
   } catch {
     return null
   }
 }
 
 /** Latest assessment result for a student from Supabase. */
-export async function fetchLatestAssessmentResult(client: SupabaseClient, studentId: string): Promise<any | null> {
+export async function fetchLatestAssessmentResult(
+  client: SupabaseClient,
+  studentId: string,
+  assessmentNo = 1,
+): Promise<any | null> {
   try {
+    // A student now has at most one result per assessment, so a small window is
+    // enough. Filtering in Node keeps this correct before migration 0008 adds
+    // the dedicated column (the marker then lives in the scores JSONB).
     const { data } = await client
       .from('assessment_results')
       .select(ASSESSMENT_RESULT_SELECT)
       .eq('student_id', studentId)
       .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    return data || null
+      .limit(5)
+    const rows = Array.isArray(data) ? data : []
+    return rows.find(row => assessmentNoOf(row) === assessmentNo) || null
   } catch {
     return null
   }
