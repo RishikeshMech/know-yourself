@@ -11,6 +11,8 @@ type Store = {
   tracking: { whatsapp:boolean, linkedin:boolean }, setTracking: (t:any)=>void,
   session: any, setSession: (s:any)=>void,
   scores: any, setScores: (s:any)=>void,
+  /** Assessment 2 (Capgemini 2027 mock) result — separate from the primary score. */
+  scores2: any, setScores2: (s:any)=>void,
   hydrated: boolean,
   logout: ()=>void,
   hasLocalKey: (key: string) => boolean,
@@ -31,6 +33,7 @@ function StoreProviderRoot({ children }: { children: React.ReactNode }) {
   const [tracking, setTracking] = useState({ whatsapp: false, linkedin: false })
   const [session, setSession] = useState<any>(null)
   const [scores, setScores] = useState<any>(null)
+  const [scores2, setScores2] = useState<any>(null)
   // Gate persistence until localStorage has been read once. Without this, the
   // session effect sees the initial `null` on mount and wipes `calibiai_session`
   // before hydration finishes — which made /assessment bounce straight back to
@@ -60,6 +63,7 @@ function StoreProviderRoot({ children }: { children: React.ReactNode }) {
       const t = localStorage.getItem('calibiai_tracking'); if (t) setTracking(JSON.parse(t))
       const s = localStorage.getItem('calibiai_session'); if (s) setSession(JSON.parse(s))
       const sc = localStorage.getItem('calibiai_scores'); if (sc) setScores(JSON.parse(sc))
+      const sc2 = localStorage.getItem('calibiai2_scores'); if (sc2) setScores2(JSON.parse(sc2))
     } catch {}
     setHydrated(true)
   }, [])
@@ -113,15 +117,21 @@ function StoreProviderRoot({ children }: { children: React.ReactNode }) {
     if (s) localStorage.setItem('calibiai_scores', JSON.stringify(s))
     else localStorage.removeItem('calibiai_scores')
   }, [])
+  const setScores2Safe = useCallback((s: any) => {
+    setScores2(s)
+    if (s) localStorage.setItem('calibiai2_scores', JSON.stringify(s))
+    else localStorage.removeItem('calibiai2_scores')
+  }, [])
   useEffect(() => { if (!hydrated) return; if (profile) localStorage.setItem('calibiai_profile', JSON.stringify(profile)) }, [profile, hydrated])
   useEffect(() => { if (!hydrated) return; if (resume) localStorage.setItem('calibiai_resume', JSON.stringify(resume)) }, [resume, hydrated])
   useEffect(() => { if (!hydrated) return; localStorage.setItem('calibiai_tracking', JSON.stringify(tracking)) }, [tracking, hydrated])
   useEffect(() => { if (!hydrated) return; if (session) localStorage.setItem('calibiai_session', JSON.stringify(session)) }, [session, hydrated])
   useEffect(() => { if (!hydrated) return; if (scores) localStorage.setItem('calibiai_scores', JSON.stringify(scores)) }, [scores, hydrated])
+  useEffect(() => { if (!hydrated) return; if (scores2) localStorage.setItem('calibiai2_scores', JSON.stringify(scores2)) }, [scores2, hydrated])
 
   const logout = useCallback(() => {
     localStorage.clear()
-    setUserState(null); setProfile(null); setResume(null); setTracking({ whatsapp: false, linkedin: false }); setSession(null); setScores(null)
+    setUserState(null); setProfile(null); setResume(null); setTracking({ whatsapp: false, linkedin: false }); setSession(null); setScores(null); setScores2(null)
     window.location.href = '/login'
   }, [])
 
@@ -131,10 +141,10 @@ function StoreProviderRoot({ children }: { children: React.ReactNode }) {
 
   /** Drop every cached slice that belongs to an account, keeping session ids/tickets intact. */
   const clearLocalState = useCallback(() => {
-    for (const k of ['calibiai_profile', 'calibiai_resume', 'calibiai_scores', 'calibiai_tracking', 'calibiai_report_ready', 'calibiai_just_submitted']) {
+    for (const k of ['calibiai_profile', 'calibiai_resume', 'calibiai_scores', 'calibiai2_scores', 'calibiai_tracking', 'calibiai_report_ready', 'calibiai_just_submitted']) {
       try { localStorage.removeItem(k) } catch {}
     }
-    setProfile(null); setResume(null); setScores(null); setTracking({ whatsapp: false, linkedin: false })
+    setProfile(null); setResume(null); setScores(null); setScores2(null); setTracking({ whatsapp: false, linkedin: false })
   }, [])
 
   /**
@@ -163,17 +173,21 @@ function StoreProviderRoot({ children }: { children: React.ReactNode }) {
     let profile: any = null
     let hasAssessment = false
     let resultRow: any = null
+    let result2Row: any = null
     let fetched = false
     try {
-      const [pRes, sRes] = await Promise.all([
+      const [pRes, sRes, s2Res] = await Promise.all([
         fetch(`/api/user/profile?user_id=${encodeURIComponent(live.id)}`),
         fetch(`/api/user/scores?student_id=${encodeURIComponent(live.id)}`),
+        fetch(`/api/user/scores?student_id=${encodeURIComponent(live.id)}&assessment=2`),
       ])
       const p = await pRes.json()
       const s = await sRes.json()
+      const s2 = await s2Res.json()
       fetched = true
       profile = p?.profile || null
       resultRow = s?.result || null
+      result2Row = s2?.result || null
       hasAssessment = !!resultRow
     } catch { /* transient failure — keep whatever is already cached */ }
     // Only write through (and possibly clear) when the DB fetch succeeded; a
@@ -181,9 +195,10 @@ function StoreProviderRoot({ children }: { children: React.ReactNode }) {
     if (fetched) {
       setProfileSafe(profile)
       setScoresSafe(flattenAssessmentResult(resultRow))
+      setScores2Safe(flattenAssessmentResult(result2Row))
     }
     return { profile, hasAssessment }
-  }, [clearLocalState, setProfileSafe, setScoresSafe, setUser])
+  }, [clearLocalState, setProfileSafe, setScores2Safe, setScoresSafe, setUser])
 
   const value = useMemo<Store>(() => ({
     user,
@@ -198,13 +213,15 @@ function StoreProviderRoot({ children }: { children: React.ReactNode }) {
     setSession: setSessionSafe,
     scores,
     setScores: setScoresSafe,
+    scores2,
+    setScores2: setScores2Safe,
     hydrated,
     logout,
     hasLocalKey,
     reconcileForUser,
   }), [
     user, setUser, profile, setProfileSafe, resume, setResumeSafe,
-    tracking, session, setSessionSafe, scores, setScoresSafe, hydrated,
+    tracking, session, setSessionSafe, scores, setScoresSafe, scores2, setScores2Safe, hydrated,
     logout, hasLocalKey, reconcileForUser,
   ])
 

@@ -25,55 +25,31 @@ export interface AssistantResponse {
   suggestions?: string[]
 }
 
-import { fetchWithTimeout } from './fetchTimeout.ts'
-
-const AI_KEY = process.env.CALIBIAI_API_KEY || process.env.DEEPSEEK_API_KEY || ''
-const AI_BASE = process.env.CALIBIAI_BASE_URL || process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com'
-const AI_MODEL = process.env.CALIBIAI_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-chat'
+import { callLlm, isLlmConfigured } from './llm.ts'
 // A hung assistant model must fall back to the heuristic engine, not hang the
 // exam under load.
 const AI_TIMEOUT_MS = 20000
 
 export function isCalibiAiConfigured(): boolean {
-  return !!AI_KEY
+  return isLlmConfigured()
 }
 
 async function callCalibiAiChat(
   systemPrompt: string,
   messages: ChatMessage[],
 ): Promise<string | null> {
-  if (!AI_KEY) return null
-  try {
-    const formattedMessages = [
+  return callLlm({
+    label: 'assistant',
+    temperature: 0.3,
+    timeoutMs: AI_TIMEOUT_MS,
+    messages: [
       { role: 'system', content: systemPrompt },
       ...messages.map((m) => ({
-        role: m.role === 'assistant' ? 'assistant' : 'user',
+        role: (m.role === 'assistant' ? 'assistant' : 'user') as 'assistant' | 'user',
         content: m.content,
       })),
-    ]
-
-    const res = await fetchWithTimeout(`${AI_BASE}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${AI_KEY}` },
-      body: JSON.stringify({
-        model: AI_MODEL,
-        temperature: 0.3,
-        messages: formattedMessages,
-      }),
-    }, AI_TIMEOUT_MS)
-
-    if (!res.ok) {
-      console.error('CalibiAI assistant error:', res.status, await res.text().catch(() => ''))
-      return null
-    }
-
-    const data = await res.json()
-    const reply: string = data?.choices?.[0]?.message?.content
-    return reply || null
-  } catch (err) {
-    console.error('CalibiAI assistant call failed:', err)
-    return null
-  }
+    ],
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -256,6 +232,145 @@ function rateLimitMiddleware(req, res, next) {
         ],
       }
 
+    // ---------------- Assessment 2 — Capgemini 2027 mock ----------------
+    case 'CG1':
+      return {
+        name: 'Python — First character appearing exactly twice',
+        language: 'python',
+        rootCause:
+          'The buggy version returns the first character whose frequency is 1, i.e. the first character appearing exactly ONCE. The requirement is the first character (in original string order) appearing exactly TWICE. Comparing against the wrong count makes it return the wrong character, and characters appearing 3+ times must also be excluded — "at least twice" is not the same as "exactly twice".',
+        fixSummary: 'Count every character first, then scan the string in its original order and return the first character whose count is exactly 2; return an empty string when none qualifies.',
+        edgeCases: [
+          '**Exactly twice only**: `aabbc` → `a`. A character appearing 3+ times (`aaab`) must NOT be returned.',
+          '**No qualifying character**: return `\'\'` (empty string), never `None`.',
+          '**Original order matters**: scan the input string, not the dictionary, so insertion order cannot mislead you.',
+          '**Empty input**: `\'\'` returns `\'\'` without raising.',
+        ],
+        codeSnippet: `def first_repeated(s):
+    # Count every character first.
+    freq = {}
+    for ch in s:
+        freq[ch] = freq.get(ch, 0) + 1
+
+    # Scan in ORIGINAL order and return the first one seen exactly twice.
+    for ch in s:
+        if freq[ch] == 2:
+            return ch
+    return ''`,
+        suggestions: [
+          '💡 Why does the original return the wrong character?',
+          '🔍 What edge cases are tested for CG1?',
+          '🛠️ Show me the corrected Python function',
+          '📋 Review my current code',
+        ],
+      }
+
+    case 'CG2':
+      return {
+        name: 'Python — Rotate an array by k positions',
+        language: 'python',
+        rootCause:
+          'Rotation breaks when k is not normalised against the list length. If k >= len(arr) the slice indices run past the end and produce a wrong (or empty) result, and a k that is an exact multiple of the length must be a no-op. Negative or zero-length inputs must also be handled before slicing.',
+        fixSummary: 'Normalise with `k = k % len(arr)` (guarding against an empty list), then return `arr[-k:] + arr[:-k]` for a right rotation — returning a copy rather than mutating the caller\'s list.',
+        edgeCases: [
+          '**k larger than the length**: `rotate([1,2], 3)` must behave like `k = 1`.',
+          '**k a multiple of the length**: `rotate([1,2], 4)` is a no-op and returns `[1,2]`.',
+          '**Empty list**: must not raise ZeroDivisionError on the modulo.',
+          '**k = 0**: returns the list unchanged.',
+        ],
+        codeSnippet: `def rotate(arr, k):
+    if not arr:
+        return []
+    # Normalise so k is always inside the list length.
+    k = k % len(arr)
+    if k == 0:
+        return list(arr)
+    # Right rotation, returning a new list (no mutation of the input).
+    return list(arr[-k:]) + list(arr[:-k])`,
+        suggestions: [
+          '💡 Why does k need the modulo?',
+          '🔍 What edge cases are tested for CG2?',
+          '🛠️ Show me the corrected rotate()',
+          '📋 Review my current code',
+        ],
+      }
+
+    case 'CG3':
+      return {
+        name: 'JavaScript — Binary search for the FIRST position',
+        language: 'javascript',
+        rootCause:
+          'A plain binary search returns as soon as it finds ANY match. With duplicates that is usually a middle occurrence, not the first. To find the leftmost index you must record the hit and keep searching the LEFT half (`hi = mid - 1`) instead of returning immediately.',
+        fixSummary: 'On a match, store the index in a result variable and continue searching left; return the stored index (or -1) once the loop ends.',
+        edgeCases: [
+          '**Duplicates**: `firstPos([1,2,2,2,3], 2)` must return `1`, not `2` or `3`.',
+          '**Absent key / empty array**: return `-1`.',
+          '**All elements equal**: `firstPos([5,5,5,5], 5)` returns `0`.',
+          '**Boundaries**: the first and last element must both be findable.',
+        ],
+        codeSnippet: `function firstPos(a, k) {
+  let lo = 0, hi = a.length - 1, res = -1;
+  while (lo <= hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (a[mid] === k) {
+      res = mid;      // record the hit...
+      hi = mid - 1;   // ...but keep looking to the LEFT for an earlier one
+    } else if (a[mid] < k) {
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return res;
+}`,
+        suggestions: [
+          '💡 Why does a normal binary search fail here?',
+          '🔍 What edge cases are tested for CG3?',
+          '🛠️ Show me the corrected firstPos()',
+          '📋 Review my current code',
+        ],
+      }
+
+    case 'CG4':
+      return {
+        name: 'AI-assisted Coding — Merge overlapping booking intervals',
+        language: 'javascript',
+        rootCause:
+          'Merging requires the intervals to be processed in start order, so an unsorted input must be sorted first. Two further traps: intervals that merely TOUCH (`[1,3]` and `[3,5]`) still merge, so the comparison must be `<=` not `<`; and sorting or pushing the original inner arrays mutates the caller\'s input, which the tests check for.',
+        fixSummary: 'Copy the array before sorting by start, then fold left: if the next start is <= the last end, extend the last end to the max of the two; otherwise push a COPY of the interval.',
+        edgeCases: [
+          '**Overlapping**: `[[1,3],[2,6],[8,10],[15,18]]` → `[[1,6],[8,10],[15,18]]`.',
+          '**Touching**: `[[1,4],[4,5]]` → `[[1,5]]` (use `<=`, not `<`).',
+          '**Unsorted input**: must be sorted by start before folding.',
+          '**No mutation**: the input array and its inner arrays must be unchanged afterwards.',
+          '**Empty input**: returns `[]`.',
+        ],
+        codeSnippet: `function mergeIntervals(intervals) {
+  if (!Array.isArray(intervals) || intervals.length === 0) return [];
+
+  // Copy before sorting so the caller's array is never mutated.
+  const sorted = intervals.map(iv => [iv[0], iv[1]]).sort((a, b) => a[0] - b[0]);
+
+  const out = [];
+  for (const [start, end] of sorted) {
+    const last = out[out.length - 1];
+    // "<=" so intervals that merely touch are merged too.
+    if (last && start <= last[1]) {
+      last[1] = Math.max(last[1], end);
+    } else {
+      out.push([start, end]);
+    }
+  }
+  return out;
+}`,
+        suggestions: [
+          '💡 How do I merge touching intervals correctly?',
+          '🔍 What edge cases are tested for CG4?',
+          '🛠️ Show me a complete implementation',
+          '📋 Review my current code',
+        ],
+      }
+
     default:
       return {
         name: 'Technical Coding Task',
@@ -361,6 +476,65 @@ function analyzeUserCode(taskId: string, code: string): string {
     }
 
     return `### 🔍 Review of your draft code:\n\n${notes.join('\n\n')}\n\n**Tip:** Click **"▶ Run feature tests"** above to test the rate limiter!`
+  }
+
+  if (taskId === 'CG1') {
+    const countsFirst = /freq|count|counter|\{\}/.test(cl)
+    const exactlyTwo = /==\s*2|===\s*2/.test(cl)
+    const scansString = /for\s+\w+\s+in\s+s\b/.test(cl)
+    const notes: string[] = []
+    notes.push(exactlyTwo
+      ? '✅ **Exact count**: You compare the frequency against exactly `2`.'
+      : '⚠️ **Wrong count**: The requirement is *exactly twice*. Compare `freq[ch] == 2` — not `== 1` and not `>= 2`.')
+    notes.push(countsFirst
+      ? '✅ **Two passes**: You build the frequency map before deciding.'
+      : '⚠️ **Count first**: Build a full frequency map in one pass, then decide in a second pass.')
+    if (scansString) notes.push('✅ **Original order**: You scan the string itself, so the first-in-order rule holds.')
+    return `### 🔍 Review of your draft code:\n\n${notes.join('\n\n')}\n\n**Tip:** Click **"▶ Run hidden tests"** to check all 4 cases.`
+  }
+
+  if (taskId === 'CG2') {
+    const hasModulo = /%\s*len\(|k\s*%=/.test(cl)
+    const guardsEmpty = /if\s+not\s+arr|len\(arr\)\s*==\s*0/.test(cl)
+    const notes: string[] = []
+    notes.push(hasModulo
+      ? '✅ **Normalised k**: `k % len(arr)` keeps oversized rotations correct.'
+      : '⚠️ **Normalise k**: Without `k = k % len(arr)`, a k larger than the list breaks the slice.')
+    notes.push(guardsEmpty
+      ? '✅ **Empty guard**: You handle the empty list before the modulo.'
+      : '⚠️ **Empty list**: Guard before `% len(arr)` or it raises ZeroDivisionError.')
+    return `### 🔍 Review of your draft code:\n\n${notes.join('\n\n')}\n\n**Tip:** Click **"▶ Run hidden tests"** to verify k > len and k = multiple of len.`
+  }
+
+  if (taskId === 'CG3') {
+    const keepsSearchingLeft = /hi\s*=\s*mid\s*-\s*1/.test(cl)
+    const recordsResult = /res\s*=\s*mid|ans\s*=\s*mid|result\s*=\s*mid|first\s*=\s*mid/.test(cl)
+    const returnsMinusOne = /-\s*1/.test(cl)
+    const notes: string[] = []
+    if (recordsResult && keepsSearchingLeft) {
+      notes.push('✅ **Leftmost search**: You record the hit and keep narrowing to the left half.')
+    } else {
+      notes.push('⚠️ **Returning too early**: On a match, store the index and set `hi = mid - 1` instead of returning — otherwise you get a middle duplicate.')
+    }
+    if (returnsMinusOne) notes.push('✅ **Absent key**: You return `-1` when nothing matches.')
+    return `### 🔍 Review of your draft code:\n\n${notes.join('\n\n')}\n\n**Tip:** Click **"▶ Run hidden tests"** to check duplicates and boundaries.`
+  }
+
+  if (taskId === 'CG4') {
+    const sorts = /sort\s*\(/.test(cl)
+    const copiesFirst = /\[\s*\.\.\.|slice\(\)|\.map\s*\(/.test(cl)
+    const touching = /<=\s*last|<=\s*out\[|start\s*<=/.test(cl)
+    const notes: string[] = []
+    notes.push(sorts
+      ? '✅ **Sorted by start**: Required before folding intervals.'
+      : '⚠️ **Sort first**: Unsorted input cannot be merged in one pass.')
+    notes.push(copiesFirst
+      ? '✅ **No mutation**: You copy before sorting, so the caller\'s array is safe.'
+      : '⚠️ **Mutation risk**: `intervals.sort()` sorts in place — copy with `[...intervals]` first. One hidden test checks this.')
+    notes.push(touching
+      ? '✅ **Touching intervals**: Your comparison uses `<=`, so `[1,3]` and `[3,5]` merge.'
+      : '⚠️ **Touching intervals**: Use `start <= last[1]` (not `<`) so touching ranges merge.')
+    return `### 🔍 Review of your draft code:\n\n${notes.join('\n\n')}\n\n**Tip:** Click **"▶ Run feature tests"** to check all 5 cases.`
   }
 
   return `Your code looks like a good start. Click **Run Tests** above to execute it against test cases.`

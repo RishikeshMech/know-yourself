@@ -33,22 +33,27 @@ export async function POST(req: Request) {
       const remote = originalId ? await fetchAssessmentSession(sb, toUuid(originalId, 'session') || originalId) : null
       if (remote) session = remote as any
     }
+    const assessmentNo = Number(body.assessment_no) === 2 ? 2 : 1
     if (!session) {
       // Never lose a progress save: create a minimal row (server generates the uuid).
+      const durationSec = Number(body.duration_sec) || (assessmentNo === 2 ? 5400 : 7200)
       session = {
         id: toUuid(originalId, 'session') || randomUUID(),
         student_id: body.student_id || body.user_id || '',
         status: body.status || 'in_progress',
         started_at: body.started_at || new Date().toISOString(),
-        expires_at: body.expires_at || new Date(Date.now() + 7200 * 1000).toISOString(),
-        duration_sec: body.duration_sec || 7200,
+        expires_at: body.expires_at || new Date(Date.now() + durationSec * 1000).toISOString(),
+        duration_sec: durationSec,
         answers: body.answers || {},
         submitted_at: body.submitted_at || null,
         tab_switches: body.tab_switches || 0,
         question_seed: body.question_seed,
+        assessment_no: assessmentNo,
         created_at: new Date().toISOString(),
       }
     }
+    // Keep the marker on pre-existing rows too (legacy rows default to 1).
+    if (body.assessment_no !== undefined) session.assessment_no = assessmentNo
     session.answers = body.answers || session.answers || {}
     session.status = body.status || session.status || 'in_progress'
     if (body.submitted_at) session.submitted_at = body.submitted_at

@@ -42,7 +42,10 @@ export async function POST(req: Request) {
     let result
     switch (kind) {
       case 'writing':
-        result = await evaluateWriting(String(body.text || ''), String(body.scenario || ''))
+        result = await evaluateWriting(String(body.text || ''), String(body.scenario || ''), {
+          minWords: Number(body.minWords) || undefined,
+          maxWords: Number(body.maxWords) || undefined,
+        })
         break
       case 'speaking':
         result = await evaluateSpeaking(body.transcript ?? null, Number(body.recordingCount || 0))
@@ -54,7 +57,7 @@ export async function POST(req: Request) {
         )
         break
       case 'feature':
-        result = await evaluateFeature(String(body.spec || ''), String(body.code || ''))
+        result = await evaluateFeature(String(body.spec || ''), String(body.code || ''), String(body.taskId || 'AF1'))
         break
       case 'prompt':
         result = await evaluatePrompt(String(body.task || ''), String(body.hint || ''), String(body.prompt || ''))
