@@ -91,8 +91,11 @@ function getSubProgress(
     const words = wordCount(answers['WRITING'] || '')
     return { answered: Math.min(words, WRITING_AUTONEXT_WORDS), total: WRITING_AUTONEXT_WORDS, complete: words >= WRITING_AUTONEXT_WORDS }
   }
-  if (stageId === 'mcq') {
-    const qs: any[] = bank[bankKey || 'debugmcq'] || []
+  if (stageId === 'mcq' || stageId === 'problem') {
+    // 'problem' is the Technical Module (assessment 2) / Problem Solving
+    // (assessment 1) flat MCQ paper — it reads bank.problem unless the stage
+    // declares its own bankKey.
+    const qs: any[] = bank[bankKey || (stageId === 'problem' ? 'problem' : 'debugmcq')] || []
     const answered = qs.filter(q => answers[q.id] != null && answers[q.id] !== '').length
     return { answered, total: qs.length, complete: answered >= qs.length }
   }
@@ -1081,13 +1084,17 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
   if (!session) return <div className="p-16 text-center text-slate-500">Loading your session…</div>
 
   const renderMcqList = () => {
-    const key = STAGES[stage].bankKey || 'debugmcq'
+    const stageId = STAGES[stage].id
+    // Each flat-MCQ stage reads its own bank: the Technical Module reads
+    // bank.problem, the Debugging code-MCQ paper reads bank.debugmcq.
+    const key = STAGES[stage].bankKey || (stageId === 'problem' ? 'problem' : 'debugmcq')
         const items: any[] = bank[key] || []
+        const intro = key === 'problem'
+          ? 'Read each scenario carefully and select the single best answer. These are hard, application-level questions — more than one option may look reasonable, so choose the most technically correct one. Options are shuffled for your session.'
+          : 'Read each program carefully, locate the syntax, logical, runtime or design issue, and select the best correction. Options are shuffled for your session.'
         return (
           <div className="space-y-3">
-            <p className="text-xs text-slate-500">
-              Read each program carefully, locate the syntax, logical, runtime or design issue, and select the best correction. Options are shuffled for your session.
-            </p>
+            <p className="text-xs text-slate-500">{intro}</p>
             {items.map((q: any, i: number) => (
               <div key={q.id} className="panel p-3.5">
                 <div className="flex items-start justify-between gap-2">
@@ -1234,6 +1241,7 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
         )
 
       case 'mcq':
+      case 'problem':
         return renderMcqList()
 
 
