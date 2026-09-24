@@ -25,7 +25,8 @@ function allCorrect(): Record<string, any> {
 
 test('the assessment-2 bank has the sections and counts from the Capgemini papers', () => {
   const listening = bank.english.listening.clips.flatMap((c: any) => c.questions)
-  assert.equal(listening.length, 10)
+  assert.equal(bank.english.listening.clips.length, 3)  // 3 audio clips
+  assert.equal(listening.length, 30)                    // 10 questions per clip
   assert.equal(bank.english.reading.questions.length, 10)
   assert.equal(bank.english.speaking.tasks.length, 3)
   assert.equal(bank.problem.length, 50)      // AI Literacy paper
@@ -182,9 +183,9 @@ test('the review model covers every assessment-2 question', () => {
     'AI-assisted Coding',
     'Cognitive Assessment',
   ])
-  // 10 listening + 3 speaking + 10 reading + 1 writing + 50 + 30 + 3
+  // 30 listening + 3 speaking + 10 reading + 1 writing + 50 + 30 + 3
   // + 1 AI-assisted coding + 1 grid + 8 logical + 6 behavioural
-  assert.equal(review.stats.total, 123)
+  assert.equal(review.stats.total, 143)
   assert.equal(review.stats.answered, 0)
 })
 

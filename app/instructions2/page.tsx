@@ -164,7 +164,7 @@ function Inner() {
               {[
                 ['⏱ Duration', '120 min · auto-submits when time runs out · no pause'],
                 ['🎥 Proctoring', 'Live camera preview · fullscreen lock · focus monitoring'],
-                ['🎧 Listening', 'One audio passage with 10 questions — plays up to 2 times'],
+                ['🎧 Listening', 'Three audio passages with 10 questions each (30 total) — each clip plays up to 2 times'],
                 ['⌨️ In-built compiler', 'Debugging Lab and AI-assisted Coding run your code against hidden tests'],
               ].map(([t, d]) => (
                 <div key={t} className="panel p-3"><div className="font-bold text-slate-800">{t}</div><div className="text-slate-500 text-xs mt-0.5">{d}</div></div>

@@ -37,7 +37,7 @@
   ],
   "english": {
     "listening": {
-      "instruction": "You may play the clip at most 2 times (the evaluator's two readings). Listen, then answer all questions for that clip. Candidates may take brief notes.",
+      "instruction": "You may play each clip at most 2 times (the evaluator’s two readings). Listen to all three clips and answer every question for each clip. Candidates may take brief notes.",
       "clips": [
         {
           "id": "LC1",
@@ -162,6 +162,260 @@
                 "Hybrid work should replace all offices."
               ],
               "answer": "Hybrid work requires thoughtful systems and ongoing adjustment.",
+              "weight": 1
+            }
+          ]
+        },
+        {
+          "id": "LC2",
+          "audio": "/audio/listening2-2.mp3",
+          "title": "Clip 2 — Automated Scheduling Rollout: Review Findings (~1:25)",
+          "questions": [
+            {
+              "id": "EL11",
+              "question": "By how much did delivery delays actually fall in the first quarter?",
+              "options": [
+                "About twenty percent",
+                "About seven percent",
+                "About twelve percent",
+                "They did not fall at all"
+              ],
+              "answer": "About seven percent",
+              "weight": 1
+            },
+            {
+              "id": "EL12",
+              "question": "What did the review team conclude about the cause of the shortfall?",
+              "options": [
+                "The software contained a calculation error",
+                "The shortfall had little to do with the software itself",
+                "The targets were never communicated",
+                "The depots refused to use the system"
+              ],
+              "answer": "The shortfall had little to do with the software itself",
+              "weight": 1
+            },
+            {
+              "id": "EL13",
+              "question": "What faulty assumption did the algorithm make?",
+              "options": [
+                "That every depot scanned a parcel as loaded at the moment it was scanned",
+                "That all depots used the same vehicles",
+                "That drivers would always follow the suggested route",
+                "That parcels were weighed before loading"
+              ],
+              "answer": "That every depot scanned a parcel as loaded at the moment it was scanned",
+              "weight": 1
+            },
+            {
+              "id": "EL14",
+              "question": "Why were the routes in two depots being optimised badly?",
+              "options": [
+                "The depots had no network connection",
+                "Scanning happened at the end of the shift, so the data was already hours old",
+                "The depots used a different algorithm",
+                "Parcels were scanned twice"
+              ],
+              "answer": "Scanning happened at the end of the shift, so the data was already hours old",
+              "weight": 1
+            },
+            {
+              "id": "EL15",
+              "question": "What happened after the reporting gap was corrected?",
+              "options": [
+                "Performance improved sharply, but not to the level originally promised",
+                "Performance reached the twenty percent target",
+                "Performance stayed unchanged",
+                "The system was withdrawn"
+              ],
+              "answer": "Performance improved sharply, but not to the level originally promised",
+              "weight": 1
+            },
+            {
+              "id": "EL16",
+              "question": "What was the \"second, less visible effect\" described in the clip?",
+              "options": [
+                "Fuel costs rose",
+                "Drivers lost trust in the suggested routes and reverted to their own judgement",
+                "Depots began competing with each other",
+                "The software licence expired"
+              ],
+              "answer": "Drivers lost trust in the suggested routes and reverted to their own judgement",
+              "weight": 1
+            },
+            {
+              "id": "EL17",
+              "question": "What does the speaker imply by saying restoring confidence \"took longer than fixing the data\"?",
+              "options": [
+                "The data problem was unsolvable",
+                "Human trust recovers more slowly than a technical fault is repaired",
+                "Drivers were never informed of the fix",
+                "The data was fixed only at the end of the year"
+              ],
+              "answer": "Human trust recovers more slowly than a technical fault is repaired",
+              "weight": 1
+            },
+            {
+              "id": "EL18",
+              "question": "Which recommendation was NOT made by the review team?",
+              "options": [
+                "Pilot the system in a single depot",
+                "Publish the accuracy of the system weekly",
+                "Replace drivers who questioned the system",
+                "Treat driver feedback as evidence"
+              ],
+              "answer": "Replace drivers who questioned the system",
+              "weight": 1
+            },
+            {
+              "id": "EL19",
+              "question": "Why does the team argue that targets should be set after the pilot?",
+              "options": [
+                "Because targets are not useful in logistics",
+                "Because a number fixed in advance tends to shape what people report rather than what they do",
+                "Because pilots always fail",
+                "Because senior management refuses early targets"
+              ],
+              "answer": "Because a number fixed in advance tends to shape what people report rather than what they do",
+              "weight": 1
+            },
+            {
+              "id": "EL20",
+              "question": "What is the overall message of the clip?",
+              "options": [
+                "Automation should be avoided in logistics",
+                "A rollout is limited by data quality and human trust, not by the technology alone",
+                "Delivery delays cannot be measured reliably",
+                "Depots should operate independently of each other"
+              ],
+              "answer": "A rollout is limited by data quality and human trust, not by the technology alone",
+              "weight": 1
+            }
+          ]
+        },
+        {
+          "id": "LC3",
+          "audio": "/audio/listening2-3.mp3",
+          "title": "Clip 3 — Briefing: Customer Data Access Policy (~1:20)",
+          "questions": [
+            {
+              "id": "EL21",
+              "question": "What is the subject of the briefing?",
+              "options": [
+                "Recruitment of data analysts",
+                "How teams handle customer data when using external analysis tools",
+                "The launch of a new customer product",
+                "Office relocation plans"
+              ],
+              "answer": "How teams handle customer data when using external analysis tools",
+              "weight": 1
+            },
+            {
+              "id": "EL22",
+              "question": "How have requests to connect new tools changed over the last six months?",
+              "options": [
+                "They have halved",
+                "They have more than doubled",
+                "They have stayed the same",
+                "They have stopped entirely"
+              ],
+              "answer": "They have more than doubled",
+              "weight": 1
+            },
+            {
+              "id": "EL23",
+              "question": "What did the internal audit find in about one case in five?",
+              "options": [
+                "Data had been sold to third parties",
+                "The requester could not say which fields the tool would read or where results would be stored",
+                "The tool was unlicensed",
+                "The request was submitted twice"
+              ],
+              "answer": "The requester could not say which fields the tool would read or where results would be stored",
+              "weight": 1
+            },
+            {
+              "id": "EL24",
+              "question": "Which three things must every request now include?",
+              "options": [
+                "A budget, a vendor name and a signature",
+                "The specific fields required, a retention period, and one accountable person",
+                "A demo, a contract and a timeline",
+                "A risk score, a password and a backup plan"
+              ],
+              "answer": "The specific fields required, a retention period, and one accountable person",
+              "weight": 1
+            },
+            {
+              "id": "EL25",
+              "question": "What happens to a request for the full customer record without justification?",
+              "options": [
+                "It is rejected permanently",
+                "It is returned so the scope can be narrowed and resubmitted",
+                "It is escalated to the regulator",
+                "It is approved with a warning"
+              ],
+              "answer": "It is returned so the scope can be narrowed and resubmitted",
+              "weight": 1
+            },
+            {
+              "id": "EL26",
+              "question": "What is the expected cost of the new process?",
+              "options": [
+                "Roughly two working days added to the approval cycle",
+                "Two weeks of downtime",
+                "A doubling of licence fees",
+                "Loss of access for existing tools"
+              ],
+              "answer": "Roughly two working days added to the approval cycle",
+              "weight": 1
+            },
+            {
+              "id": "EL27",
+              "question": "What benefit is offered in return for the additional step?",
+              "options": [
+                "A cash incentive per team",
+                "A standing approval valid for twelve months instead of repeating the process per project",
+                "Unlimited access to all records",
+                "Removal of all audits"
+              ],
+              "answer": "A standing approval valid for twelve months instead of repeating the process per project",
+              "weight": 1
+            },
+            {
+              "id": "EL28",
+              "question": "What does the speaker say about misuse of data?",
+              "options": [
+                "Several cases of misuse were confirmed",
+                "The audit found no evidence of misuse",
+                "Misuse is suspected but unproven in half the cases",
+                "Misuse was reported by customers"
+              ],
+              "answer": "The audit found no evidence of misuse",
+              "weight": 1
+            },
+            {
+              "id": "EL29",
+              "question": "Why is the organisation still concerned despite finding no misuse?",
+              "options": [
+                "Because customers have complained",
+                "Because it could not currently demonstrate compliance if a regulator asked",
+                "Because the tools are too expensive",
+                "Because the audit team is leaving"
+              ],
+              "answer": "Because it could not currently demonstrate compliance if a regulator asked",
+              "weight": 1
+            },
+            {
+              "id": "EL30",
+              "question": "What does the speaker mean by \"being unable to prove good practice is treated as a failure of good practice\"?",
+              "options": [
+                "Practice matters less than paperwork in every situation",
+                "In a regulated context, evidence of compliance is itself part of compliance",
+                "Audits should be avoided",
+                "Only documented teams may use data"
+              ],
+              "answer": "In a regulated context, evidence of compliance is itself part of compliance",
               "weight": 1
             }
           ]
