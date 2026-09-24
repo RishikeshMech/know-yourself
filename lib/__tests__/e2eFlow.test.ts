@@ -76,6 +76,39 @@ test('assessment 1: an empty paper scores zero and a perfect paper reaches the c
   assert.ok(s.cognitive.total <= s.cognitive.max)
 })
 
+test('assessment 1: a flawless paper reaches exactly 1000 and the grid is pure accuracy', () => {
+  const a: any = perfect(b1)
+  a.WRITING = 'word '.repeat(200)
+  a.GRID = 1
+  b1.english.speaking.tasks.forEach((t: any) => { a[t.id + '_audio'] = { size: 4096 } })
+  b1.debugging.forEach((t: any) => { a[t.id + '_fix'] = 'x'.repeat(200) })
+  b1.cognitive.behavioral.forEach((q: any) => { a[q.id] = 100 })
+  a.AF1_code = 'x'.repeat(400)
+  const ai: any = { SP_speaking: { score: 100 }, WRITING: { score: 100 }, AF1: { score: 100 } }
+  b1.debugging.forEach((t: any) => { ai[t.id] = { score: 100 } })
+  b1.prompt.forEach((t: any) => { ai[t.id] = { score: 100 } })
+
+  const s = computeScores(a, ai, { gridAcc: 1 })
+  assert.equal(s.english.total, 200)
+  assert.equal(s.problem_solving, 200)
+  assert.equal(s.ai_debugging, 150)
+  assert.equal(s.ai_feature, 150)
+  assert.equal(s.prompt_engineering, 100)
+  assert.equal(s.cognitive.grid, 30, 'a perfect grid run must earn the full 30')
+  assert.equal(s.cognitive.logical, 70)
+  assert.equal(s.cognitive.total, 200)
+  assert.equal(s.total, 1000)
+  assert.equal(s.grade, 'S')
+
+  // The grid is straight accuracy: no free points for a failed attempt, and
+  // nothing at all when it was never played.
+  assert.equal(computeScores({ ...a, GRID: 0 }, ai, { gridAcc: 0 }).cognitive.grid, 0)
+  assert.equal(computeScores({ ...a, GRID: 0.5 }, ai, { gridAcc: 0.5 }).cognitive.grid, 15)
+  const notPlayed = { ...a }
+  delete notPlayed.GRID
+  assert.equal(computeScores(notPlayed, ai, {}).cognitive.grid, 0)
+})
+
 test('assessment 2: empty paper is zero, perfect paper is the full 1000', () => {
   const empty = computeScores2({}, {}, { bank: b2 })
   assert.equal(empty.total, 0)

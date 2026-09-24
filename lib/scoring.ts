@@ -115,9 +115,12 @@ export function computeScores(
   // ---------------- Cognitive: Grid (max 30) ----------------
   const attempted = answers['GRID'] !== undefined || typeof meta.gridAcc === 'number'
   const gridAcc = clamp01(typeof meta.gridAcc === 'number' ? meta.gridAcc : (answers['GRID'] || 0))
-  // Only award the speed/accuracy composite when the challenge was actually
-  // attempted; a never-played grid must score 0 (no free speed points).
-  const grid = attempted ? Math.round((0.7 * gridAcc + 0.3 * 0.85) * 30) : 0
+  // Straight accuracy, exactly like assessment 2 (see computeScores2). The old
+  // formula blended a hardcoded 0.85 "speed" constant that was never measured:
+  // it handed ~8 free points to a 0%-accuracy attempt and capped a perfect run
+  // at 29/30, so a flawless paper could never reach 1000. A never-played grid
+  // still scores 0.
+  const grid = attempted ? Math.round(gridAcc * 30) : 0
 
   // ---------------- Cognitive: Logical (max 70) ----------------
   const clQs = bank.cognitive.logical
