@@ -14,8 +14,7 @@ test('aiAssistant: generates root-cause explanation for AD1 pagination task', as
 
   assert.equal(res.engine, 'heuristic')
   assert.ok(res.reply.includes('0-based') || res.reply.includes('Off-by-one') || res.reply.includes('page - 1'))
-  assert.ok(Array.isArray(res.suggestions))
-  assert.ok(res.suggestions.length > 0)
+  assert.equal('suggestions' in res, false)
 })
 
 test('aiAssistant: explains Promise caching and race conditions for AD2', async () => {
@@ -60,6 +59,33 @@ test('aiAssistant: explains sliding window and express middleware for AF1', asyn
   assert.equal(res.engine, 'heuristic')
   assert.ok(res.reply.includes('isAllowed'))
   assert.ok(res.reply.includes('429') || res.reply.includes('Retry-After'))
+})
+
+test('aiAssistant: continues to answer after an earlier successful response', async () => {
+  const first = await chatWithAssistant({
+    taskId: 'AD1',
+    messages: [{ role: 'user', content: 'Explain the root cause' }],
+  })
+  const second = await chatWithAssistant({
+    taskId: 'AD1',
+    messages: [
+      { role: 'user', content: 'Explain the root cause' },
+      { role: 'assistant', content: first.reply },
+      { role: 'user', content: 'Which boundary cases should I check?' },
+    ],
+  })
+  assert.ok(second.reply.includes('page') || second.reply.includes('Edge Cases'))
+  assert.ok(second.reply.length > 30)
+
+  const followUp = await chatWithAssistant({
+    taskId: 'CG4',
+    messages: [
+      { role: 'user', content: 'I need help' },
+      { role: 'assistant', content: 'What behavior are you trying to understand?' },
+      { role: 'user', content: 'Why must I copy the intervals before sorting?' },
+    ],
+  })
+  assert.match(followUp.reply, /mutat|copy/i)
 })
 
 test('aiAssistant: reviews user draft code and gives feedback', async () => {

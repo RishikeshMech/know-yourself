@@ -8,7 +8,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import { chatWithAssistant } from '../aiAssistant.ts'
-import { evaluateDebugging, evaluateFeature, evaluateWriting } from '../ai.ts'
+import { evaluateDebugging, evaluateFeature, evaluateWriting, normalizeAssistantPrompts, scoreAssistantPromptQuality } from '../ai.ts'
 
 const ask = (taskId: string, content: string, currentCode = '') =>
   chatWithAssistant({ taskId, currentCode, messages: [{ role: 'user', content }] })
@@ -77,6 +77,25 @@ test('an unknown task still returns usable guidance rather than crashing', async
   assert.equal(r.engine, 'heuristic')
 })
 
+test('a vague message does not trigger an unsolicited solution', async () => {
+  for (const prompt of ['hi', 'I need help']) {
+    const r = await ask('CG4', prompt)
+    assert.match(r.reply, /specific question|what behavior/i)
+    assert.doesNotMatch(r.reply, /```|function mergeIntervals/)
+  }
+})
+
+test('prompt-quality rubric rewards specific, test-focused assistant prompts', () => {
+  const vague = scoreAssistantPromptQuality(['fix it'])
+  const specific = scoreAssistantPromptQuality([
+    'Act as a senior JavaScript engineer. Review mergeIntervals(intervals), identify the mutation bug, preserve the input, merge touching ranges, and explain the empty and duplicate cases. Return a concise patch and focused tests.',
+  ])
+  assert.equal(scoreAssistantPromptQuality([]), 0)
+  assert.deepEqual(normalizeAssistantPrompts([42, '  keep this  ', null]), ['keep this'])
+  assert.equal(normalizeAssistantPrompts(['first', 'second', 'third', 'fourth', 'fifth', 'sixth']).length, 5)
+  assert.ok(specific > vague + 30, `${specific} should clearly exceed ${vague}`)
+})
+
 /* ---------------- grader fallback understands A2 tasks ---------------- */
 
 test('the debugging grader separates a real A2 fix from the planted bug', async () => {
@@ -104,12 +123,27 @@ test('CG2 and CG3 fixes are graded on their real correctness signal', async () =
   assert.ok(cg3good.score > cg3bad.score + 10, `${cg3good.score} vs ${cg3bad.score}`)
 })
 
-test('an empty A2 submission always scores zero', async () => {
+test('empty code scores zero while assistant prompt quality remains a separate rubric value', async () => {
   const dbg = await evaluateDebugging('CG1', 'buggy', 'fix it', '')
   assert.equal(dbg.score, 0)
+  assert.equal(dbg.rubric.correctness, 0)
+  assert.equal(dbg.rubric.prompt_quality, 0)
+
+  const prompt = 'Please debug the function, explain the root cause, and test empty input plus duplicate values.'
+  const promptedDbg = await evaluateDebugging('CG1', 'buggy', 'fix it', '', [prompt])
+  assert.equal(promptedDbg.score, 0, 'prompt quality must not hide a missing code fix')
+  assert.equal(promptedDbg.rubric.correctness, 0)
+  assert.ok(promptedDbg.rubric.prompt_quality > 0)
+
   const feat = await evaluateFeature('merge intervals', '', 'CG4')
   assert.equal(feat.score, 0)
+  assert.equal(feat.rubric.prompt_quality, 0)
   assert.match(feat.improvements.join(' '), /mergeIntervals/, 'the advice must name the A2 task, not the A1 rate limiter')
+
+  const promptedFeat = await evaluateFeature('merge intervals', '', 'CG4', [prompt])
+  assert.equal(promptedFeat.score, 0, 'prompt quality must not hide a missing implementation')
+  assert.equal(promptedFeat.rubric.functional_correctness, 0)
+  assert.ok(promptedFeat.rubric.prompt_quality > 0)
 })
 
 test('the AI-assisted Coding grader rewards a correct CG4 build', async () => {

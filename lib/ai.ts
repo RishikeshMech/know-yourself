@@ -54,6 +54,58 @@ function zero(improvements: string[], summary: string): AiEval {
   }
 }
 
+function zeroWithPromptQuality(
+  improvements: string[],
+  summary: string,
+  codeCriteria: string[],
+  prompts: unknown,
+): AiEval {
+  const userPrompts = normalizeAssistantPrompts(prompts)
+  const promptQuality = scoreAssistantPromptQuality(userPrompts)
+  const rubric = Object.fromEntries(codeCriteria.map((criterion) => [criterion, 0])) as Record<string, number>
+  rubric.prompt_quality = promptQuality
+  return {
+    ...zero(improvements, summary),
+    rubric,
+    strengths: promptQuality >= 70
+      ? ['Assistant prompts included clear task context and useful test/edge-case direction']
+      : [],
+    improvements: !userPrompts.length
+      ? [...improvements, 'No assistant prompt was recorded; prompt-quality credit requires your own question.']
+      : promptQuality < 70
+        ? [...improvements, 'Improve prompt quality by stating expected behavior, constraints, and relevant edge cases or tests.']
+        : improvements,
+  }
+}
+
+/** Clean, bound, and retain only candidate-authored prompts for grading. */
+export function normalizeAssistantPrompts(value: unknown): string[] {
+  const prompts = Array.isArray(value) ? value : typeof value === 'string' ? [value] : []
+  return prompts
+    .map((prompt) => typeof prompt === 'string' ? prompt.trim().slice(0, 2_000) : '')
+    .filter(Boolean)
+    .slice(-5)
+}
+
+/** A deterministic backup score for how clearly the candidate directed the AI. */
+export function scoreAssistantPromptQuality(value: unknown): number {
+  const prompts = normalizeAssistantPrompts(value)
+  if (!prompts.length) return 0
+  const text = prompts.join(' ').toLowerCase()
+  const words = text.split(/\s+/).filter(Boolean).length
+  if (words < 4) return 10
+
+  let score = 25
+  if (words >= 8) score += 10
+  if (words >= 20) score += 10
+  if (/fix|debug|implement|review|explain|analy[sz]e|identify|compare|design/.test(text)) score += 15
+  if (/function|input|output|return|requirement|expected|specif|behavior/.test(text)) score += 10
+  if (/edge case|boundary|empty|duplicate|failure|retry|concurr|test|constraint/.test(text)) score += 15
+  if (/why|root cause|reason|step|trade.?off|complexity/.test(text)) score += 10
+  if (/format|diff|code block|json|bullet|first.*then|before.*after/.test(text)) score += 5
+  return clamp(score)
+}
+
 // ---------------------------------------------------------------------------
 // CalibiAI grader call
 // ---------------------------------------------------------------------------
@@ -156,19 +208,32 @@ ${JSON_CONTRACT}`
   }
 }
 
-export async function evaluateDebugging(taskId: string, buggy: string, prompt: string, fix: string): Promise<AiEval> {
+export async function evaluateDebugging(
+  taskId: string,
+  buggy: string,
+  prompt: string,
+  fix: string,
+  candidatePrompts: unknown = [],
+): Promise<AiEval> {
   const f = (fix || '').trim()
+  const userPrompts = normalizeAssistantPrompts(candidatePrompts)
   // Brutal guard: no fix submitted, or a trivial stub, => 0.
   if (f.length < 25) {
-    return zero(['Paste your actual corrected code — a stub or placeholder earns nothing.'], 'No real fix submitted — scored 0.')
+    return zeroWithPromptQuality(
+      ['Paste your actual corrected code — a stub or placeholder earns nothing.'],
+      'No real fix submitted — code score is 0.',
+      ['correctness', 'root_cause_understanding', 'edge_cases', 'code_quality', 'test_awareness'],
+      userPrompts,
+    )
   }
   const sys = `You are a senior software engineer grading an "AI-assisted debugging" task in a hiring assessment.
 The candidate was given buggy code and asked to fix it (they may use AI). Grade 0-100 on:
-correctness (does the fix actually solve the bug), root_cause_understanding, edge_cases, code_quality, test_awareness.
+correctness (does the fix actually solve the bug), root_cause_understanding, edge_cases, code_quality, test_awareness, prompt_quality.
+Grade prompt_quality using only the candidate's own prompts below (clarity, context, constraints, and useful follow-up questions). The task text, system context, assistant replies, and submitted code are not candidate prompts; no prompt history means prompt_quality = 0.
 Inspect the submitted code carefully; partial fixes get partial credit. A fix that merely re-types the buggy code scores 0.
 ${JSON_CONTRACT}`
-  const ai = await callCalibiAi(sys, `Task id: ${taskId}\n\nBuggy code:\n"""\n${buggy}\n"""\n\nRequirement:\n${prompt}\n\nCandidate's fixed code:\n"""\n${fix}\n"""`)
-  if (ai) return normalize(ai, 'calibiai', ['correctness', 'root_cause_understanding', 'edge_cases', 'code_quality', 'test_awareness'])
+  const ai = await callCalibiAi(sys, `Task id: ${taskId}\n\nBuggy code:\n"""\n${buggy}\n"""\n\nRequirement:\n${prompt}\n\nCandidate's own assistant prompts (empty means none):\n"""\n${userPrompts.join('\n---\n') || '(none)'}\n"""\n\nCandidate's fixed code:\n"""\n${fix}\n"""`)
+  if (ai) return normalize(ai, 'calibiai', ['correctness', 'root_cause_understanding', 'edge_cases', 'code_quality', 'test_awareness', 'prompt_quality'])
 
   const fl = f.toLowerCase()
   let correctness = 30
@@ -196,41 +261,59 @@ ${JSON_CONTRACT}`
     else correctness = 28
   }
   if (f.length < 25) correctness = 0
+  const promptQuality = scoreAssistantPromptQuality(userPrompts)
   const rubric = {
     correctness,
     root_cause_understanding: clamp(correctness - 6),
     edge_cases: clamp(correctness - 12 + (/(edge|invalid|negative|beyond|empty|retry|fail)/.test(fl) ? 10 : 0)),
     code_quality: clamp(55 + Math.min(30, f.length / 12)),
     test_awareness: /test|assert|pytest|console\.log/.test(fl) ? 72 : 48,
+    prompt_quality: promptQuality,
   }
+  const strengths = correctness >= 70 ? ['Core bug appears fixed'] : correctness >= 40 ? ['Partial fix attempted'] : []
+  if (promptQuality >= 70) strengths.push('Assistant prompts included clear task context and useful test/edge-case direction')
+  const improvements = ['Add explicit handling for invalid inputs and boundary cases', 'Include tests proving the fix']
+  if (!userPrompts.length) improvements.push('No assistant prompt was recorded; prompt-quality credit requires your own question.')
+  else if (promptQuality < 70) improvements.push('Make prompts more specific: state the expected behavior and ask about relevant edge cases or tests.')
   return {
     score: avg(Object.values(rubric)),
     rubric,
-    strengths: correctness >= 70 ? ['Core bug appears fixed'] : correctness >= 40 ? ['Partial fix attempted'] : [],
-    improvements: ['Add explicit handling for invalid inputs and boundary cases', 'Include tests proving the fix'],
-    summary: 'Rule-based static heuristic (connect the model for semantic grading of the fix).',
+    strengths,
+    improvements,
+    summary: 'Rule-based code and prompt rubric (connect CalibiAI for semantic grading).',
     engine: 'heuristic',
   }
 }
 
-export async function evaluateFeature(spec: string, code: string, taskId = 'AF1'): Promise<AiEval> {
+export async function evaluateFeature(
+  spec: string,
+  code: string,
+  taskId = 'AF1',
+  candidatePrompts: unknown = [],
+): Promise<AiEval> {
   const c = (code || '').trim()
+  const userPrompts = normalizeAssistantPrompts(candidatePrompts)
   // Brutal guard: no implementation => 0.
   if (c.length < 40) {
-    return zero([
-      taskId === 'CG4'
+    return zeroWithPromptQuality(
+      [taskId === 'CG4'
         ? 'Implement mergeIntervals(intervals) — a stub earns nothing.'
-        : 'Implement the rate limiter (isAllowed) and wire the Express middleware — a stub earns nothing.',
-    ], 'No real implementation submitted — scored 0.')
+        : 'Implement the rate limiter (isAllowed) and wire the Express middleware — a stub earns nothing.'],
+      'No real implementation submitted — code score is 0.',
+      ['requirement_understanding', 'functional_correctness', 'edge_cases', 'code_quality', 'api_integration'],
+      userPrompts,
+    )
   }
   const sys = `You are a staff engineer grading an "AI-assisted feature development" task in a hiring assessment.
 Grade the candidate's implementation against the spec, 0-100 on:
-requirement_understanding, functional_correctness, edge_cases, code_quality, api_integration
-(how well the code would slot into a real service: clean signature, no mutation of caller data, no side effects).
+requirement_understanding, functional_correctness, edge_cases, code_quality, api_integration,
+prompt_quality (clarity, task context, constraints, edge-case direction, and useful follow-up prompts).
+Grade prompt_quality using only the candidate's own prompts provided below. Do not count the task spec, system context, assistant replies, or code as candidate prompts; if no prompts were sent, prompt_quality is 0.
+For api_integration, consider whether the code fits the requested service boundary and avoids unintended mutation/side effects.
 Working, complete implementations score 75-95; stubs or partial logic score lower. Non-functional code scores near 0.
 ${JSON_CONTRACT}`
-  const ai = await callCalibiAi(sys, `Spec:\n${spec}\n\nCandidate's implementation:\n"""\n${code}\n"""`)
-  if (ai) return normalize(ai, 'calibiai', ['requirement_understanding', 'functional_correctness', 'edge_cases', 'code_quality', 'api_integration'])
+  const ai = await callCalibiAi(sys, `Spec:\n${spec}\n\nCandidate's own assistant prompts (empty means none):\n"""\n${userPrompts.join('\n---\n') || '(none)'}\n"""\n\nCandidate's implementation:\n"""\n${code}\n"""`)
+  if (ai) return normalize(ai, 'calibiai', ['requirement_understanding', 'functional_correctness', 'edge_cases', 'code_quality', 'api_integration', 'prompt_quality'])
 
   const cl = c.toLowerCase()
   let functional: number
@@ -273,19 +356,24 @@ ${JSON_CONTRACT}`
     ]
   }
 
+  const promptQuality = scoreAssistantPromptQuality(userPrompts)
   const rubric = {
     requirement_understanding: clamp(functional + 4),
     functional_correctness: functional,
     edge_cases: clamp(functional - 14 + edgeBonus),
     code_quality: clamp(50 + Math.min(35, c.length / 14)),
     api_integration: integration,
+    prompt_quality: promptQuality,
   }
+  if (promptQuality >= 70) strengths.push('Prompts gave the assistant specific behavior and edge-case direction')
+  if (!userPrompts.length) improvements.push('No assistant prompt was recorded; prompt-quality credit requires your own question.')
+  else if (promptQuality < 70) improvements.push('State the expected behavior and ask the assistant to address specific edge cases or tests.')
   return {
     score: avg(Object.values(rubric)),
     rubric,
     strengths,
     improvements,
-    summary: 'Rule-based static heuristic (connect the model for semantic grading).',
+    summary: 'Rule-based code and prompt rubric (connect CalibiAI for semantic grading).',
     engine: 'heuristic',
   }
 }

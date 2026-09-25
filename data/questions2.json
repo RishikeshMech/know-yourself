@@ -1636,7 +1636,7 @@
       "buggy": "def first_repeated(s):\n    freq = {}\n    for ch in s:\n        freq[ch] = freq.get(ch, 0) + 1\n    for ch in s:\n        if freq[ch] == 1:      # returns the first character seen exactly ONCE\n            return ch\n    return ''\n\n# first_repeated('aabbc') should return 'a' (a appears exactly twice)\n# first_repeated('aaab') should return ''  (a appears 3 times, b once)",
       "prompt": "Fix first_repeated(s) so it returns the FIRST character (in string order) that appears exactly twice in s, and '' when no such character exists. Characters appearing once, three or more times must never be returned. You may use AI — write the corrected function.",
       "hint": "Count all frequencies first, then scan the string in order and compare the count against exactly 2 — not 1, and not 'at least 2'.",
-      "tests": 4
+      "tests": 6
     },
     {
       "id": "CG2",
@@ -1645,7 +1645,7 @@
       "buggy": "def rotate(a, k):\n    n = len(a)\n    k = k - 1                 # wrong reduction — an off-by-one classic\n    a.reverse()\n    a[:k] = reversed(a[:k])\n    a[k:] = reversed(a[k:])\n    return a\n\n# rotate([1,2,3,4,5], 2) should return [4,5,1,2,3]\n# rotate([1,2,3,4,5], 7) should return [4,5,1,2,3]  (k > len)\n# rotate([1,2,3,4,5], 0) should return [1,2,3,4,5]",
       "prompt": "Fix rotate(a, k) so it rotates list a to the RIGHT by k positions and returns it, working for ANY k (including k ≥ len(a) and k = 0) and for an empty list without crashing. You may use AI — write the corrected function.",
       "hint": "Reduce k with modulo (k % n) after guarding n == 0, then apply the three-reversal rotation (or slice) correctly.",
-      "tests": 4
+      "tests": 6
     },
     {
       "id": "CG3",
@@ -1654,7 +1654,7 @@
       "buggy": "function firstPos(a, key) {\n  let l = 0, r = a.length - 1, ans = -1;\n  while (l <= r) {\n    const mid = l + Math.floor((r - l) / 2);\n    if (a[mid] === key) {\n      ans = mid;\n      l = mid + 1;          // keeps searching RIGHT — finds the LAST occurrence\n    } else if (a[mid] < key) l = mid + 1;\n    else r = mid - 1;\n  }\n  return ans;\n}\n\n// firstPos([1,2,2,2,3], 2) should return 1 (the FIRST 2)",
       "prompt": "Fix firstPos(a, key) so it returns the FIRST index of key in a sorted array that may contain duplicates, or -1 when key is absent. You may use AI — write the corrected function.",
       "hint": "After recording a match at mid, keep searching the LEFT half (r = mid - 1) so the last recorded ans is the first occurrence.",
-      "tests": 4
+      "tests": 6
     }
   ],
   "feature": {
@@ -1664,7 +1664,7 @@
     "spec": "A scheduling service receives raw booking windows that may overlap or touch. Implement mergeIntervals(intervals) which takes an array of [start, end] pairs (integers, start <= end) and returns a NEW array of non-overlapping intervals sorted by start, where any intervals that overlap or merely touch (e.g. [1,3] and [3,5]) are merged into one. The input array must not be mutated. An empty input returns an empty array. You may use the in-exam AI assistant to design, write and review the solution — you are assessed on how effectively you direct the AI and on the code that results.",
     "sample": "mergeIntervals([[1,3],[2,6],[8,10],[15,18]]) -> [[1,6],[8,10],[15,18]]\nmergeIntervals([[1,4],[4,5]]) -> [[1,5]]\nmergeIntervals([]) -> []",
     "hint": "Copy the array before sorting by start; then fold left, extending the last interval when the next start is <= the last end.",
-    "tests": 5
+    "tests": 7
   },
   "cognitive": {
     "grid": {
