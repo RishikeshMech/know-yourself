@@ -14,6 +14,7 @@ import { AiExamAssistant } from '@/components/AiExamAssistant'
 import { AssessmentReview } from '@/components/AssessmentReview'
 import { type ReviewTarget } from '@/lib/reviewModel'
 import type { AssessmentConfig, StageDef } from '@/lib/assessmentConfig'
+import { postJsonWithRetry } from '@/lib/clientApi'
 import { shouldCountListeningPlay, LISTENING_MAX_PLAYS } from '@/lib/listeningPlay'
 import type { TestRunResult } from '@/lib/runTests'
 import {
@@ -232,7 +233,7 @@ function TestFeedback({ r, taskId }: { r?: TestRunResult; taskId: string }) {
   return (
     <div className={`mt-2 rounded-2xl border p-3.5 text-sm ${tone} animate-fade-up`}>
       <div className="flex items-center justify-between">
-        <span className="font-bold">{r.passed}/{r.total} tests passed</span>
+        <span className="font-bold">{r.total > 0 ? `${r.passed}/${r.total} tests passed` : 'Test results unavailable'}</span>
         {r.timedOut && <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white">timed out</span>}
       </div>
       {r.error && <div className="mt-1 text-xs opacity-90">⚠ {r.error}</div>}
@@ -264,6 +265,7 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
   const [session, setSessionLocal] = useState<any>(null)
   const [answers, setAnswers] = useState<Record<string, any>>({})
   const [aiResults, setAiResults] = useState<Record<string, any>>({})
+  const [assistantPrompts, setAssistantPrompts] = useState<Record<string, string[]>>({})
   const [stage, setStage] = useState(0)
   const [sub, setSub] = useState(0)
   // Slide direction for the subsection transition ('next' slides in from the
@@ -372,6 +374,9 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
   const autoTimerRef = useRef<any>(null)
   const autoTickRef = useRef<any>(null)
   const mainCardRef = useRef<HTMLDivElement | null>(null)
+  const testRunSequenceRef = useRef<Record<string, number>>({})
+  const liveTestTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const aiRunSequenceRef = useRef<Record<string, number>>({})
 
   const seed: number = session?.question_seed ?? 8675309
   const sid = session?.id
@@ -788,35 +793,119 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
   const handleAnswer = (qid: string, val: any) => setAnswers(a => ({ ...a, [qid]: val }))
 
   const runAi = async (key: string, kind: any, payload: any) => {
-    setBusy(b => ({ ...b, [key]: true }))
+    const requestId = (aiRunSequenceRef.current[key] || 0) + 1
+    aiRunSequenceRef.current[key] = requestId
+    setBusy((current) => ({ ...current, [key]: true }))
     try {
-      const res = await fetch('/api/ai/evaluate', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kind, ...payload }),
-      })
-      const data = await res.json()
-      if (data.ok) setAiResults(prev => ({ ...prev, [key]: data.result }))
-      else showToast('Evaluation failed — the built-in engine will score this on submit.')
-    } catch { showToast('AI evaluation offline — the built-in engine will score this on submit.') }
-    finally { setBusy(b => ({ ...b, [key]: false })) }
+      const { data } = await postJsonWithRetry<any>('/api/ai/evaluate', {
+        kind,
+        ...payload,
+      }, { timeoutMs: 25_000, retries: 1 })
+      if (!data?.ok || !data.result || typeof data.result.score !== 'number') {
+        throw new Error(String(data?.detail || data?.error || 'The evaluator returned an invalid response.'))
+      }
+      if (aiRunSequenceRef.current[key] === requestId) {
+        setAiResults((prev) => ({ ...prev, [key]: data.result }))
+      }
+    } catch (error: any) {
+      if (aiRunSequenceRef.current[key] === requestId) {
+        showToast(`AI evaluation could not finish: ${String(error?.message || 'please retry')}`)
+      }
+    } finally {
+      if (aiRunSequenceRef.current[key] === requestId) {
+        setBusy((current) => ({ ...current, [key]: false }))
+      }
+    }
   }
 
-  // Real test-runner for the coding modules
-  const runTests = async (taskId: string, code: string) => {
+  // Run the actual task tests on demand and after a short pause in typing. A
+  // sequence number prevents an older request from replacing newer code results.
+  const runTests = async (taskId: string, code: string, options: { silent?: boolean } = {}) => {
     const key = taskId + '_tests'
-    setBusy(b => ({ ...b, [key]: true }))
-    setTestResults(prev => ({ ...prev, [taskId]: undefined }))
+    if (!options.silent && liveTestTimersRef.current[taskId]) {
+      clearTimeout(liveTestTimersRef.current[taskId])
+      delete liveTestTimersRef.current[taskId]
+    }
+    const requestId = (testRunSequenceRef.current[taskId] || 0) + 1
+    testRunSequenceRef.current[taskId] = requestId
+    setBusy((current) => ({ ...current, [key]: true }))
+    if (!options.silent) setTestResults((prev) => ({ ...prev, [taskId]: undefined }))
+
     try {
-      const res = await fetch('/api/user/assessment/runtests', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ task_id: taskId, code }),
-      })
-      const data = await res.json()
-      if (data.ok) setTestResults(prev => ({ ...prev, [taskId]: data }))
-      else showToast(data.error || 'Could not run the tests.')
-    } catch { showToast('Test runner offline.') }
-    finally { setBusy(b => ({ ...b, [key]: false })) }
+      const { data } = await postJsonWithRetry<any>('/api/user/assessment/runtests', {
+        task_id: taskId,
+        code,
+      }, { timeoutMs: 9_000, retries: 1 })
+      if (!data?.ok || typeof data.total !== 'number' || !Array.isArray(data.results)) {
+        throw new Error(String(data?.detail || data?.error || 'The test runner returned an invalid response.'))
+      }
+      if (testRunSequenceRef.current[taskId] === requestId) {
+        setTestResults((prev) => ({ ...prev, [taskId]: data as TestRunResult }))
+      }
+    } catch (error: any) {
+      if (testRunSequenceRef.current[taskId] === requestId) {
+        const pythonTask = ['AD1', 'AD3', 'CG1', 'CG2'].includes(taskId)
+        setTestResults((prev) => ({
+          ...prev,
+          [taskId]: {
+            passed: 0,
+            total: 0,
+            results: [],
+            engine: pythonTask ? 'python' : 'node',
+            error: String(error?.message || 'Test runner unavailable; please retry.'),
+          },
+        }))
+        if (!options.silent) showToast(`Tests could not finish: ${String(error?.message || 'please retry')}`)
+      }
+    } finally {
+      if (testRunSequenceRef.current[taskId] === requestId) {
+        setBusy((current) => ({ ...current, [key]: false }))
+      }
+    }
   }
+
+  // Live coding-lab tests: debounce keystrokes, then execute the active task's
+  // test suite so the candidate sees feedback without needing a separate click.
+  const activeStage = STAGES[stage]
+  let liveTaskId: string | null = null
+  if (envState === 'cleared' && !terminated && !submitting && !showReview && !reviewMode) {
+    if (activeStage?.id === 'debugging' && (!activeStage.sub.length || sub === 1)) {
+      liveTaskId = bank.debugging?.[activeDebuggingTask]?.id || null
+    } else if (activeStage?.id === 'feature') {
+      liveTaskId = bank.feature?.id || (isA2 ? 'CG4' : 'AF1')
+    }
+  }
+  const liveCode = liveTaskId
+    ? String(answers[liveTaskId + (activeStage?.id === 'feature' ? '_code' : '_fix')] || '')
+    : ''
+
+  useEffect(() => {
+    if (!liveTaskId) return
+    const taskId = liveTaskId
+    const code = liveCode
+    const resultKey = taskId
+    if (!code.trim()) {
+      setTestResults((prev) => ({ ...prev, [resultKey]: undefined }))
+      return
+    }
+
+    setTestResults((prev) => ({ ...prev, [resultKey]: undefined }))
+    const timer = setTimeout(() => {
+      delete liveTestTimersRef.current[taskId]
+      void runTests(taskId, code, { silent: true })
+    }, 800)
+    liveTestTimersRef.current[taskId] = timer
+
+    return () => {
+      clearTimeout(timer)
+      if (liveTestTimersRef.current[taskId] === timer) delete liveTestTimersRef.current[taskId]
+      // Invalidate a request for an older editor value immediately.
+      testRunSequenceRef.current[taskId] = (testRunSequenceRef.current[taskId] || 0) + 1
+      setBusy((current) => current[taskId + '_tests']
+        ? { ...current, [taskId + '_tests']: false }
+        : current)
+    }
+  }, [liveTaskId, liveCode, envState, terminated, submitting, showReview, reviewMode])
 
   const startRecording = async (id: string) => {
     try {
@@ -1385,10 +1474,11 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
                 <textarea
                   value={answers[d.id + '_fix'] || ''}
                   onChange={(e) => handleAnswer(d.id + '_fix', e.target.value)}
-                  placeholder={`# Write or paste your corrected ${d.lang || (d.id.startsWith('AD2') ? 'JavaScript' : 'Python')} code here...\n# You can also use the AI assistant below to explain the bug, suggest approaches, or review your code.`}
+                  placeholder={`Write your corrected ${d.lang || (d.id.startsWith('AD2') ? 'JavaScript' : 'Python')} solution here…`}
                   className="field min-h-[160px] font-mono !text-xs leading-relaxed shadow-sm"
                   spellCheck={false}
                 />
+                <div className="mt-1.5 text-[10px] text-slate-400">Live tests rerun automatically about a second after you pause typing.</div>
               </div>
 
               {/* Action Buttons Toolbar */}
@@ -1410,6 +1500,7 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
                         buggy: d.buggy,
                         prompt: d.prompt,
                         fix: answers[d.id + '_fix'] || '',
+                        prompts: assistantPrompts[d.id] || [],
                       })
                     }
                   />
@@ -1448,10 +1539,7 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
                 taskPrompt={d.prompt}
                 buggyOrSpec={d.buggy}
                 currentCode={answers[d.id + '_fix'] || ''}
-                onApplyCode={(codeSnippet) => {
-                  handleAnswer(d.id + '_fix', codeSnippet)
-                  showToast('✨ Applied AI code to your editor!')
-                }}
+                onPromptsChange={(prompts) => setAssistantPrompts((prev) => ({ ...prev, [d.id]: prompts }))}
               />
             </div>
           </div>
@@ -1477,7 +1565,7 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
                     </span>
                   </div>
                   <div className="text-[11px] text-indigo-200 mt-0.5">
-                    Proctored mode active. {isA2 ? 'Use AI effectively to solve the coding task below — you are assessed on how well you direct the assistant and on the code that results.' : 'Build the sliding-window rate limiter & Express middleware.'} Ask the AI assistant below for architecture, code examples, or reviews without switching tabs. <b className="text-white">You have 5 assistant prompts for this task — use them wisely.</b>
+                    Proctored mode active. {isA2 ? 'You are assessed on your own prompts and the code that results.' : 'Build the sliding-window rate limiter and Express middleware.'} Write your own question if you choose to use the assistant; it responds only after you send one. <b className="text-white">You have 5 answered prompts for this task.</b>
                   </div>
                 </div>
               </div>
@@ -1538,11 +1626,12 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
                   value={answers[fid + '_code'] || ''}
                   onChange={(e) => handleAnswer(fid + '_code', e.target.value)}
                   placeholder={isA2
-                    ? `// Implement the feature described above:\nfunction mergeIntervals(intervals) {\n  // sort a copy by start, then fold overlapping/touching ranges\n}`
-                    : `// Implement sliding-window rate limiter function:\nfunction isAllowed(userId, maxRequests = 5, windowMs = 60000) {\n  // Store and clean timestamps per user\n}\n\n// Express middleware wiring (return 429 + Retry-After header):\nfunction rateLimitMiddleware(req, res, next) {\n  // ...\n}`}
+                    ? '// Write your feature implementation here…'
+                    : '// Write your implementation here…'}
                   className="field min-h-[220px] font-mono !text-xs leading-relaxed shadow-sm"
                   spellCheck={false}
                 />
+                <div className="mt-1.5 text-[10px] text-slate-400">Live tests rerun automatically about a second after you pause typing.</div>
               </div>
 
               {/* Action Buttons */}
@@ -1562,6 +1651,7 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
                       taskId: fid,
                       spec: f.spec,
                       code: answers[fid + '_code'] || '',
+                      prompts: assistantPrompts[fid] || [],
                     })
                   }
                 />
@@ -1578,10 +1668,7 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
                 taskPrompt={f.spec}
                 buggyOrSpec={f.sample}
                 currentCode={answers[fid + '_code'] || ''}
-                onApplyCode={(codeSnippet) => {
-                  handleAnswer(fid + '_code', codeSnippet)
-                  showToast('✨ Applied AI implementation to your editor!')
-                }}
+                onPromptsChange={(prompts) => setAssistantPrompts((prev) => ({ ...prev, [fid]: prompts }))}
               />
             </div>
           </div>

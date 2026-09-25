@@ -30,27 +30,42 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { taskId, taskTitle, taskPrompt, buggyOrSpec, currentCode, messages } = body
-
-  if (!taskId) {
-    return NextResponse.json({ error: 'taskId is required' }, { status: 400 })
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return NextResponse.json({ error: 'A JSON object is required' }, { status: 400 })
   }
 
+  const { taskId, taskTitle, taskPrompt, buggyOrSpec, currentCode, messages } = body
+
+  if (typeof taskId !== 'string' || !taskId.trim() || taskId.length > 80) {
+    return NextResponse.json({ error: 'A valid taskId is required' }, { status: 400 })
+  }
   if (!Array.isArray(messages) || messages.length === 0) {
-    return NextResponse.json({ error: 'messages array is required' }, { status: 400 })
+    return NextResponse.json({ error: 'Send a question before requesting an answer.' }, { status: 400 })
+  }
+
+  // Keep the chat bounded and accept only real conversation roles. In
+  // particular, a client cannot smuggle a system message into the model prompt.
+  const cleanMessages = messages
+    .slice(-12)
+    .filter((m: any) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
+    .map((m: any) => ({
+      role: m.role as 'user' | 'assistant',
+      content: m.content.slice(0, 8_000),
+    }))
+    .filter((m: any) => m.content.trim())
+
+  if (!cleanMessages.length || cleanMessages[cleanMessages.length - 1].role !== 'user') {
+    return NextResponse.json({ error: 'Send your own question to get an assistant response.' }, { status: 400 })
   }
 
   try {
     const assistantReq: AssistantRequest = {
-      taskId: String(taskId),
-      taskTitle: taskTitle ? String(taskTitle) : undefined,
-      taskPrompt: taskPrompt ? String(taskPrompt) : undefined,
-      buggyOrSpec: buggyOrSpec ? String(buggyOrSpec) : undefined,
-      currentCode: currentCode ? String(currentCode) : '',
-      messages: messages.map((m: any) => ({
-        role: m.role === 'assistant' ? 'assistant' : 'user',
-        content: String(m.content || ''),
-      })),
+      taskId: taskId.trim(),
+      taskTitle: taskTitle ? String(taskTitle).slice(0, 160) : undefined,
+      taskPrompt: taskPrompt ? String(taskPrompt).slice(0, 6_000) : undefined,
+      buggyOrSpec: buggyOrSpec ? String(buggyOrSpec).slice(0, 16_000) : undefined,
+      currentCode: currentCode ? String(currentCode).slice(0, 60_000) : '',
+      messages: cleanMessages,
     }
 
     const response = await chatWithAssistant(assistantReq)

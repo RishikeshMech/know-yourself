@@ -80,7 +80,7 @@
       "buggy": "def paginate(items, page, size):\n    start = page * size\n    end = start + size\n    return items[start:end]  # page=1 should return the FIRST page\n\n# paginate(list(range(20)), 1, 5) currently returns [5,6,7,8,9]",
       "prompt": "Fix pagination so page=1 returns the first page. Also handle page < 1, size <= 0, and requests beyond the last page without crashing. You may use AI — write the corrected function.",
       "hint": "Consider zero-based indexing and input validation.",
-      "tests": 4
+      "tests": 6
     },
     {
       "id": "AD2",
@@ -88,7 +88,7 @@
       "buggy": "const cache = {};\nasync function get(key, fetcher){\n  if(cache[key]) return cache[key];\n  const val = await fetcher();   // 5 concurrent callers -> fetcher runs 5 times\n  cache[key] = val;\n  return val;\n}",
       "prompt": "Fix so concurrent calls with the same key trigger fetcher() exactly once and all callers receive the same value. Handle a failing fetch by removing the in-flight entry so a retry is possible.",
       "hint": "Cache the in-flight Promise, not just the resolved value.",
-      "tests": 4
+      "tests": 6
     },
     {
       "id": "AD3",
@@ -96,7 +96,7 @@
       "buggy": "def remove_inactive(users):\n    for u in users:\n        if u['active'] is False:\n            users.remove(u)   # skips elements / RuntimeError risk\n    return users",
       "prompt": "Rewrite so every inactive user is removed safely without skipping elements or raising. Preserve order of the remaining users. Explain the root cause in a comment.",
       "hint": "Build a new list, or iterate over a copy / indices in reverse.",
-      "tests": 3
+      "tests": 5
     }
   ],
   "feature": {
@@ -105,7 +105,7 @@
     "spec": "You are adding API protection to an existing Node/Express service. Implement an in-memory sliding-window rate limiter: function isAllowed(userId, maxRequests = 5, windowMs = 60000). It returns true if the user has made fewer than maxRequests within the last windowMs, and records the request; otherwise returns false. Old timestamps must be cleaned so memory does not grow unbounded. Then show how you would wire it as Express middleware and return HTTP 429 with a Retry-After header when blocked. You may use AI tools to build it.",
     "sample": "isAllowed('u1') x5 within 60s -> true; 6th call -> false; after 60s window elapses -> true again",
     "hint": "Store an array of timestamps per user; filter out entries older than windowMs on each call.",
-    "tests": 5
+    "tests": 8
   },
   "prompt": [
     { "id": "PE1", "task": "Write a prompt that instructs an AI assistant to summarize a 10-page technical research paper into exactly 3 bullets for a busy CEO — focusing on business impact and risk, not methodology. The model must not invent numbers.", "hint": "Specify role, audience, format, and a hallucination guardrail." },

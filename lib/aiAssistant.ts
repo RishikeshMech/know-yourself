@@ -22,7 +22,6 @@ export interface AssistantRequest {
 export interface AssistantResponse {
   reply: string
   engine: 'calibiai' | 'heuristic'
-  suggestions?: string[]
 }
 
 import { callLlm, isLlmConfigured } from './llm.ts'
@@ -85,12 +84,6 @@ function getTaskKnowledge(taskId: string) {
         return []
         
     return list(items[start:end])`,
-        suggestions: [
-          '💡 Explain the off-by-one root cause',
-          '🔍 What edge cases are tested for AD1?',
-          '🛠️ Show me the corrected Python function',
-          '📋 Review my current code',
-        ],
       }
 
     case 'AD2':
@@ -106,35 +99,30 @@ function getTaskKnowledge(taskId: string) {
           '**Identical resolved values**: all concurrent callers must resolve to the identical value.',
           '**Failed fetcher cleanup**: if `fetcher()` rejects, clear `cache[key]` so future calls can retry.',
           '**Cached hits**: subsequent calls after resolution should return the cached value immediately without invoking `fetcher()`.',
+          '**Falsy values**: resolved values such as `0` or `false` are still valid cache hits.',
         ],
-        codeSnippet: `const cache = {};
+        codeSnippet: `const cache = new Map();
 
 async function get(key, fetcher) {
-  // If already in cache (either pending Promise or resolved value), return it
-  if (cache[key]) {
-    return cache[key];
+  // Map.has distinguishes a cached falsy value from a missing entry.
+  if (cache.has(key)) {
+    return cache.get(key);
   }
 
   // Cache the in-flight Promise immediately
-  cache[key] = (async () => {
+  const pending = (async () => {
     try {
-      const val = await fetcher();
-      return val;
+      return await fetcher();
     } catch (err) {
       // Clean up on failure so retries can trigger fetcher again
-      delete cache[key];
+      cache.delete(key);
       throw err;
     }
   })();
+  cache.set(key, pending);
 
-  return cache[key];
+  return pending;
 }`,
-        suggestions: [
-          '💡 How does Promise caching prevent race conditions?',
-          '🔄 How do I handle fetch failures and retries?',
-          '🛠️ Show me the fixed async get() function',
-          '📋 Review my current code',
-        ],
       }
 
     case 'AD3':
@@ -159,12 +147,6 @@ async function get(key, fetcher) {
     if not isinstance(users, list):
         return []
     return [u for u in users if u.get('active') is not False]`,
-        suggestions: [
-          '💡 Why does Python skip items when removing during a loop?',
-          '🛠️ What is the cleanest fix using list comprehension?',
-          '🔍 What edge cases are tested for AD3?',
-          '📋 Review my current code',
-        ],
       }
 
     case 'AF1':
@@ -224,12 +206,6 @@ function rateLimitMiddleware(req, res, next) {
     message: \`Rate limit exceeded. Please retry in \${retryAfterSec} seconds.\`
   });
 }`,
-        suggestions: [
-          '💡 How does the sliding window algorithm work?',
-          '🌐 How do I write the Express middleware with 429 status?',
-          '🧹 How do I clean expired timestamps to prevent memory leaks?',
-          '📋 Review my rate limiter implementation',
-        ],
       }
 
     // ---------------- Assessment 2 — Capgemini 2027 mock ----------------
@@ -257,12 +233,6 @@ function rateLimitMiddleware(req, res, next) {
         if freq[ch] == 2:
             return ch
     return ''`,
-        suggestions: [
-          '💡 Why does the original return the wrong character?',
-          '🔍 What edge cases are tested for CG1?',
-          '🛠️ Show me the corrected Python function',
-          '📋 Review my current code',
-        ],
       }
 
     case 'CG2':
@@ -287,12 +257,6 @@ function rateLimitMiddleware(req, res, next) {
         return list(arr)
     # Right rotation, returning a new list (no mutation of the input).
     return list(arr[-k:]) + list(arr[:-k])`,
-        suggestions: [
-          '💡 Why does k need the modulo?',
-          '🔍 What edge cases are tested for CG2?',
-          '🛠️ Show me the corrected rotate()',
-          '📋 Review my current code',
-        ],
       }
 
     case 'CG3':
@@ -323,12 +287,6 @@ function rateLimitMiddleware(req, res, next) {
   }
   return res;
 }`,
-        suggestions: [
-          '💡 Why does a normal binary search fail here?',
-          '🔍 What edge cases are tested for CG3?',
-          '🛠️ Show me the corrected firstPos()',
-          '📋 Review my current code',
-        ],
       }
 
     case 'CG4':
@@ -363,12 +321,6 @@ function rateLimitMiddleware(req, res, next) {
   }
   return out;
 }`,
-        suggestions: [
-          '💡 How do I merge touching intervals correctly?',
-          '🔍 What edge cases are tested for CG4?',
-          '🛠️ Show me a complete implementation',
-          '📋 Review my current code',
-        ],
       }
 
     default:
@@ -379,7 +331,6 @@ function rateLimitMiddleware(req, res, next) {
         fixSummary: 'Write clean, defensive code handling boundary conditions.',
         edgeCases: ['Null/undefined inputs', 'Out-of-range parameters', 'Type checking'],
         codeSnippet: `// Code implementation here`,
-        suggestions: ['💡 Give me a hint', '🔍 What edge cases should I handle?', '📋 Review my code'],
       }
   }
 }
@@ -387,7 +338,7 @@ function rateLimitMiddleware(req, res, next) {
 function analyzeUserCode(taskId: string, code: string): string {
   const c = (code || '').trim()
   if (!c) {
-    return 'Your editor is currently empty. You can write your solution above or ask me for a step-by-step guide on how to solve this task!'
+    return 'There is no draft in the editor yet. Share code to review, or send a specific question about what you are trying to understand.'
   }
 
   const cl = c.toLowerCase()
@@ -414,13 +365,13 @@ function analyzeUserCode(taskId: string, code: string): string {
       notes.push('✅ **Boundary check**: You check if `start >= len(items)`.')
     }
 
-    return `### 🔍 Review of your draft code:\n\n${notes.join('\n\n')}\n\n**Tip:** Click **"▶ Run hidden tests"** above to verify your solution against all 4 test cases!`
+    return `### 🔍 Review of your draft code:\n\n${notes.join('\n\n')}\n\n**Tip:** Run the test suite to check boundary cases against your current code.`
   }
 
   if (taskId === 'AD2') {
     const cachesPromise = /cache\[key\]\s*=\s*(async|\(?new\s+promise|fetcher\(\))/i.test(cl) || /inflight|pending/i.test(cl)
     const handlesFailure = /delete\s+cache\[key\]|try\s*\{[\s\S]*catch/i.test(cl)
-    const returnsCache = /return\s+cache\[key\]/i.test(cl)
+    const returnsCache = /return\s+cache(?:\[key\]|\.get\(key\))/i.test(cl)
 
     const notes: string[] = []
     if (cachesPromise) {
@@ -490,7 +441,7 @@ function analyzeUserCode(taskId: string, code: string): string {
       ? '✅ **Two passes**: You build the frequency map before deciding.'
       : '⚠️ **Count first**: Build a full frequency map in one pass, then decide in a second pass.')
     if (scansString) notes.push('✅ **Original order**: You scan the string itself, so the first-in-order rule holds.')
-    return `### 🔍 Review of your draft code:\n\n${notes.join('\n\n')}\n\n**Tip:** Click **"▶ Run hidden tests"** to check all 4 cases.`
+    return `### 🔍 Review of your draft code:\n\n${notes.join('\n\n')}\n\n**Tip:** Run the test suite to check duplicates, boundaries, and unusual inputs.`
   }
 
   if (taskId === 'CG2') {
@@ -534,7 +485,7 @@ function analyzeUserCode(taskId: string, code: string): string {
     notes.push(touching
       ? '✅ **Touching intervals**: Your comparison uses `<=`, so `[1,3]` and `[3,5]` merge.'
       : '⚠️ **Touching intervals**: Use `start <= last[1]` (not `<`) so touching ranges merge.')
-    return `### 🔍 Review of your draft code:\n\n${notes.join('\n\n')}\n\n**Tip:** Click **"▶ Run feature tests"** to check all 5 cases.`
+    return `### 🔍 Review of your draft code:\n\n${notes.join('\n\n')}\n\n**Tip:** Run the feature test suite to check ordering, touching ranges, and input immutability.`
   }
 
   return `Your code looks like a good start. Click **Run Tests** above to execute it against test cases.`
@@ -543,7 +494,7 @@ function analyzeUserCode(taskId: string, code: string): string {
 function generateHeuristicResponse(req: AssistantRequest): AssistantResponse {
   const { taskId, messages, currentCode } = req
   const knowledge = getTaskKnowledge(taskId)
-  const lastMsg = messages[messages.length - 1]?.content || ''
+  const lastMsg = [...messages].reverse().find((message) => message.role === 'user')?.content.trim() || ''
   const q = lastMsg.toLowerCase()
 
   let reply = ''
@@ -563,7 +514,10 @@ function generateHeuristicResponse(req: AssistantRequest): AssistantResponse {
     q.includes('root cause') ||
     q.includes('explain the bug') ||
     q.includes('why is this happening') ||
-    q.includes('why does') ||
+    q.includes('why') ||
+    q.includes('how does') ||
+    q.includes('how do i') ||
+    q.includes('race condition') ||
     q.includes('explain') ||
     q.includes('what is the problem')
   ) {
@@ -595,21 +549,23 @@ function generateHeuristicResponse(req: AssistantRequest): AssistantResponse {
     q.includes('write the code') ||
     q.includes('implement')
   ) {
-    reply = `### 🛠️ Corrected Solution for ${knowledge.name}\n\nHere is a complete, robust implementation designed to pass all hidden tests:\n\n\`\`\`${knowledge.language}\n${knowledge.codeSnippet}\n\`\`\`\n\n### 📌 Key Highlights:\n- **Clean logic**: Directly addresses the root cause.\n- **Defensive guards**: Handles boundary and edge cases smoothly.\n- You can copy this or click **"Apply to Editor"** on the snippet!`
+    reply = `### 🛠️ Corrected Solution for ${knowledge.name}\n\nHere is a complete implementation addressing the behavior you asked about:\n\n\`\`\`${knowledge.language}\n${knowledge.codeSnippet}\n\`\`\`\n\n### 📌 Key Highlights:\n- **Core logic**: Addresses the root cause.\n- **Boundary handling**: Covers the task's important edge cases.\n- Use Copy if you want to move the snippet into your editor.`
   }
   // 5. Check if user asks about hints / approach
-  else if (q.includes('hint') || q.includes('approach') || q.includes('how do i start') || q.includes('help')) {
+  else if (q.includes('hint') || q.includes('approach') || q.includes('how do i start')) {
     reply = `### 💡 Strategy & Hints for ${knowledge.name}\n\n1. **Understand the index/concurrency model**: ${knowledge.fixSummary}\n2. **Handle Edge Cases**: ${knowledge.edgeCases[0]}\n3. **Test thoroughly**: Run the hidden tests as you make changes.\n\nWould you like a code snippet or a review of your current code?`
   }
-  // 6. Generic/fallback response for any other query
+  // 6. A vague or unrelated prompt must not trigger a pre-written solution.
+  // Ask a clarifying question and wait for the candidate's own direction.
   else {
-    reply = `### 🤖 CalibiAI Coding Assistant (${knowledge.name})\n\nRegarding your question: "${lastMsg}"\n\n- **Core Concept**: ${knowledge.fixSummary}\n- **Edge Cases to Remember**: ${knowledge.edgeCases.slice(0, 2).join('; ')}\n\n\`\`\`${knowledge.language}\n${knowledge.codeSnippet}\n\`\`\`\n\nFeel free to ask me to review your code or explain any specific part of this problem!`
+    reply = lastMsg
+      ? `I need a more specific question about **${knowledge.name}** before I can help. What behavior are you trying to understand, what result did you expect, or what error/test failure are you seeing? I will answer the question you actually send rather than guessing that you want a full solution.`
+      : `Nothing has been asked yet. Type a specific question about **${knowledge.name}** when you are ready; I will not generate an answer or code until you send a prompt.`
   }
 
   return {
     reply,
     engine: 'heuristic',
-    suggestions: knowledge.suggestions,
   }
 }
 
@@ -640,18 +596,18 @@ ${currentCode || '(empty)'}
 """
 
 GUIDELINES:
-1. Help the student understand root causes, algorithmic approaches, concurrency, and edge cases.
-2. Provide clear, well-structured, educational explanations.
-3. When providing code, write complete, production-ready code with appropriate comments in Markdown code blocks (e.g., \`\`\`${knowledge.language}).
-4. If they ask to review their code, highlight what is correct and point out bugs or missing edge cases constructively.
-5. Be concise, polite, encouraging, and accurate.`
+1. Answer the latest candidate-authored message directly; do not send an unsolicited answer or solution.
+2. Do not treat the task description, examples, or editor contents as a request to write code. For vague greetings or requests, ask one concise clarifying question.
+3. Give a complete code block only when the candidate explicitly asks for code/a fix, or when code is necessary to answer their specific question.
+4. Help explain root causes, algorithmic approaches, concurrency, and relevant edge cases without volunteering unrelated details.
+5. For code reviews, assess the current draft constructively and do not silently replace it.
+6. Be concise, polite, and accurate.`
 
     const calibiAiReply = await callCalibiAiChat(systemPrompt, messages)
     if (calibiAiReply) {
       return {
         reply: calibiAiReply,
         engine: 'calibiai',
-        suggestions: knowledge.suggestions,
       }
     }
   }

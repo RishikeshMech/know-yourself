@@ -10,7 +10,7 @@ export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
 import {
   evaluateWriting, evaluateSpeaking, evaluateDebugging, evaluateFeature, evaluatePrompt,
-  isCalibiAiConfigured, type AiKind,
+  normalizeAssistantPrompts, type AiKind,
 } from '@/lib/ai'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 
@@ -53,11 +53,14 @@ export async function POST(req: Request) {
       case 'debugging':
         result = await evaluateDebugging(
           String(body.taskId || ''), String(body.buggy || ''),
-          String(body.prompt || ''), String(body.fix || ''),
+          String(body.prompt || ''), String(body.fix || ''), normalizeAssistantPrompts(body.prompts),
         )
         break
       case 'feature':
-        result = await evaluateFeature(String(body.spec || ''), String(body.code || ''), String(body.taskId || 'AF1'))
+        result = await evaluateFeature(
+          String(body.spec || ''), String(body.code || ''), String(body.taskId || 'AF1'),
+          normalizeAssistantPrompts(body.prompts),
+        )
         break
       case 'prompt':
         result = await evaluatePrompt(String(body.task || ''), String(body.hint || ''), String(body.prompt || ''))
@@ -65,7 +68,7 @@ export async function POST(req: Request) {
       default:
         return NextResponse.json({ error: `unknown kind: ${kind}` }, { status: 400 })
     }
-    return NextResponse.json({ ok: true, engine: isCalibiAiConfigured() ? 'calibiai' : 'heuristic', result })
+    return NextResponse.json({ ok: true, engine: result.engine, result })
   } catch (e: any) {
     return NextResponse.json({ error: 'evaluation failed', detail: String(e?.message || e) }, { status: 500 })
   }
