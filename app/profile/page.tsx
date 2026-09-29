@@ -11,6 +11,9 @@ import { SkillGraph, type SkillDatum } from '@/components/SkillGraph'
 import { ReportModal } from '@/components/ReportModal'
 import { SkillChips } from '@/components/SkillChips'
 import { flattenAssessmentResult } from '@/lib/resultShape'
+import { CALIBI_RULE, calibiFromSources } from '@/lib/calibiScore'
+import { companyApi } from '@/lib/company/client'
+import type { AttemptSummary } from '@/lib/company/types'
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
@@ -108,6 +111,8 @@ function ProfileInner() {
   const router = useRouter()
   const { user, profile, setProfile, scores, resume, setUser, setScores, setResume, hydrated } = useStore()
   const [scoresPayload, setScoresPayload] = useState<any>(null)
+  const [scores2Local, setScores2Local] = useState<any>(null)
+  const [companyList, setCompanyList] = useState<AttemptSummary[]>([])
   const [resumeLocal, setResumeLocal] = useState<any>(null)
   const [nameDraft, setNameDraft] = useState('')
   const [editingName, setEditingName] = useState(false)
@@ -142,11 +147,15 @@ function ProfileInner() {
   useEffect(() => {
     if (!user?.id) return
     const load = async () => {
-      const [p, s, r] = await Promise.all([
+      const [p, s, r, s2, co] = await Promise.all([
         fetch('/api/user/profile?user_id=' + user.id).then(x => x.json()).catch(() => ({})),
         fetch('/api/user/scores?student_id=' + user.id).then(x => x.json()).catch(() => ({})),
         fetch('/api/user/resume?student_id=' + user.id).then(x => x.json()).catch(() => ({})),
+        fetch('/api/user/scores?student_id=' + user.id + '&assessment=2').then(x => x.json()).catch(() => ({})),
+        companyApi.list(user.id).catch(() => null),
       ])
+      setScores2Local(flattenAssessmentResult(s2?.result))
+      if (co && co.ok && Array.isArray(co.data?.attempts)) setCompanyList(co.data.attempts)
       if (p.profile) setProfile(p.profile)
       // Always write through — including `null` when there is no result — so a
       // stale cached score from a deleted/previous account never lingers.
@@ -168,8 +177,10 @@ function ProfileInner() {
 
   const onboarded = isProfileComplete(profile)
   const displayName = profile?.full_name || user?.name || user?.email?.split('@')[0] || 'Candidate'
-  const total = Number(activeScores?.total) || 0
-  const tier = tierFor(activeScores ? total : 0)
+  // Headline: the CalibiAI Score is the average of every completed assessment.
+  const calibi = useMemo(() => calibiFromSources({ a1: activeScores, a2: scores2Local, company: companyList }), [activeScores, scores2Local, companyList])
+  const total = calibi.score ?? 0
+  const tier = tierFor(total)
 
   // AI avatar state follows the saved profile config.
   useEffect(() => {
@@ -375,8 +386,9 @@ function ProfileInner() {
               <div className="mt-5">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Talent score</span>
-                    <button onClick={() => setShowWhy(w => !w)} className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold text-indigo-200 hover:bg-white/20" title="How the talent score is built">
+                    <span className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">CalibiAI Score</span>
+                    {calibi.count > 0 && <span className="text-[10px] font-semibold text-slate-400">· avg of {calibi.count} assessment{calibi.count === 1 ? '' : 's'}</span>}
+                    <button onClick={() => setShowWhy(w => !w)} className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold text-indigo-200 hover:bg-white/20" title="How the CalibiAI Score is built">
                       ⓘ Why?
                     </button>
                   </div>
@@ -387,7 +399,7 @@ function ProfileInner() {
                 </div>
                 {showWhy && (
                   <div className="animate-fade-in mt-2.5 rounded-xl bg-white/10 border border-white/15 p-3 text-[11px] leading-relaxed text-slate-300">
-                    Your talent score is the sum of six assessment sections — English (200), Problem Solving (200), AI Debugging (150), AI Feature Development (150), Prompt Engineering (100) and Cognitive (200) — out of 1000. Tiers: Bronze &lt; 300 · Silver 300–599 · Gold 600–799 · Platinum 800+.
+                    {CALIBI_RULE} {calibi.entries.length > 0 && <>So far: {calibi.entries.map((e) => `${e.label} ${e.scaled}`).join(' · ')}.</>} The CalibiAI Assessment itself is the sum of six sections — English (200), Problem Solving (200), AI Debugging (150), AI Feature Development (150), Prompt Engineering (100) and Cognitive (200). Tiers: Bronze &lt; 300 · Silver 300–599 · Gold 600–799 · Platinum 800+.
                   </div>
                 )}
               </div>
@@ -421,7 +433,7 @@ function ProfileInner() {
             <div className="glass-card animate-fade-up hover-lift">
               <PanelHead
                 tag="Assessment proof"
-                title="Your talent score"
+                title="CalibiAI Assessment"
                 right={activeScores ? (
                   <span className="rounded-full border border-indigo-100 bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-600">Grade {activeScores.grade} · {activeScores.percentile}th %ile</span>
                 ) : (

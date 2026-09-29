@@ -653,3 +653,125 @@ export async function hasAssessmentResult(client: SupabaseClient, userId: string
     return false
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Company assessments (public.company_assessment_attempts)             */
+/* ------------------------------------------------------------------ */
+// One row per (student, company): the UNIQUE (student_id, company_slug)
+// constraint is the database-level guarantee behind "one attempt per company".
+// The row id is derived deterministically from the same pair (see
+// lib/company/attempts.ts), so racing instances converge on a single row.
+// Answer keys are never stored here — only question ids, the per-attempt
+// option order, the candidate's answers and the graded result.
+
+export const COMPANY_ATTEMPT_SUMMARY_SELECT = [
+  'id', 'student_id', 'company_slug', 'status', 'started_at', 'expires_at', 'duration_sec',
+  'submitted_at', 'auto_submitted', 'score', 'verdict',
+].join(',')
+
+export function companyAttemptRow(a: any): Record<string, any> | null {
+  const studentId = toUuid(a.student_id, 'profile')
+  if (!studentId) return null
+  return {
+    id: toUuid(a.id, 'company-attempt') || randomUUID(),
+    student_id: studentId,
+    company_slug: String(a.company || ''),
+    status: a.status || 'in_progress',
+    question_seed: Number(a.question_seed) || 0,
+    paper: a.paper || {},
+    answers: a.answers || {},
+    proctoring: a.proctoring || {},
+    started_at: a.started_at ? new Date(a.started_at).toISOString() : new Date().toISOString(),
+    expires_at: a.expires_at ? new Date(a.expires_at).toISOString() : new Date().toISOString(),
+    duration_sec: Number(a.duration_sec) || 0,
+    submitted_at: a.submitted_at ? new Date(a.submitted_at).toISOString() : null,
+    auto_submitted: !!a.auto_submitted,
+    submit_reason: a.submit_reason || null,
+    score: a.score == null ? null : Number(a.score),
+    verdict: a.result?.verdict || null,
+    result: a.result || null,
+    updated_at: new Date().toISOString(),
+  }
+}
+
+export function rowToCompanyAttempt(row: any): any | null {
+  if (!row || !row.id) return null
+  return {
+    id: row.id,
+    student_id: row.student_id,
+    company: row.company_slug,
+    status: row.status,
+    question_seed: Number(row.question_seed) || 0,
+    paper: row.paper || { blueprint: '', bankVersion: '', rounds: [] },
+    answers: row.answers || {},
+    proctoring: row.proctoring || { strikes: 0, camera: null, fullscreen: null, events: [] },
+    started_at: row.started_at,
+    expires_at: row.expires_at,
+    duration_sec: Number(row.duration_sec) || 0,
+    submitted_at: row.submitted_at || null,
+    auto_submitted: !!row.auto_submitted,
+    submit_reason: row.submit_reason || null,
+    score: row.score == null ? null : Number(row.score),
+    result: row.result || null,
+    created_at: row.created_at || row.started_at,
+    updated_at: row.updated_at || row.started_at,
+  }
+}
+
+/**
+ * Upsert an attempt. `createOnly` inserts without overwriting an existing row
+ * (ON CONFLICT DO NOTHING) — used when starting, so a second start can never
+ * replace the first attempt's paper or answers.
+ */
+export async function persistCompanyAttempt(
+  client: SupabaseClient,
+  attempt: any,
+  opts: { createOnly?: boolean } = {},
+): Promise<boolean> {
+  const row = companyAttemptRow(attempt)
+  if (!row) {
+    console.warn('[supabase] company attempt persist skipped: invalid student_id')
+    return false
+  }
+  const { error } = await client
+    .from('company_assessment_attempts')
+    .upsert(row, { onConflict: 'id', ignoreDuplicates: !!opts.createOnly })
+  if (error) {
+    console.warn('[supabase] company attempt persist failed:', error.message)
+    return false
+  }
+  return true
+}
+
+export async function fetchCompanyAttempt(client: SupabaseClient, studentId: string, company: string): Promise<any | null> {
+  const sid = toUuid(studentId, 'profile')
+  if (!sid) return null
+  try {
+    const { data, error } = await client
+      .from('company_assessment_attempts')
+      .select('*')
+      .eq('student_id', sid)
+      .eq('company_slug', company)
+      .maybeSingle()
+    if (error) return null
+    return rowToCompanyAttempt(data)
+  } catch {
+    return null
+  }
+}
+
+/** Status rows for every company attempt of a student (no paper / answers). */
+export async function fetchCompanyAttemptSummaries(client: SupabaseClient, studentId: string): Promise<any[] | null> {
+  const sid = toUuid(studentId, 'profile')
+  if (!sid) return null
+  try {
+    const { data, error } = await client
+      .from('company_assessment_attempts')
+      .select(COMPANY_ATTEMPT_SUMMARY_SELECT)
+      .eq('student_id', sid)
+    if (error || !Array.isArray(data)) return null
+    return data
+  } catch {
+    return null
+  }
+}

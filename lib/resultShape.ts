@@ -21,6 +21,7 @@ export function flattenAssessmentResult(result: any): any {
   return {
     session_id: result.session_id,
     ...scores,
+    created_at: result.created_at ?? scores.created_at ?? null,
     total: result.total,
     grade: result.grade,
     percentile: result.percentile,

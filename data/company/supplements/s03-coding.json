@@ -1,0 +1,8056 @@
+{
+ "section": "s3",
+ "_about": "LeetCode-style coding problems (medium/hard only) for the company coding rounds. AUTHORING SOURCE: scripts/company-bank/coding/*.mjs — edit there and run `npm run compile:coding`; this file is generated. Hidden tests run server-side in Python or JavaScript with per-test time limits; stress tests use deterministic generators ({\"$gen\": …}) and large expected outputs are stored as sha256 digests. Reference and brute-force solutions never reach the bank or the browser; lib/__tests__/companyCoding.test.ts re-verifies them.",
+ "coding": [
+  {
+   "slug": "character-replacement",
+   "title": "Longest Repeating Character Replacement",
+   "topic": "Strings",
+   "difficulty": "medium",
+   "statement": "Given an uppercase string s and an integer k, you may change at most k characters of s to any other uppercase letter. Return the length of the longest substring made of one repeated letter that you can obtain.",
+   "examples": [
+    {
+     "input": "s = \"ABAB\", k = 2",
+     "output": "4"
+    },
+    {
+     "input": "s = \"AABABBA\", k = 1",
+     "output": "4",
+     "explain": "Change the middle A to B: \"AABBBBA\"."
+    }
+   ],
+   "constraints": [
+    "1 ≤ len(s) ≤ 10⁵",
+    "0 ≤ k ≤ len(s)",
+    "Expected: O(n) sliding window"
+   ],
+   "fn": {
+    "python": "character_replacement",
+    "javascript": "characterReplacement"
+   },
+   "starter": {
+    "python": "def character_replacement(s, k):\n    # Write your solution here.\n    pass\n",
+    "javascript": "function characterReplacement(s, k) {\n  // Write your solution here.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "example 1",
+     "args": [
+      "ABAB",
+      2
+     ],
+     "expected": 4,
+     "sample": true
+    },
+    {
+     "name": "example 2",
+     "args": [
+      "AABABBA",
+      1
+     ],
+     "expected": 4,
+     "sample": true
+    },
+    {
+     "name": "single letter",
+     "args": [
+      "A",
+      0
+     ],
+     "expected": 1
+    },
+    {
+     "name": "already uniform",
+     "args": [
+      "AAAA",
+      0
+     ],
+     "expected": 4
+    },
+    {
+     "name": "all distinct",
+     "args": [
+      "ABCDE",
+      1
+     ],
+     "expected": 2
+    },
+    {
+     "name": "replace the head",
+     "args": [
+      "ABBB",
+      2
+     ],
+     "expected": 4
+    },
+    {
+     "name": "replace both ends",
+     "args": [
+      "BAAAB",
+      2
+     ],
+     "expected": 5
+    },
+    {
+     "name": "no replacements",
+     "args": [
+      "ABAA",
+      0
+     ],
+     "expected": 2
+    },
+    {
+     "name": "stress: 10⁵ random letters, k = 1000",
+     "args": [
+      {
+       "$gen": "str",
+       "n": 100000,
+       "alphabet": "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+       "seed": 113
+      },
+      1000
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": 1070
+    }
+   ],
+   "solution": {
+    "python": "def character_replacement(s, k):\n    count = {}\n    best = maxf = left = 0\n    for right, ch in enumerate(s):\n        count[ch] = count.get(ch, 0) + 1\n        maxf = max(maxf, count[ch])\n        while right - left + 1 - maxf > k:\n            count[s[left]] -= 1\n            left += 1\n        best = max(best, right - left + 1)\n    return best\n",
+    "javascript": "function characterReplacement(s, k) {\n  const count = new Array(26).fill(0)\n  let best = 0, maxf = 0, left = 0\n  for (let right = 0; right < s.length; right++) {\n    const c = s.charCodeAt(right) - 65\n    maxf = Math.max(maxf, ++count[c])\n    while (right - left + 1 - maxf > k) { count[s.charCodeAt(left) - 65]--; left++ }\n    best = Math.max(best, right - left + 1)\n  }\n  return best\n}\n"
+   },
+   "brute": {
+    "python": "def character_replacement(s, k):\n    best = 0\n    for i in range(len(s)):\n        count = {}\n        top = 0\n        for j in range(i, len(s)):\n            count[s[j]] = count.get(s[j], 0) + 1\n            top = max(top, count[s[j]])\n            if j - i + 1 - top <= k:\n                best = max(best, j - i + 1)\n    return best\n"
+   }
+  },
+  {
+   "slug": "coin-change",
+   "title": "Coin Change (Minimum Coins)",
+   "topic": "Dynamic Programming",
+   "difficulty": "medium",
+   "statement": "Given coin denominations coins (unlimited supply of each) and an amount, return the fewest coins needed to make that amount, or -1 if it cannot be made.",
+   "examples": [
+    {
+     "input": "coins = [1, 2, 5], amount = 11",
+     "output": "3",
+     "explain": "5 + 5 + 1"
+    },
+    {
+     "input": "coins = [2], amount = 3",
+     "output": "-1"
+    }
+   ],
+   "constraints": [
+    "1 ≤ len(coins) ≤ 12",
+    "0 ≤ amount ≤ 10⁴",
+    "Expected: O(amount × len(coins)) DP — greedy is wrong and plain recursion is exponential"
+   ],
+   "fn": {
+    "python": "coin_change",
+    "javascript": "coinChange"
+   },
+   "starter": {
+    "python": "def coin_change(coins, amount):\n    # Return the minimum number of coins, or -1.\n    pass\n",
+    "javascript": "function coinChange(coins, amount) {\n  // Return the minimum number of coins, or -1.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "classic",
+     "args": [
+      [
+       1,
+       2,
+       5
+      ],
+      11
+     ],
+     "expected": 3,
+     "sample": true
+    },
+    {
+     "name": "impossible",
+     "args": [
+      [
+       2
+      ],
+      3
+     ],
+     "expected": -1,
+     "sample": true
+    },
+    {
+     "name": "zero amount",
+     "args": [
+      [
+       1
+      ],
+      0
+     ],
+     "expected": 0
+    },
+    {
+     "name": "greedy fails",
+     "args": [
+      [
+       1,
+       3,
+       4
+      ],
+      6
+     ],
+     "expected": 2
+    },
+    {
+     "name": "single coin exact",
+     "args": [
+      [
+       7
+      ],
+      14
+     ],
+     "expected": 2
+    },
+    {
+     "name": "larger amount",
+     "args": [
+      [
+       186,
+       419,
+       83,
+       408
+      ],
+      6249
+     ],
+     "expected": 20
+    },
+    {
+     "name": "greedy trap",
+     "args": [
+      [
+       186,
+       419,
+       83,
+       408
+      ],
+      6249
+     ],
+     "expected": 20,
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     }
+    },
+    {
+     "name": "stress: large amount",
+     "args": [
+      [
+       3,
+       7,
+       405,
+       436
+      ],
+      8839
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": 25
+    }
+   ],
+   "solution": {
+    "python": "def coin_change(coins, amount):\n    INF = amount + 1\n    dp = [0] + [INF] * amount\n    for v in range(1, amount + 1):\n        for c in coins:\n            if c <= v and dp[v - c] + 1 < dp[v]:\n                dp[v] = dp[v - c] + 1\n    return -1 if dp[amount] == INF else dp[amount]\n",
+    "javascript": "function coinChange(coins, amount) {\n  const INF = amount + 1;\n  const dp = new Array(amount + 1).fill(INF);\n  dp[0] = 0;\n  for (let v = 1; v <= amount; v++) for (const c of coins) if (c <= v) dp[v] = Math.min(dp[v], dp[v - c] + 1);\n  return dp[amount] === INF ? -1 : dp[amount];\n}\n"
+   }
+  },
+  {
+   "slug": "daily-temperatures",
+   "title": "Daily Temperatures",
+   "topic": "Stacks",
+   "difficulty": "medium",
+   "statement": "Given an array temperatures of daily temperatures, return an array answer where answer[i] is the number of days you must wait after day i to get a strictly warmer temperature. If no future day is warmer, answer[i] = 0.",
+   "examples": [
+    {
+     "input": "temperatures = [73,74,75,71,69,72,76,73]",
+     "output": "[1,1,4,2,1,1,0,0]"
+    },
+    {
+     "input": "temperatures = [30,40,50,60]",
+     "output": "[1,1,1,0]"
+    }
+   ],
+   "constraints": [
+    "1 ≤ len(temperatures) ≤ 10⁵",
+    "30 ≤ temperatures[i] ≤ 100",
+    "Expected: O(n) with a monotonic stack"
+   ],
+   "fn": {
+    "python": "daily_temperatures",
+    "javascript": "dailyTemperatures"
+   },
+   "starter": {
+    "python": "def daily_temperatures(temperatures):\n    # Write your solution here.\n    pass\n",
+    "javascript": "function dailyTemperatures(temperatures) {\n  // Write your solution here.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "example 1",
+     "args": [
+      [
+       73,
+       74,
+       75,
+       71,
+       69,
+       72,
+       76,
+       73
+      ]
+     ],
+     "expected": [
+      1,
+      1,
+      4,
+      2,
+      1,
+      1,
+      0,
+      0
+     ],
+     "sample": true
+    },
+    {
+     "name": "example 2",
+     "args": [
+      [
+       30,
+       40,
+       50,
+       60
+      ]
+     ],
+     "expected": [
+      1,
+      1,
+      1,
+      0
+     ],
+     "sample": true
+    },
+    {
+     "name": "three rising",
+     "args": [
+      [
+       30,
+       60,
+       90
+      ]
+     ],
+     "expected": [
+      1,
+      1,
+      0
+     ]
+    },
+    {
+     "name": "falling",
+     "args": [
+      [
+       90,
+       80,
+       70
+      ]
+     ],
+     "expected": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "name": "single day",
+     "args": [
+      [
+       50
+      ]
+     ],
+     "expected": [
+      0
+     ]
+    },
+    {
+     "name": "equal is not warmer",
+     "args": [
+      [
+       70,
+       70,
+       71
+      ]
+     ],
+     "expected": [
+      2,
+      1,
+      0
+     ]
+    },
+    {
+     "name": "mixed",
+     "args": [
+      [
+       55,
+       38,
+       53,
+       81,
+       61,
+       93,
+       97,
+       32,
+       43,
+       78
+      ]
+     ],
+     "expected": [
+      3,
+      1,
+      1,
+      2,
+      1,
+      1,
+      0,
+      1,
+      1,
+      0
+     ]
+    },
+    {
+     "name": "stress: 10⁵ non-increasing days",
+     "args": [
+      {
+       "$gen": "sorted",
+       "of": {
+        "$gen": "ints",
+        "n": 100000,
+        "lo": 30,
+        "hi": 100,
+        "seed": 106
+       },
+       "desc": true
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": {
+      "$digest": "af223ca49bd199ac08a094020440480511d32a352b2fcf8497475603211ca454"
+     }
+    },
+    {
+     "name": "stress: warm spike on the last day",
+     "args": [
+      {
+       "$gen": "concat",
+       "parts": [
+        {
+         "$gen": "sorted",
+         "of": {
+          "$gen": "ints",
+          "n": 99999,
+          "lo": 30,
+          "hi": 99,
+          "seed": 107
+         },
+         "desc": true
+        },
+        [
+         100
+        ]
+       ]
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": {
+      "$digest": "b75e433a67f52afd7a54d8c93397b208be34114434b6de7288cbafcb88a519ae"
+     }
+    },
+    {
+     "name": "stress: 10⁵ random days",
+     "args": [
+      {
+       "$gen": "ints",
+       "n": 100000,
+       "lo": 30,
+       "hi": 100,
+       "seed": 108
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": {
+      "$digest": "625201c9c7633fa73e20c69f9e08ed8a23e6810e46a0296c102827b224d6dc7c"
+     }
+    }
+   ],
+   "solution": {
+    "python": "def daily_temperatures(temperatures):\n    ans = [0] * len(temperatures)\n    stack = []\n    for i, t in enumerate(temperatures):\n        while stack and temperatures[stack[-1]] < t:\n            j = stack.pop()\n            ans[j] = i - j\n        stack.append(i)\n    return ans\n",
+    "javascript": "function dailyTemperatures(temperatures) {\n  const ans = new Array(temperatures.length).fill(0)\n  const stack = []\n  for (let i = 0; i < temperatures.length; i++) {\n    while (stack.length && temperatures[stack[stack.length - 1]] < temperatures[i]) {\n      const j = stack.pop()\n      ans[j] = i - j\n    }\n    stack.push(i)\n  }\n  return ans\n}\n"
+   },
+   "brute": {
+    "python": "def daily_temperatures(temperatures):\n    n = len(temperatures)\n    ans = [0] * n\n    for i in range(n):\n        for j in range(i + 1, n):\n            if temperatures[j] > temperatures[i]:\n                ans[i] = j - i\n                break\n    return ans\n",
+    "javascript": "function dailyTemperatures(t) {\n  const ans = new Array(t.length).fill(0)\n  for (let i = 0; i < t.length; i++) for (let j = i + 1; j < t.length; j++) if (t[j] > t[i]) { ans[i] = j - i; break }\n  return ans\n}\n"
+   }
+  },
+  {
+   "slug": "decode-string",
+   "title": "Decode String",
+   "topic": "Stacks",
+   "difficulty": "medium",
+   "statement": "Given an encoded string, return its decoded form. The rule is k[encoded]: the string inside the brackets is repeated exactly k times (k is a positive integer that may have several digits). Brackets can be nested. The input is always valid and digits only appear as repeat counts.",
+   "examples": [
+    {
+     "input": "s = \"3[a]2[bc]\"",
+     "output": "\"aaabcbc\""
+    },
+    {
+     "input": "s = \"3[a2[c]]\"",
+     "output": "\"accaccacc\""
+    }
+   ],
+   "constraints": [
+    "1 ≤ len(s) ≤ 2 × 10⁴",
+    "The decoded string has at most 2 × 10⁵ characters",
+    "Expected: O(output length) with a stack"
+   ],
+   "fn": {
+    "python": "decode_string",
+    "javascript": "decodeString"
+   },
+   "starter": {
+    "python": "def decode_string(s):\n    # Write your solution here.\n    pass\n",
+    "javascript": "function decodeString(s) {\n  // Write your solution here.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "example 1",
+     "args": [
+      "3[a]2[bc]"
+     ],
+     "expected": "aaabcbc",
+     "sample": true
+    },
+    {
+     "name": "example 2",
+     "args": [
+      "3[a2[c]]"
+     ],
+     "expected": "accaccacc",
+     "sample": true
+    },
+    {
+     "name": "trailing text",
+     "args": [
+      "2[abc]3[cd]ef"
+     ],
+     "expected": "abcabccdcdcdef"
+    },
+    {
+     "name": "no brackets",
+     "args": [
+      "abc"
+     ],
+     "expected": "abc"
+    },
+    {
+     "name": "multi-digit count",
+     "args": [
+      "10[a]"
+     ],
+     "expected": "aaaaaaaaaa"
+    },
+    {
+     "name": "triple nesting",
+     "args": [
+      "2[2[2[b]]]"
+     ],
+     "expected": "bbbbbbbb"
+    },
+    {
+     "name": "text around nesting",
+     "args": [
+      "a2[b3[c]]d"
+     ],
+     "expected": "abcccbcccd"
+    },
+    {
+     "name": "mixed nesting",
+     "args": [
+      "3[z]2[2[y]pq4[2[jk]e1[f]]]ef"
+     ],
+     "expected": "zzzyypqjkjkefjkjkefjkjkefjkjkefyypqjkjkefjkjkefjkjkefjkjkefef"
+    },
+    {
+     "name": "stress: 16 nested levels (131,072 chars)",
+     "args": [
+      {
+       "$gen": "concat",
+       "parts": [
+        {
+         "$gen": "strrepeat",
+         "value": "2[",
+         "n": 16
+        },
+        "ab",
+        {
+         "$gen": "strrepeat",
+         "value": "]",
+         "n": 16
+        }
+       ]
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": {
+      "$digest": "f154bd1c685ec8d9257ba5319a95b3aecb957850504ea417d448ef05b32fbe45"
+     }
+    },
+    {
+     "name": "stress: 2,000 flat groups",
+     "args": [
+      {
+       "$gen": "strrepeat",
+       "value": "3[ab]",
+       "n": 2000
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": {
+      "$digest": "265a487e69bf1b3e8d5f96978e632fae7a4581ea4ba0c712f0ece0f4dd836b82"
+     }
+    }
+   ],
+   "solution": {
+    "python": "def decode_string(s):\n    stack = []\n    cur = []\n    num = 0\n    for ch in s:\n        if ch.isdigit():\n            num = num * 10 + int(ch)\n        elif ch == '[':\n            stack.append((cur, num))\n            cur, num = [], 0\n        elif ch == ']':\n            prev, k = stack.pop()\n            prev.append(''.join(cur) * k)\n            cur = prev\n        else:\n            cur.append(ch)\n    return ''.join(cur)\n",
+    "javascript": "function decodeString(s) {\n  const stack = []\n  let cur = [], num = 0\n  for (const ch of s) {\n    if (ch >= '0' && ch <= '9') num = num * 10 + (ch.charCodeAt(0) - 48)\n    else if (ch === '[') { stack.push([cur, num]); cur = []; num = 0 }\n    else if (ch === ']') { const [prev, k] = stack.pop(); prev.push(cur.join('').repeat(k)); cur = prev }\n    else cur.push(ch)\n  }\n  return cur.join('')\n}\n"
+   }
+  },
+  {
+   "slug": "gas-station",
+   "title": "Gas Station",
+   "topic": "Greedy",
+   "difficulty": "medium",
+   "statement": "There are n gas stations on a circular route. Station i has gas[i] units of fuel, and driving from station i to station i + 1 costs cost[i] units (the last station leads back to station 0). You start with an empty tank at one of the stations. Return the index of the station from which you can complete one full clockwise circuit, or -1 if it is impossible. If a solution exists, it is unique.",
+   "examples": [
+    {
+     "input": "gas = [1,2,3,4,5], cost = [3,4,5,1,2]",
+     "output": "3"
+    },
+    {
+     "input": "gas = [2,3,4], cost = [3,4,3]",
+     "output": "-1"
+    }
+   ],
+   "constraints": [
+    "1 ≤ n ≤ 10⁵",
+    "0 ≤ gas[i], cost[i] ≤ 10⁵",
+    "Expected: a single O(n) pass"
+   ],
+   "fn": {
+    "python": "can_complete_circuit",
+    "javascript": "canCompleteCircuit"
+   },
+   "starter": {
+    "python": "def can_complete_circuit(gas, cost):\n    # Write your solution here.\n    pass\n",
+    "javascript": "function canCompleteCircuit(gas, cost) {\n  // Write your solution here.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "example 1",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4,
+       5
+      ],
+      [
+       3,
+       4,
+       5,
+       1,
+       2
+      ]
+     ],
+     "expected": 3,
+     "sample": true
+    },
+    {
+     "name": "example 2",
+     "args": [
+      [
+       2,
+       3,
+       4
+      ],
+      [
+       3,
+       4,
+       3
+      ]
+     ],
+     "expected": -1,
+     "sample": true
+    },
+    {
+     "name": "single station, enough gas",
+     "args": [
+      [
+       5
+      ],
+      [
+       4
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "name": "single station, not enough",
+     "args": [
+      [
+       4
+      ],
+      [
+       5
+      ]
+     ],
+     "expected": -1
+    },
+    {
+     "name": "start at zero",
+     "args": [
+      [
+       3,
+       1,
+       1
+      ],
+      [
+       1,
+       2,
+       2
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "name": "start at the end",
+     "args": [
+      [
+       5,
+       1,
+       2,
+       3,
+       4
+      ],
+      [
+       4,
+       4,
+       1,
+       5,
+       1
+      ]
+     ],
+     "expected": 4
+    },
+    {
+     "name": "stress: unique start at the last of 10⁵ stations",
+     "args": [
+      {
+       "$gen": "concat",
+       "parts": [
+        {
+         "$gen": "repeat",
+         "value": 1,
+         "n": 99998
+        },
+        [
+         0,
+         2
+        ]
+       ]
+      },
+      {
+       "$gen": "concat",
+       "parts": [
+        {
+         "$gen": "repeat",
+         "value": 0,
+         "n": 99998
+        },
+        [
+         100000,
+         0
+        ]
+       ]
+      }
+     ],
+     "expected": 99999,
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     }
+    },
+    {
+     "name": "stress: 10⁵ stations, impossible",
+     "args": [
+      {
+       "$gen": "ints",
+       "n": 100000,
+       "lo": 0,
+       "hi": 99,
+       "seed": 117
+      },
+      {
+       "$gen": "ints",
+       "n": 100000,
+       "lo": 1,
+       "hi": 100,
+       "seed": 118
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": -1
+    }
+   ],
+   "solution": {
+    "python": "def can_complete_circuit(gas, cost):\n    if sum(gas) < sum(cost):\n        return -1\n    start = tank = 0\n    for i in range(len(gas)):\n        tank += gas[i] - cost[i]\n        if tank < 0:\n            start = i + 1\n            tank = 0\n    return start\n",
+    "javascript": "function canCompleteCircuit(gas, cost) {\n  let total = 0, tank = 0, start = 0\n  for (let i = 0; i < gas.length; i++) {\n    total += gas[i] - cost[i]\n    tank += gas[i] - cost[i]\n    if (tank < 0) { start = i + 1; tank = 0 }\n  }\n  return total < 0 ? -1 : start\n}\n"
+   },
+   "brute": {
+    "python": "def can_complete_circuit(gas, cost):\n    n = len(gas)\n    for s in range(n):\n        tank = 0\n        ok = True\n        for step in range(n):\n            i = (s + step) % n\n            tank += gas[i] - cost[i]\n            if tank < 0:\n                ok = False\n                break\n        if ok:\n            return s\n    return -1\n",
+    "javascript": "function canCompleteCircuit(gas, cost) {\n  const n = gas.length\n  for (let s = 0; s < n; s++) {\n    let tank = 0, ok = true\n    for (let step = 0; step < n; step++) { const i = (s + step) % n; tank += gas[i] - cost[i]; if (tank < 0) { ok = false; break } }\n    if (ok) return s\n  }\n  return -1\n}\n"
+   }
+  },
+  {
+   "slug": "group-anagrams",
+   "title": "Group Anagrams",
+   "topic": "Hashing",
+   "difficulty": "medium",
+   "statement": "Given a list of lowercase words, group the words that are anagrams of each other. You may return the groups, and the words inside each group, in any order.",
+   "examples": [
+    {
+     "input": "words = [\"eat\",\"tea\",\"tan\",\"ate\",\"nat\",\"bat\"]",
+     "output": "[[\"eat\",\"tea\",\"ate\"],[\"tan\",\"nat\"],[\"bat\"]]"
+    }
+   ],
+   "constraints": [
+    "0 ≤ len(words) ≤ 2 × 10⁴",
+    "1 ≤ len(word) ≤ 8",
+    "Expected: O(n · L log L) — bucket by a canonical key"
+   ],
+   "fn": {
+    "python": "group_anagrams",
+    "javascript": "groupAnagrams"
+   },
+   "starter": {
+    "python": "def group_anagrams(words):\n    # Return a list of groups (any order).\n    pass\n",
+    "javascript": "function groupAnagrams(words) {\n  // Return a list of groups (any order).\n}\n"
+   },
+   "compare": "unordered-nested",
+   "tests": [
+    {
+     "name": "classic",
+     "args": [
+      [
+       "eat",
+       "tea",
+       "tan",
+       "ate",
+       "nat",
+       "bat"
+      ]
+     ],
+     "expected": [
+      [
+       "ate",
+       "eat",
+       "tea"
+      ],
+      [
+       "nat",
+       "tan"
+      ],
+      [
+       "bat"
+      ]
+     ],
+     "sample": true
+    },
+    {
+     "name": "single word",
+     "args": [
+      [
+       "a"
+      ]
+     ],
+     "expected": [
+      [
+       "a"
+      ]
+     ]
+    },
+    {
+     "name": "empty list",
+     "args": [
+      []
+     ],
+     "expected": []
+    },
+    {
+     "name": "empty string word",
+     "args": [
+      [
+       ""
+      ]
+     ],
+     "expected": [
+      [
+       ""
+      ]
+     ]
+    },
+    {
+     "name": "no anagrams",
+     "args": [
+      [
+       "abc",
+       "def",
+       "ghi"
+      ]
+     ],
+     "expected": [
+      [
+       "abc"
+      ],
+      [
+       "def"
+      ],
+      [
+       "ghi"
+      ]
+     ]
+    },
+    {
+     "name": "duplicates",
+     "args": [
+      [
+       "ab",
+       "ba",
+       "ab"
+      ]
+     ],
+     "expected": [
+      [
+       "ab",
+       "ab",
+       "ba"
+      ]
+     ]
+    },
+    {
+     "name": "stress: 20,000 six-letter words",
+     "args": [
+      {
+       "$gen": "strs",
+       "n": 20000,
+       "len": 6,
+       "alphabet": "abcdef",
+       "seed": 303
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": {
+      "$digest": "23de5d7f8766a48fc6ac05553105f5df6e4283090537272707f3ecd480be717a"
+     }
+    }
+   ],
+   "solution": {
+    "python": "from collections import defaultdict\ndef group_anagrams(words):\n    g = defaultdict(list)\n    for w in words:\n        g[''.join(sorted(w))].append(w)\n    return list(g.values())\n",
+    "javascript": "function groupAnagrams(words) {\n  const g = new Map();\n  for (const w of words) {\n    const k = [...w].sort().join('');\n    if (!g.has(k)) g.set(k, []);\n    g.get(k).push(w);\n  }\n  return [...g.values()];\n}\n"
+   }
+  },
+  {
+   "slug": "koko-eating-bananas",
+   "title": "Koko Eating Bananas",
+   "topic": "Searching",
+   "difficulty": "medium",
+   "statement": "Koko has piles of bananas; piles[i] is the size of pile i. The guards return in h hours. Each hour she picks one pile and eats k bananas from it — if the pile has fewer than k, she eats all of it and does nothing else that hour. Return the minimum integer speed k that lets her finish every pile within h hours.",
+   "examples": [
+    {
+     "input": "piles = [3,6,7,11], h = 8",
+     "output": "4"
+    },
+    {
+     "input": "piles = [30,11,23,4,20], h = 5",
+     "output": "30"
+    }
+   ],
+   "constraints": [
+    "1 ≤ len(piles) ≤ 10⁴",
+    "len(piles) ≤ h ≤ 10⁹",
+    "1 ≤ piles[i] ≤ 10⁹",
+    "Expected: binary search on k — O(n log max(piles))"
+   ],
+   "fn": {
+    "python": "min_eating_speed",
+    "javascript": "minEatingSpeed"
+   },
+   "starter": {
+    "python": "def min_eating_speed(piles, h):\n    # Write your solution here.\n    pass\n",
+    "javascript": "function minEatingSpeed(piles, h) {\n  // Write your solution here.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "example 1",
+     "args": [
+      [
+       3,
+       6,
+       7,
+       11
+      ],
+      8
+     ],
+     "expected": 4,
+     "sample": true
+    },
+    {
+     "name": "example 2",
+     "args": [
+      [
+       30,
+       11,
+       23,
+       4,
+       20
+      ],
+      5
+     ],
+     "expected": 30,
+     "sample": true
+    },
+    {
+     "name": "one spare hour",
+     "args": [
+      [
+       30,
+       11,
+       23,
+       4,
+       20
+      ],
+      6
+     ],
+     "expected": 23
+    },
+    {
+     "name": "single tiny pile",
+     "args": [
+      [
+       1
+      ],
+      1
+     ],
+     "expected": 1
+    },
+    {
+     "name": "huge pile, two hours",
+     "args": [
+      [
+       1000000000
+      ],
+      2
+     ],
+     "expected": 500000000
+    },
+    {
+     "name": "almost one per hour",
+     "args": [
+      [
+       312884470
+      ],
+      312884469
+     ],
+     "expected": 2
+    },
+    {
+     "name": "exactly one hour each",
+     "args": [
+      [
+       1,
+       1,
+       1,
+       1
+      ],
+      4
+     ],
+     "expected": 1
+    },
+    {
+     "name": "large piles, generous h",
+     "args": [
+      [
+       805306368,
+       805306368,
+       805306368
+      ],
+      1000000000
+     ],
+     "expected": 3
+    },
+    {
+     "name": "stress: 10⁴ piles up to 10⁹",
+     "args": [
+      {
+       "$gen": "ints",
+       "n": 10000,
+       "lo": 1,
+       "hi": 1000000000,
+       "seed": 109
+      },
+      15000
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": 488886158
+    }
+   ],
+   "solution": {
+    "python": "def min_eating_speed(piles, h):\n    lo, hi = 1, max(piles)\n    while lo < hi:\n        mid = (lo + hi) // 2\n        if sum((p + mid - 1) // mid for p in piles) <= h:\n            hi = mid\n        else:\n            lo = mid + 1\n    return lo\n",
+    "javascript": "function minEatingSpeed(piles, h) {\n  let lo = 1, hi = Math.max(...piles)\n  while (lo < hi) {\n    const mid = Math.floor((lo + hi) / 2)\n    let hours = 0\n    for (const p of piles) hours += Math.ceil(p / mid)\n    if (hours <= h) hi = mid\n    else lo = mid + 1\n  }\n  return lo\n}\n"
+   },
+   "brute": {
+    "python": "def min_eating_speed(piles, h):\n    k = 1\n    while sum((p + k - 1) // k for p in piles) > h:\n        k += 1\n    return k\n"
+   }
+  },
+  {
+   "slug": "kth-largest",
+   "title": "Kth Largest Element",
+   "topic": "Heaps",
+   "difficulty": "medium",
+   "statement": "Given an integer array nums and an integer k, return the kth largest element (counting duplicates).",
+   "examples": [
+    {
+     "input": "nums = [3, 2, 1, 5, 6, 4], k = 2",
+     "output": "5"
+    },
+    {
+     "input": "nums = [3,2,3,1,2,4,5,5,6], k = 4",
+     "output": "4"
+    }
+   ],
+   "constraints": [
+    "1 ≤ k ≤ len(nums) ≤ 10⁵",
+    "Aim for better than O(n log n) with a heap of size k"
+   ],
+   "fn": {
+    "python": "find_kth_largest",
+    "javascript": "findKthLargest"
+   },
+   "starter": {
+    "python": "def find_kth_largest(nums, k):\n    # Return the kth largest element.\n    pass\n",
+    "javascript": "function findKthLargest(nums, k) {\n  // Return the kth largest element.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "basic",
+     "args": [
+      [
+       3,
+       2,
+       1,
+       5,
+       6,
+       4
+      ],
+      2
+     ],
+     "expected": 5,
+     "sample": true
+    },
+    {
+     "name": "with duplicates",
+     "args": [
+      [
+       3,
+       2,
+       3,
+       1,
+       2,
+       4,
+       5,
+       5,
+       6
+      ],
+      4
+     ],
+     "expected": 4,
+     "sample": true
+    },
+    {
+     "name": "k = 1",
+     "args": [
+      [
+       1
+      ],
+      1
+     ],
+     "expected": 1
+    },
+    {
+     "name": "k = n",
+     "args": [
+      [
+       7,
+       10,
+       4,
+       3,
+       20,
+       15
+      ],
+      6
+     ],
+     "expected": 3
+    },
+    {
+     "name": "negatives",
+     "args": [
+      [
+       -1,
+       -5,
+       -3
+      ],
+      2
+     ],
+     "expected": -3
+    },
+    {
+     "name": "all equal",
+     "args": [
+      [
+       2,
+       2,
+       2,
+       2
+      ],
+      3
+     ],
+     "expected": 2
+    },
+    {
+     "name": "stress: 10⁵ values, k = 50,000",
+     "args": [
+      {
+       "$gen": "ints",
+       "n": 100000,
+       "lo": -10000,
+       "hi": 10000,
+       "seed": 304
+      },
+      50000
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": -28
+    }
+   ],
+   "solution": {
+    "python": "import heapq\ndef find_kth_largest(nums, k):\n    return heapq.nlargest(k, nums)[-1]\n",
+    "javascript": "function findKthLargest(nums, k) {\n  return [...nums].sort((a, b) => b - a)[k - 1];\n}\n"
+   }
+  },
+  {
+   "slug": "longest-consecutive-sequence",
+   "title": "Longest Consecutive Sequence",
+   "topic": "Hashing",
+   "difficulty": "medium",
+   "statement": "Given an unsorted array of integers nums, return the length of the longest run of consecutive integers (x, x+1, x+2, …) that can be formed from its elements. Duplicates count once. Your algorithm must run in O(n) time.",
+   "examples": [
+    {
+     "input": "nums = [100,4,200,1,3,2]",
+     "output": "4",
+     "explain": "The longest run is [1, 2, 3, 4]."
+    },
+    {
+     "input": "nums = [0,3,7,2,5,8,4,6,0,1]",
+     "output": "9"
+    }
+   ],
+   "constraints": [
+    "0 ≤ len(nums) ≤ 10⁵",
+    "−10⁹ ≤ nums[i] ≤ 10⁹",
+    "Expected: O(n) with a hash set"
+   ],
+   "fn": {
+    "python": "longest_consecutive",
+    "javascript": "longestConsecutive"
+   },
+   "starter": {
+    "python": "def longest_consecutive(nums):\n    # Write your solution here.\n    pass\n",
+    "javascript": "function longestConsecutive(nums) {\n  // Write your solution here.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "example 1",
+     "args": [
+      [
+       100,
+       4,
+       200,
+       1,
+       3,
+       2
+      ]
+     ],
+     "expected": 4,
+     "sample": true
+    },
+    {
+     "name": "example 2",
+     "args": [
+      [
+       0,
+       3,
+       7,
+       2,
+       5,
+       8,
+       4,
+       6,
+       0,
+       1
+      ]
+     ],
+     "expected": 9,
+     "sample": true
+    },
+    {
+     "name": "empty",
+     "args": [
+      []
+     ],
+     "expected": 0
+    },
+    {
+     "name": "duplicates",
+     "args": [
+      [
+       1,
+       2,
+       0,
+       1
+      ]
+     ],
+     "expected": 3
+    },
+    {
+     "name": "single",
+     "args": [
+      [
+       9
+      ]
+     ],
+     "expected": 1
+    },
+    {
+     "name": "negatives",
+     "args": [
+      [
+       -3,
+       -2,
+       -1,
+       5,
+       6
+      ]
+     ],
+     "expected": 3
+    },
+    {
+     "name": "no neighbours",
+     "args": [
+      [
+       1,
+       3,
+       5,
+       7
+      ]
+     ],
+     "expected": 1
+    },
+    {
+     "name": "32-bit extremes",
+     "args": [
+      [
+       2147483646,
+       -2147483648,
+       2147483647,
+       -2147483647
+      ]
+     ],
+     "expected": 2
+    },
+    {
+     "name": "stress: 10⁵ shuffled consecutive values",
+     "args": [
+      {
+       "$gen": "perm",
+       "n": 100000,
+       "base": -50000,
+       "seed": 103
+      }
+     ],
+     "expected": 100000,
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     }
+    },
+    {
+     "name": "stress: random values + a planted run",
+     "args": [
+      {
+       "$gen": "concat",
+       "parts": [
+        {
+         "$gen": "distinct",
+         "n": 90000,
+         "lo": -1000000000,
+         "hi": 1000000000,
+         "seed": 104
+        },
+        {
+         "$gen": "shuffle",
+         "of": {
+          "$gen": "range",
+          "start": 1000,
+          "stop": 11000
+         },
+         "seed": 105
+        }
+       ]
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": 10000
+    }
+   ],
+   "solution": {
+    "python": "def longest_consecutive(nums):\n    s = set(nums)\n    best = 0\n    for x in s:\n        if x - 1 not in s:\n            y = x\n            while y + 1 in s:\n                y += 1\n            best = max(best, y - x + 1)\n    return best\n",
+    "javascript": "function longestConsecutive(nums) {\n  const s = new Set(nums)\n  let best = 0\n  for (const x of s) {\n    if (!s.has(x - 1)) {\n      let y = x\n      while (s.has(y + 1)) y++\n      best = Math.max(best, y - x + 1)\n    }\n  }\n  return best\n}\n"
+   },
+   "brute": {
+    "python": "def longest_consecutive(nums):\n    s = set(nums)\n    best = 0\n    for x in s:\n        y = x\n        while y + 1 in s:\n            y += 1\n        best = max(best, y - x + 1)\n    return best\n"
+   }
+  },
+  {
+   "slug": "longest-unique-substring",
+   "title": "Longest Substring Without Repeating Characters",
+   "topic": "Strings",
+   "difficulty": "medium",
+   "statement": "Given a string s, return the length of the longest substring that contains no repeated characters.",
+   "examples": [
+    {
+     "input": "s = \"abcabcbb\"",
+     "output": "3",
+     "explain": "\"abc\""
+    },
+    {
+     "input": "s = \"pwwkew\"",
+     "output": "3",
+     "explain": "\"wke\""
+    }
+   ],
+   "constraints": [
+    "0 ≤ len(s) ≤ 10⁵",
+    "Expected: O(n) sliding window"
+   ],
+   "fn": {
+    "python": "length_of_longest_substring",
+    "javascript": "lengthOfLongestSubstring"
+   },
+   "starter": {
+    "python": "def length_of_longest_substring(s):\n    # Return the length of the longest substring without repeating characters.\n    pass\n",
+    "javascript": "function lengthOfLongestSubstring(s) {\n  // Return the length of the longest substring without repeating characters.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "classic",
+     "args": [
+      "abcabcbb"
+     ],
+     "expected": 3,
+     "sample": true
+    },
+    {
+     "name": "all same",
+     "args": [
+      "bbbbb"
+     ],
+     "expected": 1
+    },
+    {
+     "name": "window moves",
+     "args": [
+      "pwwkew"
+     ],
+     "expected": 3,
+     "sample": true
+    },
+    {
+     "name": "empty",
+     "args": [
+      ""
+     ],
+     "expected": 0
+    },
+    {
+     "name": "all unique",
+     "args": [
+      "abcdef"
+     ],
+     "expected": 6
+    },
+    {
+     "name": "repeat far back",
+     "args": [
+      "abba"
+     ],
+     "expected": 2
+    },
+    {
+     "name": "spaces count",
+     "args": [
+      "a b c a"
+     ],
+     "expected": 3
+    },
+    {
+     "name": "stress: 10⁵ characters, 62-symbol alphabet",
+     "args": [
+      {
+       "$gen": "str",
+       "n": 100000,
+       "alphabet": "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+       "seed": 301
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": 32
+    }
+   ],
+   "solution": {
+    "python": "def length_of_longest_substring(s):\n    last, start, best = {}, 0, 0\n    for i, c in enumerate(s):\n        if c in last and last[c] >= start:\n            start = last[c] + 1\n        last[c] = i\n        best = max(best, i - start + 1)\n    return best\n",
+    "javascript": "function lengthOfLongestSubstring(s) {\n  const last = new Map();\n  let start = 0, best = 0;\n  for (let i = 0; i < s.length; i++) {\n    const c = s[i];\n    if (last.has(c) && last.get(c) >= start) start = last.get(c) + 1;\n    last.set(c, i);\n    best = Math.max(best, i - start + 1);\n  }\n  return best;\n}\n"
+   }
+  },
+  {
+   "slug": "lru-cache",
+   "title": "LRU Cache",
+   "topic": "Hashing",
+   "difficulty": "medium",
+   "statement": "Simulate a Least-Recently-Used cache with the given capacity. operations[i] is either [1, key, value] — put: insert or update key; if the cache then holds more than capacity keys, evict the least recently used one — or [0, key, _] — get: return the value for key, or -1 if absent (the third element, if present, is ignored). Both get and put count as a use of the key. Return the results of all get operations, in order. Each operation must take O(1) average time.",
+   "examples": [
+    {
+     "input": "capacity = 2, operations = [[1,1,1],[1,2,2],[0,1],[1,3,3],[0,2],[1,4,4],[0,1],[0,3],[0,4]]",
+     "output": "[1,-1,-1,3,4]",
+     "explain": "put(3) evicts key 2; put(4) evicts key 1."
+    }
+   ],
+   "constraints": [
+    "1 ≤ capacity ≤ 3 × 10⁴",
+    "1 ≤ len(operations) ≤ 2 × 10⁵",
+    "Expected: O(1) per operation — hash map + doubly linked list (or an ordered map)"
+   ],
+   "fn": {
+    "python": "lru_cache",
+    "javascript": "lruCache"
+   },
+   "starter": {
+    "python": "def lru_cache(capacity, operations):\n    # Write your solution here.\n    pass\n",
+    "javascript": "function lruCache(capacity, operations) {\n  // Write your solution here.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "example",
+     "args": [
+      2,
+      [
+       [
+        1,
+        1,
+        1
+       ],
+       [
+        1,
+        2,
+        2
+       ],
+       [
+        0,
+        1
+       ],
+       [
+        1,
+        3,
+        3
+       ],
+       [
+        0,
+        2
+       ],
+       [
+        1,
+        4,
+        4
+       ],
+       [
+        0,
+        1
+       ],
+       [
+        0,
+        3
+       ],
+       [
+        0,
+        4
+       ]
+      ]
+     ],
+     "expected": [
+      1,
+      -1,
+      -1,
+      3,
+      4
+     ],
+     "sample": true
+    },
+    {
+     "name": "capacity one",
+     "args": [
+      1,
+      [
+       [
+        1,
+        2,
+        1
+       ],
+       [
+        0,
+        2
+       ],
+       [
+        1,
+        3,
+        2
+       ],
+       [
+        0,
+        2
+       ],
+       [
+        0,
+        3
+       ]
+      ]
+     ],
+     "expected": [
+      1,
+      -1,
+      2
+     ]
+    },
+    {
+     "name": "update refreshes recency",
+     "args": [
+      2,
+      [
+       [
+        1,
+        1,
+        1
+       ],
+       [
+        1,
+        2,
+        2
+       ],
+       [
+        1,
+        1,
+        10
+       ],
+       [
+        1,
+        3,
+        3
+       ],
+       [
+        0,
+        1
+       ],
+       [
+        0,
+        2
+       ],
+       [
+        0,
+        3
+       ]
+      ]
+     ],
+     "expected": [
+      10,
+      -1,
+      3
+     ]
+    },
+    {
+     "name": "get refreshes recency",
+     "args": [
+      2,
+      [
+       [
+        1,
+        1,
+        1
+       ],
+       [
+        1,
+        2,
+        2
+       ],
+       [
+        0,
+        1
+       ],
+       [
+        1,
+        3,
+        3
+       ],
+       [
+        0,
+        2
+       ],
+       [
+        0,
+        1
+       ]
+      ]
+     ],
+     "expected": [
+      1,
+      -1,
+      1
+     ]
+    },
+    {
+     "name": "no gets",
+     "args": [
+      3,
+      [
+       [
+        1,
+        1,
+        1
+       ]
+      ]
+     ],
+     "expected": []
+    },
+    {
+     "name": "misses on an empty cache",
+     "args": [
+      2,
+      [
+       [
+        0,
+        5
+       ],
+       [
+        0,
+        6
+       ]
+      ]
+     ],
+     "expected": [
+      -1,
+      -1
+     ]
+    },
+    {
+     "name": "stress: 2 × 10⁵ operations, capacity 30,000",
+     "args": [
+      30000,
+      {
+       "$gen": "zip",
+       "parts": [
+        {
+         "$gen": "ints",
+         "n": 200000,
+         "lo": 0,
+         "hi": 1,
+         "seed": 114
+        },
+        {
+         "$gen": "ints",
+         "n": 200000,
+         "lo": 1,
+         "hi": 60000,
+         "seed": 115
+        },
+        {
+         "$gen": "ints",
+         "n": 200000,
+         "lo": 0,
+         "hi": 1000000000,
+         "seed": 116
+        }
+       ]
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2500
+     },
+     "expected": {
+      "$digest": "fdb77e3261ecc9e3e858916171cb28331961c2f2af422f58d183f5d95373914b"
+     }
+    }
+   ],
+   "solution": {
+    "python": "from collections import OrderedDict\n\ndef lru_cache(capacity, operations):\n    cache = OrderedDict()\n    out = []\n    for op in operations:\n        key = op[1]\n        if op[0] == 0:\n            if key in cache:\n                cache.move_to_end(key)\n                out.append(cache[key])\n            else:\n                out.append(-1)\n        else:\n            if key in cache:\n                cache.move_to_end(key)\n            cache[key] = op[2]\n            if len(cache) > capacity:\n                cache.popitem(last=False)\n    return out\n",
+    "javascript": "function lruCache(capacity, operations) {\n  const cache = new Map()\n  const out = []\n  for (const op of operations) {\n    const key = op[1]\n    if (op[0] === 0) {\n      if (cache.has(key)) { const v = cache.get(key); cache.delete(key); cache.set(key, v); out.push(v) }\n      else out.push(-1)\n    } else {\n      if (cache.has(key)) cache.delete(key)\n      cache.set(key, op[2])\n      if (cache.size > capacity) cache.delete(cache.keys().next().value)\n    }\n  }\n  return out\n}\n"
+   },
+   "brute": {
+    "python": "def lru_cache(capacity, operations):\n    order = []\n    values = {}\n    out = []\n    for op in operations:\n        key = op[1]\n        if op[0] == 0:\n            if key in values:\n                order.remove(key)\n                order.append(key)\n                out.append(values[key])\n            else:\n                out.append(-1)\n        else:\n            if key in values:\n                order.remove(key)\n            order.append(key)\n            values[key] = op[2]\n            if len(order) > capacity:\n                del values[order.pop(0)]\n    return out\n"
+   }
+  },
+  {
+   "slug": "merge-intervals",
+   "title": "Merge Overlapping Intervals",
+   "topic": "Intervals",
+   "difficulty": "medium",
+   "statement": "Given a list of intervals [start, end], merge all overlapping (or touching) intervals and return the result sorted by start.",
+   "examples": [
+    {
+     "input": "intervals = [[1,3],[2,6],[8,10],[15,18]]",
+     "output": "[[1,6],[8,10],[15,18]]"
+    },
+    {
+     "input": "intervals = [[1,4],[4,5]]",
+     "output": "[[1,5]]"
+    }
+   ],
+   "constraints": [
+    "0 ≤ len(intervals) ≤ 10⁵",
+    "The input may be unsorted",
+    "Do not mutate the input",
+    "Expected: O(n log n)"
+   ],
+   "fn": {
+    "python": "merge_intervals",
+    "javascript": "mergeIntervals"
+   },
+   "starter": {
+    "python": "def merge_intervals(intervals):\n    # Return the merged intervals sorted by start.\n    pass\n",
+    "javascript": "function mergeIntervals(intervals) {\n  // Return the merged intervals sorted by start.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "overlapping",
+     "args": [
+      [
+       [
+        1,
+        3
+       ],
+       [
+        2,
+        6
+       ],
+       [
+        8,
+        10
+       ],
+       [
+        15,
+        18
+       ]
+      ]
+     ],
+     "expected": [
+      [
+       1,
+       6
+      ],
+      [
+       8,
+       10
+      ],
+      [
+       15,
+       18
+      ]
+     ],
+     "sample": true
+    },
+    {
+     "name": "touching",
+     "args": [
+      [
+       [
+        1,
+        4
+       ],
+       [
+        4,
+        5
+       ]
+      ]
+     ],
+     "expected": [
+      [
+       1,
+       5
+      ]
+     ],
+     "sample": true
+    },
+    {
+     "name": "unsorted input",
+     "args": [
+      [
+       [
+        8,
+        10
+       ],
+       [
+        1,
+        3
+       ],
+       [
+        2,
+        6
+       ]
+      ]
+     ],
+     "expected": [
+      [
+       1,
+       6
+      ],
+      [
+       8,
+       10
+      ]
+     ]
+    },
+    {
+     "name": "empty",
+     "args": [
+      []
+     ],
+     "expected": []
+    },
+    {
+     "name": "contained",
+     "args": [
+      [
+       [
+        1,
+        10
+       ],
+       [
+        2,
+        3
+       ],
+       [
+        4,
+        8
+       ]
+      ]
+     ],
+     "expected": [
+      [
+       1,
+       10
+      ]
+     ]
+    },
+    {
+     "name": "negative and single points",
+     "args": [
+      [
+       [
+        0,
+        0
+       ],
+       [
+        -4,
+        -2
+       ],
+       [
+        -2,
+        1
+       ]
+      ]
+     ],
+     "expected": [
+      [
+       -4,
+       1
+      ]
+     ]
+    },
+    {
+     "name": "stress: 10⁵ intervals",
+     "args": [
+      {
+       "$gen": "intervals",
+       "n": 100000,
+       "lo": 0,
+       "hi": 10000000,
+       "maxLen": 200,
+       "seed": 302
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": {
+      "$digest": "d2949b48087f343f3d029a779f5e063afa7da22872e5d794d79150260a5c1db6"
+     }
+    }
+   ],
+   "solution": {
+    "python": "def merge_intervals(intervals):\n    out = []\n    for s, e in sorted(intervals):\n        if out and s <= out[-1][1]:\n            out[-1][1] = max(out[-1][1], e)\n        else:\n            out.append([s, e])\n    return out\n",
+    "javascript": "function mergeIntervals(intervals) {\n  const sorted = intervals.map((x) => [x[0], x[1]]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);\n  const out = [];\n  for (const [s, e] of sorted) {\n    if (out.length && s <= out[out.length - 1][1]) out[out.length - 1][1] = Math.max(out[out.length - 1][1], e);\n    else out.push([s, e]);\n  }\n  return out;\n}\n"
+   }
+  },
+  {
+   "slug": "min-arrows-burst-balloons",
+   "title": "Minimum Arrows to Burst Balloons",
+   "topic": "Greedy",
+   "difficulty": "medium",
+   "statement": "Balloons are taped to a wall; balloon i spans the horizontal range points[i] = [x_start, x_end]. An arrow shot vertically at x bursts every balloon with x_start ≤ x ≤ x_end. Return the minimum number of arrows needed to burst all balloons.",
+   "examples": [
+    {
+     "input": "points = [[10,16],[2,8],[1,6],[7,12]]",
+     "output": "2",
+     "explain": "Shoot at x = 6 and x = 11."
+    },
+    {
+     "input": "points = [[1,2],[3,4],[5,6],[7,8]]",
+     "output": "4"
+    }
+   ],
+   "constraints": [
+    "1 ≤ len(points) ≤ 10⁵",
+    "−2³¹ ≤ x_start ≤ x_end ≤ 2³¹ − 1",
+    "Expected: O(n log n) greedy"
+   ],
+   "fn": {
+    "python": "find_min_arrow_shots",
+    "javascript": "findMinArrowShots"
+   },
+   "starter": {
+    "python": "def find_min_arrow_shots(points):\n    # Write your solution here.\n    pass\n",
+    "javascript": "function findMinArrowShots(points) {\n  // Write your solution here.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "example 1",
+     "args": [
+      [
+       [
+        10,
+        16
+       ],
+       [
+        2,
+        8
+       ],
+       [
+        1,
+        6
+       ],
+       [
+        7,
+        12
+       ]
+      ]
+     ],
+     "expected": 2,
+     "sample": true
+    },
+    {
+     "name": "example 2",
+     "args": [
+      [
+       [
+        1,
+        2
+       ],
+       [
+        3,
+        4
+       ],
+       [
+        5,
+        6
+       ],
+       [
+        7,
+        8
+       ]
+      ]
+     ],
+     "expected": 4,
+     "sample": true
+    },
+    {
+     "name": "touching ends share an arrow",
+     "args": [
+      [
+       [
+        1,
+        2
+       ],
+       [
+        2,
+        3
+       ],
+       [
+        3,
+        4
+       ],
+       [
+        4,
+        5
+       ]
+      ]
+     ],
+     "expected": 2
+    },
+    {
+     "name": "single balloon",
+     "args": [
+      [
+       [
+        1,
+        2
+       ]
+      ]
+     ],
+     "expected": 1
+    },
+    {
+     "name": "full 32-bit range",
+     "args": [
+      [
+       [
+        -2147483648,
+        2147483647
+       ]
+      ]
+     ],
+     "expected": 1
+    },
+    {
+     "name": "one wide balloon",
+     "args": [
+      [
+       [
+        1,
+        10
+       ],
+       [
+        2,
+        3
+       ],
+       [
+        4,
+        5
+       ],
+       [
+        6,
+        7
+       ]
+      ]
+     ],
+     "expected": 3
+    },
+    {
+     "name": "many overlaps",
+     "args": [
+      [
+       [
+        3,
+        9
+       ],
+       [
+        7,
+        12
+       ],
+       [
+        3,
+        8
+       ],
+       [
+        6,
+        8
+       ],
+       [
+        9,
+        10
+       ],
+       [
+        2,
+        9
+       ],
+       [
+        0,
+        9
+       ],
+       [
+        3,
+        9
+       ],
+       [
+        0,
+        6
+       ],
+       [
+        2,
+        8
+       ]
+      ]
+     ],
+     "expected": 2
+    },
+    {
+     "name": "stress: 10⁵ balloons",
+     "args": [
+      {
+       "$gen": "intervals",
+       "n": 100000,
+       "lo": 0,
+       "hi": 1000000000,
+       "maxLen": 20000,
+       "seed": 112
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": 53631
+    }
+   ],
+   "solution": {
+    "python": "def find_min_arrow_shots(points):\n    pts = sorted(points, key=lambda p: p[1])\n    arrows = 0\n    last = None\n    for s, e in pts:\n        if last is None or s > last:\n            arrows += 1\n            last = e\n    return arrows\n",
+    "javascript": "function findMinArrowShots(points) {\n  const pts = points.slice().sort((a, b) => a[1] - b[1])\n  let arrows = 0, last = null\n  for (const [s, e] of pts) if (last === null || s > last) { arrows++; last = e }\n  return arrows\n}\n"
+   },
+   "brute": {
+    "python": "def find_min_arrow_shots(points):\n    left = [list(p) for p in points]\n    arrows = 0\n    while left:\n        x = min(e for _, e in left)\n        left = [p for p in left if not (p[0] <= x <= p[1])]\n        arrows += 1\n    return arrows\n"
+   }
+  },
+  {
+   "slug": "network-delay-time",
+   "title": "Network Delay Time",
+   "topic": "Graphs",
+   "difficulty": "medium",
+   "statement": "A network has n nodes labelled 1 … n. times[i] = [u, v, w] is a directed edge: a signal sent from u reaches v after w units of time. A signal is sent from node k. Return the minimum time for all n nodes to receive it, or -1 if some node never does.",
+   "examples": [
+    {
+     "input": "times = [[2,1,1],[2,3,1],[3,4,1]], n = 4, k = 2",
+     "output": "2"
+    },
+    {
+     "input": "times = [[1,2,1]], n = 2, k = 2",
+     "output": "-1"
+    }
+   ],
+   "constraints": [
+    "1 ≤ n ≤ 2 × 10⁴, 0 ≤ len(times) ≤ 10⁵",
+    "1 ≤ w ≤ 100; all (u, v) pairs are distinct",
+    "Expected: Dijkstra with a binary heap — O((n + E) log n)"
+   ],
+   "fn": {
+    "python": "network_delay_time",
+    "javascript": "networkDelayTime"
+   },
+   "starter": {
+    "python": "def network_delay_time(times, n, k):\n    # Write your solution here.\n    pass\n",
+    "javascript": "function networkDelayTime(times, n, k) {\n  // Write your solution here.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "example 1",
+     "args": [
+      [
+       [
+        2,
+        1,
+        1
+       ],
+       [
+        2,
+        3,
+        1
+       ],
+       [
+        3,
+        4,
+        1
+       ]
+      ],
+      4,
+      2
+     ],
+     "expected": 2,
+     "sample": true
+    },
+    {
+     "name": "example 2",
+     "args": [
+      [
+       [
+        1,
+        2,
+        1
+       ]
+      ],
+      2,
+      2
+     ],
+     "expected": -1,
+     "sample": true
+    },
+    {
+     "name": "single edge",
+     "args": [
+      [
+       [
+        1,
+        2,
+        1
+       ]
+      ],
+      2,
+      1
+     ],
+     "expected": 1
+    },
+    {
+     "name": "indirect path is faster",
+     "args": [
+      [
+       [
+        1,
+        2,
+        1
+       ],
+       [
+        2,
+        3,
+        2
+       ],
+       [
+        1,
+        3,
+        4
+       ]
+      ],
+      3,
+      1
+     ],
+     "expected": 3
+    },
+    {
+     "name": "cycle",
+     "args": [
+      [
+       [
+        1,
+        2,
+        1
+       ],
+       [
+        2,
+        1,
+        3
+       ]
+      ],
+      2,
+      2
+     ],
+     "expected": 3
+    },
+    {
+     "name": "single node",
+     "args": [
+      [],
+      1,
+      1
+     ],
+     "expected": 0
+    },
+    {
+     "name": "relaxation order matters",
+     "args": [
+      [
+       [
+        1,
+        2,
+        5
+       ],
+       [
+        1,
+        3,
+        1
+       ],
+       [
+        3,
+        2,
+        1
+       ],
+       [
+        2,
+        4,
+        1
+       ]
+      ],
+      4,
+      1
+     ],
+     "expected": 3
+    },
+    {
+     "name": "stress: 20,000 nodes, 100,000 edges",
+     "args": [
+      {
+       "$gen": "edges",
+       "n": 20000,
+       "m": 100000,
+       "wlo": 1,
+       "whi": 100,
+       "base": 1,
+       "seed": 111
+      },
+      20000,
+      1
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": 324
+    },
+    {
+     "name": "stress: 20,000-node chain listed backwards",
+     "args": [
+      {
+       "$gen": "zip",
+       "parts": [
+        {
+         "$gen": "range",
+         "start": 19999,
+         "stop": 0,
+         "step": -1
+        },
+        {
+         "$gen": "range",
+         "start": 20000,
+         "stop": 1,
+         "step": -1
+        },
+        {
+         "$gen": "repeat",
+         "value": 1,
+         "n": 19999
+        }
+       ]
+      },
+      20000,
+      1
+     ],
+     "expected": 19999,
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     }
+    }
+   ],
+   "solution": {
+    "python": "import heapq\n\ndef network_delay_time(times, n, k):\n    graph = [[] for _ in range(n + 1)]\n    for u, v, w in times:\n        graph[u].append((v, w))\n    dist = [None] * (n + 1)\n    heap = [(0, k)]\n    while heap:\n        d, u = heapq.heappop(heap)\n        if dist[u] is not None:\n            continue\n        dist[u] = d\n        for v, w in graph[u]:\n            if dist[v] is None:\n                heapq.heappush(heap, (d + w, v))\n    if any(dist[i] is None for i in range(1, n + 1)):\n        return -1\n    return max(dist[1:])\n",
+    "javascript": "function networkDelayTime(times, n, k) {\n  const graph = Array.from({ length: n + 1 }, () => [])\n  for (const [u, v, w] of times) graph[u].push([v, w])\n  const dist = new Array(n + 1).fill(-1)\n  const heap = [[0, k]]\n  const push = (item) => {\n    heap.push(item)\n    let i = heap.length - 1\n    while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p }\n  }\n  const pop = () => {\n    const top = heap[0], last = heap.pop()\n    if (heap.length) {\n      heap[0] = last\n      let i = 0\n      for (;;) {\n        const l = 2 * i + 1, r = l + 1\n        let m = i\n        if (l < heap.length && heap[l][0] < heap[m][0]) m = l\n        if (r < heap.length && heap[r][0] < heap[m][0]) m = r\n        if (m === i) break\n        ;[heap[m], heap[i]] = [heap[i], heap[m]]\n        i = m\n      }\n    }\n    return top\n  }\n  while (heap.length) {\n    const [d, u] = pop()\n    if (dist[u] !== -1) continue\n    dist[u] = d\n    for (const [v, w] of graph[u]) if (dist[v] === -1) push([d + w, v])\n  }\n  let best = 0\n  for (let i = 1; i <= n; i++) { if (dist[i] === -1) return -1; best = Math.max(best, dist[i]) }\n  return best\n}\n"
+   },
+   "brute": {
+    "python": "def network_delay_time(times, n, k):\n    INF = float('inf')\n    dist = [INF] * (n + 1)\n    dist[k] = 0\n    for _ in range(n - 1):\n        changed = False\n        for u, v, w in times:\n            if dist[u] + w < dist[v]:\n                dist[v] = dist[u] + w\n                changed = True\n        if not changed:\n            break\n    best = max(dist[1:])\n    return -1 if best == INF else best\n"
+   }
+  },
+  {
+   "slug": "number-of-islands",
+   "title": "Number of Islands",
+   "topic": "DFS",
+   "difficulty": "medium",
+   "statement": "grid is a 2D list of '1' (land) and '0' (water). An island is a group of land cells connected horizontally or vertically. Return the number of islands.",
+   "examples": [
+    {
+     "input": "grid = [[\"1\",\"1\",\"0\"],[\"1\",\"0\",\"0\"],[\"0\",\"0\",\"1\"]]",
+     "output": "2"
+    }
+   ],
+   "constraints": [
+    "1 ≤ rows, cols ≤ 300",
+    "Diagonal cells are NOT connected",
+    "Expected: O(rows × cols) BFS/DFS or union-find"
+   ],
+   "fn": {
+    "python": "num_islands",
+    "javascript": "numIslands"
+   },
+   "starter": {
+    "python": "def num_islands(grid):\n    # Return the number of islands.\n    pass\n",
+    "javascript": "function numIslands(grid) {\n  // Return the number of islands.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "two islands",
+     "args": [
+      [
+       [
+        "1",
+        "1",
+        "0"
+       ],
+       [
+        "1",
+        "0",
+        "0"
+       ],
+       [
+        "0",
+        "0",
+        "1"
+       ]
+      ]
+     ],
+     "expected": 2,
+     "sample": true
+    },
+    {
+     "name": "one big island",
+     "args": [
+      [
+       [
+        "1",
+        "1",
+        "1"
+       ],
+       [
+        "1",
+        "1",
+        "1"
+       ]
+      ]
+     ],
+     "expected": 1
+    },
+    {
+     "name": "all water",
+     "args": [
+      [
+       [
+        "0",
+        "0"
+       ],
+       [
+        "0",
+        "0"
+       ]
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "name": "diagonal not connected",
+     "args": [
+      [
+       [
+        "1",
+        "0"
+       ],
+       [
+        "0",
+        "1"
+       ]
+      ]
+     ],
+     "expected": 2
+    },
+    {
+     "name": "snake shape",
+     "args": [
+      [
+       [
+        "1",
+        "1",
+        "1",
+        "1"
+       ],
+       [
+        "0",
+        "0",
+        "0",
+        "1"
+       ],
+       [
+        "1",
+        "1",
+        "1",
+        "1"
+       ]
+      ]
+     ],
+     "expected": 1
+    },
+    {
+     "name": "many singles",
+     "args": [
+      [
+       [
+        "1",
+        "0",
+        "1",
+        "0",
+        "1"
+       ]
+      ]
+     ],
+     "expected": 3
+    },
+    {
+     "name": "stress: 300 × 300 random map",
+     "args": [
+      {
+       "$gen": "grid",
+       "rows": 300,
+       "cols": 300,
+       "values": [
+        "1",
+        "0",
+        "0"
+       ],
+       "seed": 305
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": 11158
+    }
+   ],
+   "solution": {
+    "python": "def num_islands(grid):\n    g = [row[:] for row in grid]\n    R, C = len(g), len(g[0]) if g else 0\n    count = 0\n    for r in range(R):\n        for c in range(C):\n            if g[r][c] == '1':\n                count += 1\n                stack = [(r, c)]\n                g[r][c] = '0'\n                while stack:\n                    i, j = stack.pop()\n                    for di, dj in ((1, 0), (-1, 0), (0, 1), (0, -1)):\n                        a, b = i + di, j + dj\n                        if 0 <= a < R and 0 <= b < C and g[a][b] == '1':\n                            g[a][b] = '0'\n                            stack.append((a, b))\n    return count\n",
+    "javascript": "function numIslands(grid) {\n  const g = grid.map((row) => [...row]);\n  let count = 0;\n  for (let r = 0; r < g.length; r++) {\n    for (let c = 0; c < g[r].length; c++) {\n      if (g[r][c] !== '1') continue;\n      count++;\n      const stack = [[r, c]];\n      g[r][c] = '0';\n      while (stack.length) {\n        const [i, j] = stack.pop();\n        for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {\n          const a = i + di, b = j + dj;\n          if (a >= 0 && a < g.length && b >= 0 && b < g[a].length && g[a][b] === '1') { g[a][b] = '0'; stack.push([a, b]); }\n        }\n      }\n    }\n  }\n  return count;\n}\n"
+   }
+  },
+  {
+   "slug": "partition-equal-subset-sum",
+   "title": "Partition Equal Subset Sum",
+   "topic": "Dynamic Programming",
+   "difficulty": "medium",
+   "statement": "Given an array of positive integers nums, return true if it can be split into two subsets with equal sums, otherwise false.",
+   "examples": [
+    {
+     "input": "nums = [1,5,11,5]",
+     "output": "true",
+     "explain": "[1, 5, 5] and [11]."
+    },
+    {
+     "input": "nums = [1,2,3,5]",
+     "output": "false"
+    }
+   ],
+   "constraints": [
+    "1 ≤ len(nums) ≤ 200",
+    "1 ≤ nums[i] ≤ 100",
+    "Expected: O(n × sum) subset-sum DP (a bitset is even faster) — brute force is 2ⁿ"
+   ],
+   "fn": {
+    "python": "can_partition",
+    "javascript": "canPartition"
+   },
+   "starter": {
+    "python": "def can_partition(nums):\n    # Write your solution here.\n    pass\n",
+    "javascript": "function canPartition(nums) {\n  // Write your solution here.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "example 1",
+     "args": [
+      [
+       1,
+       5,
+       11,
+       5
+      ]
+     ],
+     "expected": true,
+     "sample": true
+    },
+    {
+     "name": "example 2",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       5
+      ]
+     ],
+     "expected": false,
+     "sample": true
+    },
+    {
+     "name": "single element",
+     "args": [
+      [
+       1
+      ]
+     ],
+     "expected": false
+    },
+    {
+     "name": "pair",
+     "args": [
+      [
+       2,
+       2
+      ]
+     ],
+     "expected": true
+    },
+    {
+     "name": "even sum but impossible",
+     "args": [
+      [
+       1,
+       2,
+       5
+      ]
+     ],
+     "expected": false
+    },
+    {
+     "name": "five values",
+     "args": [
+      [
+       3,
+       3,
+       3,
+       4,
+       5
+      ]
+     ],
+     "expected": true
+    },
+    {
+     "name": "all ones",
+     "args": [
+      [
+       1,
+       1,
+       1,
+       1
+      ]
+     ],
+     "expected": true
+    },
+    {
+     "name": "stress: 98 hundreds + 99 + 97",
+     "args": [
+      {
+       "$gen": "concat",
+       "parts": [
+        {
+         "$gen": "repeat",
+         "value": 100,
+         "n": 98
+        },
+        [
+         99,
+         97
+        ]
+       ]
+      }
+     ],
+     "expected": false,
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     }
+    },
+    {
+     "name": "stress: 200 random values",
+     "args": [
+      {
+       "$gen": "ints",
+       "n": 200,
+       "lo": 1,
+       "hi": 100,
+       "seed": 119
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": false
+    },
+    {
+     "name": "stress: 199 hundreds and a 2",
+     "args": [
+      {
+       "$gen": "concat",
+       "parts": [
+        {
+         "$gen": "repeat",
+         "value": 100,
+         "n": 199
+        },
+        [
+         2
+        ]
+       ]
+      }
+     ],
+     "expected": false,
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     }
+    }
+   ],
+   "solution": {
+    "python": "def can_partition(nums):\n    total = sum(nums)\n    if total % 2:\n        return False\n    target = total // 2\n    bits = 1\n    for x in nums:\n        bits |= bits << x\n    return bool((bits >> target) & 1)\n",
+    "javascript": "function canPartition(nums) {\n  const total = nums.reduce((a, b) => a + b, 0)\n  if (total % 2) return false\n  const target = total / 2\n  const dp = new Uint8Array(target + 1)\n  dp[0] = 1\n  for (const x of nums) for (let s = target; s >= x; s--) if (dp[s - x]) dp[s] = 1\n  return dp[target] === 1\n}\n"
+   },
+   "brute": {
+    "python": "def can_partition(nums):\n    total = sum(nums)\n    if total % 2:\n        return False\n    target = total // 2\n    def go(i, s):\n        if s == target:\n            return True\n        if i == len(nums) or s > target:\n            return False\n        return go(i + 1, s + nums[i]) or go(i + 1, s)\n    return go(0, 0)\n"
+   }
+  },
+  {
+   "slug": "product-except-self",
+   "title": "Product of Array Except Self",
+   "topic": "Arrays",
+   "difficulty": "medium",
+   "statement": "Return an array answer where answer[i] is the product of every element of nums except nums[i]. Do not use division.",
+   "examples": [
+    {
+     "input": "nums = [1, 2, 3, 4]",
+     "output": "[24, 12, 8, 6]"
+    },
+    {
+     "input": "nums = [-1, 1, 0, -3, 3]",
+     "output": "[0, 0, 9, 0, 0]"
+    }
+   ],
+   "constraints": [
+    "2 ≤ len(nums) ≤ 10⁵",
+    "O(n) time, no division"
+   ],
+   "fn": {
+    "python": "product_except_self",
+    "javascript": "productExceptSelf"
+   },
+   "starter": {
+    "python": "def product_except_self(nums):\n    # Return the list of products.\n    pass\n",
+    "javascript": "function productExceptSelf(nums) {\n  // Return the list of products.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "basic",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4
+      ]
+     ],
+     "expected": [
+      24,
+      12,
+      8,
+      6
+     ],
+     "sample": true
+    },
+    {
+     "name": "contains zero",
+     "args": [
+      [
+       -1,
+       1,
+       0,
+       -3,
+       3
+      ]
+     ],
+     "expected": [
+      0,
+      0,
+      9,
+      0,
+      0
+     ],
+     "sample": true
+    },
+    {
+     "name": "two elements",
+     "args": [
+      [
+       5,
+       7
+      ]
+     ],
+     "expected": [
+      7,
+      5
+     ]
+    },
+    {
+     "name": "two zeros",
+     "args": [
+      [
+       0,
+       4,
+       0
+      ]
+     ],
+     "expected": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "name": "negatives",
+     "args": [
+      [
+       -2,
+       -3,
+       4
+      ]
+     ],
+     "expected": [
+      -12,
+      -8,
+      6
+     ]
+    },
+    {
+     "name": "stress: 10⁵ values of ±1 and ten 2s",
+     "args": [
+      {
+       "$gen": "concat",
+       "parts": [
+        {
+         "$gen": "choice",
+         "n": 99990,
+         "values": [
+          -1,
+          1
+         ],
+         "seed": 306
+        },
+        {
+         "$gen": "repeat",
+         "value": 2,
+         "n": 10
+        }
+       ]
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": {
+      "$digest": "a26748212bbe2e42f424f3a5a1eeeddb069ae3b7227c4a1d566b320591ee16a9"
+     }
+    },
+    {
+     "name": "stress: 10⁵ values with one zero",
+     "args": [
+      {
+       "$gen": "concat",
+       "parts": [
+        {
+         "$gen": "choice",
+         "n": 99999,
+         "values": [
+          -1,
+          1
+         ],
+         "seed": 307
+        },
+        [
+         0
+        ]
+       ]
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": {
+      "$digest": "d0fe2aded8f06d94de7ddd1459c44e35266323e8d2ba026ced9bce2da7d8c962"
+     }
+    }
+   ],
+   "solution": {
+    "python": "def product_except_self(nums):\n    n = len(nums)\n    out = [1] * n\n    left = 1\n    for i in range(n):\n        out[i] = left\n        left *= nums[i]\n    right = 1\n    for i in range(n - 1, -1, -1):\n        out[i] *= right\n        right *= nums[i]\n    return out\n",
+    "javascript": "function productExceptSelf(nums) {\n  const n = nums.length, out = new Array(n).fill(1);\n  let left = 1;\n  for (let i = 0; i < n; i++) { out[i] = left; left *= nums[i]; }\n  let right = 1;\n  for (let i = n - 1; i >= 0; i--) { out[i] *= right; right *= nums[i]; }\n  return out.map((v) => (v === 0 ? 0 : v));\n}\n"
+   }
+  },
+  {
+   "slug": "rotting-oranges",
+   "title": "Rotting Oranges",
+   "topic": "Graphs",
+   "difficulty": "medium",
+   "statement": "grid[r][c] is 0 (empty), 1 (fresh orange) or 2 (rotten orange). Every minute, each fresh orange that is 4-directionally adjacent to a rotten orange becomes rotten. Return the minimum number of minutes until no fresh orange remains, or -1 if that is impossible.",
+   "examples": [
+    {
+     "input": "grid = [[2,1,1],[1,1,0],[0,1,1]]",
+     "output": "4"
+    },
+    {
+     "input": "grid = [[2,1,1],[0,1,1],[1,0,1]]",
+     "output": "-1",
+     "explain": "The orange in the bottom-left corner is never reached."
+    }
+   ],
+   "constraints": [
+    "1 ≤ rows, cols ≤ 300",
+    "Expected: O(rows × cols) multi-source BFS"
+   ],
+   "fn": {
+    "python": "oranges_rotting",
+    "javascript": "orangesRotting"
+   },
+   "starter": {
+    "python": "def oranges_rotting(grid):\n    # Write your solution here.\n    pass\n",
+    "javascript": "function orangesRotting(grid) {\n  // Write your solution here.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "example 1",
+     "args": [
+      [
+       [
+        2,
+        1,
+        1
+       ],
+       [
+        1,
+        1,
+        0
+       ],
+       [
+        0,
+        1,
+        1
+       ]
+      ]
+     ],
+     "expected": 4,
+     "sample": true
+    },
+    {
+     "name": "example 2",
+     "args": [
+      [
+       [
+        2,
+        1,
+        1
+       ],
+       [
+        0,
+        1,
+        1
+       ],
+       [
+        1,
+        0,
+        1
+       ]
+      ]
+     ],
+     "expected": -1,
+     "sample": true
+    },
+    {
+     "name": "no fresh oranges",
+     "args": [
+      [
+       [
+        0,
+        2
+       ]
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "name": "empty cell only",
+     "args": [
+      [
+       [
+        0
+       ]
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "name": "fresh but no rotten",
+     "args": [
+      [
+       [
+        1
+       ]
+      ]
+     ],
+     "expected": -1
+    },
+    {
+     "name": "two sources",
+     "args": [
+      [
+       [
+        2,
+        2
+       ],
+       [
+        1,
+        1
+       ]
+      ]
+     ],
+     "expected": 1
+    },
+    {
+     "name": "row",
+     "args": [
+      [
+       [
+        2,
+        1,
+        1,
+        1,
+        1
+       ]
+      ]
+     ],
+     "expected": 4
+    },
+    {
+     "name": "opposite corners",
+     "args": [
+      [
+       [
+        1,
+        2,
+        1
+       ],
+       [
+        1,
+        1,
+        1
+       ],
+       [
+        1,
+        1,
+        2
+       ]
+      ]
+     ],
+     "expected": 2
+    },
+    {
+     "name": "stress: 300×300 fresh grid, one rotten corner",
+     "args": [
+      {
+       "$gen": "patch",
+       "of": {
+        "$gen": "grid",
+        "rows": 300,
+        "cols": 300,
+        "lo": 1,
+        "hi": 1
+       },
+       "cells": [
+        [
+         0,
+         0,
+         2
+        ]
+       ]
+      }
+     ],
+     "expected": 598,
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     }
+    },
+    {
+     "name": "stress: 300×300 random",
+     "args": [
+      {
+       "$gen": "grid",
+       "rows": 300,
+       "cols": 300,
+       "values": [
+        1,
+        1,
+        1,
+        2
+       ],
+       "seed": 110
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": 5
+    }
+   ],
+   "solution": {
+    "python": "from collections import deque\n\ndef oranges_rotting(grid):\n    rows, cols = len(grid), len(grid[0])\n    q = deque()\n    fresh = 0\n    for r in range(rows):\n        for c in range(cols):\n            if grid[r][c] == 2:\n                q.append((r, c))\n            elif grid[r][c] == 1:\n                fresh += 1\n    seen = [row[:] for row in grid]\n    minutes = 0\n    while q and fresh:\n        minutes += 1\n        for _ in range(len(q)):\n            r, c = q.popleft()\n            for x, y in ((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)):\n                if 0 <= x < rows and 0 <= y < cols and seen[x][y] == 1:\n                    seen[x][y] = 2\n                    fresh -= 1\n                    q.append((x, y))\n    return minutes if fresh == 0 else -1\n",
+    "javascript": "function orangesRotting(grid) {\n  const rows = grid.length, cols = grid[0].length\n  const g = grid.map((row) => row.slice())\n  let q = [], fresh = 0\n  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) { if (g[r][c] === 2) q.push([r, c]); else if (g[r][c] === 1) fresh++ }\n  let minutes = 0\n  while (q.length && fresh) {\n    minutes++\n    const next = []\n    for (const [r, c] of q) {\n      for (const [x, y] of [[r + 1, c], [r - 1, c], [r, c + 1], [r, c - 1]]) {\n        if (x >= 0 && x < rows && y >= 0 && y < cols && g[x][y] === 1) { g[x][y] = 2; fresh--; next.push([x, y]) }\n      }\n    }\n    q = next\n  }\n  return fresh === 0 ? minutes : -1\n}\n"
+   },
+   "brute": {
+    "python": "def oranges_rotting(grid):\n    g = [row[:] for row in grid]\n    rows, cols = len(g), len(g[0])\n    minutes = 0\n    while True:\n        change = []\n        for r in range(rows):\n            for c in range(cols):\n                if g[r][c] == 1:\n                    for x, y in ((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)):\n                        if 0 <= x < rows and 0 <= y < cols and g[x][y] == 2:\n                            change.append((r, c))\n                            break\n        if not change:\n            break\n        for r, c in change:\n            g[r][c] = 2\n        minutes += 1\n    return -1 if any(1 in row for row in g) else minutes\n"
+   }
+  },
+  {
+   "slug": "spiral-order",
+   "title": "Spiral Matrix Traversal",
+   "topic": "Matrices",
+   "difficulty": "medium",
+   "statement": "Given an m × n matrix, return all of its elements in clockwise spiral order starting from the top-left.",
+   "examples": [
+    {
+     "input": "matrix = [[1,2,3],[4,5,6],[7,8,9]]",
+     "output": "[1,2,3,6,9,8,7,4,5]"
+    }
+   ],
+   "constraints": [
+    "1 ≤ m, n ≤ 300",
+    "Expected: O(m × n) with four shrinking boundaries"
+   ],
+   "fn": {
+    "python": "spiral_order",
+    "javascript": "spiralOrder"
+   },
+   "starter": {
+    "python": "def spiral_order(matrix):\n    # Return the elements in spiral order.\n    pass\n",
+    "javascript": "function spiralOrder(matrix) {\n  // Return the elements in spiral order.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "square",
+     "args": [
+      [
+       [
+        1,
+        2,
+        3
+       ],
+       [
+        4,
+        5,
+        6
+       ],
+       [
+        7,
+        8,
+        9
+       ]
+      ]
+     ],
+     "expected": [
+      1,
+      2,
+      3,
+      6,
+      9,
+      8,
+      7,
+      4,
+      5
+     ],
+     "sample": true
+    },
+    {
+     "name": "rectangle",
+     "args": [
+      [
+       [
+        1,
+        2,
+        3,
+        4
+       ],
+       [
+        5,
+        6,
+        7,
+        8
+       ],
+       [
+        9,
+        10,
+        11,
+        12
+       ]
+      ]
+     ],
+     "expected": [
+      1,
+      2,
+      3,
+      4,
+      8,
+      12,
+      11,
+      10,
+      9,
+      5,
+      6,
+      7
+     ]
+    },
+    {
+     "name": "single row",
+     "args": [
+      [
+       [
+        1,
+        2,
+        3
+       ]
+      ]
+     ],
+     "expected": [
+      1,
+      2,
+      3
+     ]
+    },
+    {
+     "name": "single column",
+     "args": [
+      [
+       [
+        1
+       ],
+       [
+        2
+       ],
+       [
+        3
+       ],
+       [
+        4
+       ]
+      ]
+     ],
+     "expected": [
+      1,
+      2,
+      3,
+      4
+     ]
+    },
+    {
+     "name": "single cell",
+     "args": [
+      [
+       [
+        42
+       ]
+      ]
+     ],
+     "expected": [
+      42
+     ]
+    },
+    {
+     "name": "two by two",
+     "args": [
+      [
+       [
+        1,
+        2
+       ],
+       [
+        3,
+        4
+       ]
+      ]
+     ],
+     "expected": [
+      1,
+      2,
+      4,
+      3
+     ]
+    },
+    {
+     "name": "stress: 300 × 300 matrix",
+     "args": [
+      {
+       "$gen": "affine",
+       "rows": 300,
+       "cols": 300,
+       "a": 300,
+       "b": 1
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": {
+      "$digest": "98e104d99e0cb6e24a33b909d6d0157b3bd16f37b2e7841735826d09b07314fb"
+     }
+    }
+   ],
+   "solution": {
+    "python": "def spiral_order(matrix):\n    out = []\n    top, bottom, left, right = 0, len(matrix) - 1, 0, len(matrix[0]) - 1\n    while top <= bottom and left <= right:\n        for j in range(left, right + 1): out.append(matrix[top][j])\n        top += 1\n        for i in range(top, bottom + 1): out.append(matrix[i][right])\n        right -= 1\n        if top <= bottom:\n            for j in range(right, left - 1, -1): out.append(matrix[bottom][j])\n            bottom -= 1\n        if left <= right:\n            for i in range(bottom, top - 1, -1): out.append(matrix[i][left])\n            left += 1\n    return out\n",
+    "javascript": "function spiralOrder(matrix) {\n  const out = [];\n  let top = 0, bottom = matrix.length - 1, left = 0, right = matrix[0].length - 1;\n  while (top <= bottom && left <= right) {\n    for (let j = left; j <= right; j++) out.push(matrix[top][j]);\n    top++;\n    for (let i = top; i <= bottom; i++) out.push(matrix[i][right]);\n    right--;\n    if (top <= bottom) { for (let j = right; j >= left; j--) out.push(matrix[bottom][j]); bottom--; }\n    if (left <= right) { for (let i = bottom; i >= top; i--) out.push(matrix[i][left]); left++; }\n  }\n  return out;\n}\n"
+   }
+  },
+  {
+   "slug": "subarray-sum-equals-k",
+   "title": "Subarray Sum Equals K",
+   "topic": "Hashing",
+   "difficulty": "medium",
+   "statement": "Given an integer array nums and an integer k, return the total number of contiguous non-empty subarrays whose sum equals k.",
+   "examples": [
+    {
+     "input": "nums = [1,1,1], k = 2",
+     "output": "2"
+    },
+    {
+     "input": "nums = [1,2,3], k = 3",
+     "output": "2",
+     "explain": "[1,2] and [3]."
+    }
+   ],
+   "constraints": [
+    "1 ≤ len(nums) ≤ 10⁵",
+    "−1000 ≤ nums[i] ≤ 1000, −10⁷ ≤ k ≤ 10⁷",
+    "Values can be negative, so a sliding window does not work",
+    "Expected: O(n) time"
+   ],
+   "fn": {
+    "python": "subarray_sum",
+    "javascript": "subarraySum"
+   },
+   "starter": {
+    "python": "def subarray_sum(nums, k):\n    # Write your solution here.\n    pass\n",
+    "javascript": "function subarraySum(nums, k) {\n  // Write your solution here.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "example 1",
+     "args": [
+      [
+       1,
+       1,
+       1
+      ],
+      2
+     ],
+     "expected": 2,
+     "sample": true
+    },
+    {
+     "name": "example 2",
+     "args": [
+      [
+       1,
+       2,
+       3
+      ],
+      3
+     ],
+     "expected": 2,
+     "sample": true
+    },
+    {
+     "name": "single element, no match",
+     "args": [
+      [
+       1
+      ],
+      0
+     ],
+     "expected": 0
+    },
+    {
+     "name": "all zeros",
+     "args": [
+      [
+       0,
+       0,
+       0
+      ],
+      0
+     ],
+     "expected": 6
+    },
+    {
+     "name": "negatives",
+     "args": [
+      [
+       -1,
+       -1,
+       1
+      ],
+      0
+     ],
+     "expected": 1
+    },
+    {
+     "name": "mixed signs",
+     "args": [
+      [
+       1,
+       -1,
+       0
+      ],
+      0
+     ],
+     "expected": 3
+    },
+    {
+     "name": "several windows",
+     "args": [
+      [
+       3,
+       4,
+       7,
+       2,
+       -3,
+       1,
+       4,
+       2
+      ],
+      7
+     ],
+     "expected": 4
+    },
+    {
+     "name": "negative k",
+     "args": [
+      [
+       1,
+       -2,
+       3,
+       -4,
+       5,
+       -6
+      ],
+      -1
+     ],
+     "expected": 3
+    },
+    {
+     "name": "stress: 10⁵ values in [−5, 5]",
+     "args": [
+      {
+       "$gen": "ints",
+       "n": 100000,
+       "lo": -5,
+       "hi": 5,
+       "seed": 101
+      },
+      3
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": 4642141
+    },
+    {
+     "name": "stress: 10⁵ values of ±1, k = 0",
+     "args": [
+      {
+       "$gen": "choice",
+       "n": 100000,
+       "values": [
+        -1,
+        1
+       ],
+       "seed": 102
+      },
+      0
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": 15156115
+    }
+   ],
+   "solution": {
+    "python": "def subarray_sum(nums, k):\n    seen = {0: 1}\n    total = count = 0\n    for x in nums:\n        total += x\n        count += seen.get(total - k, 0)\n        seen[total] = seen.get(total, 0) + 1\n    return count\n",
+    "javascript": "function subarraySum(nums, k) {\n  const seen = new Map([[0, 1]])\n  let total = 0, count = 0\n  for (const x of nums) {\n    total += x\n    count += seen.get(total - k) || 0\n    seen.set(total, (seen.get(total) || 0) + 1)\n  }\n  return count\n}\n"
+   },
+   "brute": {
+    "python": "def subarray_sum(nums, k):\n    c = 0\n    for i in range(len(nums)):\n        s = 0\n        for j in range(i, len(nums)):\n            s += nums[j]\n            if s == k:\n                c += 1\n    return c\n",
+    "javascript": "function subarraySum(nums, k) {\n  let c = 0\n  for (let i = 0; i < nums.length; i++) { let s = 0; for (let j = i; j < nums.length; j++) { s += nums[j]; if (s === k) c++ } }\n  return c\n}\n"
+   }
+  },
+  {
+   "slug": "top-k-frequent",
+   "title": "Top K Frequent Elements",
+   "topic": "Heaps",
+   "difficulty": "medium",
+   "statement": "Given an integer array nums and an integer k, return the k most frequent elements, ordered by frequency (highest first). Break ties by smaller value first.",
+   "examples": [
+    {
+     "input": "nums = [1, 1, 1, 2, 2, 3], k = 2",
+     "output": "[1, 2]"
+    }
+   ],
+   "constraints": [
+    "1 ≤ len(nums) ≤ 10⁵",
+    "1 ≤ k ≤ number of distinct values",
+    "Expected: O(n log k) with a heap, or O(n) bucket sort"
+   ],
+   "fn": {
+    "python": "top_k_frequent",
+    "javascript": "topKFrequent"
+   },
+   "starter": {
+    "python": "def top_k_frequent(nums, k):\n    # Return the k most frequent values (frequency desc, then value asc).\n    pass\n",
+    "javascript": "function topKFrequent(nums, k) {\n  // Return the k most frequent values (frequency desc, then value asc).\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "basic",
+     "args": [
+      [
+       1,
+       1,
+       1,
+       2,
+       2,
+       3
+      ],
+      2
+     ],
+     "expected": [
+      1,
+      2
+     ],
+     "sample": true
+    },
+    {
+     "name": "single",
+     "args": [
+      [
+       1
+      ],
+      1
+     ],
+     "expected": [
+      1
+     ]
+    },
+    {
+     "name": "tie by value",
+     "args": [
+      [
+       4,
+       4,
+       5,
+       5,
+       6
+      ],
+      2
+     ],
+     "expected": [
+      4,
+      5
+     ]
+    },
+    {
+     "name": "negatives",
+     "args": [
+      [
+       -1,
+       -1,
+       2,
+       2,
+       2,
+       3
+      ],
+      2
+     ],
+     "expected": [
+      2,
+      -1
+     ]
+    },
+    {
+     "name": "all distinct",
+     "args": [
+      [
+       9,
+       8,
+       7
+      ],
+      3
+     ],
+     "expected": [
+      7,
+      8,
+      9
+     ]
+    },
+    {
+     "name": "stress: 97,020 values, 440 distinct",
+     "args": [
+      {
+       "$gen": "shuffle",
+       "of": {
+        "$gen": "countup",
+        "k": 440,
+        "base": 1
+       },
+       "seed": 308
+      },
+      10
+     ],
+     "expected": [
+      440,
+      439,
+      438,
+      437,
+      436,
+      435,
+      434,
+      433,
+      432,
+      431
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     }
+    }
+   ],
+   "solution": {
+    "python": "from collections import Counter\ndef top_k_frequent(nums, k):\n    c = Counter(nums)\n    return sorted(c, key=lambda x: (-c[x], x))[:k]\n",
+    "javascript": "function topKFrequent(nums, k) {\n  const c = new Map();\n  for (const x of nums) c.set(x, (c.get(x) || 0) + 1);\n  return [...c.keys()].sort((a, b) => c.get(b) - c.get(a) || a - b).slice(0, k);\n}\n"
+   }
+  },
+  {
+   "slug": "basic-calculator",
+   "title": "Basic Calculator",
+   "topic": "Stacks",
+   "difficulty": "hard",
+   "statement": "Given a string s representing a valid expression, evaluate it and return the result. s contains non-negative integers (possibly with leading zeros), '+', '-', '(', ')' and spaces. '-' may also be a unary minus, as in \"-(2 + 3)\" or \"1 - (-2)\". You may NOT use a built-in evaluator such as eval().",
+   "examples": [
+    {
+     "input": "s = \"1 + 1\"",
+     "output": "2"
+    },
+    {
+     "input": "s = \" 2-1 + 2 \"",
+     "output": "3"
+    },
+    {
+     "input": "s = \"(1+(4+5+2)-3)+(6+8)\"",
+     "output": "23"
+    }
+   ],
+   "constraints": [
+    "1 ≤ len(s) ≤ 3 × 10⁵",
+    "Every number and intermediate result fits in a signed 32-bit integer",
+    "Parentheses nest at most 1000 deep",
+    "Expected: O(n) with a stack of signs"
+   ],
+   "fn": {
+    "python": "calculate",
+    "javascript": "calculate"
+   },
+   "starter": {
+    "python": "def calculate(s):\n    # Write your solution here.\n    pass\n",
+    "javascript": "function calculate(s) {\n  // Write your solution here.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "example 1",
+     "args": [
+      "1 + 1"
+     ],
+     "expected": 2,
+     "sample": true
+    },
+    {
+     "name": "example 2",
+     "args": [
+      " 2-1 + 2 "
+     ],
+     "expected": 3,
+     "sample": true
+    },
+    {
+     "name": "example 3",
+     "args": [
+      "(1+(4+5+2)-3)+(6+8)"
+     ],
+     "expected": 23,
+     "sample": true
+    },
+    {
+     "name": "unary minus before a group",
+     "args": [
+      "-(2+3)"
+     ],
+     "expected": -5
+    },
+    {
+     "name": "unary minus inside a group",
+     "args": [
+      "1-(     -2)"
+     ],
+     "expected": 3
+    },
+    {
+     "name": "nested negation",
+     "args": [
+      "- (3 + (4 + 5))"
+     ],
+     "expected": -12
+    },
+    {
+     "name": "max int",
+     "args": [
+      "2147483647"
+     ],
+     "expected": 2147483647
+    },
+    {
+     "name": "alternating nesting",
+     "args": [
+      "10 - (2 - (3 - 4))"
+     ],
+     "expected": 7
+    },
+    {
+     "name": "leading zeros",
+     "args": [
+      "010 + 010"
+     ],
+     "expected": 20
+    },
+    {
+     "name": "stress: 50,001 terms",
+     "args": [
+      {
+       "$gen": "concat",
+       "parts": [
+        {
+         "$gen": "strrepeat",
+         "value": "1 + ",
+         "n": 50000
+        },
+        "1"
+       ]
+      }
+     ],
+     "expected": 50001,
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     }
+    },
+    {
+     "name": "stress: 1,000-deep nesting",
+     "args": [
+      {
+       "$gen": "concat",
+       "parts": [
+        {
+         "$gen": "strrepeat",
+         "value": "(",
+         "n": 1000
+        },
+        "7",
+        {
+         "$gen": "strrepeat",
+         "value": " - 1)",
+         "n": 1000
+        }
+       ]
+      }
+     ],
+     "expected": -993,
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     }
+    }
+   ],
+   "solution": {
+    "python": "def calculate(s):\n    result = 0\n    num = 0\n    sign = 1\n    stack = []\n    for ch in s:\n        if '0' <= ch <= '9':\n            num = num * 10 + (ord(ch) - 48)\n        elif ch == '+' or ch == '-':\n            result += sign * num\n            num = 0\n            sign = 1 if ch == '+' else -1\n        elif ch == '(':\n            stack.append(result)\n            stack.append(sign)\n            result = 0\n            sign = 1\n        elif ch == ')':\n            result += sign * num\n            num = 0\n            result *= stack.pop()\n            result += stack.pop()\n    return result + sign * num\n",
+    "javascript": "function calculate(s) {\n  let result = 0, num = 0, sign = 1\n  const stack = []\n  for (let i = 0; i < s.length; i++) {\n    const c = s.charCodeAt(i)\n    if (c >= 48 && c <= 57) num = num * 10 + (c - 48)\n    else if (c === 43 || c === 45) { result += sign * num; num = 0; sign = c === 43 ? 1 : -1 }\n    else if (c === 40) { stack.push(result, sign); result = 0; sign = 1 }\n    else if (c === 41) { result += sign * num; num = 0; result *= stack.pop(); result += stack.pop() }\n  }\n  return result + sign * num\n}\n"
+   }
+  },
+  {
+   "slug": "burst-balloons",
+   "title": "Burst Balloons",
+   "topic": "Dynamic Programming",
+   "difficulty": "hard",
+   "statement": "You are given n balloons with numbers nums[i]. Bursting balloon i earns nums[left] × nums[i] × nums[right] coins, where left and right are its current neighbours (a missing neighbour counts as 1). After a burst, its neighbours become adjacent. Return the maximum coins obtainable by bursting all the balloons.",
+   "examples": [
+    {
+     "input": "nums = [3,1,5,8]",
+     "output": "167",
+     "explain": "[3,1,5,8] → [3,5,8] → [3,8] → [8] → []: 3·1·5 + 3·5·8 + 1·3·8 + 1·8·1 = 167."
+    },
+    {
+     "input": "nums = [1,5]",
+     "output": "10"
+    }
+   ],
+   "constraints": [
+    "1 ≤ n ≤ 150",
+    "0 ≤ nums[i] ≤ 100",
+    "Expected: O(n³) interval DP — think about which balloon is burst LAST in each range"
+   ],
+   "fn": {
+    "python": "max_coins",
+    "javascript": "maxCoins"
+   },
+   "starter": {
+    "python": "def max_coins(nums):\n    # Write your solution here.\n    pass\n",
+    "javascript": "function maxCoins(nums) {\n  // Write your solution here.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "example 1",
+     "args": [
+      [
+       3,
+       1,
+       5,
+       8
+      ]
+     ],
+     "expected": 167,
+     "sample": true
+    },
+    {
+     "name": "example 2",
+     "args": [
+      [
+       1,
+       5
+      ]
+     ],
+     "expected": 10,
+     "sample": true
+    },
+    {
+     "name": "single",
+     "args": [
+      [
+       5
+      ]
+     ],
+     "expected": 5
+    },
+    {
+     "name": "zero",
+     "args": [
+      [
+       0
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "name": "pair",
+     "args": [
+      [
+       2,
+       3
+      ]
+     ],
+     "expected": 9
+    },
+    {
+     "name": "four values",
+     "args": [
+      [
+       9,
+       76,
+       64,
+       21
+      ]
+     ],
+     "expected": 116718
+    },
+    {
+     "name": "eleven values with a zero",
+     "args": [
+      [
+       7,
+       9,
+       8,
+       0,
+       7,
+       1,
+       3,
+       5,
+       5,
+       2,
+       3
+      ]
+     ],
+     "expected": 1654
+    },
+    {
+     "name": "stress: 150 balloons",
+     "args": [
+      {
+       "$gen": "ints",
+       "n": 150,
+       "lo": 0,
+       "hi": 100,
+       "seed": 209
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 6000,
+      "javascript": 1500
+     },
+     "expected": 50806445
+    }
+   ],
+   "solution": {
+    "python": "def max_coins(nums):\n    a = [1] + list(nums) + [1]\n    n = len(a)\n    dp = [[0] * n for _ in range(n)]\n    for length in range(2, n):\n        for left in range(0, n - length):\n            right = left + length\n            al, ar = a[left], a[right]\n            row = dp[left]\n            best = 0\n            for k in range(left + 1, right):\n                v = row[k] + dp[k][right] + al * a[k] * ar\n                if v > best:\n                    best = v\n            row[right] = best\n    return dp[0][n - 1]\n",
+    "javascript": "function maxCoins(nums) {\n  const a = [1, ...nums, 1], n = a.length\n  const dp = Array.from({ length: n }, () => new Array(n).fill(0))\n  for (let len = 2; len < n; len++) {\n    for (let left = 0; left + len < n; left++) {\n      const right = left + len\n      let best = 0\n      for (let k = left + 1; k < right; k++) {\n        const v = dp[left][k] + dp[k][right] + a[left] * a[k] * a[right]\n        if (v > best) best = v\n      }\n      dp[left][right] = best\n    }\n  }\n  return dp[0][n - 1]\n}\n"
+   },
+   "brute": {
+    "python": "def max_coins(nums):\n    def go(arr):\n        if not arr:\n            return 0\n        best = 0\n        for i in range(len(arr)):\n            left = arr[i - 1] if i > 0 else 1\n            right = arr[i + 1] if i + 1 < len(arr) else 1\n            best = max(best, left * arr[i] * right + go(arr[:i] + arr[i + 1:]))\n        return best\n    return go(list(nums))\n"
+   }
+  },
+  {
+   "slug": "count-smaller-after-self",
+   "title": "Count of Smaller Numbers After Self",
+   "topic": "Sorting",
+   "difficulty": "hard",
+   "statement": "Given an integer array nums, return an array counts where counts[i] is the number of elements to the right of nums[i] that are strictly smaller than nums[i].",
+   "examples": [
+    {
+     "input": "nums = [5,2,6,1]",
+     "output": "[2,1,1,0]",
+     "explain": "Right of 5: 2 and 1 are smaller; right of 2: only 1; right of 6: only 1; right of 1: nothing."
+    },
+    {
+     "input": "nums = [-1,-1]",
+     "output": "[0,0]"
+    }
+   ],
+   "constraints": [
+    "1 ≤ len(nums) ≤ 10⁵",
+    "−10⁴ ≤ nums[i] ≤ 10⁴",
+    "Expected: O(n log n) — a Fenwick (binary indexed) tree or merge sort"
+   ],
+   "fn": {
+    "python": "count_smaller",
+    "javascript": "countSmaller"
+   },
+   "starter": {
+    "python": "def count_smaller(nums):\n    # Write your solution here.\n    pass\n",
+    "javascript": "function countSmaller(nums) {\n  // Write your solution here.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "example 1",
+     "args": [
+      [
+       5,
+       2,
+       6,
+       1
+      ]
+     ],
+     "expected": [
+      2,
+      1,
+      1,
+      0
+     ],
+     "sample": true
+    },
+    {
+     "name": "example 2",
+     "args": [
+      [
+       -1,
+       -1
+      ]
+     ],
+     "expected": [
+      0,
+      0
+     ],
+     "sample": true
+    },
+    {
+     "name": "single",
+     "args": [
+      [
+       -1
+      ]
+     ],
+     "expected": [
+      0
+     ]
+    },
+    {
+     "name": "ascending",
+     "args": [
+      [
+       1,
+       2,
+       3
+      ]
+     ],
+     "expected": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "name": "descending",
+     "args": [
+      [
+       3,
+       2,
+       1
+      ]
+     ],
+     "expected": [
+      2,
+      1,
+      0
+     ]
+    },
+    {
+     "name": "small mix",
+     "args": [
+      [
+       2,
+       0,
+       1
+      ]
+     ],
+     "expected": [
+      2,
+      0,
+      0
+     ]
+    },
+    {
+     "name": "equal values are not smaller",
+     "args": [
+      [
+       1,
+       1,
+       1,
+       0
+      ]
+     ],
+     "expected": [
+      1,
+      1,
+      1,
+      0
+     ]
+    },
+    {
+     "name": "40 values",
+     "args": [
+      [
+       26,
+       78,
+       27,
+       100,
+       33,
+       67,
+       90,
+       23,
+       66,
+       5,
+       38,
+       7,
+       35,
+       23,
+       52,
+       22,
+       83,
+       51,
+       98,
+       69,
+       81,
+       32,
+       78,
+       28,
+       94,
+       13,
+       2,
+       97,
+       3,
+       76,
+       99,
+       51,
+       9,
+       21,
+       84,
+       66,
+       65,
+       36,
+       100,
+       41
+      ]
+     ],
+     "expected": [
+      10,
+      27,
+      10,
+      35,
+      12,
+      22,
+      28,
+      8,
+      19,
+      2,
+      12,
+      2,
+      9,
+      6,
+      12,
+      5,
+      17,
+      9,
+      19,
+      12,
+      14,
+      6,
+      12,
+      5,
+      12,
+      3,
+      0,
+      10,
+      0,
+      7,
+      8,
+      4,
+      0,
+      0,
+      4,
+      3,
+      2,
+      0,
+      1,
+      0
+     ]
+    },
+    {
+     "name": "stress: 10⁵ random values",
+     "args": [
+      {
+       "$gen": "ints",
+       "n": 100000,
+       "lo": -10000,
+       "hi": 10000,
+       "seed": 206
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 6000,
+      "javascript": 1500
+     },
+     "expected": {
+      "$digest": "e3294db3cea9df6b87f0f8903f94438a605d674ad5a475a3294210706c860eae"
+     }
+    },
+    {
+     "name": "stress: 20,000 strictly decreasing values",
+     "args": [
+      {
+       "$gen": "range",
+       "start": 10000,
+       "stop": -10000,
+       "step": -1
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 6000,
+      "javascript": 1500
+     },
+     "expected": {
+      "$digest": "ef24535d77cead153661c6a0154a985e2fefbf35565908bcf74374466c7d4202"
+     }
+    }
+   ],
+   "solution": {
+    "python": "def count_smaller(nums):\n    offset = 10001\n    size = 20003\n    tree = [0] * (size + 1)\n    out = [0] * len(nums)\n    for i in range(len(nums) - 1, -1, -1):\n        v = nums[i] + offset\n        j = v - 1\n        s = 0\n        while j > 0:\n            s += tree[j]\n            j -= j & -j\n        out[i] = s\n        j = v\n        while j <= size:\n            tree[j] += 1\n            j += j & -j\n    return out\n",
+    "javascript": "function countSmaller(nums) {\n  const offset = 10001, size = 20003\n  const tree = new Int32Array(size + 1)\n  const out = new Array(nums.length).fill(0)\n  for (let i = nums.length - 1; i >= 0; i--) {\n    const v = nums[i] + offset\n    let s = 0\n    for (let j = v - 1; j > 0; j -= j & -j) s += tree[j]\n    out[i] = s\n    for (let j = v; j <= size; j += j & -j) tree[j]++\n  }\n  return out\n}\n"
+   },
+   "brute": {
+    "python": "def count_smaller(nums):\n    n = len(nums)\n    return [sum(1 for j in range(i + 1, n) if nums[j] < nums[i]) for i in range(n)]\n",
+    "javascript": "function countSmaller(nums) {\n  const out = []\n  for (let i = 0; i < nums.length; i++) { let c = 0; for (let j = i + 1; j < nums.length; j++) if (nums[j] < nums[i]) c++; out.push(c) }\n  return out\n}\n"
+   }
+  },
+  {
+   "slug": "course-schedule",
+   "title": "Course Schedule",
+   "topic": "Topological Sort",
+   "difficulty": "hard",
+   "statement": "There are num_courses courses labelled 0 … num_courses − 1. prerequisites[i] = [a, b] means you must take course b before course a. Return true if it is possible to finish every course.",
+   "examples": [
+    {
+     "input": "num_courses = 2, prerequisites = [[1, 0]]",
+     "output": "true"
+    },
+    {
+     "input": "num_courses = 2, prerequisites = [[1, 0], [0, 1]]",
+     "output": "false"
+    }
+   ],
+   "constraints": [
+    "1 ≤ num_courses ≤ 3000",
+    "0 ≤ len(prerequisites) ≤ 6000",
+    "Expected: O(V + E) — Kahn’s algorithm or DFS colouring"
+   ],
+   "fn": {
+    "python": "can_finish",
+    "javascript": "canFinish"
+   },
+   "starter": {
+    "python": "def can_finish(num_courses, prerequisites):\n    # Return True/true if every course can be finished.\n    pass\n",
+    "javascript": "function canFinish(num_courses, prerequisites) {\n  // Return True/true if every course can be finished.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "simple chain",
+     "args": [
+      2,
+      [
+       [
+        1,
+        0
+       ]
+      ]
+     ],
+     "expected": true,
+     "sample": true
+    },
+    {
+     "name": "two-cycle",
+     "args": [
+      2,
+      [
+       [
+        1,
+        0
+       ],
+       [
+        0,
+        1
+       ]
+      ]
+     ],
+     "expected": false,
+     "sample": true
+    },
+    {
+     "name": "no prerequisites",
+     "args": [
+      3,
+      []
+     ],
+     "expected": true
+    },
+    {
+     "name": "longer cycle",
+     "args": [
+      3,
+      [
+       [
+        0,
+        1
+       ],
+       [
+        1,
+        2
+       ],
+       [
+        2,
+        0
+       ]
+      ]
+     ],
+     "expected": false
+    },
+    {
+     "name": "diamond",
+     "args": [
+      4,
+      [
+       [
+        1,
+        0
+       ],
+       [
+        2,
+        0
+       ],
+       [
+        3,
+        1
+       ],
+       [
+        3,
+        2
+       ]
+      ]
+     ],
+     "expected": true
+    },
+    {
+     "name": "self loop",
+     "args": [
+      1,
+      [
+       [
+        0,
+        0
+       ]
+      ]
+     ],
+     "expected": false
+    },
+    {
+     "name": "stress: 3,000 courses, no cycle",
+     "args": [
+      3000,
+      {
+       "$gen": "edges",
+       "n": 3000,
+       "m": 6000,
+       "acyclic": true,
+       "seed": 313
+      }
+     ],
+     "expected": true,
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     }
+    },
+    {
+     "name": "stress: 3,000 courses, one long cycle",
+     "args": [
+      3000,
+      {
+       "$gen": "concat",
+       "parts": [
+        {
+         "$gen": "edges",
+         "n": 3000,
+         "m": 6000,
+         "acyclic": true,
+         "seed": 313
+        },
+        [
+         [
+          2999,
+          0
+         ]
+        ]
+       ]
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": false
+    }
+   ],
+   "solution": {
+    "python": "from collections import deque\ndef can_finish(num_courses, prerequisites):\n    indeg = [0] * num_courses\n    adj = [[] for _ in range(num_courses)]\n    for a, b in prerequisites:\n        adj[b].append(a); indeg[a] += 1\n    q = deque(i for i in range(num_courses) if indeg[i] == 0)\n    seen = 0\n    while q:\n        u = q.popleft(); seen += 1\n        for v in adj[u]:\n            indeg[v] -= 1\n            if indeg[v] == 0: q.append(v)\n    return seen == num_courses\n",
+    "javascript": "function canFinish(num_courses, prerequisites) {\n  const indeg = new Array(num_courses).fill(0);\n  const adj = Array.from({ length: num_courses }, () => []);\n  for (const [a, b] of prerequisites) { adj[b].push(a); indeg[a]++; }\n  const q = [];\n  for (let i = 0; i < num_courses; i++) if (indeg[i] === 0) q.push(i);\n  let seen = 0;\n  while (q.length) {\n    const u = q.shift(); seen++;\n    for (const v of adj[u]) if (--indeg[v] === 0) q.push(v);\n  }\n  return seen === num_courses;\n}\n"
+   }
+  },
+  {
+   "slug": "edit-distance",
+   "title": "Edit Distance",
+   "topic": "Dynamic Programming",
+   "difficulty": "hard",
+   "statement": "Given two strings a and b, return the minimum number of single-character insertions, deletions or substitutions required to turn a into b.",
+   "examples": [
+    {
+     "input": "a = \"horse\", b = \"ros\"",
+     "output": "3"
+    },
+    {
+     "input": "a = \"kitten\", b = \"sitting\"",
+     "output": "3"
+    }
+   ],
+   "constraints": [
+    "0 ≤ len(a), len(b) ≤ 1000",
+    "Expected: O(len(a) × len(b)) DP"
+   ],
+   "fn": {
+    "python": "min_distance",
+    "javascript": "minDistance"
+   },
+   "starter": {
+    "python": "def min_distance(a, b):\n    # Return the minimum edit distance.\n    pass\n",
+    "javascript": "function minDistance(a, b) {\n  // Return the minimum edit distance.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "classic",
+     "args": [
+      "horse",
+      "ros"
+     ],
+     "expected": 3,
+     "sample": true
+    },
+    {
+     "name": "kitten",
+     "args": [
+      "kitten",
+      "sitting"
+     ],
+     "expected": 3,
+     "sample": true
+    },
+    {
+     "name": "empty to word",
+     "args": [
+      "",
+      "abc"
+     ],
+     "expected": 3
+    },
+    {
+     "name": "identical",
+     "args": [
+      "same",
+      "same"
+     ],
+     "expected": 0
+    },
+    {
+     "name": "both empty",
+     "args": [
+      "",
+      ""
+     ],
+     "expected": 0
+    },
+    {
+     "name": "full substitution",
+     "args": [
+      "abc",
+      "xyz"
+     ],
+     "expected": 3
+    },
+    {
+     "name": "stress: two 1,000-character strings",
+     "args": [
+      {
+       "$gen": "str",
+       "n": 1000,
+       "alphabet": "abcd",
+       "seed": 314
+      },
+      {
+       "$gen": "str",
+       "n": 1000,
+       "alphabet": "abcd",
+       "seed": 315
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 6000,
+      "javascript": 1500
+     },
+     "expected": 524
+    }
+   ],
+   "solution": {
+    "python": "def min_distance(a, b):\n    prev = list(range(len(b) + 1))\n    for i in range(1, len(a) + 1):\n        cur = [i] + [0] * len(b)\n        for j in range(1, len(b) + 1):\n            cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] != b[j - 1]))\n        prev = cur\n    return prev[len(b)]\n",
+    "javascript": "function minDistance(a, b) {\n  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);\n  for (let i = 1; i <= a.length; i++) {\n    const cur = [i];\n    for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] !== b[j - 1] ? 1 : 0));\n    prev = cur;\n  }\n  return prev[b.length];\n}\n"
+   }
+  },
+  {
+   "slug": "largest-rectangle-histogram",
+   "title": "Largest Rectangle in Histogram",
+   "topic": "Stacks",
+   "difficulty": "hard",
+   "statement": "heights[i] is the height of bar i in a histogram where every bar has width 1. Return the area of the largest rectangle that fits entirely inside the histogram.",
+   "examples": [
+    {
+     "input": "heights = [2,1,5,6,2,3]",
+     "output": "10",
+     "explain": "Bars 5 and 6 form a 2 × 5 rectangle."
+    },
+    {
+     "input": "heights = [2,4]",
+     "output": "4"
+    }
+   ],
+   "constraints": [
+    "1 ≤ len(heights) ≤ 10⁵",
+    "0 ≤ heights[i] ≤ 10⁴",
+    "Expected: O(n) with a monotonic stack"
+   ],
+   "fn": {
+    "python": "largest_rectangle_area",
+    "javascript": "largestRectangleArea"
+   },
+   "starter": {
+    "python": "def largest_rectangle_area(heights):\n    # Write your solution here.\n    pass\n",
+    "javascript": "function largestRectangleArea(heights) {\n  // Write your solution here.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "example 1",
+     "args": [
+      [
+       2,
+       1,
+       5,
+       6,
+       2,
+       3
+      ]
+     ],
+     "expected": 10,
+     "sample": true
+    },
+    {
+     "name": "example 2",
+     "args": [
+      [
+       2,
+       4
+      ]
+     ],
+     "expected": 4,
+     "sample": true
+    },
+    {
+     "name": "single bar",
+     "args": [
+      [
+       1
+      ]
+     ],
+     "expected": 1
+    },
+    {
+     "name": "zero bar",
+     "args": [
+      [
+       0
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "name": "valley",
+     "args": [
+      [
+       2,
+       1,
+       2
+      ]
+     ],
+     "expected": 3
+    },
+    {
+     "name": "classic",
+     "args": [
+      [
+       6,
+       2,
+       5,
+       4,
+       5,
+       1,
+       6
+      ]
+     ],
+     "expected": 12
+    },
+    {
+     "name": "flat",
+     "args": [
+      [
+       1,
+       1,
+       1,
+       1
+      ]
+     ],
+     "expected": 4
+    },
+    {
+     "name": "with a zero",
+     "args": [
+      [
+       4,
+       2,
+       0,
+       3,
+       2,
+       5
+      ]
+     ],
+     "expected": 6
+    },
+    {
+     "name": "descending",
+     "args": [
+      [
+       5,
+       4,
+       3,
+       2,
+       1
+      ]
+     ],
+     "expected": 9
+    },
+    {
+     "name": "stress: 10⁵ ascending bars",
+     "args": [
+      {
+       "$gen": "range",
+       "start": 1,
+       "stop": 100001
+      }
+     ],
+     "expected": 2500050000,
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     }
+    },
+    {
+     "name": "stress: 10⁵ random bars",
+     "args": [
+      {
+       "$gen": "ints",
+       "n": 100000,
+       "lo": 0,
+       "hi": 10000,
+       "seed": 201
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": 142875
+    },
+    {
+     "name": "stress: 10⁵ equal bars",
+     "args": [
+      {
+       "$gen": "repeat",
+       "value": 7,
+       "n": 100000
+      }
+     ],
+     "expected": 700000,
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     }
+    }
+   ],
+   "solution": {
+    "python": "def largest_rectangle_area(heights):\n    stack = []\n    best = 0\n    for i, h in enumerate(heights + [0]):\n        start = i\n        while stack and stack[-1][1] >= h:\n            idx, height = stack.pop()\n            best = max(best, height * (i - idx))\n            start = idx\n        stack.append((start, h))\n    return best\n",
+    "javascript": "function largestRectangleArea(heights) {\n  const stack = []\n  let best = 0\n  for (let i = 0; i <= heights.length; i++) {\n    const h = i === heights.length ? 0 : heights[i]\n    let start = i\n    while (stack.length && stack[stack.length - 1][1] >= h) {\n      const [idx, height] = stack.pop()\n      best = Math.max(best, height * (i - idx))\n      start = idx\n    }\n    stack.push([start, h])\n  }\n  return best\n}\n"
+   },
+   "brute": {
+    "python": "def largest_rectangle_area(heights):\n    best = 0\n    for i in range(len(heights)):\n        low = heights[i]\n        for j in range(i, len(heights)):\n            low = min(low, heights[j])\n            best = max(best, low * (j - i + 1))\n    return best\n",
+    "javascript": "function largestRectangleArea(h) {\n  let best = 0\n  for (let i = 0; i < h.length; i++) { let low = h[i]; for (let j = i; j < h.length; j++) { if (h[j] < low) low = h[j]; const a = low * (j - i + 1); if (a > best) best = a } }\n  return best\n}\n"
+   }
+  },
+  {
+   "slug": "longest-increasing-path-matrix",
+   "title": "Longest Increasing Path in a Matrix",
+   "topic": "Graphs",
+   "difficulty": "hard",
+   "statement": "Given an m × n integer matrix, return the length of the longest strictly increasing path. From each cell you can move up, down, left or right — no diagonal moves and no wrap-around.",
+   "examples": [
+    {
+     "input": "matrix = [[9,9,4],[6,6,8],[2,1,1]]",
+     "output": "4",
+     "explain": "1 → 2 → 6 → 9."
+    },
+    {
+     "input": "matrix = [[3,4,5],[3,2,6],[2,2,1]]",
+     "output": "4",
+     "explain": "3 → 4 → 5 → 6."
+    }
+   ],
+   "constraints": [
+    "1 ≤ m, n ≤ 200",
+    "0 ≤ matrix[i][j] ≤ 2³¹ − 1",
+    "Expected: O(m × n) — DFS with memoisation or a topological BFS"
+   ],
+   "fn": {
+    "python": "longest_increasing_path",
+    "javascript": "longestIncreasingPath"
+   },
+   "starter": {
+    "python": "def longest_increasing_path(matrix):\n    # Write your solution here.\n    pass\n",
+    "javascript": "function longestIncreasingPath(matrix) {\n  // Write your solution here.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "example 1",
+     "args": [
+      [
+       [
+        9,
+        9,
+        4
+       ],
+       [
+        6,
+        6,
+        8
+       ],
+       [
+        2,
+        1,
+        1
+       ]
+      ]
+     ],
+     "expected": 4,
+     "sample": true
+    },
+    {
+     "name": "example 2",
+     "args": [
+      [
+       [
+        3,
+        4,
+        5
+       ],
+       [
+        3,
+        2,
+        6
+       ],
+       [
+        2,
+        2,
+        1
+       ]
+      ]
+     ],
+     "expected": 4,
+     "sample": true
+    },
+    {
+     "name": "single cell",
+     "args": [
+      [
+       [
+        1
+       ]
+      ]
+     ],
+     "expected": 1
+    },
+    {
+     "name": "two cells",
+     "args": [
+      [
+       [
+        1,
+        2
+       ]
+      ]
+     ],
+     "expected": 2
+    },
+    {
+     "name": "plateau",
+     "args": [
+      [
+       [
+        7,
+        7,
+        7
+       ]
+      ]
+     ],
+     "expected": 1
+    },
+    {
+     "name": "snake",
+     "args": [
+      [
+       [
+        1,
+        2,
+        3
+       ],
+       [
+        6,
+        5,
+        4
+       ],
+       [
+        7,
+        8,
+        9
+       ]
+      ]
+     ],
+     "expected": 9
+    },
+    {
+     "name": "stress: 150 × 150 increasing ramp",
+     "args": [
+      {
+       "$gen": "affine",
+       "rows": 150,
+       "cols": 150,
+       "a": 150,
+       "b": 1
+      }
+     ],
+     "expected": 299,
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     }
+    },
+    {
+     "name": "stress: 200 × 200 random",
+     "args": [
+      {
+       "$gen": "grid",
+       "rows": 200,
+       "cols": 200,
+       "lo": 0,
+       "hi": 1000000,
+       "seed": 214
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": 13
+    }
+   ],
+   "solution": {
+    "python": "from collections import deque\n\ndef longest_increasing_path(matrix):\n    m, n = len(matrix), len(matrix[0])\n    dirs = ((1, 0), (-1, 0), (0, 1), (0, -1))\n    indeg = [[0] * n for _ in range(m)]\n    for i in range(m):\n        for j in range(n):\n            v = matrix[i][j]\n            for di, dj in dirs:\n                x, y = i + di, j + dj\n                if 0 <= x < m and 0 <= y < n and matrix[x][y] < v:\n                    indeg[i][j] += 1\n    q = deque((i, j) for i in range(m) for j in range(n) if indeg[i][j] == 0)\n    length = 0\n    while q:\n        length += 1\n        for _ in range(len(q)):\n            i, j = q.popleft()\n            v = matrix[i][j]\n            for di, dj in dirs:\n                x, y = i + di, j + dj\n                if 0 <= x < m and 0 <= y < n and matrix[x][y] > v:\n                    indeg[x][y] -= 1\n                    if indeg[x][y] == 0:\n                        q.append((x, y))\n    return length\n",
+    "javascript": "function longestIncreasingPath(matrix) {\n  const m = matrix.length, n = matrix[0].length\n  const memo = Array.from({ length: m }, () => new Array(n).fill(0))\n  const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]]\n  const dfs = (i, j) => {\n    if (memo[i][j]) return memo[i][j]\n    let best = 1\n    for (const [di, dj] of dirs) {\n      const x = i + di, y = j + dj\n      if (x >= 0 && x < m && y >= 0 && y < n && matrix[x][y] > matrix[i][j]) best = Math.max(best, 1 + dfs(x, y))\n    }\n    return (memo[i][j] = best)\n  }\n  let ans = 0\n  for (let i = 0; i < m; i++) for (let j = 0; j < n; j++) ans = Math.max(ans, dfs(i, j))\n  return ans\n}\n"
+   },
+   "brute": {
+    "python": "def longest_increasing_path(matrix):\n    m, n = len(matrix), len(matrix[0])\n    def dfs(i, j):\n        best = 1\n        for x, y in ((i + 1, j), (i - 1, j), (i, j + 1), (i, j - 1)):\n            if 0 <= x < m and 0 <= y < n and matrix[x][y] > matrix[i][j]:\n                best = max(best, 1 + dfs(x, y))\n        return best\n    return max(dfs(i, j) for i in range(m) for j in range(n))\n"
+   }
+  },
+  {
+   "slug": "longest-increasing-subsequence",
+   "title": "Longest Increasing Subsequence",
+   "topic": "Dynamic Programming",
+   "difficulty": "hard",
+   "statement": "Given an integer array nums, return the length of the longest strictly increasing subsequence.",
+   "examples": [
+    {
+     "input": "nums = [10, 9, 2, 5, 3, 7, 101, 18]",
+     "output": "4",
+     "explain": "[2, 3, 7, 101]"
+    }
+   ],
+   "constraints": [
+    "1 ≤ len(nums) ≤ 10⁵",
+    "−10⁹ ≤ nums[i] ≤ 10⁹",
+    "Expected: O(n log n) (patience sorting) — the O(n²) DP will time out"
+   ],
+   "fn": {
+    "python": "length_of_lis",
+    "javascript": "lengthOfLIS"
+   },
+   "starter": {
+    "python": "def length_of_lis(nums):\n    # Return the length of the longest strictly increasing subsequence.\n    pass\n",
+    "javascript": "function lengthOfLIS(nums) {\n  // Return the length of the longest strictly increasing subsequence.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "classic",
+     "args": [
+      [
+       10,
+       9,
+       2,
+       5,
+       3,
+       7,
+       101,
+       18
+      ]
+     ],
+     "expected": 4,
+     "sample": true
+    },
+    {
+     "name": "with plateau",
+     "args": [
+      [
+       0,
+       1,
+       0,
+       3,
+       2,
+       3
+      ]
+     ],
+     "expected": 4
+    },
+    {
+     "name": "all equal",
+     "args": [
+      [
+       7,
+       7,
+       7,
+       7
+      ]
+     ],
+     "expected": 1
+    },
+    {
+     "name": "strictly decreasing",
+     "args": [
+      [
+       5,
+       4,
+       3,
+       2,
+       1
+      ]
+     ],
+     "expected": 1
+    },
+    {
+     "name": "already sorted",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ]
+     ],
+     "expected": 6
+    },
+    {
+     "name": "single",
+     "args": [
+      [
+       42
+      ]
+     ],
+     "expected": 1
+    },
+    {
+     "name": "stress: 10⁵ random values",
+     "args": [
+      {
+       "$gen": "ints",
+       "n": 100000,
+       "lo": -1000000000,
+       "hi": 1000000000,
+       "seed": 312
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": 621
+    },
+    {
+     "name": "stress: 10⁵ ascending values",
+     "args": [
+      {
+       "$gen": "range",
+       "start": 1,
+       "stop": 100001
+      }
+     ],
+     "expected": 100000,
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     }
+    }
+   ],
+   "solution": {
+    "python": "import bisect\ndef length_of_lis(nums):\n    tails = []\n    for x in nums:\n        i = bisect.bisect_left(tails, x)\n        if i == len(tails): tails.append(x)\n        else: tails[i] = x\n    return len(tails)\n",
+    "javascript": "function lengthOfLIS(nums) {\n  const tails = [];\n  for (const x of nums) {\n    let lo = 0, hi = tails.length;\n    while (lo < hi) { const m = (lo + hi) >> 1; if (tails[m] < x) lo = m + 1; else hi = m; }\n    tails[lo] = x;\n  }\n  return tails.length;\n}\n"
+   },
+   "brute": {
+    "python": "def length_of_lis(nums):\n    dp = [1] * len(nums)\n    for i in range(len(nums)):\n        for j in range(i):\n            if nums[j] < nums[i] and dp[j] + 1 > dp[i]:\n                dp[i] = dp[j] + 1\n    return max(dp)\n",
+    "javascript": "function lengthOfLIS(nums) {\n  const dp = new Array(nums.length).fill(1)\n  let best = 1\n  for (let i = 0; i < nums.length; i++) { for (let j = 0; j < i; j++) if (nums[j] < nums[i] && dp[j] + 1 > dp[i]) dp[i] = dp[j] + 1; if (dp[i] > best) best = dp[i] }\n  return best\n}\n"
+   }
+  },
+  {
+   "slug": "longest-valid-parentheses",
+   "title": "Longest Valid Parentheses",
+   "topic": "Stacks",
+   "difficulty": "hard",
+   "statement": "Given a string containing only '(' and ')', return the length of the longest valid (well-formed) parentheses substring.",
+   "examples": [
+    {
+     "input": "s = \"(()\"",
+     "output": "2",
+     "explain": "The longest valid substring is \"()\"."
+    },
+    {
+     "input": "s = \")()())\"",
+     "output": "4",
+     "explain": "The longest valid substring is \"()()\"."
+    }
+   ],
+   "constraints": [
+    "0 ≤ len(s) ≤ 10⁵",
+    "s[i] is '(' or ')'",
+    "Expected: O(n) — a stack of indices, DP, or two counter passes"
+   ],
+   "fn": {
+    "python": "longest_valid_parentheses",
+    "javascript": "longestValidParentheses"
+   },
+   "starter": {
+    "python": "def longest_valid_parentheses(s):\n    # Write your solution here.\n    pass\n",
+    "javascript": "function longestValidParentheses(s) {\n  // Write your solution here.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "example 1",
+     "args": [
+      "(()"
+     ],
+     "expected": 2,
+     "sample": true
+    },
+    {
+     "name": "example 2",
+     "args": [
+      ")()())"
+     ],
+     "expected": 4,
+     "sample": true
+    },
+    {
+     "name": "empty",
+     "args": [
+      ""
+     ],
+     "expected": 0
+    },
+    {
+     "name": "concatenated groups",
+     "args": [
+      "()(())"
+     ],
+     "expected": 6
+    },
+    {
+     "name": "nested",
+     "args": [
+      "(()())"
+     ],
+     "expected": 6
+    },
+    {
+     "name": "broken prefix",
+     "args": [
+      "()(()"
+     ],
+     "expected": 2
+    },
+    {
+     "name": "reversed pair",
+     "args": [
+      ")("
+     ],
+     "expected": 0
+    },
+    {
+     "name": "only openers",
+     "args": [
+      "((((("
+     ],
+     "expected": 0
+    },
+    {
+     "name": "mostly openers",
+     "args": [
+      "(()(((()"
+     ],
+     "expected": 2
+    },
+    {
+     "name": "wrapped by strays",
+     "args": [
+      ")()(()))("
+     ],
+     "expected": 6
+    },
+    {
+     "name": "stress: 10⁵ random brackets",
+     "args": [
+      {
+       "$gen": "str",
+       "n": 100000,
+       "alphabet": "()",
+       "seed": 207
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": 42034
+    },
+    {
+     "name": "stress: 50,000 adjacent pairs",
+     "args": [
+      {
+       "$gen": "strrepeat",
+       "value": "()",
+       "n": 50000
+      }
+     ],
+     "expected": 100000,
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     }
+    },
+    {
+     "name": "stress: 50,000-deep nesting",
+     "args": [
+      {
+       "$gen": "concat",
+       "parts": [
+        {
+         "$gen": "strrepeat",
+         "value": "(",
+         "n": 50000
+        },
+        {
+         "$gen": "strrepeat",
+         "value": ")",
+         "n": 50000
+        }
+       ]
+      }
+     ],
+     "expected": 100000,
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     }
+    }
+   ],
+   "solution": {
+    "python": "def longest_valid_parentheses(s):\n    stack = [-1]\n    best = 0\n    for i, ch in enumerate(s):\n        if ch == '(':\n            stack.append(i)\n        else:\n            stack.pop()\n            if not stack:\n                stack.append(i)\n            else:\n                best = max(best, i - stack[-1])\n    return best\n",
+    "javascript": "function longestValidParentheses(s) {\n  const stack = [-1]\n  let best = 0\n  for (let i = 0; i < s.length; i++) {\n    if (s[i] === '(') stack.push(i)\n    else {\n      stack.pop()\n      if (!stack.length) stack.push(i)\n      else best = Math.max(best, i - stack[stack.length - 1])\n    }\n  }\n  return best\n}\n"
+   },
+   "brute": {
+    "python": "def longest_valid_parentheses(s):\n    best = 0\n    for i in range(len(s)):\n        bal = 0\n        for j in range(i, len(s)):\n            bal += 1 if s[j] == '(' else -1\n            if bal < 0:\n                break\n            if bal == 0:\n                best = max(best, j - i + 1)\n    return best\n",
+    "javascript": "function longestValidParentheses(s) {\n  let best = 0\n  for (let i = 0; i < s.length; i++) { let bal = 0; for (let j = i; j < s.length; j++) { bal += s[j] === '(' ? 1 : -1; if (bal < 0) break; if (bal === 0 && j - i + 1 > best) best = j - i + 1 } }\n  return best\n}\n"
+   }
+  },
+  {
+   "slug": "max-profit-job-scheduling",
+   "title": "Maximum Profit in Job Scheduling",
+   "topic": "Dynamic Programming",
+   "difficulty": "hard",
+   "statement": "Job i runs from start_time[i] to end_time[i] and earns profit[i]. Choose jobs with no overlapping time ranges to maximise the total profit. A job that ends at time X is compatible with a job that starts at X.",
+   "examples": [
+    {
+     "input": "start_time = [1,2,3,3], end_time = [3,4,5,6], profit = [50,10,40,70]",
+     "output": "120",
+     "explain": "Jobs 1 and 4: 50 + 70."
+    },
+    {
+     "input": "start_time = [1,2,3,4,6], end_time = [3,5,10,6,9], profit = [20,20,100,70,60]",
+     "output": "150"
+    }
+   ],
+   "constraints": [
+    "1 ≤ n ≤ 10⁵",
+    "1 ≤ start_time[i] < end_time[i] ≤ 2 × 10⁹",
+    "1 ≤ profit[i] ≤ 10⁴",
+    "Expected: O(n log n) — sort by end time, DP + binary search"
+   ],
+   "fn": {
+    "python": "job_scheduling",
+    "javascript": "jobScheduling"
+   },
+   "starter": {
+    "python": "def job_scheduling(start_time, end_time, profit):\n    # Write your solution here.\n    pass\n",
+    "javascript": "function jobScheduling(startTime, endTime, profit) {\n  // Write your solution here.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "example 1",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       3
+      ],
+      [
+       3,
+       4,
+       5,
+       6
+      ],
+      [
+       50,
+       10,
+       40,
+       70
+      ]
+     ],
+     "expected": 120,
+     "sample": true
+    },
+    {
+     "name": "example 2",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4,
+       6
+      ],
+      [
+       3,
+       5,
+       10,
+       6,
+       9
+      ],
+      [
+       20,
+       20,
+       100,
+       70,
+       60
+      ]
+     ],
+     "expected": 150,
+     "sample": true
+    },
+    {
+     "name": "all overlap",
+     "args": [
+      [
+       1,
+       1,
+       1
+      ],
+      [
+       2,
+       3,
+       4
+      ],
+      [
+       5,
+       6,
+       4
+      ]
+     ],
+     "expected": 6
+    },
+    {
+     "name": "single job",
+     "args": [
+      [
+       1
+      ],
+      [
+       2
+      ],
+      [
+       5
+      ]
+     ],
+     "expected": 5
+    },
+    {
+     "name": "end equals start",
+     "args": [
+      [
+       1,
+       2
+      ],
+      [
+       2,
+       3
+      ],
+      [
+       1,
+       1
+      ]
+     ],
+     "expected": 2
+    },
+    {
+     "name": "five jobs",
+     "args": [
+      [
+       4,
+       2,
+       4,
+       8,
+       2
+      ],
+      [
+       5,
+       5,
+       5,
+       10,
+       8
+      ],
+      [
+       1,
+       2,
+       8,
+       10,
+       4
+      ]
+     ],
+     "expected": 18
+    },
+    {
+     "name": "stress: 10⁵ jobs",
+     "args": [
+      {
+       "$gen": "col",
+       "index": 0,
+       "of": {
+        "$gen": "intervals",
+        "n": 100000,
+        "lo": 1,
+        "hi": 1000000000,
+        "minLen": 1,
+        "maxLen": 1000000,
+        "seed": 210
+       }
+      },
+      {
+       "$gen": "col",
+       "index": 1,
+       "of": {
+        "$gen": "intervals",
+        "n": 100000,
+        "lo": 1,
+        "hi": 1000000000,
+        "minLen": 1,
+        "maxLen": 1000000,
+        "seed": 210
+       }
+      },
+      {
+       "$gen": "ints",
+       "n": 100000,
+       "lo": 1,
+       "hi": 10000,
+       "seed": 211
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": 49052052
+    }
+   ],
+   "solution": {
+    "python": "import bisect\n\ndef job_scheduling(start_time, end_time, profit):\n    jobs = sorted(zip(end_time, start_time, profit))\n    ends = [e for e, _, _ in jobs]\n    dp = [0] * (len(jobs) + 1)\n    for i, (e, s, p) in enumerate(jobs):\n        k = bisect.bisect_right(ends, s, 0, i)\n        dp[i + 1] = max(dp[i], dp[k] + p)\n    return dp[-1]\n",
+    "javascript": "function jobScheduling(startTime, endTime, profit) {\n  const n = startTime.length\n  const idx = Array.from({ length: n }, (_, i) => i).sort((a, b) => endTime[a] - endTime[b])\n  const ends = idx.map((i) => endTime[i])\n  const dp = new Array(n + 1).fill(0)\n  for (let t = 0; t < n; t++) {\n    const i = idx[t], s = startTime[i]\n    let lo = 0, hi = t\n    while (lo < hi) { const mid = (lo + hi) >> 1; if (ends[mid] <= s) lo = mid + 1; else hi = mid }\n    dp[t + 1] = Math.max(dp[t], dp[lo] + profit[i])\n  }\n  return dp[n]\n}\n"
+   },
+   "brute": {
+    "python": "def job_scheduling(start_time, end_time, profit):\n    jobs = sorted(zip(end_time, start_time, profit))\n    dp = [0] * len(jobs)\n    for i, (e, s, p) in enumerate(jobs):\n        best = p\n        for j in range(i):\n            if jobs[j][0] <= s:\n                best = max(best, dp[j] + p)\n        dp[i] = max(best, dp[i - 1] if i else 0)\n    return max(dp) if dp else 0\n",
+    "javascript": "function jobScheduling(st, en, pr) {\n  const jobs = st.map((s, i) => [en[i], s, pr[i]]).sort((a, b) => a[0] - b[0])\n  const dp = new Array(jobs.length).fill(0)\n  for (let i = 0; i < jobs.length; i++) {\n    let best = jobs[i][2]\n    for (let j = 0; j < i; j++) if (jobs[j][0] <= jobs[i][1] && dp[j] + jobs[i][2] > best) best = dp[j] + jobs[i][2]\n    dp[i] = Math.max(best, i ? dp[i - 1] : 0)\n  }\n  return jobs.length ? dp[jobs.length - 1] : 0\n}\n"
+   }
+  },
+  {
+   "slug": "median-two-sorted-arrays",
+   "title": "Median of Two Sorted Arrays",
+   "topic": "Searching",
+   "difficulty": "hard",
+   "statement": "Given two sorted arrays nums1 and nums2, return the median of all their elements combined. Aim for O(log(m + n)) time.",
+   "examples": [
+    {
+     "input": "nums1 = [1,3], nums2 = [2]",
+     "output": "2.0",
+     "explain": "Merged: [1,2,3]."
+    },
+    {
+     "input": "nums1 = [1,2], nums2 = [3,4]",
+     "output": "2.5"
+    }
+   ],
+   "constraints": [
+    "0 ≤ m, n ≤ 10⁵ and m + n ≥ 1",
+    "−10⁶ ≤ nums[i] ≤ 10⁶",
+    "Expected: binary search on the partition — O(log(min(m, n)))",
+    "Answers within 10⁻⁶ are accepted"
+   ],
+   "fn": {
+    "python": "find_median_sorted_arrays",
+    "javascript": "findMedianSortedArrays"
+   },
+   "starter": {
+    "python": "def find_median_sorted_arrays(nums1, nums2):\n    # Write your solution here.\n    pass\n",
+    "javascript": "function findMedianSortedArrays(nums1, nums2) {\n  // Write your solution here.\n}\n"
+   },
+   "compare": "float",
+   "tests": [
+    {
+     "name": "example 1",
+     "args": [
+      [
+       1,
+       3
+      ],
+      [
+       2
+      ]
+     ],
+     "expected": 2,
+     "sample": true
+    },
+    {
+     "name": "example 2",
+     "args": [
+      [
+       1,
+       2
+      ],
+      [
+       3,
+       4
+      ]
+     ],
+     "expected": 2.5,
+     "sample": true
+    },
+    {
+     "name": "first empty",
+     "args": [
+      [],
+      [
+       1
+      ]
+     ],
+     "expected": 1
+    },
+    {
+     "name": "second empty",
+     "args": [
+      [
+       2
+      ],
+      []
+     ],
+     "expected": 2
+    },
+    {
+     "name": "all zeros",
+     "args": [
+      [
+       0,
+       0
+      ],
+      [
+       0,
+       0
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "name": "negatives",
+     "args": [
+      [
+       1,
+       2
+      ],
+      [
+       -1,
+       3
+      ]
+     ],
+     "expected": 1.5
+    },
+    {
+     "name": "interleaved",
+     "args": [
+      [
+       1,
+       3,
+       5,
+       7,
+       9
+      ],
+      [
+       2,
+       4,
+       6
+      ]
+     ],
+     "expected": 4.5
+    },
+    {
+     "name": "half values",
+     "args": [
+      [
+       100000
+      ],
+      [
+       100001
+      ]
+     ],
+     "expected": 100000.5
+    },
+    {
+     "name": "disjoint ranges",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4,
+       5
+      ],
+      [
+       6,
+       7,
+       8,
+       9,
+       10,
+       11
+      ]
+     ],
+     "expected": 6
+    },
+    {
+     "name": "stress: 10⁵ + 99,999 values",
+     "args": [
+      {
+       "$gen": "sorted",
+       "of": {
+        "$gen": "ints",
+        "n": 100000,
+        "lo": -1000000,
+        "hi": 1000000,
+        "seed": 202
+       }
+      },
+      {
+       "$gen": "sorted",
+       "of": {
+        "$gen": "ints",
+        "n": 99999,
+        "lo": -1000000,
+        "hi": 1000000,
+        "seed": 203
+       }
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": -1314
+    }
+   ],
+   "solution": {
+    "python": "def find_median_sorted_arrays(nums1, nums2):\n    a, b = nums1, nums2\n    if len(a) > len(b):\n        a, b = b, a\n    m, n = len(a), len(b)\n    half = (m + n + 1) // 2\n    lo, hi = 0, m\n    while lo <= hi:\n        i = (lo + hi) // 2\n        j = half - i\n        a_left = a[i - 1] if i > 0 else float('-inf')\n        a_right = a[i] if i < m else float('inf')\n        b_left = b[j - 1] if j > 0 else float('-inf')\n        b_right = b[j] if j < n else float('inf')\n        if a_left <= b_right and b_left <= a_right:\n            if (m + n) % 2:\n                return float(max(a_left, b_left))\n            return (max(a_left, b_left) + min(a_right, b_right)) / 2\n        if a_left > b_right:\n            hi = i - 1\n        else:\n            lo = i + 1\n    return 0.0\n",
+    "javascript": "function findMedianSortedArrays(nums1, nums2) {\n  let a = nums1, b = nums2\n  if (a.length > b.length) { const t = a; a = b; b = t }\n  const m = a.length, n = b.length, half = Math.floor((m + n + 1) / 2)\n  let lo = 0, hi = m\n  while (lo <= hi) {\n    const i = Math.floor((lo + hi) / 2), j = half - i\n    const aL = i > 0 ? a[i - 1] : -Infinity, aR = i < m ? a[i] : Infinity\n    const bL = j > 0 ? b[j - 1] : -Infinity, bR = j < n ? b[j] : Infinity\n    if (aL <= bR && bL <= aR) return (m + n) % 2 ? Math.max(aL, bL) : (Math.max(aL, bL) + Math.min(aR, bR)) / 2\n    if (aL > bR) hi = i - 1\n    else lo = i + 1\n  }\n  return 0\n}\n"
+   }
+  },
+  {
+   "slug": "merge-k-sorted-lists",
+   "title": "Merge k Sorted Lists",
+   "topic": "Heaps",
+   "difficulty": "hard",
+   "statement": "You are given k lists, each sorted in ascending order (given as arrays — think of each as a linked list). Merge them into one sorted list and return it.",
+   "examples": [
+    {
+     "input": "lists = [[1,4,5],[1,3,4],[2,6]]",
+     "output": "[1,1,2,3,4,4,5,6]"
+    },
+    {
+     "input": "lists = []",
+     "output": "[]"
+    }
+   ],
+   "constraints": [
+    "0 ≤ k ≤ 10⁴; at most 10⁵ values in total",
+    "Expected: O(N log k) — a min-heap of list heads, or divide & conquer"
+   ],
+   "fn": {
+    "python": "merge_k_lists",
+    "javascript": "mergeKLists"
+   },
+   "starter": {
+    "python": "def merge_k_lists(lists):\n    # Write your solution here.\n    pass\n",
+    "javascript": "function mergeKLists(lists) {\n  // Write your solution here.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "example 1",
+     "args": [
+      [
+       [
+        1,
+        4,
+        5
+       ],
+       [
+        1,
+        3,
+        4
+       ],
+       [
+        2,
+        6
+       ]
+      ]
+     ],
+     "expected": [
+      1,
+      1,
+      2,
+      3,
+      4,
+      4,
+      5,
+      6
+     ],
+     "sample": true
+    },
+    {
+     "name": "example 2",
+     "args": [
+      []
+     ],
+     "expected": [],
+     "sample": true
+    },
+    {
+     "name": "one empty list",
+     "args": [
+      [
+       []
+      ]
+     ],
+     "expected": []
+    },
+    {
+     "name": "two singletons",
+     "args": [
+      [
+       [
+        1
+       ],
+       [
+        0
+       ]
+      ]
+     ],
+     "expected": [
+      0,
+      1
+     ]
+    },
+    {
+     "name": "with an empty list",
+     "args": [
+      [
+       [
+        -1,
+        5,
+        11
+       ],
+       [],
+       [
+        6,
+        10
+       ]
+      ]
+     ],
+     "expected": [
+      -1,
+      5,
+      6,
+      10,
+      11
+     ]
+    },
+    {
+     "name": "duplicates",
+     "args": [
+      [
+       [
+        2
+       ],
+       [
+        2
+       ],
+       [
+        2
+       ]
+      ]
+     ],
+     "expected": [
+      2,
+      2,
+      2
+     ]
+    },
+    {
+     "name": "already ordered lists",
+     "args": [
+      [
+       [
+        1,
+        2,
+        3
+       ],
+       [
+        4,
+        5,
+        6
+       ],
+       [
+        7,
+        8,
+        9
+       ]
+      ]
+     ],
+     "expected": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+     ]
+    },
+    {
+     "name": "stress: 1,000 lists × 100 values",
+     "args": [
+      {
+       "$gen": "chunks",
+       "of": {
+        "$gen": "ints",
+        "n": 100000,
+        "lo": -1000000,
+        "hi": 1000000,
+        "seed": 204
+       },
+       "size": 100,
+       "sort": true
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": {
+      "$digest": "ec25ca959a0c34cdf261844e17b63bc7fd53b0e066bebd41491106b004fb47cb"
+     }
+    },
+    {
+     "name": "stress: 10,000 single-value lists",
+     "args": [
+      {
+       "$gen": "chunks",
+       "of": {
+        "$gen": "ints",
+        "n": 10000,
+        "lo": -1000,
+        "hi": 1000,
+        "seed": 205
+       },
+       "size": 1
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": {
+      "$digest": "9900085a43e3748242ff1c8dcc51089eb3073e233e1a3223dc15e0b56ccc1682"
+     }
+    }
+   ],
+   "solution": {
+    "python": "import heapq\n\ndef merge_k_lists(lists):\n    heap = [(lst[0], i, 0) for i, lst in enumerate(lists) if lst]\n    heapq.heapify(heap)\n    out = []\n    while heap:\n        v, i, j = heapq.heappop(heap)\n        out.append(v)\n        if j + 1 < len(lists[i]):\n            heapq.heappush(heap, (lists[i][j + 1], i, j + 1))\n    return out\n",
+    "javascript": "function mergeKLists(lists) {\n  if (!lists.length) return []\n  const merge = (a, b) => {\n    const out = []\n    let i = 0, j = 0\n    while (i < a.length && j < b.length) out.push(a[i] <= b[j] ? a[i++] : b[j++])\n    while (i < a.length) out.push(a[i++])\n    while (j < b.length) out.push(b[j++])\n    return out\n  }\n  let cur = lists.map((l) => l.slice())\n  while (cur.length > 1) {\n    const next = []\n    for (let i = 0; i < cur.length; i += 2) next.push(i + 1 < cur.length ? merge(cur[i], cur[i + 1]) : cur[i])\n    cur = next\n  }\n  return cur[0]\n}\n"
+   },
+   "brute": {
+    "python": "def merge_k_lists(lists):\n    idx = [0] * len(lists)\n    out = []\n    while True:\n        best = -1\n        for i, lst in enumerate(lists):\n            if idx[i] < len(lst) and (best == -1 or lst[idx[i]] < lists[best][idx[best]]):\n                best = i\n        if best == -1:\n            return out\n        out.append(lists[best][idx[best]])\n        idx[best] += 1\n"
+   }
+  },
+  {
+   "slug": "min-window-substring",
+   "title": "Minimum Window Substring",
+   "topic": "Strings",
+   "difficulty": "hard",
+   "statement": "Given strings s and t, return the shortest substring of s that contains every character of t (including duplicates). If there are several of the same length, return the leftmost. If none exists, return an empty string.",
+   "examples": [
+    {
+     "input": "s = \"ADOBECODEBANC\", t = \"ABC\"",
+     "output": "\"BANC\""
+    },
+    {
+     "input": "s = \"a\", t = \"aa\"",
+     "output": "\"\""
+    }
+   ],
+   "constraints": [
+    "1 ≤ len(s), len(t) ≤ 10⁵",
+    "Aim for O(len(s) + len(t))"
+   ],
+   "fn": {
+    "python": "min_window",
+    "javascript": "minWindow"
+   },
+   "starter": {
+    "python": "def min_window(s, t):\n    # Return the minimum window substring, or an empty string.\n    pass\n",
+    "javascript": "function minWindow(s, t) {\n  // Return the minimum window substring, or an empty string.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "classic",
+     "args": [
+      "ADOBECODEBANC",
+      "ABC"
+     ],
+     "expected": "BANC",
+     "sample": true
+    },
+    {
+     "name": "not enough characters",
+     "args": [
+      "a",
+      "aa"
+     ],
+     "expected": "",
+     "sample": true
+    },
+    {
+     "name": "exact match",
+     "args": [
+      "a",
+      "a"
+     ],
+     "expected": "a",
+     "sample": true
+    },
+    {
+     "name": "duplicates in t",
+     "args": [
+      "aaflslflsldkalskaaa",
+      "aaa"
+     ],
+     "expected": "aaa"
+    },
+    {
+     "name": "whole string",
+     "args": [
+      "abc",
+      "cba"
+     ],
+     "expected": "abc"
+    },
+    {
+     "name": "leftmost of ties",
+     "args": [
+      "abab",
+      "ab"
+     ],
+     "expected": "ab"
+    },
+    {
+     "name": "stress: unique window hidden in 10⁵ characters",
+     "args": [
+      {
+       "$gen": "concat",
+       "parts": [
+        {
+         "$gen": "str",
+         "n": 50000,
+         "alphabet": "abcdefghij",
+         "seed": 317
+        },
+        "X",
+        {
+         "$gen": "str",
+         "n": 10,
+         "alphabet": "abcdefghij",
+         "seed": 318
+        },
+        "YZ",
+        {
+         "$gen": "str",
+         "n": 50000,
+         "alphabet": "abcdefghij",
+         "seed": 319
+        }
+       ]
+      },
+      "ZYX"
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": "XbcgbiefagbYZ"
+    },
+    {
+     "name": "stress: 10⁵ characters, 10-letter target",
+     "args": [
+      {
+       "$gen": "str",
+       "n": 100000,
+       "alphabet": "ABCDEFGHIJ",
+       "seed": 320
+      },
+      "AABBCCDDEE"
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": "CABDADBECE"
+    }
+   ],
+   "solution": {
+    "python": "from collections import Counter\ndef min_window(s, t):\n    need = Counter(t)\n    missing = len(t)\n    left = start = 0\n    best = None\n    for right, c in enumerate(s):\n        if need[c] > 0: missing -= 1\n        need[c] -= 1\n        while missing == 0:\n            if best is None or right - left + 1 < best:\n                best, start = right - left + 1, left\n            need[s[left]] += 1\n            if need[s[left]] > 0: missing += 1\n            left += 1\n    return '' if best is None else s[start:start + best]\n",
+    "javascript": "function minWindow(s, t) {\n  const need = new Map();\n  for (const c of t) need.set(c, (need.get(c) || 0) + 1);\n  let missing = t.length, left = 0, start = 0, best = Infinity;\n  for (let right = 0; right < s.length; right++) {\n    const c = s[right];\n    if ((need.get(c) || 0) > 0) missing--;\n    need.set(c, (need.get(c) || 0) - 1);\n    while (missing === 0) {\n      if (right - left + 1 < best) { best = right - left + 1; start = left; }\n      const d = s[left];\n      need.set(d, need.get(d) + 1);\n      if (need.get(d) > 0) missing++;\n      left++;\n    }\n  }\n  return best === Infinity ? '' : s.slice(start, start + best);\n}\n"
+   }
+  },
+  {
+   "slug": "regex-matching",
+   "title": "Regular Expression Matching",
+   "topic": "Dynamic Programming",
+   "difficulty": "hard",
+   "statement": "Implement regular-expression matching with support for '.' (matches any single character) and '*' (matches zero or more of the preceding element). The match must cover the entire input string, not just part of it.",
+   "examples": [
+    {
+     "input": "s = \"aa\", p = \"a\"",
+     "output": "false"
+    },
+    {
+     "input": "s = \"aa\", p = \"a*\"",
+     "output": "true"
+    },
+    {
+     "input": "s = \"ab\", p = \".*\"",
+     "output": "true",
+     "explain": "\".*\" means zero or more of any character."
+    }
+   ],
+   "constraints": [
+    "0 ≤ len(s), len(p) ≤ 100",
+    "s has lowercase letters; p has lowercase letters, '.' and '*'",
+    "Every '*' follows a letter or '.'",
+    "Expected: O(len(s) × len(p)) DP — naive backtracking is exponential"
+   ],
+   "fn": {
+    "python": "is_match",
+    "javascript": "isMatch"
+   },
+   "starter": {
+    "python": "def is_match(s, p):\n    # Write your solution here.\n    pass\n",
+    "javascript": "function isMatch(s, p) {\n  // Write your solution here.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "example 1",
+     "args": [
+      "aa",
+      "a"
+     ],
+     "expected": false,
+     "sample": true
+    },
+    {
+     "name": "example 2",
+     "args": [
+      "aa",
+      "a*"
+     ],
+     "expected": true,
+     "sample": true
+    },
+    {
+     "name": "example 3",
+     "args": [
+      "ab",
+      ".*"
+     ],
+     "expected": true,
+     "sample": true
+    },
+    {
+     "name": "star can be zero",
+     "args": [
+      "aab",
+      "c*a*b"
+     ],
+     "expected": true
+    },
+    {
+     "name": "mississippi",
+     "args": [
+      "mississippi",
+      "mis*is*p*."
+     ],
+     "expected": false
+    },
+    {
+     "name": "empty string vs stars",
+     "args": [
+      "",
+      "a*b*"
+     ],
+     "expected": true
+    },
+    {
+     "name": "trailing literal",
+     "args": [
+      "ab",
+      ".*c"
+     ],
+     "expected": false
+    },
+    {
+     "name": "star then literal",
+     "args": [
+      "aaa",
+      "a*a"
+     ],
+     "expected": true
+    },
+    {
+     "name": "optional tail",
+     "args": [
+      "a",
+      "ab*"
+     ],
+     "expected": true
+    },
+    {
+     "name": "both empty",
+     "args": [
+      "",
+      ""
+     ],
+     "expected": true
+    },
+    {
+     "name": "empty pattern",
+     "args": [
+      "a",
+      ""
+     ],
+     "expected": false
+    },
+    {
+     "name": "star of other letter",
+     "args": [
+      "abcd",
+      "d*"
+     ],
+     "expected": false
+    },
+    {
+     "name": "stress: catastrophic backtracking",
+     "args": [
+      {
+       "$gen": "strrepeat",
+       "value": "a",
+       "n": 30
+      },
+      "a*a*a*a*a*a*a*a*a*a*a*a*c"
+     ],
+     "expected": false,
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     }
+    },
+    {
+     "name": "stress: 100-char string, 50 stars",
+     "args": [
+      {
+       "$gen": "strrepeat",
+       "value": "ab",
+       "n": 50
+      },
+      {
+       "$gen": "concat",
+       "parts": [
+        {
+         "$gen": "strrepeat",
+         "value": "a*b*",
+         "n": 24
+        },
+        ".*c*"
+       ]
+      }
+     ],
+     "expected": true,
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     }
+    }
+   ],
+   "solution": {
+    "python": "def is_match(s, p):\n    m, n = len(s), len(p)\n    dp = [[False] * (n + 1) for _ in range(m + 1)]\n    dp[m][n] = True\n    for i in range(m, -1, -1):\n        for j in range(n - 1, -1, -1):\n            first = i < m and p[j] in (s[i], '.')\n            if j + 1 < n and p[j + 1] == '*':\n                dp[i][j] = dp[i][j + 2] or (first and dp[i + 1][j])\n            else:\n                dp[i][j] = first and dp[i + 1][j + 1]\n    return dp[0][0]\n",
+    "javascript": "function isMatch(s, p) {\n  const m = s.length, n = p.length\n  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(false))\n  dp[m][n] = true\n  for (let i = m; i >= 0; i--) {\n    for (let j = n - 1; j >= 0; j--) {\n      const first = i < m && (p[j] === s[i] || p[j] === '.')\n      if (j + 1 < n && p[j + 1] === '*') dp[i][j] = dp[i][j + 2] || (first && dp[i + 1][j])\n      else dp[i][j] = first && dp[i + 1][j + 1]\n    }\n  }\n  return dp[0][0]\n}\n"
+   },
+   "brute": {
+    "python": "def is_match(s, p):\n    if not p:\n        return not s\n    first = bool(s) and p[0] in (s[0], '.')\n    if len(p) >= 2 and p[1] == '*':\n        return is_match(s, p[2:]) or (first and is_match(s[1:], p))\n    return first and is_match(s[1:], p[1:])\n",
+    "javascript": "function isMatch(s, p) {\n  if (!p.length) return !s.length\n  const first = s.length > 0 && (p[0] === s[0] || p[0] === '.')\n  if (p.length >= 2 && p[1] === '*') return isMatch(s, p.slice(2)) || (first && isMatch(s.slice(1), p))\n  return first && isMatch(s.slice(1), p.slice(1))\n}\n"
+   }
+  },
+  {
+   "slug": "russian-doll-envelopes",
+   "title": "Russian Doll Envelopes",
+   "topic": "Dynamic Programming",
+   "difficulty": "hard",
+   "statement": "envelopes[i] = [w, h]. One envelope fits inside another only if both its width and its height are strictly smaller. Return the maximum number of envelopes you can nest one inside another. Rotation is not allowed.",
+   "examples": [
+    {
+     "input": "envelopes = [[5,4],[6,4],[6,7],[2,3]]",
+     "output": "3",
+     "explain": "[2,3] → [5,4] → [6,7]."
+    },
+    {
+     "input": "envelopes = [[1,1],[1,1],[1,1]]",
+     "output": "1"
+    }
+   ],
+   "constraints": [
+    "1 ≤ n ≤ 10⁵",
+    "1 ≤ w, h ≤ 10⁵",
+    "Expected: O(n log n) — sort by width ascending and height descending, then LIS on heights"
+   ],
+   "fn": {
+    "python": "max_envelopes",
+    "javascript": "maxEnvelopes"
+   },
+   "starter": {
+    "python": "def max_envelopes(envelopes):\n    # Write your solution here.\n    pass\n",
+    "javascript": "function maxEnvelopes(envelopes) {\n  // Write your solution here.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "example 1",
+     "args": [
+      [
+       [
+        5,
+        4
+       ],
+       [
+        6,
+        4
+       ],
+       [
+        6,
+        7
+       ],
+       [
+        2,
+        3
+       ]
+      ]
+     ],
+     "expected": 3,
+     "sample": true
+    },
+    {
+     "name": "example 2",
+     "args": [
+      [
+       [
+        1,
+        1
+       ],
+       [
+        1,
+        1
+       ],
+       [
+        1,
+        1
+       ]
+      ]
+     ],
+     "expected": 1,
+     "sample": true
+    },
+    {
+     "name": "single",
+     "args": [
+      [
+       [
+        1,
+        1
+       ]
+      ]
+     ],
+     "expected": 1
+    },
+    {
+     "name": "equal widths",
+     "args": [
+      [
+       [
+        4,
+        5
+       ],
+       [
+        4,
+        6
+       ],
+       [
+        6,
+        7
+       ],
+       [
+        2,
+        3
+       ],
+       [
+        1,
+        1
+       ]
+      ]
+     ],
+     "expected": 4
+    },
+    {
+     "name": "six envelopes",
+     "args": [
+      [
+       [
+        1,
+        3
+       ],
+       [
+        3,
+        5
+       ],
+       [
+        6,
+        7
+       ],
+       [
+        6,
+        8
+       ],
+       [
+        8,
+        4
+       ],
+       [
+        9,
+        5
+       ]
+      ]
+     ],
+     "expected": 3
+    },
+    {
+     "name": "equal-width traps",
+     "args": [
+      [
+       [
+        2,
+        100
+       ],
+       [
+        3,
+        200
+       ],
+       [
+        4,
+        300
+       ],
+       [
+        5,
+        500
+       ],
+       [
+        5,
+        400
+       ],
+       [
+        5,
+        250
+       ],
+       [
+        6,
+        370
+       ],
+       [
+        6,
+        360
+       ],
+       [
+        7,
+        380
+       ]
+      ]
+     ],
+     "expected": 5
+    },
+    {
+     "name": "no nesting beyond two",
+     "args": [
+      [
+       [
+        10,
+        8
+       ],
+       [
+        1,
+        12
+       ],
+       [
+        6,
+        15
+       ],
+       [
+        2,
+        18
+       ]
+      ]
+     ],
+     "expected": 2
+    },
+    {
+     "name": "stress: 10⁵ envelopes",
+     "args": [
+      {
+       "$gen": "grid",
+       "rows": 100000,
+       "cols": 2,
+       "lo": 1,
+       "hi": 100000,
+       "seed": 212
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": 607
+    }
+   ],
+   "solution": {
+    "python": "import bisect\n\ndef max_envelopes(envelopes):\n    env = sorted(envelopes, key=lambda e: (e[0], -e[1]))\n    tails = []\n    for _, h in env:\n        i = bisect.bisect_left(tails, h)\n        if i == len(tails):\n            tails.append(h)\n        else:\n            tails[i] = h\n    return len(tails)\n",
+    "javascript": "function maxEnvelopes(envelopes) {\n  const env = envelopes.slice().sort((a, b) => a[0] - b[0] || b[1] - a[1])\n  const tails = []\n  for (const [, h] of env) {\n    let lo = 0, hi = tails.length\n    while (lo < hi) { const mid = (lo + hi) >> 1; if (tails[mid] < h) lo = mid + 1; else hi = mid }\n    tails[lo] = h\n  }\n  return tails.length\n}\n"
+   },
+   "brute": {
+    "python": "def max_envelopes(envelopes):\n    env = sorted(envelopes)\n    dp = [1] * len(env)\n    for i in range(len(env)):\n        for j in range(i):\n            if env[j][0] < env[i][0] and env[j][1] < env[i][1]:\n                dp[i] = max(dp[i], dp[j] + 1)\n    return max(dp)\n",
+    "javascript": "function maxEnvelopes(e) {\n  const env = e.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1])\n  const dp = new Array(env.length).fill(1)\n  let best = 1\n  for (let i = 0; i < env.length; i++) { for (let j = 0; j < i; j++) if (env[j][0] < env[i][0] && env[j][1] < env[i][1] && dp[j] + 1 > dp[i]) dp[i] = dp[j] + 1; if (dp[i] > best) best = dp[i] }\n  return best\n}\n"
+   }
+  },
+  {
+   "slug": "sliding-window-maximum",
+   "title": "Sliding Window Maximum",
+   "topic": "Queues",
+   "difficulty": "hard",
+   "statement": "Given an array nums and a window size k, return a list with the maximum of each contiguous window of size k, from left to right.",
+   "examples": [
+    {
+     "input": "nums = [1,3,-1,-3,5,3,6,7], k = 3",
+     "output": "[3,3,5,5,6,7]"
+    }
+   ],
+   "constraints": [
+    "1 ≤ k ≤ len(nums) ≤ 10⁵",
+    "Aim for O(n) with a monotonic deque"
+   ],
+   "fn": {
+    "python": "max_sliding_window",
+    "javascript": "maxSlidingWindow"
+   },
+   "starter": {
+    "python": "def max_sliding_window(nums, k):\n    # Return the list of window maximums.\n    pass\n",
+    "javascript": "function maxSlidingWindow(nums, k) {\n  // Return the list of window maximums.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "classic",
+     "args": [
+      [
+       1,
+       3,
+       -1,
+       -3,
+       5,
+       3,
+       6,
+       7
+      ],
+      3
+     ],
+     "expected": [
+      3,
+      3,
+      5,
+      5,
+      6,
+      7
+     ],
+     "sample": true
+    },
+    {
+     "name": "k = 1",
+     "args": [
+      [
+       4,
+       2,
+       12
+      ],
+      1
+     ],
+     "expected": [
+      4,
+      2,
+      12
+     ]
+    },
+    {
+     "name": "k = n",
+     "args": [
+      [
+       9,
+       11,
+       8
+      ],
+      3
+     ],
+     "expected": [
+      11
+     ]
+    },
+    {
+     "name": "decreasing",
+     "args": [
+      [
+       9,
+       7,
+       5,
+       3
+      ],
+      2
+     ],
+     "expected": [
+      9,
+      7,
+      5
+     ]
+    },
+    {
+     "name": "duplicates",
+     "args": [
+      [
+       1,
+       1,
+       1,
+       1
+      ],
+      2
+     ],
+     "expected": [
+      1,
+      1,
+      1
+     ]
+    },
+    {
+     "name": "negatives",
+     "args": [
+      [
+       -7,
+       -8,
+       7,
+       5,
+       7,
+       1,
+       6,
+       0
+      ],
+      4
+     ],
+     "expected": [
+      7,
+      7,
+      7,
+      7,
+      7
+     ]
+    },
+    {
+     "name": "stress: 10⁵ values, k = 50,000",
+     "args": [
+      {
+       "$gen": "ints",
+       "n": 100000,
+       "lo": -10000,
+       "hi": 10000,
+       "seed": 316
+      },
+      50000
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": {
+      "$digest": "0d779a4a37c0ebde17e1e9967767ed06dc1ceba9a5a10dd69f1aecf26f996065"
+     }
+    },
+    {
+     "name": "stress: 10⁵ descending values, k = 1,000",
+     "args": [
+      {
+       "$gen": "range",
+       "start": 100000,
+       "stop": 0,
+       "step": -1
+      },
+      1000
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": {
+      "$digest": "53a7d04f2efa73f5400f7f87740b62aa15eb99fb6fbea8292e7641a2cfc349c2"
+     }
+    }
+   ],
+   "solution": {
+    "python": "from collections import deque\ndef max_sliding_window(nums, k):\n    dq, out = deque(), []\n    for i, x in enumerate(nums):\n        while dq and nums[dq[-1]] <= x: dq.pop()\n        dq.append(i)\n        if dq[0] <= i - k: dq.popleft()\n        if i >= k - 1: out.append(nums[dq[0]])\n    return out\n",
+    "javascript": "function maxSlidingWindow(nums, k) {\n  const dq = [], out = [];\n  let head = 0;\n  for (let i = 0; i < nums.length; i++) {\n    while (dq.length > head && nums[dq[dq.length - 1]] <= nums[i]) dq.pop();\n    dq.push(i);\n    if (dq[head] <= i - k) head++;\n    if (i >= k - 1) out.push(nums[dq[head]]);\n  }\n  return out;\n}\n"
+   },
+   "brute": {
+    "python": "def max_sliding_window(nums, k):\n    return [max(nums[i:i + k]) for i in range(len(nums) - k + 1)]\n",
+    "javascript": "function maxSlidingWindow(nums, k) {\n  const out = []\n  for (let i = 0; i + k <= nums.length; i++) { let m = -Infinity; for (let j = i; j < i + k; j++) if (nums[j] > m) m = nums[j]; out.push(m) }\n  return out\n}\n"
+   }
+  },
+  {
+   "slug": "split-array-largest-sum",
+   "title": "Split Array Largest Sum",
+   "topic": "Searching",
+   "difficulty": "hard",
+   "statement": "Given an integer array nums and an integer k, split nums into k non-empty contiguous subarrays so that the largest subarray sum is as small as possible. Return that minimised largest sum.",
+   "examples": [
+    {
+     "input": "nums = [7,2,5,10,8], k = 2",
+     "output": "18",
+     "explain": "[7,2,5] and [10,8]."
+    },
+    {
+     "input": "nums = [1,2,3,4,5], k = 2",
+     "output": "9"
+    }
+   ],
+   "constraints": [
+    "1 ≤ len(nums) ≤ 5 × 10⁴",
+    "0 ≤ nums[i] ≤ 10⁶",
+    "1 ≤ k ≤ min(50, len(nums))",
+    "Expected: binary search on the answer with a greedy check — O(n log(sum))"
+   ],
+   "fn": {
+    "python": "split_array",
+    "javascript": "splitArray"
+   },
+   "starter": {
+    "python": "def split_array(nums, k):\n    # Write your solution here.\n    pass\n",
+    "javascript": "function splitArray(nums, k) {\n  // Write your solution here.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "example 1",
+     "args": [
+      [
+       7,
+       2,
+       5,
+       10,
+       8
+      ],
+      2
+     ],
+     "expected": 18,
+     "sample": true
+    },
+    {
+     "name": "example 2",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4,
+       5
+      ],
+      2
+     ],
+     "expected": 9,
+     "sample": true
+    },
+    {
+     "name": "one per part",
+     "args": [
+      [
+       1,
+       4,
+       4
+      ],
+      3
+     ],
+     "expected": 4
+    },
+    {
+     "name": "single value",
+     "args": [
+      [
+       5
+      ],
+      1
+     ],
+     "expected": 5
+    },
+    {
+     "name": "all ones",
+     "args": [
+      [
+       1,
+       1,
+       1,
+       1
+      ],
+      4
+     ],
+     "expected": 1
+    },
+    {
+     "name": "many parts",
+     "args": [
+      [
+       2,
+       3,
+       1,
+       2,
+       4,
+       3
+      ],
+      5
+     ],
+     "expected": 4
+    },
+    {
+     "name": "zeros",
+     "args": [
+      [
+       0,
+       0,
+       0
+      ],
+      2
+     ],
+     "expected": 0
+    },
+    {
+     "name": "fourteen values",
+     "args": [
+      [
+       10,
+       5,
+       13,
+       4,
+       8,
+       4,
+       5,
+       11,
+       14,
+       9,
+       16,
+       10,
+       20,
+       8
+      ],
+      8
+     ],
+     "expected": 25
+    },
+    {
+     "name": "stress: 5 × 10⁴ values, k = 50",
+     "args": [
+      {
+       "$gen": "ints",
+       "n": 50000,
+       "lo": 0,
+       "hi": 1000000,
+       "seed": 213
+      },
+      50
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 6000,
+      "javascript": 1500
+     },
+     "expected": 502735363
+    }
+   ],
+   "solution": {
+    "python": "def split_array(nums, k):\n    def pieces(limit):\n        count, cur = 1, 0\n        for x in nums:\n            if cur + x > limit:\n                count += 1\n                cur = x\n            else:\n                cur += x\n        return count\n    lo, hi = max(nums), sum(nums)\n    while lo < hi:\n        mid = (lo + hi) // 2\n        if pieces(mid) <= k:\n            hi = mid\n        else:\n            lo = mid + 1\n    return lo\n",
+    "javascript": "function splitArray(nums, k) {\n  let lo = Math.max(...nums), hi = nums.reduce((a, b) => a + b, 0)\n  const pieces = (limit) => { let count = 1, cur = 0; for (const x of nums) { if (cur + x > limit) { count++; cur = x } else cur += x } return count }\n  while (lo < hi) { const mid = Math.floor((lo + hi) / 2); if (pieces(mid) <= k) hi = mid; else lo = mid + 1 }\n  return lo\n}\n"
+   },
+   "brute": {
+    "python": "def split_array(nums, k):\n    n = len(nums)\n    pre = [0]\n    for x in nums:\n        pre.append(pre[-1] + x)\n    INF = float('inf')\n    dp = [[INF] * (n + 1) for _ in range(k + 1)]\n    dp[0][0] = 0\n    for parts in range(1, k + 1):\n        for i in range(1, n + 1):\n            for j in range(parts - 1, i):\n                dp[parts][i] = min(dp[parts][i], max(dp[parts - 1][j], pre[i] - pre[j]))\n    return dp[k][n]\n"
+   }
+  },
+  {
+   "slug": "trapping-rain-water",
+   "title": "Trapping Rain Water",
+   "topic": "Arrays",
+   "difficulty": "hard",
+   "statement": "Given n non-negative integers representing an elevation map where each bar has width 1, return how many units of water are trapped after raining.",
+   "examples": [
+    {
+     "input": "height = [0,1,0,2,1,0,1,3,2,1,2,1]",
+     "output": "6"
+    },
+    {
+     "input": "height = [4,2,0,3,2,5]",
+     "output": "9"
+    }
+   ],
+   "constraints": [
+    "0 ≤ n ≤ 10⁵",
+    "0 ≤ height[i] ≤ 10⁵",
+    "Expected: O(n) time and O(1) extra space (two pointers)"
+   ],
+   "fn": {
+    "python": "trap",
+    "javascript": "trap"
+   },
+   "starter": {
+    "python": "def trap(height):\n    # Return the total trapped water.\n    pass\n",
+    "javascript": "function trap(height) {\n  // Return the total trapped water.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "classic",
+     "args": [
+      [
+       0,
+       1,
+       0,
+       2,
+       1,
+       0,
+       1,
+       3,
+       2,
+       1,
+       2,
+       1
+      ]
+     ],
+     "expected": 6,
+     "sample": true
+    },
+    {
+     "name": "deep basin",
+     "args": [
+      [
+       4,
+       2,
+       0,
+       3,
+       2,
+       5
+      ]
+     ],
+     "expected": 9,
+     "sample": true
+    },
+    {
+     "name": "empty",
+     "args": [
+      []
+     ],
+     "expected": 0
+    },
+    {
+     "name": "monotonic",
+     "args": [
+      [
+       1,
+       2,
+       3,
+       4
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "name": "flat",
+     "args": [
+      [
+       3,
+       3,
+       3
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "name": "single valley",
+     "args": [
+      [
+       5,
+       0,
+       5
+      ]
+     ],
+     "expected": 5
+    },
+    {
+     "name": "uneven walls",
+     "args": [
+      [
+       2,
+       0,
+       5,
+       0,
+       3
+      ]
+     ],
+     "expected": 5
+    },
+    {
+     "name": "stress: 10⁵ random bars",
+     "args": [
+      {
+       "$gen": "ints",
+       "n": 100000,
+       "lo": 0,
+       "hi": 10000,
+       "seed": 309
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": 500549418
+    },
+    {
+     "name": "stress: 10⁵-bar mountain",
+     "args": [
+      {
+       "$gen": "concat",
+       "parts": [
+        {
+         "$gen": "sorted",
+         "of": {
+          "$gen": "ints",
+          "n": 50000,
+          "lo": 0,
+          "hi": 100000,
+          "seed": 310
+         }
+        },
+        {
+         "$gen": "sorted",
+         "of": {
+          "$gen": "ints",
+          "n": 50000,
+          "lo": 0,
+          "hi": 100000,
+          "seed": 311
+         },
+         "desc": true
+        }
+       ]
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": 0
+    }
+   ],
+   "solution": {
+    "python": "def trap(height):\n    l, r = 0, len(height) - 1\n    lmax = rmax = water = 0\n    while l < r:\n        if height[l] < height[r]:\n            lmax = max(lmax, height[l]); water += lmax - height[l]; l += 1\n        else:\n            rmax = max(rmax, height[r]); water += rmax - height[r]; r -= 1\n    return water\n",
+    "javascript": "function trap(height) {\n  let l = 0, r = height.length - 1, lmax = 0, rmax = 0, water = 0;\n  while (l < r) {\n    if (height[l] < height[r]) { lmax = Math.max(lmax, height[l]); water += lmax - height[l]; l++; }\n    else { rmax = Math.max(rmax, height[r]); water += rmax - height[r]; r--; }\n  }\n  return water;\n}\n"
+   },
+   "brute": {
+    "python": "def trap(height):\n    water = 0\n    for i in range(len(height)):\n        left = max(height[:i + 1])\n        right = max(height[i:])\n        water += min(left, right) - height[i]\n    return water\n"
+   }
+  },
+  {
+   "slug": "trapping-rain-water-ii",
+   "title": "Trapping Rain Water II",
+   "topic": "Heaps",
+   "difficulty": "hard",
+   "statement": "Given an m × n matrix of non-negative integers representing the height of each unit cell in a 2D elevation map, return the volume of water it can trap after raining. Water spills off the edges of the map, so border cells never hold water.",
+   "examples": [
+    {
+     "input": "height_map = [[1,4,3,1,3,2],[3,2,1,3,2,4],[2,3,3,2,3,1]]",
+     "output": "4"
+    },
+    {
+     "input": "height_map = [[3,3,3,3,3],[3,2,2,2,3],[3,2,1,2,3],[3,2,2,2,3],[3,3,3,3,3]]",
+     "output": "10"
+    }
+   ],
+   "constraints": [
+    "1 ≤ m, n ≤ 200",
+    "0 ≤ height_map[i][j] ≤ 2 × 10⁴",
+    "Expected: O(mn log(mn)) — flood inward from the border with a min-heap"
+   ],
+   "fn": {
+    "python": "trap_rain_water",
+    "javascript": "trapRainWater"
+   },
+   "starter": {
+    "python": "def trap_rain_water(height_map):\n    # Write your solution here.\n    pass\n",
+    "javascript": "function trapRainWater(heightMap) {\n  // Write your solution here.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "example 1",
+     "args": [
+      [
+       [
+        1,
+        4,
+        3,
+        1,
+        3,
+        2
+       ],
+       [
+        3,
+        2,
+        1,
+        3,
+        2,
+        4
+       ],
+       [
+        2,
+        3,
+        3,
+        2,
+        3,
+        1
+       ]
+      ]
+     ],
+     "expected": 4,
+     "sample": true
+    },
+    {
+     "name": "example 2",
+     "args": [
+      [
+       [
+        3,
+        3,
+        3,
+        3,
+        3
+       ],
+       [
+        3,
+        2,
+        2,
+        2,
+        3
+       ],
+       [
+        3,
+        2,
+        1,
+        2,
+        3
+       ],
+       [
+        3,
+        2,
+        2,
+        2,
+        3
+       ],
+       [
+        3,
+        3,
+        3,
+        3,
+        3
+       ]
+      ]
+     ],
+     "expected": 10,
+     "sample": true
+    },
+    {
+     "name": "single cell",
+     "args": [
+      [
+       [
+        1
+       ]
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "name": "one well",
+     "args": [
+      [
+       [
+        5,
+        5,
+        5
+       ],
+       [
+        5,
+        1,
+        5
+       ],
+       [
+        5,
+        5,
+        5
+       ]
+      ]
+     ],
+     "expected": 4
+    },
+    {
+     "name": "leaky wall",
+     "args": [
+      [
+       [
+        12,
+        13,
+        1,
+        12
+       ],
+       [
+        13,
+        4,
+        13,
+        12
+       ],
+       [
+        13,
+        8,
+        10,
+        12
+       ],
+       [
+        12,
+        13,
+        12,
+        12
+       ],
+       [
+        13,
+        13,
+        13,
+        13
+       ]
+      ]
+     ],
+     "expected": 14
+    },
+    {
+     "name": "flat",
+     "args": [
+      [
+       [
+        2,
+        2,
+        2
+       ],
+       [
+        2,
+        2,
+        2
+       ]
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "name": "two wells",
+     "args": [
+      [
+       [
+        9,
+        9,
+        9,
+        9
+       ],
+       [
+        9,
+        1,
+        2,
+        9
+       ],
+       [
+        9,
+        9,
+        9,
+        9
+       ]
+      ]
+     ],
+     "expected": 15
+    },
+    {
+     "name": "stress: 200 × 200 random terrain",
+     "args": [
+      {
+       "$gen": "grid",
+       "rows": 200,
+       "cols": 200,
+       "lo": 0,
+       "hi": 20000,
+       "seed": 215
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": 126283846
+    }
+   ],
+   "solution": {
+    "python": "import heapq\n\ndef trap_rain_water(height_map):\n    m, n = len(height_map), len(height_map[0])\n    if m < 3 or n < 3:\n        return 0\n    seen = [[False] * n for _ in range(m)]\n    heap = []\n    for i in range(m):\n        for j in range(n):\n            if i in (0, m - 1) or j in (0, n - 1):\n                heapq.heappush(heap, (height_map[i][j], i, j))\n                seen[i][j] = True\n    water = 0\n    while heap:\n        h, i, j = heapq.heappop(heap)\n        for x, y in ((i + 1, j), (i - 1, j), (i, j + 1), (i, j - 1)):\n            if 0 <= x < m and 0 <= y < n and not seen[x][y]:\n                seen[x][y] = True\n                cell = height_map[x][y]\n                if cell < h:\n                    water += h - cell\n                heapq.heappush(heap, (max(h, cell), x, y))\n    return water\n",
+    "javascript": "function trapRainWater(heightMap) {\n  const m = heightMap.length, n = heightMap[0].length\n  if (m < 3 || n < 3) return 0\n  const seen = Array.from({ length: m }, () => new Array(n).fill(false))\n  const heap = []\n  const push = (item) => {\n    heap.push(item)\n    let i = heap.length - 1\n    while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p }\n  }\n  const pop = () => {\n    const top = heap[0], last = heap.pop()\n    if (heap.length) {\n      heap[0] = last\n      let i = 0\n      for (;;) {\n        const l = 2 * i + 1, r = l + 1\n        let s = i\n        if (l < heap.length && heap[l][0] < heap[s][0]) s = l\n        if (r < heap.length && heap[r][0] < heap[s][0]) s = r\n        if (s === i) break\n        ;[heap[s], heap[i]] = [heap[i], heap[s]]\n        i = s\n      }\n    }\n    return top\n  }\n  for (let i = 0; i < m; i++) for (let j = 0; j < n; j++) if (i === 0 || i === m - 1 || j === 0 || j === n - 1) { push([heightMap[i][j], i, j]); seen[i][j] = true }\n  let water = 0\n  while (heap.length) {\n    const [h, i, j] = pop()\n    for (const [x, y] of [[i + 1, j], [i - 1, j], [i, j + 1], [i, j - 1]]) {\n      if (x >= 0 && x < m && y >= 0 && y < n && !seen[x][y]) {\n        seen[x][y] = true\n        const cell = heightMap[x][y]\n        if (cell < h) water += h - cell\n        push([Math.max(h, cell), x, y])\n      }\n    }\n  }\n  return water\n}\n"
+   }
+  },
+  {
+   "slug": "wildcard-matching",
+   "title": "Wildcard Matching",
+   "topic": "Dynamic Programming",
+   "difficulty": "hard",
+   "statement": "Implement wildcard pattern matching with support for '?' (matches any single character) and '*' (matches any sequence of characters, including the empty sequence). The match must cover the entire input string.",
+   "examples": [
+    {
+     "input": "s = \"aa\", p = \"a\"",
+     "output": "false"
+    },
+    {
+     "input": "s = \"aa\", p = \"*\"",
+     "output": "true"
+    },
+    {
+     "input": "s = \"cb\", p = \"?a\"",
+     "output": "false",
+     "explain": "'?' matches 'c' but 'a' does not match 'b'."
+    }
+   ],
+   "constraints": [
+    "0 ≤ len(s), len(p) ≤ 2000",
+    "s has lowercase letters; p has lowercase letters, '?' and '*'",
+    "Expected: O(len(s) × len(p)) DP or a greedy two-pointer — naive backtracking is exponential"
+   ],
+   "fn": {
+    "python": "is_match",
+    "javascript": "isMatch"
+   },
+   "starter": {
+    "python": "def is_match(s, p):\n    # Write your solution here.\n    pass\n",
+    "javascript": "function isMatch(s, p) {\n  // Write your solution here.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "example 1",
+     "args": [
+      "aa",
+      "a"
+     ],
+     "expected": false,
+     "sample": true
+    },
+    {
+     "name": "example 2",
+     "args": [
+      "aa",
+      "*"
+     ],
+     "expected": true,
+     "sample": true
+    },
+    {
+     "name": "example 3",
+     "args": [
+      "cb",
+      "?a"
+     ],
+     "expected": false,
+     "sample": true
+    },
+    {
+     "name": "two stars",
+     "args": [
+      "adceb",
+      "*a*b"
+     ],
+     "expected": true
+    },
+    {
+     "name": "star then ?",
+     "args": [
+      "acdcb",
+      "a*c?b"
+     ],
+     "expected": false
+    },
+    {
+     "name": "empty string, star",
+     "args": [
+      "",
+      "*"
+     ],
+     "expected": true
+    },
+    {
+     "name": "both empty",
+     "args": [
+      "",
+      ""
+     ],
+     "expected": true
+    },
+    {
+     "name": "empty pattern",
+     "args": [
+      "abc",
+      ""
+     ],
+     "expected": false
+    },
+    {
+     "name": "long pattern",
+     "args": [
+      "abefcdgiescdfimde",
+      "ab*cd?i*de"
+     ],
+     "expected": true
+    },
+    {
+     "name": "mississippi",
+     "args": [
+      "mississippi",
+      "m??*ss*?i*pi"
+     ],
+     "expected": false
+    },
+    {
+     "name": "stress: exponential trap (2,000 chars)",
+     "args": [
+      {
+       "$gen": "strrepeat",
+       "value": "a",
+       "n": 2000
+      },
+      "*a*a*a*a*a*a*a*a*a*a*b"
+     ],
+     "expected": false,
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     }
+    },
+    {
+     "name": "stress: 2,000-char string, 901-char pattern",
+     "args": [
+      {
+       "$gen": "strrepeat",
+       "value": "ab",
+       "n": 1000
+      },
+      {
+       "$gen": "concat",
+       "parts": [
+        {
+         "$gen": "strrepeat",
+         "value": "*ab",
+         "n": 300
+        },
+        "*"
+       ]
+      }
+     ],
+     "expected": true,
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     }
+    }
+   ],
+   "solution": {
+    "python": "def is_match(s, p):\n    i = j = 0\n    star = -1\n    mark = 0\n    while i < len(s):\n        if j < len(p) and (p[j] == '?' or p[j] == s[i]):\n            i += 1\n            j += 1\n        elif j < len(p) and p[j] == '*':\n            star = j\n            mark = i\n            j += 1\n        elif star != -1:\n            j = star + 1\n            mark += 1\n            i = mark\n        else:\n            return False\n    while j < len(p) and p[j] == '*':\n        j += 1\n    return j == len(p)\n",
+    "javascript": "function isMatch(s, p) {\n  let i = 0, j = 0, star = -1, mark = 0\n  while (i < s.length) {\n    if (j < p.length && (p[j] === '?' || p[j] === s[i])) { i++; j++ }\n    else if (j < p.length && p[j] === '*') { star = j; mark = i; j++ }\n    else if (star !== -1) { j = star + 1; mark++; i = mark }\n    else return false\n  }\n  while (j < p.length && p[j] === '*') j++\n  return j === p.length\n}\n"
+   },
+   "brute": {
+    "python": "def is_match(s, p):\n    if not p:\n        return not s\n    if p[0] == '*':\n        return is_match(s, p[1:]) or (bool(s) and is_match(s[1:], p))\n    return bool(s) and p[0] in (s[0], '?') and is_match(s[1:], p[1:])\n"
+   }
+  },
+  {
+   "slug": "word-break",
+   "title": "Word Break",
+   "topic": "Dynamic Programming",
+   "difficulty": "hard",
+   "statement": "Given a string s and a list of dictionary words, return true if s can be segmented into a sequence of one or more dictionary words (words may be reused).",
+   "examples": [
+    {
+     "input": "s = \"leetcode\", words = [\"leet\", \"code\"]",
+     "output": "true"
+    },
+    {
+     "input": "s = \"catsandog\", words = [\"cats\",\"dog\",\"sand\",\"and\",\"cat\"]",
+     "output": "false"
+    }
+   ],
+   "constraints": [
+    "1 ≤ len(s) ≤ 300",
+    "1 ≤ len(word_dict) ≤ 1000",
+    "Expected: O(n² ) DP (or O(n × max word length)) — plain recursion is exponential"
+   ],
+   "fn": {
+    "python": "word_break",
+    "javascript": "wordBreak"
+   },
+   "starter": {
+    "python": "def word_break(s, words):\n    # Return True/true if s can be segmented.\n    pass\n",
+    "javascript": "function wordBreak(s, words) {\n  // Return True/true if s can be segmented.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "two words",
+     "args": [
+      "leetcode",
+      [
+       "leet",
+       "code"
+      ]
+     ],
+     "expected": true,
+     "sample": true
+    },
+    {
+     "name": "reuse words",
+     "args": [
+      "applepenapple",
+      [
+       "apple",
+       "pen"
+      ]
+     ],
+     "expected": true
+    },
+    {
+     "name": "impossible",
+     "args": [
+      "catsandog",
+      [
+       "cats",
+       "dog",
+       "sand",
+       "and",
+       "cat"
+      ]
+     ],
+     "expected": false,
+     "sample": true
+    },
+    {
+     "name": "single char",
+     "args": [
+      "a",
+      [
+       "a"
+      ]
+     ],
+     "expected": true
+    },
+    {
+     "name": "prefix trap",
+     "args": [
+      "aaaaaaab",
+      [
+       "a",
+       "aa",
+       "aaa"
+      ]
+     ],
+     "expected": false
+    },
+    {
+     "name": "overlapping choices",
+     "args": [
+      "catsanddog",
+      [
+       "cat",
+       "cats",
+       "and",
+       "sand",
+       "dog"
+      ]
+     ],
+     "expected": true
+    },
+    {
+     "name": "stress: exponential trap",
+     "args": [
+      {
+       "$gen": "concat",
+       "parts": [
+        {
+         "$gen": "strrepeat",
+         "value": "a",
+         "n": 150
+        },
+        "b"
+       ]
+      },
+      [
+       "a",
+       "aa",
+       "aaa",
+       "aaaa",
+       "aaaaa",
+       "aaaaaa",
+       "aaaaaaa",
+       "aaaaaaaa",
+       "aaaaaaaaa",
+       "aaaaaaaaaa"
+      ]
+     ],
+     "expected": false,
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     }
+    },
+    {
+     "name": "stress: 300 characters, overlapping words",
+     "args": [
+      {
+       "$gen": "strrepeat",
+       "value": "ab",
+       "n": 150
+      },
+      [
+       "a",
+       "b",
+       "ab",
+       "ba",
+       "aba"
+      ]
+     ],
+     "expected": true,
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     }
+    }
+   ],
+   "solution": {
+    "python": "def word_break(s, words):\n    ws = set(words)\n    dp = [True] + [False] * len(s)\n    for i in range(1, len(s) + 1):\n        for j in range(i):\n            if dp[j] and s[j:i] in ws:\n                dp[i] = True\n                break\n    return dp[len(s)]\n",
+    "javascript": "function wordBreak(s, words) {\n  const ws = new Set(words);\n  const dp = new Array(s.length + 1).fill(false);\n  dp[0] = true;\n  for (let i = 1; i <= s.length; i++) for (let j = 0; j < i; j++) if (dp[j] && ws.has(s.slice(j, i))) { dp[i] = true; break; }\n  return dp[s.length];\n}\n"
+   },
+   "brute": {
+    "python": "def word_break(s, word_dict):\n    words = set(word_dict)\n    def go(i):\n        if i == len(s):\n            return True\n        return any(s[i:j] in words and go(j) for j in range(i + 1, len(s) + 1))\n    return go(0)\n"
+   }
+  },
+  {
+   "slug": "word-ladder",
+   "title": "Word Ladder",
+   "topic": "Graphs",
+   "difficulty": "hard",
+   "statement": "A transformation sequence from begin_word to end_word is a sequence of words in which every adjacent pair differs by exactly one letter and every word after begin_word appears in word_list (begin_word itself need not). Return the number of words in the shortest such sequence, or 0 if none exists.",
+   "examples": [
+    {
+     "input": "begin_word = \"hit\", end_word = \"cog\", word_list = [\"hot\",\"dot\",\"dog\",\"lot\",\"log\",\"cog\"]",
+     "output": "5",
+     "explain": "hit → hot → dot → dog → cog."
+    },
+    {
+     "input": "begin_word = \"hit\", end_word = \"cog\", word_list = [\"hot\",\"dot\",\"dog\",\"lot\",\"log\"]",
+     "output": "0",
+     "explain": "\"cog\" is not in the list."
+    }
+   ],
+   "constraints": [
+    "1 ≤ word length ≤ 10; all words have the same length",
+    "1 ≤ len(word_list) ≤ 10⁴; words are lowercase and unique",
+    "begin_word ≠ end_word",
+    "Expected: BFS with wildcard buckets — O(N × L²)"
+   ],
+   "fn": {
+    "python": "ladder_length",
+    "javascript": "ladderLength"
+   },
+   "starter": {
+    "python": "def ladder_length(begin_word, end_word, word_list):\n    # Write your solution here.\n    pass\n",
+    "javascript": "function ladderLength(beginWord, endWord, wordList) {\n  // Write your solution here.\n}\n"
+   },
+   "compare": "exact",
+   "tests": [
+    {
+     "name": "example 1",
+     "args": [
+      "hit",
+      "cog",
+      [
+       "hot",
+       "dot",
+       "dog",
+       "lot",
+       "log",
+       "cog"
+      ]
+     ],
+     "expected": 5,
+     "sample": true
+    },
+    {
+     "name": "example 2",
+     "args": [
+      "hit",
+      "cog",
+      [
+       "hot",
+       "dot",
+       "dog",
+       "lot",
+       "log"
+      ]
+     ],
+     "expected": 0,
+     "sample": true
+    },
+    {
+     "name": "one letter",
+     "args": [
+      "a",
+      "c",
+      [
+       "a",
+       "b",
+       "c"
+      ]
+     ],
+     "expected": 2
+    },
+    {
+     "name": "unreachable",
+     "args": [
+      "hot",
+      "dog",
+      [
+       "hot",
+       "dog"
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "name": "three steps",
+     "args": [
+      "hot",
+      "dog",
+      [
+       "hot",
+       "dog",
+       "dot"
+      ]
+     ],
+     "expected": 3
+    },
+    {
+     "name": "direct neighbour",
+     "args": [
+      "lost",
+      "cost",
+      [
+       "most",
+       "fist",
+       "lost",
+       "cost",
+       "fish"
+      ]
+     ],
+     "expected": 2
+    },
+    {
+     "name": "two equal routes",
+     "args": [
+      "red",
+      "tax",
+      [
+       "ted",
+       "tex",
+       "red",
+       "tax",
+       "tad",
+       "den",
+       "rex",
+       "pee"
+      ]
+     ],
+     "expected": 4
+    },
+    {
+     "name": "stress: 4,000 five-letter words",
+     "args": [
+      "aaaaa",
+      "fffff",
+      {
+       "$gen": "concat",
+       "parts": [
+        {
+         "$gen": "strs",
+         "n": 4000,
+         "len": 5,
+         "alphabet": "abcdef",
+         "unique": true,
+         "seed": 208
+        },
+        [
+         "fffff"
+        ]
+       ]
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": 6
+    },
+    {
+     "name": "stress: unreachable target among 10,000 words",
+     "args": [
+      "aaaaaa",
+      "zzzzzz",
+      {
+       "$gen": "concat",
+       "parts": [
+        {
+         "$gen": "strs",
+         "n": 10000,
+         "len": 6,
+         "alphabet": "abcdefg",
+         "unique": true,
+         "seed": 216
+        },
+        [
+         "zzzzzz"
+        ]
+       ]
+      }
+     ],
+     "expected": 0,
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     }
+    },
+    {
+     "name": "stress: 10,000 six-letter words",
+     "args": [
+      "aaaaaa",
+      "gggggg",
+      {
+       "$gen": "concat",
+       "parts": [
+        {
+         "$gen": "strs",
+         "n": 10000,
+         "len": 6,
+         "alphabet": "abcdefg",
+         "unique": true,
+         "seed": 217
+        },
+        [
+         "gggggg"
+        ]
+       ]
+      }
+     ],
+     "stress": true,
+     "limitMs": {
+      "python": 4000,
+      "javascript": 2000
+     },
+     "expected": 14
+    }
+   ],
+   "solution": {
+    "python": "from collections import deque, defaultdict\n\ndef ladder_length(begin_word, end_word, word_list):\n    words = set(word_list)\n    if end_word not in words:\n        return 0\n    L = len(begin_word)\n    buckets = defaultdict(list)\n    for w in words:\n        for i in range(L):\n            buckets[w[:i] + '*' + w[i + 1:]].append(w)\n    seen = {begin_word}\n    q = deque([(begin_word, 1)])\n    while q:\n        w, d = q.popleft()\n        for i in range(L):\n            key = w[:i] + '*' + w[i + 1:]\n            for nxt in buckets.get(key, ()):\n                if nxt == end_word:\n                    return d + 1\n                if nxt not in seen:\n                    seen.add(nxt)\n                    q.append((nxt, d + 1))\n            buckets[key] = []\n    return 0\n",
+    "javascript": "function ladderLength(beginWord, endWord, wordList) {\n  const words = new Set(wordList)\n  if (!words.has(endWord)) return 0\n  const L = beginWord.length\n  const buckets = new Map()\n  for (const w of words) for (let i = 0; i < L; i++) {\n    const key = w.slice(0, i) + '*' + w.slice(i + 1)\n    if (!buckets.has(key)) buckets.set(key, [])\n    buckets.get(key).push(w)\n  }\n  const seen = new Set([beginWord])\n  let q = [beginWord], d = 1\n  while (q.length) {\n    const next = []\n    for (const w of q) {\n      for (let i = 0; i < L; i++) {\n        const key = w.slice(0, i) + '*' + w.slice(i + 1)\n        for (const nxt of buckets.get(key) || []) {\n          if (nxt === endWord) return d + 1\n          if (!seen.has(nxt)) { seen.add(nxt); next.push(nxt) }\n        }\n        buckets.set(key, [])\n      }\n    }\n    q = next\n    d++\n  }\n  return 0\n}\n"
+   },
+   "brute": {
+    "python": "def ladder_length(begin_word, end_word, word_list):\n    words = list(dict.fromkeys(word_list))\n    if end_word not in words:\n        return 0\n    def adj(a, b):\n        diff = 0\n        for x, y in zip(a, b):\n            if x != y:\n                diff += 1\n                if diff > 1:\n                    return False\n        return diff == 1\n    frontier = [begin_word]\n    seen = {begin_word}\n    d = 1\n    while frontier:\n        nxt = []\n        for w in frontier:\n            for u in words:\n                if u not in seen and adj(w, u):\n                    if u == end_word:\n                        return d + 1\n                    seen.add(u)\n                    nxt.append(u)\n        frontier = nxt\n        d += 1\n    return 0\n"
+   }
+  }
+ ]
+}

@@ -69,7 +69,8 @@ test('local mode: college + search + assessed filters combine', async () => {
 test('local mode: meta aggregates the local store', async () => {
   const meta = await fetchAdminMeta()
   assert.deepEqual(meta.colleges, ['COEP', 'MIT', 'PCCOE'])
-  assert.deepEqual(meta.stats, { total: 7, colleges: 3, assessed: 5, avg: 818 })
+  // Local students only took assessment 1, so their CalibiAI average equals it.
+  assert.deepEqual(meta.stats, { total: 7, colleges: 3, assessed: 5, avg: 818, calibiAvg: 818, companyCompleted: 0 })
 })
 
 after(async () => {

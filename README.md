@@ -130,6 +130,32 @@ LOGIN → PROFILE → RESUME UPLOAD → RESUME ANALYSIS (AI) → JOIN WHATSAPP (
 
 ---
 
+## 🏢 Company Assessments (60 companies)
+
+Proctored mock assessments modelled on each company's hiring steps from
+`Ques/50 Companies Steps Assessment Research.docx`, built from the 11-section
+master bank in `Ques/`. They appear on the **student dashboard grouped by
+company tag** (IT Services, Big Tech, Startups, SaaS, BFSI, Engineering) and at
+`/company-assessments`.
+
+- **One attempt per student per company**, enforced server-side (deterministic
+  attempt id, `UNIQUE (student_id, company_slug)` in Postgres, 409 on re-start).
+- **Same proctoring as the main assessments:** mandatory fullscreen lock,
+  external-display check, camera/mic preview, focus warnings (3 → auto-submit),
+  identity watermark, right-click/copy/print blocking, event log.
+- **Server-side scoring only** — answer keys and hidden tests never reach the
+  browser; written answers are rubric/LLM graded; coding runs hidden tests.
+
+```bash
+npm run build:company-bank    # rebuild data/company/bank.json from Ques/*.docx
+npm run verify:company-bank   # execute every computed answer key
+```
+
+Supabase: apply `supabase/migrations/0009_company_assessments.sql`.
+Full design notes, data-quality findings and API: [`docs/COMPANY_ASSESSMENTS.md`](docs/COMPANY_ASSESSMENTS.md).
+
+---
+
 ## 📊 Dashboards
 
 - **Student:** score breakdown, radar, strengths/weaknesses, resume feedback, history, improvement plan

@@ -19,7 +19,7 @@ export const ADMIN_PAGE_SIZE_DEFAULT = 50
 export const ADMIN_PAGE_SIZE_MAX = 200
 export const ADMIN_QUERY_MAX_LENGTH = 100
 
-export type AdminSortKey = 'score' | 'name'
+export type AdminSortKey = 'score' | 'name' | 'calibi'
 export type AdminSortDir = 'asc' | 'desc'
 
 export interface AdminPageParams {
@@ -45,7 +45,7 @@ export function parsePageParams(input: {
 }): AdminPageParams {
   const pageRaw = Number.parseInt(String(input.page ?? ''), 10)
   const sizeRaw = Number.parseInt(String(input.pageSize ?? ''), 10)
-  const sort: AdminSortKey = input.sort === 'name' ? 'name' : 'score'
+  const sort: AdminSortKey = input.sort === 'name' ? 'name' : input.sort === 'calibi' ? 'calibi' : 'score'
   const dir: AdminSortDir =
     input.dir === 'asc' ? 'asc' : input.dir === 'desc' ? 'desc' : sort === 'name' ? 'asc' : 'desc'
   return {
@@ -125,9 +125,10 @@ export function compareAdminRows(
 ): (a: AdminStudentRow, b: AdminStudentRow) => number {
   const d = dir === 'desc' ? -1 : 1
   return (a, b) => {
-    if (sort === 'score') {
-      const av = a.score === '' ? -1 : Number(a.score)
-      const bv = b.score === '' ? -1 : Number(b.score)
+    if (sort === 'score' || sort === 'calibi') {
+      const key = sort === 'score' ? 'score' : 'calibi_score'
+      const av = !a[key] ? -1 : Number(a[key])
+      const bv = !b[key] ? -1 : Number(b[key])
       if (av !== bv) return (av - bv) * d
     } else {
       const c = compareText(a.name || '', b.name || '')

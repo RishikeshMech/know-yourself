@@ -334,6 +334,10 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
 
   const intervalRef = useRef<any>(null)
   const mediaRef = useRef<MediaRecorder | null>(null)
+  // Live transcript of each speaking answer (browser speech recognition, where
+  // available) — sent with "Evaluate with AI" so the model grades what was said.
+  const speechRef = useRef<any>(null)
+  const transcriptRef = useRef<Record<string, string>>({})
   const chunksRef = useRef<Blob[]>([])
   const proctorStreamRef = useRef<MediaStream | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
@@ -935,7 +939,36 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
       })
       chunksRef.current = []
       rec.ondataavailable = e => chunksRef.current.push(e.data)
+      // Browser speech recognition (Chrome/Edge) runs alongside the recorder.
+      // Unsupported browsers simply keep the recording-evidence grading.
+      const SR: any = typeof window !== 'undefined' ? ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition) : null
+      transcriptRef.current[id] = ''
+      if (SR) {
+        try {
+          const recog = new SR()
+          recog.continuous = true
+          recog.interimResults = false
+          recog.lang = 'en-IN'
+          recog.onresult = (ev: any) => {
+            for (let i = ev.resultIndex; i < ev.results.length; i++) {
+              if (ev.results[i].isFinal) transcriptRef.current[id] = `${transcriptRef.current[id] || ''} ${ev.results[i][0].transcript}`.trim()
+            }
+          }
+          recog.onerror = () => { /* best-effort — the audio is still recorded */ }
+          // Chrome ends recognition after a pause; keep listening while recording.
+          recog.onend = () => { if (speechRef.current === recog && mediaRef.current?.state === 'recording') { try { recog.start() } catch { /* already started */ } } }
+          speechRef.current = recog
+          recog.start()
+        } catch { speechRef.current = null }
+      }
       rec.onstop = async () => {
+        const recog = speechRef.current
+        speechRef.current = null
+        try { recog?.stop() } catch { /* ignore */ }
+        // Give the recogniser a moment to deliver its last final result.
+        if (recog) await new Promise((r) => setTimeout(r, 600))
+        const said = (transcriptRef.current[id] || '').trim()
+        if (said) handleAnswer(id + '_transcript', said.slice(0, 5000))
         const blob = new Blob(chunksRef.current, { type: rec.mimeType || 'audio/webm' })
         if (ownsStream) stream.getTracks().forEach(t => t.stop())
         const ext = blob.type.includes('mp4') || blob.type.includes('m4a') ? 'm4a' : 'webm'
@@ -961,6 +994,10 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
   const stopRecording = () => mediaRef.current?.stop()
 
   const speakingCount = bank.english.speaking.tasks.filter((t: any) => answers[t.id + '_audio']).length
+  const speakingTranscript = bank.english.speaking.tasks
+    .map((t: any, i: number) => (answers[t.id + '_transcript'] ? `Task ${i + 1}: ${answers[t.id + '_transcript']}` : ''))
+    .filter(Boolean)
+    .join('\n\n')
 
   /* ---------------- Subsection-aware navigation ---------------- */
   const clearPendingAdvance = () => {
@@ -1282,11 +1319,16 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
                         <span className="ml-2 text-xs text-slate-400">Recording…</span>
                       </div>
                     )}
+                    {rec && recording !== t.id && (
+                      answers[t.id + '_transcript']
+                        ? <div className="mt-2 rounded-xl border border-slate-200 bg-white/70 px-3 py-2 text-[11px] text-slate-500"><b className="text-slate-600">Transcript captured</b> ({String(answers[t.id + '_transcript']).split(/\s+/).filter(Boolean).length} words) — used by “Evaluate with AI”.</div>
+                        : <div className="mt-2 text-[11px] text-slate-400">No live transcript (your browser has no speech recognition) — the recording itself is graded.</div>
+                    )}
                   </div>
                 )
               })}
               <div className="flex flex-wrap items-center gap-3">
-                <EvalButton id="SP_speaking" busy={busy['SP_speaking']} onRun={() => runAi('SP_speaking', 'speaking', { recordingCount: speakingCount })} />
+                <EvalButton id="SP_speaking" busy={busy['SP_speaking']} onRun={() => runAi('SP_speaking', 'speaking', { recordingCount: speakingCount, ...(speakingTranscript ? { transcript: speakingTranscript } : {}) })} />
                 <span className="text-xs text-slate-400">Your spoken answer is recorded for fluency, pronunciation, confidence and grammar.</span>
               </div>
               {speakingCount === 0 && (

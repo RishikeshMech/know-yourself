@@ -1,0 +1,63 @@
+{
+  "section": "s11",
+  "_about": "Written-communication prompts (emails and essays) for the 'Written Communication' (Wipro) and 'Communication Assessment' (Cognizant, Accenture) steps in the research document. Graded on structure, relevance and professional tone.",
+  "written": [
+    { "topic": "Email Writing", "area": "communication", "difficulty": "medium", "minWords": 100, "maxWords": 220, "q": "Write an email to your project manager explaining that a feature you own will be delayed by two days. State the reason, the impact, and your recovery plan.", "rubric": [
+      { "label": "Greeting and clear subject/purpose", "any": ["dear", "hi ", "hello", "subject", "i am writing", "writing to"] },
+      { "label": "States the delay and the reason", "any": ["delay", "two days", "2 days", "because", "due to"] },
+      { "label": "Explains the impact", "any": ["impact", "affect", "dependency", "release", "timeline"] },
+      { "label": "Concrete recovery plan with dates", "any": ["plan", "by ", "will complete", "next steps", "recover", "mitigat"] },
+      { "label": "Professional closing", "any": ["regards", "thanks", "thank you", "sincerely", "best"] }
+    ] },
+    { "topic": "Email Writing", "area": "communication", "difficulty": "medium", "minWords": 100, "maxWords": 220, "q": "Write an email to a client summarising the outcome of today's project meeting and listing the next steps, with an owner and a date for each.", "rubric": [
+      { "label": "Greeting and purpose", "any": ["dear", "hi ", "hello", "thank you for", "following today"] },
+      { "label": "Summary of decisions", "any": ["agreed", "decided", "summary", "discussed", "outcome"] },
+      { "label": "Next steps listed", "any": ["next step", "action item", "1.", "- ", "•"] },
+      { "label": "Owners and dates", "any": ["by ", "owner", "will ", "monday", "friday", "deadline", "date"] },
+      { "label": "Professional closing and invitation for questions", "any": ["regards", "let me know", "questions", "sincerely", "thanks"] }
+    ] },
+    { "topic": "Email Writing", "area": "communication", "difficulty": "easy", "minWords": 80, "maxWords": 200, "q": "Write an apology email to a customer whose order arrived three days late. Explain what went wrong and what you will do to make it right.", "rubric": [
+      { "label": "Sincere apology", "any": ["apolog", "sorry", "regret"] },
+      { "label": "Explains the cause briefly", "any": ["because", "due to", "caused by", "reason"] },
+      { "label": "Offers a remedy", "any": ["refund", "discount", "voucher", "credit", "free", "compensat"] },
+      { "label": "Prevention / reassurance", "any": ["ensure", "prevent", "steps", "will not happen", "improv"] },
+      { "label": "Polite closing", "any": ["regards", "thank you", "sincerely", "valued customer"] }
+    ] },
+    { "topic": "Essay Writing", "area": "communication", "difficulty": "hard", "minWords": 180, "maxWords": 350, "q": "Essay: \"Artificial intelligence will create more jobs than it replaces.\" Present a balanced argument and state your own conclusion.", "rubric": [
+      { "label": "Introduction with a clear position", "any": ["in my opinion", "i believe", "this essay", "i argue", "debate"] },
+      { "label": "Arguments that AI creates jobs", "any": ["new jobs", "create", "roles", "demand", "opportunit"] },
+      { "label": "Arguments that AI replaces jobs", "any": ["replace", "automat", "lose", "displace", "redundan"] },
+      { "label": "Balance with contrast connectors", "any": ["however", "on the other hand", "although", "while", "whereas"] },
+      { "label": "Examples or evidence", "any": ["for example", "for instance", "such as", "e.g."] },
+      { "label": "Conclusion", "any": ["in conclusion", "to conclude", "overall", "therefore", "in summary"] }
+    ] },
+    { "topic": "Essay Writing", "area": "communication", "difficulty": "medium", "minWords": 150, "maxWords": 300, "q": "Essay: Should engineering colleges make internships mandatory for every student? Justify your position with reasons and examples.", "rubric": [
+      { "label": "Clear position", "any": ["should", "i believe", "in my opinion", "i agree", "i disagree"] },
+      { "label": "Benefits (skills, industry exposure)", "any": ["skill", "experience", "industry", "practical", "exposure", "employab"] },
+      { "label": "Challenges or counter-arguments", "any": ["however", "challenge", "difficult", "not all", "on the other hand"] },
+      { "label": "Examples", "any": ["for example", "for instance", "such as", "e.g."] },
+      { "label": "Conclusion", "any": ["in conclusion", "to conclude", "overall", "therefore"] }
+    ] },
+    { "topic": "Essay Writing", "area": "communication", "difficulty": "medium", "minWords": 150, "maxWords": 300, "q": "Essay: Discuss the benefits and risks of remote work for early-career professionals.", "rubric": [
+      { "label": "Introduction framing the topic", "any": ["remote work", "work from home", "this essay", "in recent years"] },
+      { "label": "Benefits", "any": ["flexib", "commute", "balance", "productiv", "benefit"] },
+      { "label": "Risks for early-career people", "any": ["mentor", "isolat", "learning", "visibility", "risk", "communication"] },
+      { "label": "Contrast connectors", "any": ["however", "on the other hand", "although", "while"] },
+      { "label": "Recommendation / conclusion", "any": ["in conclusion", "overall", "therefore", "recommend", "hybrid"] }
+    ] },
+    { "topic": "Essay Writing", "area": "communication", "difficulty": "medium", "minWords": 150, "maxWords": 300, "q": "Essay: How can technology improve access to quality education in rural areas? Suggest practical ideas and their limitations.", "rubric": [
+      { "label": "Frames the problem", "any": ["rural", "access", "gap", "problem", "quality education"] },
+      { "label": "Practical technology ideas", "any": ["online", "mobile", "internet", "digital", "e-learning", "app", "video"] },
+      { "label": "Limitations (connectivity, cost, training)", "any": ["connectivity", "cost", "electricity", "training", "limitation", "however"] },
+      { "label": "Examples", "any": ["for example", "for instance", "such as", "e.g."] },
+      { "label": "Conclusion", "any": ["in conclusion", "overall", "therefore", "to conclude"] }
+    ] },
+    { "topic": "Workplace Writing", "area": "communication", "difficulty": "easy", "minWords": 80, "maxWords": 200, "q": "Write a short welcome note to a new teammate explaining how your team works: the tools you use, your regular meetings, and whom to ask for help.", "rubric": [
+      { "label": "Warm welcome", "any": ["welcome", "glad", "happy to have", "excited"] },
+      { "label": "Tools used", "any": ["jira", "slack", "github", "git", "teams", "tool"] },
+      { "label": "Meetings / rituals", "any": ["stand-up", "standup", "meeting", "sprint", "weekly", "daily"] },
+      { "label": "Whom to ask for help", "any": ["ask", "reach out", "contact", "mentor", "buddy", "help"] },
+      { "label": "Friendly close", "any": ["cheers", "regards", "see you", "best", "looking forward"] }
+    ] }
+  ]
+}

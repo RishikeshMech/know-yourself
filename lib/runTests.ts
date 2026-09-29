@@ -9,7 +9,21 @@
 // docs/AI_EVALUATION.md).
 import { spawn } from 'child_process'
 
-export interface TestCaseResult { name: string; passed: boolean }
+export type TestStatus = 'passed' | 'wrong' | 'tle' | 'error'
+export interface TestCaseResult {
+  name: string
+  passed: boolean
+  /** Company judge only: LeetCode-style verdict and timing for this test. */
+  status?: TestStatus
+  ms?: number
+  /** A performance test (large generated input). */
+  stress?: boolean
+  /** One of the statement's examples — output is shown when it is wrong. */
+  sample?: boolean
+  got?: string
+  expected?: string
+  message?: string
+}
 export interface TestRunResult {
   passed: number
   total: number
@@ -28,7 +42,34 @@ const TOTALS: Record<string, number> = {
 }
 const PY_TASKS: Record<string, boolean> = { AD1: true, AD3: true, CG1: true, CG2: true }
 
-function runStdin(engine: 'node' | 'python', harness: string, candidate: string): Promise<TestRunResult> {
+/**
+ * Run `harness` in a short-lived interpreter with the candidate code on stdin.
+ * Exported so the company assessments' generic harness (lib/company/codeRunner.ts)
+ * reuses the same timeout, output-marker and crash handling.
+ */
+export interface RunStdinOptions {
+  /** Whole-process budget (default 4.5s — the platform tasks' limit). */
+  timeoutMs?: number
+  /** Also return the payload's `outputs` (authoring / compute mode). */
+  raw?: boolean
+}
+
+const STATUSES = new Set(['passed', 'wrong', 'tle', 'error'])
+
+/** Keep only well-formed, bounded optional fields from a harness result row. */
+function toCaseResult(r: any): TestCaseResult {
+  const out: TestCaseResult = { name: String(r?.name ?? ''), passed: !!r?.passed }
+  if (STATUSES.has(r?.status)) out.status = r.status
+  if (Number.isFinite(Number(r?.ms)) && r?.ms !== null && r?.ms !== undefined) out.ms = Math.max(0, Math.round(Number(r.ms)))
+  if (r?.stress) out.stress = true
+  if (r?.sample) out.sample = true
+  if (typeof r?.got === 'string') out.got = r.got.slice(0, 300)
+  if (typeof r?.expected === 'string') out.expected = r.expected.slice(0, 300)
+  if (typeof r?.message === 'string' && r.message) out.message = r.message.slice(0, 240)
+  return out
+}
+
+export function runStdin(engine: 'node' | 'python', harness: string, candidate: string, opts: RunStdinOptions = {}): Promise<TestRunResult> {
   return new Promise((resolve) => {
     const cmd = engine === 'python' ? 'python3' : 'node'
     const args = engine === 'python' ? ['-I', '-c', harness] : ['-e', harness]
@@ -59,17 +100,15 @@ function runStdin(engine: 'node' | 'python', harness: string, candidate: string)
       try { payload = JSON.parse(resultText) } catch { /* handled below */ }
 
       if (payload && Array.isArray(payload.results)) {
-        const results: TestCaseResult[] = payload.results.map((r: any) => ({
-          name: String(r.name),
-          passed: !!r.passed,
-        }))
+        const results: TestCaseResult[] = payload.results.map(toCaseResult)
         finish({
           passed: results.filter((r) => r.passed).length,
           total: results.length,
           results,
           engine,
           ...(payload.error ? { error: String(payload.error).slice(0, 500) } : {}),
-        })
+          ...(opts.raw && Array.isArray(payload.outputs) ? { outputs: payload.outputs } : {}),
+        } as TestRunResult)
       } else {
         const err = payload?.error || (stderr || '').trim().slice(0, 500) || 'No result — code may have crashed.'
         finish({ passed: 0, total: 0, results: [], engine, error: String(err) })
@@ -83,7 +122,7 @@ function runStdin(engine: 'node' | 'python', harness: string, candidate: string)
         passed: 0, total: 0, results: [], engine, timedOut: true,
         error: 'Timed out (possible infinite loop).',
       })
-    }, TIMEOUT_MS)
+    }, opts.timeoutMs && opts.timeoutMs > 0 ? opts.timeoutMs : TIMEOUT_MS)
     child.on('exit', () => clearTimeout(watchdog))
 
     try {
@@ -95,7 +134,7 @@ function runStdin(engine: 'node' | 'python', harness: string, candidate: string)
   })
 }
 
-function stripCodeFence(code: string): string {
+export function stripCodeFence(code: string): string {
   return code
     .replace(/^\s*```[\w+-]*\s*\r?\n/, '')
     .replace(/\r?\n```\s*$/, '')

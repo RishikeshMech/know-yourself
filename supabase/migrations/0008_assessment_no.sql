@@ -79,7 +79,12 @@ create index if not exists assessment_results_student_assessment_idx
 
 -- ---------------------------------------------------------------------------
 -- Re-create the download view so both attempts are exported side by side.
+-- admin_stats (migration 0006) depends on the view, so drop it first and
+-- re-create it below — otherwise this migration fails on any database that has
+-- 0006 applied ("cannot drop view student_profiles_full because other objects
+-- depend on it"). Migration 0010 re-creates all of these again (superset).
 -- ---------------------------------------------------------------------------
+drop view if exists public.admin_stats;
 drop view if exists public.student_profiles_full;
 
 create view public.student_profiles_full
@@ -121,6 +126,14 @@ select
   a.verifiable_hash,
   a.report_storage_key    as report_storage_key,
   a.created_at            as assessment_created_at,
+  (a.session_id is not null
+    or exists (
+      select 1 from public.assessment_sessions s
+      where s.student_id = p.id
+        and s.assessment_no = 1
+        and (s.status in ('submitted', 'expired') or s.submitted_at is not null)
+    )
+  )                       as assessment_attempted,
   -- assessment 2 — Capgemini 2027 mock
   b.session_id            as assessment2_session_id,
   b.total                 as assessment2_score,
@@ -155,3 +168,20 @@ left join lateral (
 
 comment on view public.student_profiles_full is
   'One row per student: profile + latest resume analysis + both assessment results (1 = CalibiAI, 2 = Capgemini 2027 mock). Use the Supabase table editor export (CSV/Excel/JSON) to download all data.';
+
+-- Re-create the stats view dropped above (same definition as migration 0006).
+create or replace view public.admin_stats
+with (security_invoker = on)   -- RLS of the underlying tables still applies
+as
+select
+  count(*)::int                                                     as total_students,
+  count(*) filter (where v.assessment_attempted)::int               as assessed_students,
+  count(v.talent_score)::int                                        as scored_students,
+  round(avg(v.talent_score))::int                                   as avg_score,
+  coalesce(
+    array_agg(distinct btrim(v.college))
+      filter (where v.college is not null and btrim(v.college) <> ''),
+    '{}'
+  )                                                                 as colleges
+from public.student_profiles_full v
+where v.role = 'student';

@@ -1,6 +1,7 @@
 // Pure row mapping for the admin export — no Node/server imports so unit
 // tests can load it directly and the browser could too if ever needed.
 import type { AdminStudentRow } from './csv'
+import { emptyEnrichment, enrichRow } from './adminAssessments.ts'
 
 const num = (v: any): string => {
   if (v === null || v === undefined || v === '') return ''
@@ -59,7 +60,10 @@ export function buildRow(input: {
   const detail = scoreObj?.detail || {}
   const eng = scoreObj?.english && typeof scoreObj.english === 'object' ? scoreObj.english : {}
   const sk = mergeSkills(p.skills ?? p.profile_skills, input.resume_parsed ?? p.resume_parsed)
-  return {
+  // CalibiAI columns start from assessment 1 alone; enrichRow() later adds the
+  // Capgemini mock and company mocks when that data is loaded.
+  return enrichRow({
+    ...emptyEnrichment(),
     student_id: txt(input.student_id),
     email: txt(input.email ?? p.email),
     name: txt(p.full_name ?? p.name ?? input.email?.split('@')[0]),
@@ -116,7 +120,7 @@ export function buildRow(input: {
     feedback_message: txt(input.feedback?.message),
     feedback_at: txt(input.feedback?.created_at),
     feedback_count: input.feedback_count ? num(input.feedback_count) : '',
-  }
+  }, null)
 }
 
 /**

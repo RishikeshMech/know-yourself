@@ -17,7 +17,8 @@
 // off (e.g. the flattened export view has not been created yet). The Supabase
 // query always tries the bounded view path; schema failures fail closed with a
 // warning, and a Supabase failure never hides the local rows.
-import { getAllFeedback, getDB } from './db.ts'
+import { assessmentNoOf, getAllFeedback, getDB } from './db.ts'
+import { enrichStudentRows } from './adminAssessmentData.ts'
 import { getServerClient } from './supabaseServer.ts'
 import { fetchAllFeedback } from './persist.ts'
 import { buildRow, fillAssessmentFrom, mergeStudentRows, sortRows } from './studentRows.ts'
@@ -170,7 +171,7 @@ function sessionCountsAsAssessment(session: any): boolean {
 
 /** Build one AdminStudentRow from a Supabase `student_profiles_full` view row. */
 function fromViewRow(r: any, assessmentSession?: any): AdminStudentRow {
-  return buildRow({
+  const row = buildRow({
     student_id: r.student_id,
     email: r.email,
     role: r.role,
@@ -192,6 +193,12 @@ function fromViewRow(r: any, assessmentSession?: any): AdminStudentRow {
     assessed_at: r.assessment_created_at || assessmentSession?.submitted_at || assessmentSession?.created_at,
     created_at: r.profile_created_at,
   })
+  // Migration 0010: the view's CalibiAI average (used for SQL ordering) wins
+  // until enrichStudentRows() recomputes it from the loaded assessments.
+  if (r.calibi_score !== undefined && r.calibi_score !== null) {
+    return { ...row, calibi_score: String(r.calibi_score), assessments_taken: String(r.assessments_taken ?? row.assessments_taken) }
+  }
+  return row
 }
 
 /**
@@ -273,11 +280,13 @@ function fetchLocalStudents(): AdminStudentRow[] {
   for (const profile of db.profiles) {
     seen.add(profile.id)
     const user = db.users.find(u => u.id === profile.id)
+    // Assessment 1 only — assessment 2 (the Capgemini mock) has its own
+    // columns and must never be shown as the CalibiAI assessment score.
     const result = db.assessment_results
-      .filter(r => r.student_id === profile.id)
+      .filter(r => r.student_id === profile.id && assessmentNoOf(r) === 1)
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
     const session = db.assessment_sessions
-      .filter(s => s.student_id === profile.id && sessionCountsAsAssessment(s))
+      .filter(s => s.student_id === profile.id && assessmentNoOf(s) === 1 && sessionCountsAsAssessment(s))
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
     const resume = db.resume_analyses
       .filter(r => r.student_id === profile.id)
@@ -389,8 +398,13 @@ export async function fetchAllStudents(): Promise<AdminStudentsResult> {
     }
   }
 
+  // 5) Every assessment each student took: Capgemini mock + company mocks,
+  //    CalibiAI average, company- and category-wise scores.
+  const enriched = await enrichStudentRows(sb, attachFeedback(merged.rows, feedback), { all: true })
+  if (enriched.warning) warning = warning ? `${warning} ${enriched.warning}` : enriched.warning
+
   return {
-    students: attachFeedback(merged.rows, feedback),
+    students: enriched.rows,
     source: sb ? 'supabase' : 'local',
     sources: { supabase: merged.remote, local: merged.local },
     feedbackFromSupabase,
@@ -451,6 +465,9 @@ async function readStudentsFingerprint(): Promise<StudentsFingerprint> {
         parts.fStamp = String(d.feedback_stamp || '')
         parts.sStamp = String(d.sessions_stamp || '')
         parts.sessions = Number(d.sessions_count) || 0
+        // Migration 0010 adds company-mock counters to the probe.
+        if (d.company_count !== undefined) parts.company = Number(d.company_count) || 0
+        if (d.company_stamp !== undefined) parts.cStamp = String(d.company_stamp || '')
       } else {
         // Keep this fingerprint stable. A time bucket would cause the client
         // to download another full page every minute while the compact probe is
@@ -467,6 +484,8 @@ async function readStudentsFingerprint(): Promise<StudentsFingerprint> {
     parts.local_results = db.assessment_results.length
     parts.local_resumes = db.resume_analyses.length
     parts.local_feedback = db.feedback.length
+    parts.local_company = db.company_attempts.length
+    parts.local_company_stamp = db.company_attempts.reduce((m, a) => (String(a.updated_at || '') > m ? String(a.updated_at || '') : m), '')
   } catch {
     // Local store unreadable — ignore, remote parts still identify changes.
   }
@@ -535,6 +554,9 @@ const ATTEMPTED_PROBE_TTL_MS = 10 * 60 * 1000
 /** Whether the narrow VIEW_COLUMNS select works (false on pre-0003 views → use `*`). */
 let narrowSelectOk: boolean | null = null
 
+/** Whether the view has `calibi_score` (migration 0010) for SQL ordering by the CalibiAI average. */
+let calibiCol: { value: boolean; at: number } | null = null
+
 function mentionsColumn(error: any, column: string): boolean {
   const msg = String(error?.message || '').toLowerCase()
   return msg.includes(column.toLowerCase()) && (/column/.test(msg) || error?.code === '42703')
@@ -552,15 +574,18 @@ async function queryRemoteWindow(
   params: AdminPageParams,
   offset: number,
   limit: number,
-): Promise<{ data: any[]; count: number }> {
+): Promise<{ data: any[]; count: number; sortUsed: AdminPageParams['sort'] }> {
   const assessed = params.assessed
   const probeFresh = !!attemptedCol && Date.now() - attemptedCol.at < ATTEMPTED_PROBE_TTL_MS
   let wide = narrowSelectOk === false
   let talentOnly = assessed && probeFresh && attemptedCol!.value === false
-  for (let attempt = 0; attempt < 4; attempt++) {
+  const calibiFresh = !!calibiCol && Date.now() - calibiCol.at < ATTEMPTED_PROBE_TTL_MS
+  let byCalibi = params.sort === 'calibi' && !(calibiFresh && calibiCol!.value === false)
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const columns = (wide ? LEGACY_VIEW_COLUMNS : VIEW_COLUMNS) + (byCalibi ? ',calibi_score,assessments_taken' : '')
     let q = sb
       .from('student_profiles_full')
-      .select(wide ? LEGACY_VIEW_COLUMNS : VIEW_COLUMNS, { count: 'exact' })
+      .select(columns, { count: 'exact' })
       .eq('role', 'student')
     if (params.college) q = q.ilike('college', params.college)
     if (params.q) {
@@ -572,9 +597,11 @@ async function queryRemoteWindow(
     }
     const asc = params.dir === 'asc'
     q =
-      params.sort === 'score'
-        ? q.order('talent_score', { ascending: asc, nullsFirst: asc })
-        : q.order('full_name', { ascending: asc, nullsFirst: asc })
+      byCalibi
+        ? q.order('calibi_score', { ascending: asc, nullsFirst: asc })
+        : params.sort === 'score' || params.sort === 'calibi'
+          ? q.order('talent_score', { ascending: asc, nullsFirst: asc })
+          : q.order('full_name', { ascending: asc, nullsFirst: asc })
     q = q
       .order('college', { ascending: true, nullsFirst: true })
       .order('student_id', { ascending: true })
@@ -583,7 +610,16 @@ async function queryRemoteWindow(
     if (!error) {
       if (!wide) narrowSelectOk = true
       if (assessed && !talentOnly) attemptedCol = { value: true, at: Date.now() }
-      return { data: data || [], count: count ?? 0 }
+      if (byCalibi) calibiCol = { value: true, at: Date.now() }
+      // Without migration 0010 a CalibiAI sort falls back to the assessment-1
+      // score so SQL order and the in-memory merge comparator always agree.
+      const sortUsed = params.sort === 'calibi' && !byCalibi ? 'score' : params.sort
+      return { data: data || [], count: count ?? 0, sortUsed }
+    }
+    if (byCalibi && (mentionsColumn(error, 'calibi_score') || mentionsColumn(error, 'assessments_taken'))) {
+      byCalibi = false
+      calibiCol = { value: false, at: Date.now() }
+      continue
     }
     if (assessed && !talentOnly && mentionsColumn(error, 'assessment_attempted')) {
       talentOnly = true
@@ -760,11 +796,12 @@ export async function fetchStudentsPage(params: AdminPageParams): Promise<Studen
   const cmp = compareAdminRows(params.sort, params.dir)
   const canSync = !!sb && !!(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim()
 
-  // 1) Local store — free (no egress), always fully available.
+  // 1) Local store — free (no egress), always fully available. Enriched with
+  //    local assessment data up-front so a CalibiAI sort orders them correctly.
   let localFiltered: AdminStudentRow[] = []
   let warning = ''
   try {
-    localFiltered = filterAdminRows(fetchLocalStudents(), params)
+    localFiltered = (await enrichStudentRows(null, filterAdminRows(fetchLocalStudents(), params))).rows
   } catch (e: any) {
     warning = `Could not load students from the local store: ${e?.message || e}`
   }
@@ -810,7 +847,7 @@ export async function fetchStudentsPage(params: AdminPageParams): Promise<Studen
   let page = params.page
   let P = (page - 1) * params.pageSize
   let { offset, limit } = remoteWindowFor(page, params.pageSize, L)
-  let win: { data: any[]; count: number }
+  let win: { data: any[]; count: number; sortUsed: AdminPageParams['sort'] }
   try {
     win = await queryRemoteWindow(sb, params, offset, limit)
   } catch (e: any) {
@@ -869,14 +906,21 @@ export async function fetchStudentsPage(params: AdminPageParams): Promise<Studen
   //    SQL position used the unfilled one, so pre-sync demo duplicates can sit
   //    one page off until "Write candidates into Supabase" runs. Cosmetic,
   //    self-healing, and only for unsynced duplicates.
-  const merged = [...remoteRows, ...localUnique].sort(cmp)
+  const mergeCmp = win.sortUsed === params.sort ? cmp : compareAdminRows(win.sortUsed, params.dir)
+  const merged = [...remoteRows, ...localUnique].sort(mergeCmp)
   const pageRows = sliceMergedPage(merged, page, params.pageSize, offset)
+  if (win.sortUsed !== params.sort) {
+    warning = warning || 'Sorting by the CalibiAI average needs supabase/migrations/0010_calibiai_average.sql — sorted by the CalibiAI assessment score instead.'
+  }
 
-  // 7) Feedback for the page's students only.
+  // 7) Feedback + every assessment (Capgemini mock, company mocks, CalibiAI
+  //    average) for the page's students only.
   const fb = await pageFeedback(sb, pageRows, localFeedback)
+  const enrichedPage = await enrichStudentRows(sb, attachFeedback(pageRows, fb.rows))
+  if (enrichedPage.warning) warning = warning ? `${warning} ${enrichedPage.warning}` : enrichedPage.warning
 
   return {
-    students: attachFeedback(pageRows, fb.rows),
+    students: enrichedPage.rows,
     total,
     page,
     pageSize: params.pageSize,
@@ -899,6 +943,10 @@ export interface AdminMetaStats {
   colleges: number
   assessed: number
   avg: number
+  /** Mean CalibiAI Score (average of all assessments) over students with one; null when unknown (pre-0010). */
+  calibiAvg: number | null
+  /** Completed company-mock attempts; null when unknown. */
+  companyCompleted: number | null
 }
 
 export interface AdminMetaResult {
@@ -913,9 +961,13 @@ interface RemoteMeta {
   scored: number
   scoreSum: number
   colleges: string[]
+  /** Migration 0010 columns (null = unknown on this database). */
+  calibiStudents: number | null
+  calibiSum: number | null
+  companyCompleted: number | null
 }
 
-const EMPTY_META: RemoteMeta = { total: 0, assessed: 0, scored: 0, scoreSum: 0, colleges: [] }
+const EMPTY_META: RemoteMeta = { total: 0, assessed: 0, scored: 0, scoreSum: 0, colleges: [], calibiStudents: 0, calibiSum: 0, companyCompleted: 0 }
 
 /** Remote aggregates. Total function: returns zeros when Supabase is unreachable. */
 async function fetchRemoteMeta(sb: any): Promise<RemoteMeta> {
@@ -924,12 +976,17 @@ async function fetchRemoteMeta(sb: any): Promise<RemoteMeta> {
     const { data, error } = await sb.from('admin_stats').select('*').limit(1).maybeSingle()
     if (!error && data) {
       const scored = Number(data.scored_students) || 0
+      const has0010 = data.calibi_students !== undefined
+      const calibiStudents = has0010 ? Number(data.calibi_students) || 0 : null
       return {
         total: Number(data.total_students) || 0,
         assessed: Number(data.assessed_students) || 0,
         scored,
         scoreSum: (Number(data.avg_score) || 0) * scored,
         colleges: Array.isArray(data.colleges) ? data.colleges.map((c: any) => String(c)) : [],
+        calibiStudents,
+        calibiSum: has0010 ? (Number(data.avg_calibi) || 0) * (calibiStudents || 0) : null,
+        companyCompleted: has0010 ? Number(data.company_attempts_completed) || 0 : null,
       }
     }
   } catch {
@@ -966,6 +1023,9 @@ async function fetchRemoteMeta(sb: any): Promise<RemoteMeta> {
         scored: assessed,
         scoreSum,
         colleges: [...colleges],
+        calibiStudents: null,
+        calibiSum: null,
+        companyCompleted: null,
       }
     }
   } catch {
@@ -984,11 +1044,11 @@ export async function fetchAdminMeta(): Promise<AdminMetaResult> {
   const sb = getServerClient()
   let local: AdminStudentRow[] = []
   try {
-    local = fetchLocalStudents()
+    local = (await enrichStudentRows(null, fetchLocalStudents())).rows
   } catch {
     // Local store unreadable — remote data still answers.
   }
-  let remote = EMPTY_META
+  let remote = sb ? { ...EMPTY_META, calibiStudents: null, calibiSum: null, companyCompleted: null } as RemoteMeta : EMPTY_META
   let dup = { ids: new Set<string>(), emails: new Set<string>() }
   if (sb) {
     const [meta, d] = await Promise.all([fetchRemoteMeta(sb), remoteDupKeys(sb, local)])
@@ -1011,6 +1071,10 @@ export async function fetchAdminMeta(): Promise<AdminMetaResult> {
       ...uniqueLocal.map(r => r.college.trim()).filter(Boolean),
     ]),
   ].sort((a, b) => a.localeCompare(b))
+  const localCalibi = uniqueLocal.filter(r => r.calibi_score !== '')
+  const localCalibiSum = localCalibi.reduce((a, r) => a + (Number(r.calibi_score) || 0), 0)
+  const localCompany = uniqueLocal.reduce((a, r) => a + (Number(r.company_taken) || 0), 0)
+  const calibiN = remote.calibiStudents === null ? null : remote.calibiStudents + localCalibi.length
   return {
     colleges,
     stats: {
@@ -1018,6 +1082,8 @@ export async function fetchAdminMeta(): Promise<AdminMetaResult> {
       colleges: colleges.length,
       assessed,
       avg: scored ? Math.round((remote.scoreSum + localSum) / scored) : 0,
+      calibiAvg: calibiN === null ? null : calibiN ? Math.round(((remote.calibiSum || 0) + localCalibiSum) / calibiN) : 0,
+      companyCompleted: remote.companyCompleted === null ? null : remote.companyCompleted + localCompany,
     },
     updated_at: new Date().toISOString(),
   }

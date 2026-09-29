@@ -1,0 +1,95 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+
+import { COMPANIES, COMPANY_TAGS, companiesByTag, companyMockFacts, getCompany } from '../company/catalog.ts'
+import { BLUEPRINTS } from '../company/blueprints.ts'
+import { RESEARCH_STEPS, RESEARCH_TARGETS } from '../company/generated/researchSteps.ts'
+import { SECTION_BY_ID } from '../company/sections.ts'
+
+test('catalog: every research target and every documented company is present (60 total)', () => {
+  const names = new Set(COMPANIES.map((c) => c.name))
+  for (const t of RESEARCH_TARGETS) assert.ok(names.has(t.name), `missing target ${t.name}`)
+  for (const n of Object.keys(RESEARCH_STEPS)) assert.ok(names.has(n), `missing documented company ${n}`)
+  assert.equal(RESEARCH_TARGETS.length, 50)
+  assert.equal(Object.keys(RESEARCH_STEPS).length, 50)
+  assert.equal(COMPANIES.length, 60)
+})
+
+test('catalog: slugs are unique, url-safe and resolvable', () => {
+  const slugs = COMPANIES.map((c) => c.slug)
+  assert.equal(new Set(slugs).size, slugs.length)
+  for (const c of COMPANIES) {
+    assert.match(c.slug, /^[a-z0-9-]+$/)
+    assert.equal(getCompany(c.slug)?.name, c.name)
+    assert.equal(getCompany(c.slug.toUpperCase())?.name, c.name)
+  }
+  assert.equal(getCompany('not-a-company'), undefined)
+})
+
+test('catalog: priorities follow the research document', () => {
+  for (const t of RESEARCH_TARGETS) assert.equal(COMPANIES.find((c) => c.name === t.name)?.priority, t.priority, t.name)
+  for (const c of COMPANIES.filter((x) => !RESEARCH_TARGETS.some((t) => t.name === x.name))) {
+    assert.equal(c.priority, RESEARCH_STEPS[c.name].priority ?? 3, c.name)
+  }
+})
+
+test('catalog: documented companies use the steps from the research document verbatim', () => {
+  for (const c of COMPANIES) {
+    const research = RESEARCH_STEPS[c.name]
+    assert.equal(c.documented, !!research, c.name)
+    if (research) assert.deepEqual(c.steps, research.steps, c.name)
+    assert.ok(c.steps.length >= 6, c.name)
+  }
+})
+
+test('catalog: every company is tagged and every tag has companies', () => {
+  const grouped = companiesByTag()
+  assert.equal(grouped.reduce((s, g) => s + g.companies.length, 0), COMPANIES.length)
+  for (const g of grouped) assert.ok(g.companies.length > 0, g.tag.id)
+  for (const c of COMPANIES) assert.ok(COMPANY_TAGS.some((t) => t.id === c.tag), c.name)
+})
+
+test('blueprints: every company maps to a blueprint whose rounds simulate real, assessable steps', () => {
+  for (const c of COMPANIES) {
+    const bp = BLUEPRINTS[c.blueprint]
+    assert.ok(bp, `${c.name}: unknown blueprint ${c.blueprint}`)
+    const stepNos = new Set(c.steps.map((s) => s.no))
+    const last = Math.max(...stepNos)
+    for (const r of bp.rounds) {
+      assert.ok(stepNos.has(r.step), `${c.name}: round ${r.id} points at missing step ${r.step}`)
+      assert.ok(r.step !== 1 && r.step !== last, `${c.name}: round ${r.id} simulates eligibility/final selection`)
+    }
+  }
+})
+
+test('blueprints: weights sum to 100, parts reference real sections, durations are sane', () => {
+  for (const bp of Object.values(BLUEPRINTS)) {
+    assert.equal(bp.rounds.reduce((s, r) => s + r.weight, 0), 100, bp.id)
+    const minutes = bp.rounds.reduce((s, r) => s + r.minutes, 0)
+    assert.ok(minutes >= 90 && minutes <= 120, `${bp.id}: ${minutes} min`)
+    assert.equal(new Set(bp.rounds.map((r) => r.id)).size, bp.rounds.length, bp.id)
+    for (const r of bp.rounds) {
+      assert.ok(r.parts.length > 0, `${bp.id}/${r.id}`)
+      for (const p of r.parts) {
+        assert.ok(p.count > 0, `${bp.id}/${r.id}`)
+        for (const s of p.sections) {
+          assert.ok(SECTION_BY_ID[s], `${bp.id}/${r.id}: bad section ${s}`)
+          for (const a of p.areas || []) assert.ok(SECTION_BY_ID[s].areas[a] || p.sections.some((x) => SECTION_BY_ID[x].areas[a]), `${bp.id}: area ${a}`)
+        }
+      }
+    }
+  }
+})
+
+test('blueprints: company mocks draw on all 11 master-bank sections between them', () => {
+  const used = new Set<string>()
+  for (const bp of Object.values(BLUEPRINTS)) for (const r of bp.rounds) for (const p of r.parts) p.sections.forEach((s) => used.add(s))
+  assert.equal(used.size, 11)
+})
+
+test('catalog: mock facts are computed from the blueprint', () => {
+  const tcs = companyMockFacts(getCompany('tcs')!)
+  assert.equal(tcs.rounds, 4)
+  assert.equal(tcs.minutes, 100)
+  assert.ok(tcs.questions > 30)
+})

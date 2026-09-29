@@ -655,12 +655,12 @@ export async function generateReportPdf({ scores, profile = {}, user = {}, sampl
   doc.setLineWidth(0.3)
   doc.line(ML, y, 210 - MR, y)
   y += 5.5
-  valueText('What is the CalibiAI Score?', ML, y, INK, 8.4)
+  valueText('What does this score measure?', ML, y, INK, 8.4)
   y += 3.8
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(7)
   doc.setTextColor(...SLATE)
-  const blurb = 'A 1000-point unified, verifiable measure of employability — English communication, problem solving, AI debugging, AI feature development, prompt engineering and cognitive/behavioural traits, assessed through a supervised 120-minute exam. Every report carries a tamper-evident verifiable hash.'
+  const blurb = 'The CalibiAI Assessment is a 1000-point, verifiable measure of employability — English communication, problem solving, AI debugging, AI feature development, prompt engineering and cognitive/behavioural traits, assessed through a supervised 120-minute exam. Your overall CalibiAI Score on the dashboard is the average of every assessment you complete (this one, the Capgemini mock and each company mock). Every report carries a tamper-evident verifiable hash.'
   const blurbLines = doc.splitTextToSize(blurb, CW)
   blurbLines.slice(0, 5).forEach((line: string) => {
     y = fit(y, 4.4)

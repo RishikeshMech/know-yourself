@@ -48,7 +48,12 @@ export async function POST(req: Request) {
         })
         break
       case 'speaking':
-        result = await evaluateSpeaking(body.transcript ?? null, Number(body.recordingCount || 0))
+        {
+          // Accept a string or a list of per-task transcripts; anything else is ignored.
+          const t = body.transcript
+          const transcript = typeof t === 'string' ? t : Array.isArray(t) ? t.filter((x: unknown) => typeof x === 'string').join('\n\n') : null
+          result = await evaluateSpeaking(transcript ? transcript.slice(0, 12000) : null, Number(body.recordingCount || 0))
+        }
         break
       case 'debugging':
         result = await evaluateDebugging(

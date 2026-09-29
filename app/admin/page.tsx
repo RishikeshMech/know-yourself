@@ -24,9 +24,11 @@ import {
 import { Logo } from '@/components/Logo'
 import type { AdminStudentRow } from '@/lib/csv'
 import { downloadFilename } from '@/lib/csv'
+import { AiEnginePanel, CompanyResultsPanel, StudentAssessments } from '@/components/admin/AdminPanels'
 
 type AuthState = 'checking' | 'guest' | 'authed'
-type SortKey = 'score' | 'name'
+type SortKey = 'score' | 'name' | 'calibi'
+type ExportKind = 'students' | 'attempts' | 'json'
 type DataSource = 'supabase' | 'local' | ''
 
 /** How often the dashboard checks for new data so it stays live.
@@ -251,14 +253,14 @@ function ModuleBar({ label, value, max }: { label: string; value: string; max: n
   )
 }
 
-function ExpandedRow({ row }: { row: AdminStudentRow }) {
+function ExpandedRow({ row, onUnauthorized }: { row: AdminStudentRow; onUnauthorized?: () => void }) {
   const traits: [string, string][] = [
     ['Teamwork', row.teamwork], ['Accountability', row.accountability], ['Adaptability', row.adaptability],
     ['Responsible AI', row.responsible_ai], ['Decision Making', row.decision_making], ['Learning Mindset', row.learning_mindset],
   ]
   return (
     <tr className="border-t border-slate-100 bg-white/70">
-      <td colSpan={13} className="px-5 py-4">
+      <td colSpan={15} className="px-5 py-4">
         <div className="grid gap-5 lg:grid-cols-3">
           <div className="space-y-2">
             <div className="text-xs font-black uppercase tracking-wide text-slate-400">Personal & college</div>
@@ -274,7 +276,7 @@ function ExpandedRow({ row }: { row: AdminStudentRow }) {
             </div>
           </div>
           <div className="space-y-2">
-            <div className="text-xs font-black uppercase tracking-wide text-slate-400">Scores /1000</div>
+            <div className="text-xs font-black uppercase tracking-wide text-slate-400">CalibiAI Assessment modules</div>
             <div className="space-y-1.5">
               <ModuleBar label="English" value={row.english} max={200} />
               <ModuleBar label="Problem Solving" value={row.problem_solving} max={200} />
@@ -309,6 +311,9 @@ function ExpandedRow({ row }: { row: AdminStudentRow }) {
             )}
           </div>
         </div>
+
+        {/* Every assessment: CalibiAI, Capgemini mock, company mocks */}
+        <StudentAssessments row={row} onUnauthorized={onUnauthorized} />
 
         {/* Feedback this candidate gave about the assessment */}
         <div className="mt-5 space-y-2">
@@ -456,7 +461,7 @@ function HelpRequests() {
 
 interface DashboardMeta {
   colleges: string[]
-  stats: { total: number; colleges: number; assessed: number; avg: number }
+  stats: { total: number; colleges: number; assessed: number; avg: number; calibiAvg?: number | null; companyCompleted?: number | null }
 }
 
 /** Windowed page numbers: always 1 + last, plus the neighbourhood of `page`. */
@@ -562,7 +567,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const [qInput, setQInput] = useState('')
   const [q, setQ] = useState('')
   const [withScoreOnly, setWithScoreOnly] = useState(false)
-  const [sortBy, setSortBy] = useState<SortKey>('score')
+  const [sortBy, setSortBy] = useState<SortKey>('calibi')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [exported, setExported] = useState(false)
@@ -724,7 +729,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const liveCount = sources?.supabase ?? (dataSource === 'supabase' ? total : 0)
   const localCount = sources?.local ?? (dataSource === 'local' ? total : 0)
   const colleges = meta?.colleges || []
-  const stats = meta?.stats || { total: 0, colleges: 0, assessed: 0, avg: 0 }
+  const stats = meta?.stats || { total: 0, colleges: 0, assessed: 0, avg: 0, calibiAvg: null, companyCompleted: null }
   const filtersActive = college !== 'all' || q !== '' || withScoreOnly
 
   const toggleSort = (key: SortKey) => {
@@ -786,12 +791,12 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
    * (the browser only holds one page, so it can no longer build the CSV).
    * Always freshly computed — never served from the page cache.
    */
-  const handleExport = async (scope: 'filtered' | 'all') => {
+  const handleExport = async (scope: 'filtered' | 'all', kind: ExportKind = 'students') => {
     if (exporting) return
     if (scope === 'filtered' && total === 0) return
     setExporting(true)
     try {
-      const params = new URLSearchParams({ scope })
+      const params = new URLSearchParams({ scope, kind })
       if (scope === 'filtered') {
         if (college !== 'all') params.set('college', college)
         if (q) params.set('q', q)
@@ -807,7 +812,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
       const match = (res.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/)
       const a = document.createElement('a')
       a.href = URL.createObjectURL(blob)
-      a.download = match?.[1] || downloadFilename(scope)
+      a.download = match?.[1] || downloadFilename(scope, kind === 'attempts' ? 'assessment_attempts' : kind === 'json' ? 'students_full' : 'students', kind === 'json' ? 'json' : 'csv')
       document.body.appendChild(a)
       a.click()
       a.remove()
@@ -861,21 +866,27 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         <div className="flex flex-wrap items-end justify-between gap-3 animate-fade-up">
           <div>
             <h1 className="text-2xl font-black text-slate-900">Admin dashboard</h1>
-            <p className="mt-1 text-sm text-slate-500">Every student's profile, CalibiAI score, module scores and skills — filter by college and download as CSV.</p>
+            <p className="mt-1 text-sm text-slate-500">Every student's profile, CalibiAI Score (average of all assessments), every assessment taken with its category, company-wise scores and skills — filter by college and download.</p>
           </div>
           <div className="flex flex-wrap gap-2 text-xs">
-            <button onClick={() => handleExport('all')} disabled={exporting} className="btn-soft !px-4 !py-2 font-bold disabled:opacity-50">
-              <Download className="mr-1.5 inline h-3.5 w-3.5" /> {exporting ? 'Preparing…' : 'Download all students CSV'}
+            <button onClick={() => handleExport('all', 'students')} disabled={exporting} className="btn-soft !px-4 !py-2 font-bold disabled:opacity-50" title="One row per student: profile, CalibiAI Score, every assessment with category, module scores, company-wise scores">
+              <Download className="mr-1.5 inline h-3.5 w-3.5" /> {exporting ? 'Preparing…' : 'All student profiles (CSV)'}
             </button>
-            <button onClick={() => handleExport('filtered')} disabled={!total || exporting} className="btn-primary !px-4 !py-2 disabled:opacity-50">
-              <Download className="mr-1.5 inline h-3.5 w-3.5" /> {exporting ? 'Preparing…' : `Download CSV (${total})`}
+            <button onClick={() => handleExport('all', 'attempts')} disabled={exporting} className="btn-soft !px-4 !py-2 font-bold disabled:opacity-50" title="One row per assessment attempt: category, score, verdict, rounds, proctoring">
+              <Download className="mr-1.5 inline h-3.5 w-3.5" /> All assessment attempts (CSV)
+            </button>
+            <button onClick={() => handleExport('all', 'json')} disabled={exporting} className="btn-soft !px-4 !py-2 font-bold disabled:opacity-50" title="Everything, structured: per-student breakdown, company attempts and company-wise summary">
+              <Download className="mr-1.5 inline h-3.5 w-3.5" /> Everything (JSON)
+            </button>
+            <button onClick={() => handleExport('filtered', 'students')} disabled={!total || exporting} className="btn-primary !px-4 !py-2 disabled:opacity-50">
+              <Download className="mr-1.5 inline h-3.5 w-3.5" /> {exporting ? 'Preparing…' : `Filtered students CSV (${total})`}
             </button>
           </div>
         </div>
 
         {exported && (
           <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 text-sm font-semibold text-emerald-700 animate-fade-up">
-            <CheckCircle2 className="h-4 w-4" /> CSV downloaded — open it in Excel / Google Sheets. It includes name, PRN, mobile number, college, skills, resume score and every CalibiAI module score.
+            <CheckCircle2 className="h-4 w-4" /> Download ready — open it in Excel / Google Sheets. It includes the full profile, resume score, CalibiAI Score (average), every assessment taken with its category, module scores and company-wise scores.
           </div>
         )}
 
@@ -929,7 +940,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
             />
             <StatCard icon={<GraduationCap className="h-4 w-4" />} label="Colleges" value={String(stats.colleges)} sub="Distinct institutions" />
             <StatCard icon={<ShieldCheck className="h-4 w-4" />} label="Assessed" value={String(stats.assessed)} sub="Took the assessment" />
-            <StatCard icon={<Trophy className="h-4 w-4" />} label="Average score" value={stats.assessed ? String(stats.avg) : '—'} sub="Top 10%: 900+ · Ready: 750+" />
+            <StatCard icon={<Trophy className="h-4 w-4" />} label="Avg CalibiAI Score" value={stats.calibiAvg === null || stats.calibiAvg === undefined ? (stats.assessed ? String(stats.avg) : '—') : stats.calibiAvg ? String(stats.calibiAvg) : '—'} sub={stats.calibiAvg === null || stats.calibiAvg === undefined ? 'Assessment 1 average (apply migration 0010 for the all-assessment average)' : `Average of all assessments${stats.companyCompleted !== null && stats.companyCompleted !== undefined ? ` · ${stats.companyCompleted} company mocks done` : ''}`} />
           </div>
         )}
 
@@ -1018,9 +1029,15 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                     <th className="px-3 py-3 text-left font-black">Degree</th>
                     <th className="px-3 py-3 text-left font-black">Skills</th>
                     <th className="px-3 py-3 text-center font-black">Resume</th>
+                    <th className="px-3 py-3 text-center font-black" title="CalibiAI Score = average of every completed assessment, /1000">
+                      <button onClick={() => toggleSort('calibi')} className="inline-flex items-center gap-0.5 hover:text-slate-700">
+                        CalibiAI avg {scoreSortIcon('calibi')}
+                      </button>
+                    </th>
+                    <th className="px-3 py-3 text-center font-black" title="Completed assessments (CalibiAI, Capgemini mock, company mocks)">Tests</th>
                     <th className="px-3 py-3 text-center font-black">
                       <button onClick={() => toggleSort('score')} className="inline-flex items-center gap-0.5 hover:text-slate-700">
-                        Score /1000 {scoreSortIcon('score')}
+                        Assessment 1 {scoreSortIcon('score')}
                       </button>
                     </th>
                     <th className="px-3 py-3 text-center font-black">Grade</th>
@@ -1061,6 +1078,15 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                           </td>
                           <td className="px-3 py-3 text-center font-mono font-bold text-slate-700">{n(s.resume_score)}</td>
                           <td className="px-3 py-3 text-center">
+                            {s.calibi_score !== '' && s.calibi_score !== undefined
+                              ? <span className="font-mono text-sm font-black text-indigo-700">{s.calibi_score}</span>
+                              : <span className="text-slate-300">—</span>}
+                          </td>
+                          <td className="px-3 py-3 text-center" title={s.tests_taken || 'No completed assessments'}>
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${Number(s.assessments_taken) > 0 ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-400'}`}>{s.assessments_taken || 0}</span>
+                            {Number(s.company_in_progress) > 0 && <div className="mt-0.5 text-[9px] font-bold text-amber-600">+{s.company_in_progress} live</div>}
+                          </td>
+                          <td className="px-3 py-3 text-center">
                             {s.has_assessment === 'Yes' ? (
                               s.score
                                 ? <span className="font-mono text-sm font-black text-slate-900">{s.score}</span>
@@ -1079,7 +1105,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                             {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                           </td>
                         </tr>
-                        {open && <ExpandedRow row={s} />}
+                        {open && <ExpandedRow row={s} onUnauthorized={onLogout} />}
                       </Fragment>
                     )
                   })}
@@ -1099,10 +1125,12 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
 
         {students && total > 0 && (
           <p className="pb-4 text-center text-[11px] text-slate-400">
-            Data includes personal information — handle responsibly. The CSV exports 52 columns: personal details, college, PRN, mobile, skills, resume, every CalibiAI module score and the candidate's own feedback.
+            Data includes personal information — handle responsibly. Exports include personal details, college, PRN, mobile, skills, resume, the CalibiAI Score (average of all assessments), every assessment taken with its category, CalibiAI + Capgemini module scores, category averages, one column per company and the candidate's own feedback.
           </p>
         )}
 
+        <CompanyResultsPanel onUnauthorized={onLogout} />
+        <AiEnginePanel onUnauthorized={onLogout} />
         <HelpRequests />
       </main>
     </div>
