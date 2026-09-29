@@ -18,6 +18,7 @@ import { CompanyCatalog } from '@/components/company/CompanyCatalog'
 import { CalibiScoreCard } from '@/components/CalibiScoreCard'
 import { AssessmentSkillList } from '@/components/AssessmentSkillList'
 import { platformAssessmentSkills, rollupAssessmentSkills } from '@/lib/assessmentSkills'
+import { ScheduleInterviewTab } from '@/components/interview/ScheduleInterviewTab.tsx'
 import type { AttemptSummary } from '@/lib/company/types'
 
 function Inner(){
@@ -413,6 +414,16 @@ function Inner(){
               <Link href={startHref} className="btn-soft mt-4 inline-flex !py-2.5 text-xs">Start your first assessment →</Link>
             </div>
           )}
+        </div>
+
+        {/* ---------------- AI Mock Interview — 3 attempts, real-time with Sam ---------------- */}
+        <div id="ai-mock-interview" className="mt-6 glass-card animate-fade-up scroll-mt-24" style={{animationDelay:'.19s'}}>
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-xl">🎙️</span>
+            <h2 className="text-sm font-black text-slate-800">AI Mock Interview — Schedule & Attempts</h2>
+            <span className="chip bg-violet-50 text-violet-700 border-violet-200 text-[10px]">NEW · DeepSeek + Voice + Camera · 30-45 min</span>
+          </div>
+          <ScheduleInterviewTab />
         </div>
 
         {/* ---------------- Company assessments — every company, grouped by tag ---------------- */}
