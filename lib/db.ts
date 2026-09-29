@@ -72,6 +72,9 @@ const COLLECTIONS = [
   'feedback',
   'help_requests',
   'company_attempts',
+  'interview_sessions',
+  'interview_reports',
+  'interview_feedback_flags',
 ] as const
 
 export interface User {
@@ -212,6 +215,28 @@ export interface HelpRequest {
   attempts?: number
 }
 
+export interface InterviewSessionRow {
+  id: string
+  student_id: string
+  data: any
+  created_at: string
+  updated_at: string
+}
+export interface InterviewReportRow {
+  id: string
+  session_id: string
+  student_id: string
+  data: any
+  created_at: string
+}
+export interface InterviewFeedbackFlagRow {
+  id: string
+  session_id: string
+  student_id: string
+  data: any
+  created_at: string
+}
+
 export interface DBData {
   users: User[]
   profiles: Profile[]
@@ -223,6 +248,9 @@ export interface DBData {
   help_requests: HelpRequest[]
   /** One row per (student, company) — see lib/company/attempts.ts. */
   company_attempts: CompanyAttempt[]
+  interview_sessions: InterviewSessionRow[]
+  interview_reports: InterviewReportRow[]
+  interview_feedback_flags: InterviewFeedbackFlagRow[]
 }
 
 function emptyDB(): DBData {
@@ -236,6 +264,9 @@ function emptyDB(): DBData {
     feedback: [],
     help_requests: [],
     company_attempts: [],
+    interview_sessions: [],
+    interview_reports: [],
+    interview_feedback_flags: [],
   }
 }
 
@@ -751,5 +782,59 @@ export function saveCompanyAttempt(attempt: CompanyAttempt) {
   const idx = db.company_attempts.findIndex(a => a.id === attempt.id)
   if (idx >= 0) db.company_attempts[idx] = attempt
   else db.company_attempts.push(attempt)
+  saveDB(db)
+}
+
+/* ---------------------------- AI mock interviews ---------------------------- */
+
+export function saveInterviewSessionRow(row: InterviewSessionRow) {
+  const db = getDB()
+  const idx = db.interview_sessions.findIndex(r => r.id === row.id)
+  if (idx >= 0) db.interview_sessions[idx] = row
+  else db.interview_sessions.push(row)
+  saveDB(db)
+}
+
+export function getInterviewSessionRow(id: string): InterviewSessionRow | undefined {
+  return getDB().interview_sessions.find(r => r.id === id)
+}
+
+export function listInterviewSessionsForStudent(studentId: string): InterviewSessionRow[] {
+  return getDB().interview_sessions
+    .filter(r => r.data?.student_id === studentId || (r as any).student_id === studentId)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+}
+
+export function listAllInterviewSessions(): InterviewSessionRow[] {
+  return [...getDB().interview_sessions]
+}
+
+export function saveInterviewReportRow(row: InterviewReportRow) {
+  const db = getDB()
+  const idx = db.interview_reports.findIndex(r => r.id === row.id)
+  if (idx >= 0) db.interview_reports[idx] = row
+  else db.interview_reports.push(row)
+  saveDB(db)
+}
+
+export function getInterviewReportRow(id: string): InterviewReportRow | undefined {
+  return getDB().interview_reports.find(r => r.id === id)
+}
+
+export function getInterviewReportBySession(sessionId: string): InterviewReportRow | undefined {
+  return getDB().interview_reports.find(r => r.session_id === sessionId || r.data?.session_id === sessionId)
+}
+
+export function listInterviewReportsForStudent(studentId: string): InterviewReportRow[] {
+  return getDB().interview_reports
+    .filter(r => r.student_id === studentId || r.data?.student_id === studentId)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+}
+
+export function saveInterviewFeedbackFlagRow(row: InterviewFeedbackFlagRow) {
+  const db = getDB()
+  const idx = db.interview_feedback_flags.findIndex(r => r.id === row.id)
+  if (idx >= 0) db.interview_feedback_flags[idx] = row
+  else db.interview_feedback_flags.push(row)
   saveDB(db)
 }

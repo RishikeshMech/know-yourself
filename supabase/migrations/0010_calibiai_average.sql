@@ -196,7 +196,10 @@ comment on view public.admin_stats is
   'Single-row aggregates for the /admin stat cards and college dropdown, including the average CalibiAI Score and completed company mocks. Read by GET /api/admin/meta.';
 
 -- 5. Change probe (columns appended — existing columns keep their order) ------
-create or replace view public.admin_change_probe
+-- Use DROP+CREATE not CREATE OR REPLACE so re-running after newer migrations
+-- (e.g. 0011 interview tables) does not error with \"cannot drop columns\".
+drop view if exists public.admin_change_probe;
+create view public.admin_change_probe
 with (security_invoker = on)
 as
 select

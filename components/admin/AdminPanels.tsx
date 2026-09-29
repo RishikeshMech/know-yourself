@@ -318,6 +318,45 @@ interface AiStatus {
   test?: { ok: boolean; latencyMs: number; status?: number; model?: string; reply?: string; error?: string; hint?: string; at: string }
 }
 
+export function InterviewResultsPanel() {
+  const [open, setOpen] = useState(false)
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      // Reuse quota endpoint but for admin we list all via local store? For now fetch via /api/interviews?student_id=all not supported.
+      // We'll fetch from local DB via a simple admin endpoint we create later. For MVP show placeholder.
+      const res = await fetch('/api/interviews/quota?student_id=admin')
+      const d = await res.json()
+      setData(d)
+    } catch {
+      setData(null)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  return (
+    <section className="glass-card !p-0 overflow-hidden">
+      <button onClick={() => { setOpen(o => !o); if (!open && !data) load() }} className="flex w-full items-center justify-between px-5 py-4 text-left">
+        <span className="flex items-center gap-2 text-sm font-black text-slate-800">🎙️ AI Mock Interviews — admin view</span>
+        {open ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+      </button>
+      {open && (
+        <div className="border-t border-slate-100 px-5 py-4 text-xs text-slate-500">
+          {loading ? 'Loading…' : data ? (
+            <div>Interview quota system active — 3 attempts per student enforced server-side. Full admin analytics coming soon. Check calibiai_db.runtime.json for interview_sessions & interview_reports collections.</div>
+          ) : (
+            <div>No data yet — students need to schedule interviews from Student Dashboard → AI Mock Interview tab.</div>
+          )}
+        </div>
+      )}
+    </section>
+  )
+}
+
 export function AiEnginePanel({ onUnauthorized }: { onUnauthorized?: () => void }) {
   const [open, setOpen] = useState(false)
   const [s, setS] = useState<AiStatus | null>(null)
