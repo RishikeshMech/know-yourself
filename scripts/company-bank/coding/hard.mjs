@@ -1157,4 +1157,439 @@ def trap_rain_water(height_map):
 `,
     },
   },
+
+  /* ------------------------------------------------------------------ */
+  {
+    slug: 'sliding-window-median', title: 'Sliding Window Median', topic: 'Heaps', difficulty: 'hard',
+    statement: 'Given an integer array nums and a positive window size k, move a window of exactly k consecutive elements from left to right. Return the median after each move. For an odd-sized window, the median is its middle sorted value; for an even-sized window, it is the arithmetic mean of the two middle values. The result must preserve window order. Target O(n log k) time and O(n) or better auxiliary space; sorting every window is too slow at the upper limit.',
+    examples: [
+      { input: 'nums = [1,3,-1,-3,5,3,6,7], k = 3', output: '[1,-1,-1,3,5,6]', explain: 'The windows are [1,3,-1], [3,-1,-3], [-1,-3,5], [-3,5,3], [5,3,6], and [3,6,7].' },
+      { input: 'nums = [1,2,3,4], k = 2', output: '[1.5,2.5,3.5]' },
+    ],
+    constraints: ['1 ≤ len(nums) ≤ 10⁵', '1 ≤ k ≤ len(nums)', '−10⁹ ≤ nums[i] ≤ 10⁹', 'Expected: O(n log k) time; a dual heap with lazy deletion is one suitable approach', 'Duplicates and stale heap entries must not corrupt the logical window sizes'],
+    fn: { python: 'median_sliding_window', javascript: 'medianSlidingWindow' },
+    compare: 'exact',
+    tests: [
+      { name: 'example 1', args: [[1, 3, -1, -3, 5, 3, 6, 7], 3], expected: [1, -1, -1, 3, 5, 6], sample: true },
+      { name: 'example 2: even windows', args: [[1, 2, 3, 4], 2], expected: [1.5, 2.5, 3.5], sample: true },
+      { name: 'window of one', args: [[7, -2, 9], 1], expected: [7, -2, 9] },
+      { name: 'window is the whole array', args: [[-5, 0, 10, 20], 4], expected: [5] },
+      { name: 'all equal with duplicate expiry', args: [[4, 4, 4, 4, 4], 3], expected: [4, 4, 4] },
+      { name: 'duplicates cross both heaps', args: [[1, 1, 1, 2, 2, 2, 0, 0], 3], expected: [1, 1, 2, 2, 2, 0] },
+      { name: 'negative and fractional medians', args: [[-8, -3, -5, -1, -10, 2], 4], expected: [-4, -4, -3] },
+      { name: 'stress: 50,000 random values, k = 5,001', args: [{ $gen: 'ints', n: 50000, lo: -1000000, hi: 1000000, seed: 601 }, 5001], ...STRESS() },
+      { name: 'stress: 100,000 increasing values, k = 999', args: [{ $gen: 'range', start: -50000, stop: 50000 }, 999], ...STRESS() },
+    ],
+    solution: {
+      python: String.raw`import heapq
+
+def median_sliding_window(nums, k):
+    if not nums or k <= 0 or k > len(nums):
+        return []
+    lower = []                 # max-heap encoded as negative values
+    upper = []                 # min-heap
+    delayed = {}
+    lower_size = upper_size = 0
+
+    def prune(heap, sign):
+        while heap:
+            value = sign * heap[0]
+            count = delayed.get(value, 0)
+            if count == 0:
+                break
+            heapq.heappop(heap)
+            if count == 1:
+                del delayed[value]
+            else:
+                delayed[value] = count - 1
+
+    def rebalance():
+        nonlocal lower_size, upper_size
+        prune(lower, -1)
+        prune(upper, 1)
+        if lower_size > upper_size + 1:
+            value = -heapq.heappop(lower)
+            lower_size -= 1
+            heapq.heappush(upper, value)
+            upper_size += 1
+            prune(lower, -1)
+        elif lower_size < upper_size:
+            value = heapq.heappop(upper)
+            upper_size -= 1
+            heapq.heappush(lower, -value)
+            lower_size += 1
+            prune(upper, 1)
+
+    def add(value):
+        nonlocal lower_size, upper_size
+        prune(lower, -1)
+        if not lower or value <= -lower[0]:
+            heapq.heappush(lower, -value)
+            lower_size += 1
+        else:
+            heapq.heappush(upper, value)
+            upper_size += 1
+        rebalance()
+
+    def remove(value):
+        nonlocal lower_size, upper_size
+        prune(lower, -1)
+        prune(upper, 1)
+        delayed[value] = delayed.get(value, 0) + 1
+        if value <= -lower[0]:
+            lower_size -= 1
+            if value == -lower[0]:
+                prune(lower, -1)
+        else:
+            upper_size -= 1
+            if upper and value == upper[0]:
+                prune(upper, 1)
+        rebalance()
+
+    def median():
+        prune(lower, -1)
+        prune(upper, 1)
+        if k % 2:
+            return float(-lower[0])
+        return (-lower[0] + upper[0]) / 2.0
+
+    result = []
+    for i, value in enumerate(nums):
+        add(value)
+        if i >= k:
+            remove(nums[i - k])
+        if i >= k - 1:
+            result.append(median())
+    return result
+`,
+      javascript: String.raw`function medianSlidingWindow(nums, k) {
+  if (!nums.length || k <= 0 || k > nums.length) return []
+  const lower = [] // max-heap encoded as negative values
+  const upper = [] // min-heap
+  const delayed = new Map()
+  let lowerSize = 0, upperSize = 0
+  const push = (heap, value) => {
+    heap.push(value)
+    let i = heap.length - 1
+    while (i > 0) {
+      const parent = (i - 1) >> 1
+      if (heap[parent] <= heap[i]) break
+      ;[heap[parent], heap[i]] = [heap[i], heap[parent]]
+      i = parent
+    }
+  }
+  const pop = (heap) => {
+    const first = heap[0], last = heap.pop()
+    if (heap.length) {
+      heap[0] = last
+      let i = 0
+      for (;;) {
+        const left = i * 2 + 1, right = left + 1
+        let smallest = i
+        if (left < heap.length && heap[left] < heap[smallest]) smallest = left
+        if (right < heap.length && heap[right] < heap[smallest]) smallest = right
+        if (smallest === i) break
+        ;[heap[i], heap[smallest]] = [heap[smallest], heap[i]]
+        i = smallest
+      }
+    }
+    return first
+  }
+  const prune = (heap, sign) => {
+    while (heap.length) {
+      const value = sign * heap[0]
+      const count = delayed.get(value) || 0
+      if (!count) break
+      pop(heap)
+      if (count === 1) delayed.delete(value)
+      else delayed.set(value, count - 1)
+    }
+  }
+  const rebalance = () => {
+    prune(lower, -1); prune(upper, 1)
+    if (lowerSize > upperSize + 1) {
+      const value = -pop(lower)
+      lowerSize--; push(upper, value); upperSize++
+      prune(lower, -1)
+    } else if (lowerSize < upperSize) {
+      const value = pop(upper)
+      upperSize--; push(lower, -value); lowerSize++
+      prune(upper, 1)
+    }
+  }
+  const add = (value) => {
+    prune(lower, -1)
+    if (!lower.length || value <= -lower[0]) { push(lower, -value); lowerSize++ }
+    else { push(upper, value); upperSize++ }
+    rebalance()
+  }
+  const remove = (value) => {
+    prune(lower, -1); prune(upper, 1)
+    delayed.set(value, (delayed.get(value) || 0) + 1)
+    if (value <= -lower[0]) {
+      lowerSize--
+      if (value === -lower[0]) prune(lower, -1)
+    } else {
+      upperSize--
+      if (upper.length && value === upper[0]) prune(upper, 1)
+    }
+    rebalance()
+  }
+  const median = () => {
+    prune(lower, -1); prune(upper, 1)
+    return k % 2 ? -lower[0] : (-lower[0] + upper[0]) / 2
+  }
+  const result = []
+  for (let i = 0; i < nums.length; i++) {
+    add(nums[i])
+    if (i >= k) remove(nums[i - k])
+    if (i >= k - 1) result.push(median())
+  }
+  return result
+}
+`,
+    },
+    brute: {
+      python: String.raw`def median_sliding_window(nums, k):
+    result = []
+    for start in range(len(nums) - k + 1):
+        window = sorted(nums[start:start + k])
+        mid = k // 2
+        result.append(float(window[mid]) if k % 2 else (window[mid - 1] + window[mid]) / 2.0)
+    return result
+`,
+      javascript: String.raw`function medianSlidingWindow(nums, k) {
+  const result = []
+  for (let start = 0; start + k <= nums.length; start++) {
+    const window = nums.slice(start, start + k).sort((a, b) => a - b)
+    const mid = Math.floor(k / 2)
+    result.push(k % 2 ? window[mid] : (window[mid - 1] + window[mid]) / 2)
+  }
+  return result
+}
+`,
+    },
+  },
+
+  /* ------------------------------------------------------------------ */
+  {
+    slug: 'critical-connections-network', title: 'Critical Connections in a Network', topic: 'Graphs', difficulty: 'hard',
+    statement: 'An undirected network has n numbered vertices and a list of connections. A connection is critical if removing that specific edge increases the number of connected components. Return all critical connections as [u,v] pairs with u < v, sorted lexicographically. The network may be disconnected and may contain parallel connections between the same two vertices, so track parent edge IDs rather than skipping every edge to the parent vertex. Your algorithm should be linear in the network size and must not rely on recursion deep enough to fail on a long path.',
+    examples: [
+      { input: 'n = 4, connections = [[0,1],[1,2],[2,0],[1,3]]', output: '[[1,3]]', explain: 'The triangle remains connected after any one of its edges is removed; edge [1,3] is the only bridge.' },
+      { input: 'n = 5, connections = [[0,1],[1,2],[2,3],[3,4]]', output: '[[0,1],[1,2],[2,3],[3,4]]' },
+    ],
+    constraints: ['1 ≤ n ≤ 10⁵', '0 ≤ len(connections) ≤ 2 × 10⁵', 'Each connection is [u,v] with 0 ≤ u,v < n; self-loops are not included', 'Parallel edges are allowed and are distinct connections', 'Expected: O(n + m) time using discovery/low-link values; O(n + m) space'],
+    fn: { python: 'critical_connections', javascript: 'criticalConnections' },
+    compare: 'exact',
+    tests: [
+      { name: 'example 1: one bridge outside a cycle', args: [4, [[0, 1], [1, 2], [2, 0], [1, 3]]], expected: [[1, 3]], sample: true },
+      { name: 'example 2: a path', args: [5, [[0, 1], [1, 2], [2, 3], [3, 4]]], expected: [[0, 1], [1, 2], [2, 3], [3, 4]], sample: true },
+      { name: 'one cycle and an isolated vertex', args: [4, [[0, 1], [1, 2], [2, 0]]], expected: [] },
+      { name: 'disconnected components', args: [7, [[0, 1], [1, 2], [2, 0], [3, 4], [4, 5]]], expected: [[3, 4], [4, 5]] },
+      { name: 'parallel edge is not a bridge', args: [3, [[0, 1], [0, 1], [1, 2]]], expected: [[1, 2]] },
+      { name: 'two cycles joined at an articulation vertex', args: [5, [[0, 1], [1, 2], [2, 0], [2, 3], [3, 4], [4, 2]]], expected: [] },
+      { name: 'isolated vertices only', args: [4, []], expected: [] },
+      { name: 'stress: 3,000-vertex path (iterative DFS)', args: [3000, { $gen: 'zip', parts: [{ $gen: 'range', start: 0, stop: 2999 }, { $gen: 'range', start: 1, stop: 3000 }] }], ...STRESS() },
+    ],
+    solution: {
+      python: String.raw`def critical_connections(n, connections):
+    graph = [[] for _ in range(n)]
+    for edge_id, (u, v) in enumerate(connections):
+        graph[u].append((v, edge_id))
+        graph[v].append((u, edge_id))
+    discovery = [-1] * n
+    low = [0] * n
+    parent = [-1] * n
+    parent_edge = [-1] * n
+    bridges = []
+    clock = 0
+
+    for root in range(n):
+        if discovery[root] != -1:
+            continue
+        discovery[root] = low[root] = clock
+        clock += 1
+        stack = [(root, 0)]
+        while stack:
+            node, next_index = stack[-1]
+            if next_index < len(graph[node]):
+                neighbor, edge_id = graph[node][next_index]
+                stack[-1] = (node, next_index + 1)
+                if edge_id == parent_edge[node]:
+                    continue
+                if discovery[neighbor] == -1:
+                    parent[neighbor] = node
+                    parent_edge[neighbor] = edge_id
+                    discovery[neighbor] = low[neighbor] = clock
+                    clock += 1
+                    stack.append((neighbor, 0))
+                else:
+                    low[node] = min(low[node], discovery[neighbor])
+            else:
+                stack.pop()
+                ancestor = parent[node]
+                if ancestor != -1:
+                    if low[node] > discovery[ancestor]:
+                        bridges.append([min(node, ancestor), max(node, ancestor)])
+                    low[ancestor] = min(low[ancestor], low[node])
+    bridges.sort()
+    return bridges
+`,
+      javascript: String.raw`function criticalConnections(n, connections) {
+  const graph = Array.from({ length: n }, () => [])
+  for (let edgeId = 0; edgeId < connections.length; edgeId++) {
+    const [u, v] = connections[edgeId]
+    graph[u].push([v, edgeId]); graph[v].push([u, edgeId])
+  }
+  const discovery = new Array(n).fill(-1), low = new Array(n).fill(0)
+  const parent = new Array(n).fill(-1), parentEdge = new Array(n).fill(-1)
+  const bridges = []
+  let clock = 0
+  for (let root = 0; root < n; root++) {
+    if (discovery[root] !== -1) continue
+    discovery[root] = low[root] = clock++
+    const stack = [[root, 0]]
+    while (stack.length) {
+      const top = stack.length - 1
+      const node = stack[top][0], nextIndex = stack[top][1]
+      if (nextIndex < graph[node].length) {
+        const [neighbor, edgeId] = graph[node][nextIndex]
+        stack[top][1]++
+        if (edgeId === parentEdge[node]) continue
+        if (discovery[neighbor] === -1) {
+          parent[neighbor] = node; parentEdge[neighbor] = edgeId
+          discovery[neighbor] = low[neighbor] = clock++
+          stack.push([neighbor, 0])
+        } else {
+          low[node] = Math.min(low[node], discovery[neighbor])
+        }
+      } else {
+        stack.pop()
+        const ancestor = parent[node]
+        if (ancestor !== -1) {
+          if (low[node] > discovery[ancestor]) bridges.push([Math.min(node, ancestor), Math.max(node, ancestor)])
+          low[ancestor] = Math.min(low[ancestor], low[node])
+        }
+      }
+    }
+  }
+  bridges.sort((a, b) => a[0] - b[0] || a[1] - b[1])
+  return bridges
+}
+`,
+    },
+  },
+
+  /* ------------------------------------------------------------------ */
+  {
+    slug: 'word-ladder-ii', title: 'Word Ladder II', topic: 'Graphs', difficulty: 'hard',
+    statement: 'Given beginWord, endWord and a dictionary wordList, return every shortest transformation sequence from beginWord to endWord. Each step must change exactly one lowercase English letter, and every intermediate word (including endWord) must belong to wordList; beginWord does not need to be present. Return an empty list when the end is unreachable. If beginWord equals endWord, return the one-word sequence. Preserve word order within each path, but the outer list may be in any order. A breadth-first search should stop after the first complete level that reaches endWord while retaining every predecessor at that level; then reconstruct paths through the resulting parent DAG. Avoid exploring exponentially many non-shortest walks.',
+    examples: [
+      { input: 'beginWord = "hit", endWord = "cog", wordList = ["hot","dot","dog","lot","log","cog"]', output: '[["hit","hot","dot","dog","cog"],["hit","hot","lot","log","cog"]]' },
+      { input: 'beginWord = "aaa", endWord = "bbb", wordList = ["aab","aba","baa","abb","bab","bba","bbb"]', output: 'all six shortest orders for changing the three positions from a to b' },
+    ],
+    constraints: ['1 ≤ len(beginWord) = len(endWord) ≤ 10', '1 ≤ len(wordList) ≤ 5,000', 'All words contain lowercase English letters and have the same length', 'Return every shortest path exactly once; the number of paths can be greater than one', 'Expected: breadth-first search over word transformations plus path reconstruction; account for output size'],
+    fn: { python: 'find_ladders', javascript: 'findLadders' },
+    compare: 'unordered',
+    tests: [
+      { name: 'example 1: two shortest ladders', args: ['hit', 'cog', ['hot', 'dot', 'dog', 'lot', 'log', 'cog']], expected: [['hit', 'hot', 'dot', 'dog', 'cog'], ['hit', 'hot', 'lot', 'log', 'cog']], sample: true },
+      { name: 'example 2: six shortest ladders', args: ['aaa', 'bbb', ['aab', 'aba', 'baa', 'abb', 'bab', 'bba', 'bbb']], expected: [['aaa', 'aab', 'abb', 'bbb'], ['aaa', 'aab', 'bab', 'bbb'], ['aaa', 'aba', 'abb', 'bbb'], ['aaa', 'aba', 'bba', 'bbb'], ['aaa', 'baa', 'bab', 'bbb'], ['aaa', 'baa', 'bba', 'bbb']], sample: true },
+      { name: 'end word missing', args: ['hit', 'cog', ['hot', 'dot', 'dog', 'lot', 'log']], expected: [] },
+      { name: 'unreachable despite present endpoint', args: ['aaa', 'bbb', ['bbb', 'ccc']], expected: [] },
+      { name: 'direct transformation', args: ['cat', 'cot', ['cot']], expected: [['cat', 'cot']] },
+      { name: 'begin equals end', args: ['same', 'same', ['lame', 'came']], expected: [['same']] },
+      { name: 'duplicate dictionary entries do not duplicate paths', args: ['aab', 'bbb', ['abb', 'bab', 'bbb', 'abb', 'bab']], expected: [['aab', 'abb', 'bbb'], ['aab', 'bab', 'bbb']] },
+      { name: 'stress: all 4,096 six-letter words over abcd', args: ['aaaaaa', 'dddddd', (() => { const out = ['']; for (let i = 0; i < 6; i++) { const next = []; for (const prefix of out) for (const ch of 'abcd') next.push(prefix + ch); out.splice(0, out.length, ...next) } return out })()], ...STRESS({ python: 12000, javascript: 10000, java: 12000, c: 12000, cpp: 12000, rust: 12000, go: 12000 }) },
+    ],
+    solution: {
+      python: String.raw`def find_ladders(begin_word, end_word, word_list):
+    if begin_word == end_word:
+        return [[begin_word]]
+    words = set(word_list)
+    if end_word not in words:
+        return []
+    words.discard(begin_word)
+    parents = {}
+    frontier = {begin_word}
+    found = False
+    alphabet = 'abcdefghijklmnopqrstuvwxyz'
+    while frontier and not found:
+        next_frontier = set()
+        for word in frontier:
+            chars = list(word)
+            for i, original in enumerate(chars):
+                for letter in alphabet:
+                    if letter == original:
+                        continue
+                    chars[i] = letter
+                    candidate = ''.join(chars)
+                    if candidate in words:
+                        next_frontier.add(candidate)
+                        parents.setdefault(candidate, []).append(word)
+                chars[i] = original
+        words.difference_update(next_frontier)
+        if end_word in next_frontier:
+            found = True
+        frontier = next_frontier
+    if not found:
+        return []
+    result = []
+    path = [end_word]
+    def build(word):
+        if word == begin_word:
+            result.append(path[::-1])
+            return
+        for previous in sorted(parents.get(word, [])):
+            path.append(previous)
+            build(previous)
+            path.pop()
+    build(end_word)
+    return result
+`,
+      javascript: String.raw`function findLadders(beginWord, endWord, wordList) {
+  if (beginWord === endWord) return [[beginWord]]
+  const words = new Set(wordList)
+  if (!words.has(endWord)) return []
+  words.delete(beginWord)
+  const parents = new Map()
+  let frontier = new Set([beginWord]), found = false
+  const alphabet = 'abcdefghijklmnopqrstuvwxyz'
+  while (frontier.size && !found) {
+    const nextFrontier = new Set()
+    for (const word of frontier) {
+      const chars = word.split('')
+      for (let i = 0; i < chars.length; i++) {
+        const original = chars[i]
+        for (const letter of alphabet) {
+          if (letter === original) continue
+          chars[i] = letter
+          const candidate = chars.join('')
+          if (words.has(candidate)) {
+            nextFrontier.add(candidate)
+            if (!parents.has(candidate)) parents.set(candidate, [])
+            parents.get(candidate).push(word)
+          }
+        }
+        chars[i] = original
+      }
+    }
+    for (const word of nextFrontier) words.delete(word)
+    if (nextFrontier.has(endWord)) found = true
+    frontier = nextFrontier
+  }
+  if (!found) return []
+  const result = [], path = [endWord]
+  const build = (word) => {
+    if (word === beginWord) { result.push(path.slice().reverse()); return }
+    const previousWords = (parents.get(word) || []).slice().sort()
+    for (const previous of previousWords) { path.push(previous); build(previous); path.pop() }
+  }
+  build(endWord)
+  return result
+}
+`,
+    },
+  },
+
 ]

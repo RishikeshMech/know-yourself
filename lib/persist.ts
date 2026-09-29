@@ -666,7 +666,7 @@ export async function hasAssessmentResult(client: SupabaseClient, userId: string
 
 export const COMPANY_ATTEMPT_SUMMARY_SELECT = [
   'id', 'student_id', 'company_slug', 'status', 'started_at', 'expires_at', 'duration_sec',
-  'submitted_at', 'auto_submitted', 'score', 'verdict',
+  'submitted_at', 'auto_submitted', 'score', 'verdict', 'skill_items:result->items',
 ].join(',')
 
 export function companyAttemptRow(a: any): Record<string, any> | null {
@@ -760,7 +760,7 @@ export async function fetchCompanyAttempt(client: SupabaseClient, studentId: str
   }
 }
 
-/** Status rows for every company attempt of a student (no paper / answers). */
+/** Status + graded item projections for server-side skill mapping (no paper / candidate answers). */
 export async function fetchCompanyAttemptSummaries(client: SupabaseClient, studentId: string): Promise<any[] | null> {
   const sid = toUuid(studentId, 'profile')
   if (!sid) return null

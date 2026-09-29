@@ -13,6 +13,7 @@
  */
 import type { AdminStudentRow } from './csv.ts'
 import { COMPANIES, COMPANY_TAGS, TAG_BY_ID, getCompany } from './company/catalog.ts'
+import { platformAssessmentSkills, companyAssessmentSkills, rollupAssessmentSkills, type AssessmentSkillEvidence } from './assessmentSkills.ts'
 import { PLATFORM_CATEGORY, companyEntry, computeCalibiScore, platformEntry, type ScoreEntry } from './calibiScore.ts'
 
 export interface AdminRoundSummary {
@@ -40,6 +41,8 @@ export interface AdminCompanyAttempt {
   strikes: number | null
   camera: boolean | null
   rounds: AdminRoundSummary[]
+  /** Safe area-level skill scores derived from the completed result. */
+  skillEvidence?: AssessmentSkillEvidence[]
 }
 
 export interface AdminPlatformResult {
@@ -49,6 +52,8 @@ export interface AdminPlatformResult {
   created_at: string
   /** Module scores (Capgemini mock): english, technical, debugging, ai_coding, cognitive. */
   modules?: Record<string, number | null>
+  /** Skill evidence derived from the result's scored sections. */
+  skillEvidence?: AssessmentSkillEvidence[]
 }
 
 export interface StudentAssessmentData {
@@ -78,6 +83,28 @@ const num = (v: unknown): number | null => {
 const str = (v: unknown): string => (v === null || v === undefined ? '' : String(v))
 const fmt1 = (n: number | null | undefined): string => (n === null || n === undefined || !Number.isFinite(n) ? '' : String(Math.round(n * 10) / 10))
 
+function combineSkillNames(...groups: string[]): string {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const group of groups) {
+    for (const raw of String(group || '').split(',')) {
+      const name = raw.trim()
+      const key = name.toLowerCase()
+      if (!name || seen.has(key)) continue
+      seen.add(key)
+      out.push(name)
+    }
+  }
+  return out.join(', ')
+}
+
+function mergeSkillEvidence(primary: AssessmentSkillEvidence[], fallback: AssessmentSkillEvidence[]): AssessmentSkillEvidence[] {
+  const byObservation = new Map<string, AssessmentSkillEvidence>()
+  for (const item of fallback) byObservation.set(`${item.key}|${item.source}|${item.assessedAt || ''}`, item)
+  for (const item of primary) byObservation.set(`${item.key}|${item.source}|${item.assessedAt || ''}`, item)
+  return [...byObservation.values()]
+}
+
 /** Accepts a local CompanyAttempt, a Supabase row (company_slug, proctoring JSON paths…) or an already-normalised attempt. */
 export function normalizeCompanyAttempt(raw: any): AdminCompanyAttempt | null {
   if (!raw) return null
@@ -89,6 +116,10 @@ export function normalizeCompanyAttempt(raw: any): AdminCompanyAttempt | null {
   const roundsRaw = Array.isArray(raw.rounds) ? raw.rounds : Array.isArray(raw.result?.rounds) ? raw.result.rounds : []
   const status = str(raw.status) || 'in_progress'
   const score = status === 'in_progress' ? null : num(raw.score ?? raw.result?.score)
+  const skillResult = raw.result || (Array.isArray(raw.skill_items) ? { items: raw.skill_items } : null)
+  const skillEvidence = status === 'in_progress' || !skillResult
+    ? []
+    : companyAssessmentSkills(skillResult, slug, str(raw.submitted_at) || null)
   return {
     company: slug,
     name: c?.name || str(raw.name) || slug,
@@ -112,6 +143,7 @@ export function normalizeCompanyAttempt(raw: any): AdminCompanyAttempt | null {
       cutoff: num(r?.cutoff),
       cleared: r?.cleared === undefined || r?.cleared === null ? null : !!r.cleared,
     })),
+    ...(skillEvidence.length ? { skillEvidence } : {}),
   }
 }
 
@@ -121,6 +153,19 @@ export function normalizePlatformResult(raw: any, no: 1 | 2): AdminPlatformResul
   const total = num(raw.total ?? raw.talent_score)
   if (total === null) return null
   const s = raw.scores && typeof raw.scores === 'object' ? raw.scores : raw
+  const skillScores = {
+    english: s.english ?? raw.skill_english,
+    problem_solving: s.problem_solving ?? raw.skill_problem_solving,
+    ai_debugging: s.ai_debugging ?? raw.skill_ai_debugging,
+    ai_feature: s.ai_feature ?? raw.skill_ai_feature,
+    prompt_engineering: s.prompt_engineering ?? raw.skill_prompt_engineering,
+    ai_literacy: s.ai_literacy ?? raw.skill_ai_literacy,
+    debug_mcq: s.debug_mcq ?? raw.skill_debug_mcq,
+    debug_lab: s.debug_lab ?? raw.skill_debug_lab,
+    debugging_total: s.debugging_total,
+    ai_coding: s.ai_coding ?? raw.skill_ai_coding,
+    cognitive: s.cognitive ?? raw.skill_cognitive,
+  }
   const out: AdminPlatformResult = {
     total,
     grade: str(raw.grade),
@@ -139,6 +184,8 @@ export function normalizePlatformResult(raw: any, no: 1 | 2): AdminPlatformResul
       cognitive: num(raw.a2_cognitive ?? s.cognitive?.total),
     }
   }
+  const skillEvidence = platformAssessmentSkills(skillScores, no, out.created_at)
+  if (skillEvidence.length) out.skillEvidence = skillEvidence
   return out
 }
 
@@ -173,7 +220,14 @@ export function emptyEnrichment(): Pick<AdminStudentRow,
  * `data.a1` defaults to the row's own assessment-1 fields.
  */
 export function enrichRow(row: AdminStudentRow, data?: StudentAssessmentData | null): AdminStudentRow {
-  const a1 = data?.a1 ?? (row.score !== '' && row.score !== undefined ? { total: num(row.score), grade: row.grade, percentile: num(row.percentile), created_at: row.assessed_at } : null)
+  // The row's scalar A1 columns remain the source of truth for the composite
+  // score; retain the mapped skill evidence from the full result projection.
+  const a1 = row.score !== '' && row.score !== undefined
+    ? {
+        total: num(row.score), grade: row.grade, percentile: num(row.percentile), created_at: row.assessed_at,
+        skillEvidence: data?.a1?.skillEvidence,
+      }
+    : data?.a1 ?? null
   const a2 = data?.a2 ?? null
   // Completed attempts chronologically, then in-progress ones.
   const attempts = (data?.company || []).slice().sort((x, y) =>
@@ -186,11 +240,25 @@ export function enrichRow(row: AdminStudentRow, data?: StudentAssessmentData | n
   ])
   const done = attempts.filter((a) => (a.status === 'submitted' || a.status === 'expired') && a.score !== null)
   const inProgress = attempts.filter((a) => a.status === 'in_progress')
+  const loadedEvidence = [
+    ...(a1?.skillEvidence || []),
+    ...(a2?.skillEvidence || []),
+    ...done.flatMap((attempt) => attempt.skillEvidence || []),
+  ]
+  const assessmentEvidence = mergeSkillEvidence(loadedEvidence, row.assessment_skill_evidence || [])
+  const assessmentSkills = rollupAssessmentSkills(assessmentEvidence)
+  const assessmentSkillsText = assessmentSkills.map((skill) =>
+    `${skill.name} (${fmt1(skill.score)}%${skill.assessmentCount > 1 ? `, ${skill.assessmentCount} assessments` : ''})`,
+  ).join('; ')
+  const allSkillNames = combineSkillNames(row.skills, row.resume_skills, assessmentSkills.map((skill) => skill.name).join(', '))
   const best = done.reduce<AdminCompanyAttempt | null>((b, a) => (!b || (a.score ?? 0) > (b.score ?? 0) ? a : b), null)
   const companyAvg = done.length ? done.reduce((s, a) => s + (a.score || 0), 0) / done.length : null
   const cat = new Map(calibi.categories.map((c) => [c.id, c]))
   const out: AdminStudentRow = {
     ...row,
+    assessment_skills: assessmentSkillsText,
+    assessment_skill_evidence: assessmentEvidence,
+    all_skills: allSkillNames,
     calibi_score: calibi.score === null ? '' : String(calibi.score),
     calibi_grade: calibi.grade || '',
     assessments_taken: String(calibi.count),
@@ -230,7 +298,7 @@ export const ATTEMPT_COLUMNS = [
   'Name', 'Email', 'PRN', 'Mobile Number', 'College', 'Degree', 'Graduation Year',
   'Assessment', 'Type', 'Category', 'Status', 'Score', 'Out of', 'Percent', 'On the 1000 scale',
   'Grade / Verdict', 'Rounds', 'Proctoring strikes', 'Camera', 'Auto-submitted', 'Submit reason',
-  'Started', 'Submitted', 'Time allowed (min)', 'CalibiAI Score (student avg /1000)', 'Student ID',
+  'Started', 'Submitted', 'Time allowed (min)', 'CalibiAI Score (student avg /1000)', 'Student ID', 'Skills mapped',
 ] as const
 
 const TYPE_LABEL: Record<ScoreEntry['kind'], string> = {
@@ -245,13 +313,16 @@ export function attemptRows(rows: AdminStudentRow[]): string[][] {
   for (const r of rows) {
     const who = [r.name, r.email, r.prn, r.phone, r.college, r.degree, r.graduation_year]
     const tail = [r.calibi_score, r.student_id]
+    const skillsText = (items: AssessmentSkillEvidence[]) => rollupAssessmentSkills(items)
+      .map((skill) => `${skill.name} (${fmt1(skill.score)}%)`).join('; ')
+    const skillsForSource = (source: string) => skillsText((r.assessment_skill_evidence || []).filter((skill) => skill.source === source))
     if (r.score !== '') {
-      out.push([...who, 'CalibiAI Assessment', TYPE_LABEL.core, PLATFORM_CATEGORY.label, 'submitted', r.score, '1000', fmt1(Number(r.score) / 10), String(Math.round(Number(r.score))), r.grade ? `Grade ${r.grade}` : '', '', '', '', '', '', '', r.assessed_at, '120', ...tail])
+      out.push([...who, 'CalibiAI Assessment', TYPE_LABEL.core, PLATFORM_CATEGORY.label, 'submitted', r.score, '1000', fmt1(Number(r.score) / 10), String(Math.round(Number(r.score))), r.grade ? `Grade ${r.grade}` : '', '', '', '', '', '', '', r.assessed_at, '120', ...tail, skillsForSource('CalibiAI Assessment')])
     } else if (r.has_assessment === 'Yes') {
-      out.push([...who, 'CalibiAI Assessment', TYPE_LABEL.core, PLATFORM_CATEGORY.label, 'submitted (result pending)', '', '1000', '', '', '', '', '', '', '', '', '', r.assessed_at, '120', ...tail])
+      out.push([...who, 'CalibiAI Assessment', TYPE_LABEL.core, PLATFORM_CATEGORY.label, 'submitted (result pending)', '', '1000', '', '', '', '', '', '', '', '', '', r.assessed_at, '120', ...tail, ''])
     }
     if (r.a2_score !== '') {
-      out.push([...who, 'Capgemini 2027 Mock', TYPE_LABEL.capgemini, PLATFORM_CATEGORY.label, 'submitted', r.a2_score, '1000', fmt1(Number(r.a2_score) / 10), String(Math.round(Number(r.a2_score))), r.a2_grade ? `Grade ${r.a2_grade}` : '', '', '', '', '', '', '', r.a2_at, '', ...tail])
+      out.push([...who, 'Capgemini 2027 Mock', TYPE_LABEL.capgemini, PLATFORM_CATEGORY.label, 'submitted', r.a2_score, '1000', fmt1(Number(r.a2_score) / 10), String(Math.round(Number(r.a2_score))), r.a2_grade ? `Grade ${r.a2_grade}` : '', '', '', '', '', '', '', r.a2_at, '', ...tail, skillsForSource('Capgemini 2027 Mock')])
     }
     for (const a of r.company_attempts || []) {
       const rounds = a.rounds.map((x) => `${x.label} ${fmt1(x.percent)}%${x.cleared === false ? ' (below cut-off)' : ''}`).join('; ')
@@ -260,7 +331,7 @@ export function attemptRows(rows: AdminStudentRow[]): string[][] {
         a.score === null ? '' : fmt1(a.score), '100', a.score === null ? '' : fmt1(a.score), a.score === null ? '' : String(Math.round(a.score * 10)),
         a.verdict_label, rounds, a.strikes === null ? '' : String(a.strikes), a.camera === null ? '' : a.camera ? 'on' : 'off',
         a.auto_submitted ? 'yes' : 'no', a.submit_reason, a.started_at, a.submitted_at,
-        a.duration_sec ? String(Math.round(a.duration_sec / 60)) : '', ...tail,
+        a.duration_sec ? String(Math.round(a.duration_sec / 60)) : '', ...tail, skillsText(a.skillEvidence || []),
       ])
     }
   }

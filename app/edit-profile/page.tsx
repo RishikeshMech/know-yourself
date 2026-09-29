@@ -302,7 +302,7 @@ export default function EditProfilePage() {
               <span aria-hidden>🔗</span> Your presence
             </h2>
             <div className="mt-3 grid gap-x-5 sm:grid-cols-2">
-              <Field label="Skills" htmlFor="skills" className="sm:col-span-2" hint="Tap trending skills to add them, or type your own and press Enter">
+              <Field label="Self-reported skills" htmlFor="skills" className="sm:col-span-2" hint="Your assessment-mapped skills update automatically on your profile and stay separate from this list. Tap suggestions or type your own and press Enter.">
                 <SkillPicker id="skills" value={form.skills} onChange={(v) => set('skills', v)} />
               </Field>
               <Field label="LinkedIn URL" htmlFor="linkedin_url" error={err('linkedin_url')} hint="Optional">

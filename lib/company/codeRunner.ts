@@ -26,10 +26,11 @@
  */
 import { runStdin, stripCodeFence, type TestRunResult } from '../runTests.ts'
 import type { CodingQuestion, CodingTest } from './types.ts'
+import { SUPPORTED_LANGS, type CodeLang } from './languages.ts'
+import { runNativeCodingTests } from './nativeRunner.ts'
 
-export type CodeLang = 'python' | 'javascript'
-
-export const SUPPORTED_LANGS: CodeLang[] = ['python', 'javascript']
+export type { CodeLang } from './languages.ts'
+export { SUPPORTED_LANGS }
 
 const MARKER = '__CALIBIAI_TEST_RESULT__:'
 
@@ -61,6 +62,10 @@ export function testLimitMs(t: Pick<CodingTest, 'limitMs'>, lang: CodeLang): num
     if (Number.isFinite(v) && v > 0) return v
   }
   return DEFAULT_TEST_LIMIT_MS
+}
+
+function engineFor(lang: CodeLang): TestRunResult['engine'] {
+  return lang === 'javascript' ? 'node' : lang
 }
 
 /** Whole-process budget: every test at its limit, plus interpreter start-up. */
@@ -635,12 +640,12 @@ const SPEED = (() => {
 `
 }
 
-function harnessFor(q: CodingQuestion, lang: CodeLang, compute: boolean): string {
+function harnessFor(q: CodingQuestion, lang: 'python' | 'javascript', compute: boolean): string {
   return lang === 'python' ? pythonHarness(q, compute) : nodeHarness(q, compute)
 }
 
 function prepare(code: string, lang: CodeLang, total: number): { candidate: string } | { fail: TestRunResult } {
-  const engine = lang === 'python' ? 'python' : 'node'
+  const engine = engineFor(lang)
   const candidate = stripCodeFence(String(code || '').trim())
   if (!SUPPORTED_LANGS.includes(lang)) return { fail: { passed: 0, total, results: [], engine, error: `Unsupported language: ${lang}` } }
   if (!candidate) return { fail: { passed: 0, total, results: [], engine, error: 'No code submitted — 0 tests passed.' } }
@@ -653,17 +658,19 @@ function prepare(code: string, lang: CodeLang, total: number): { candidate: stri
  * or missing function is a failed run against the known test count.
  */
 export async function runCodingTests(q: CodingQuestion, code: string, lang: CodeLang): Promise<TestRunResult> {
+  if (lang !== 'python' && lang !== 'javascript') return runNativeCodingTests(q, code, lang)
   const total = q.tests.length
   const prep = prepare(code, lang, total)
   if ('fail' in prep) return prep.fail
-  const engine = lang === 'python' ? 'python' : 'node'
+  const engine = engineFor(lang)
   let harness: string
   try {
     harness = harnessFor(q, lang, false)
   } catch (e: any) {
     return { passed: 0, total, results: [], engine, error: String(e?.message || e) }
   }
-  const res = await runStdin(engine, harness, prep.candidate, { timeoutMs: runBudgetMs(q, lang) })
+  const interpreter: 'python' | 'node' = lang === 'python' ? 'python' : 'node'
+  const res = await runStdin(interpreter, harness, prep.candidate, { timeoutMs: runBudgetMs(q, lang) })
   return res.total === 0 ? { ...res, total } : res
 }
 
@@ -686,6 +693,7 @@ export async function computeOutputs(
   lang: CodeLang,
   timeoutMs = 120_000,
 ): Promise<{ outputs: ComputedOutput[]; error?: string }> {
+  if (lang !== 'python' && lang !== 'javascript') return { outputs: [], error: 'Reference-output generation supports Python 3 and JavaScript only.' }
   const prep = prepare(code, lang, q.tests.length)
   if ('fail' in prep) return { outputs: [], error: prep.fail.error }
   const engine = lang === 'python' ? 'python' : 'node'

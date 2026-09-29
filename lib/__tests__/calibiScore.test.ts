@@ -5,7 +5,7 @@ import os from 'os'
 import path from 'path'
 
 import { calibiFromSources, calibiGrade, companyEntry, computeCalibiScore, platformEntry } from '../calibiScore.ts'
-import { attemptRows, enrichRow, normalizeCompanyAttempt, summarizeCompanies } from '../adminAssessments.ts'
+import { ATTEMPT_COLUMNS, attemptRows, enrichRow, normalizeCompanyAttempt, normalizePlatformResult, summarizeCompanies } from '../adminAssessments.ts'
 import { buildRow } from '../studentRows.ts'
 import { COMPANY_CSV_COLUMNS, CSV_COLUMNS, rowsToCsv } from '../csv.ts'
 import { fetchAllStudents, fetchStudentsPage } from '../adminStudents.ts'
@@ -99,6 +99,67 @@ test('admin: company attempts normalise from both the local store and Supabase r
   assert.equal(remote.score, null, 'in-progress attempts never carry a score')
   assert.equal(remote.verdict_label, 'In progress')
   assert.equal(remote.camera, false)
+  const projected = normalizeCompanyAttempt({
+    company_slug: 'tcs', status: 'submitted', score: 70, submitted_at: '2026-09-04',
+    skill_items: [{ section: 's5', area: 'query', kind: 'mcq', marks: 10, earned: 8, correct: true, id: 'private' }],
+  })!
+  assert.equal(projected.skillEvidence?.[0].key, 'sql')
+  assert.equal(projected.skillEvidence?.[0].score, 80)
+  assert.ok(!('items' in projected) && !('skill_items' in projected))
+})
+
+test('admin: assessment skill maps survive result normalisation, roll up, and per-attempt CSV export', () => {
+  const base = buildRow({
+    student_id: 'skill-student',
+    profile: { skills: 'Python', resume_parsed: { skills: ['SQL'] } },
+    scores: {
+      total: 700, grade: 'B', percentile: 75, created_at: '2026-09-01',
+      scores: {
+        total: 700,
+        english: { listening: 40, speaking: 35, reading: 45, writing: 30, total: 150 },
+        problem_solving: 160,
+        ai_debugging: 110,
+        ai_feature: 120,
+        prompt_engineering: 70,
+        cognitive: { grid: 20, logical: 50, behavioral_total: 70, behavioral: { teamwork: 80 } },
+      },
+    },
+  })
+  const projectedA1 = normalizePlatformResult({
+    total: 500, grade: 'C', created_at: '2026-08-30',
+    skill_english: { listening: 40, speaking: 35, reading: 30, writing: 25 },
+    skill_problem_solving: 140,
+    skill_ai_debugging: 90,
+    skill_ai_feature: 100,
+    skill_prompt_engineering: 60,
+    skill_cognitive: { grid: 15, logical: 35, behavioral_total: 60, behavioral: { teamwork: 80 } },
+  }, 1)!
+  assert.ok(projectedA1.skillEvidence?.some((skill) => skill.key === 'problem-solving' && skill.score === 70))
+  const a2 = normalizePlatformResult({
+    total: 650, grade: 'B', percentile: 70, created_at: '2026-09-02',
+    scores: { assessment_no: 2, english: { total: 160 }, ai_literacy: 200, debug_mcq: 90, debug_lab: 60, ai_coding: 140, cognitive: { grid: 30, logical: 40, behavioural: 45, behavioral: { adaptability: 75 } } },
+  }, 2)!
+  const tcs = normalizeCompanyAttempt({
+    company: 'tcs', status: 'submitted', score: 72, submitted_at: '2026-09-03',
+    result: { verdict: 'almost', items: [{ kind: 'mcq', section: 's5', area: 'query', earned: 8, marks: 10 }] },
+  })!
+  const row = enrichRow(base, { a2, company: [tcs] })
+  assert.equal(row.skills, 'Python')
+  assert.equal(row.resume_skills, 'SQL')
+  assert.match(row.assessment_skills || '', /Problem Solving/)
+  assert.match(row.assessment_skills || '', /AI Literacy/)
+  assert.match(row.assessment_skills || '', /SQL \(80%\)/)
+  assert.match(row.all_skills, /Python, SQL/)
+  assert.match(row.all_skills, /Listening Comprehension/)
+  assert.ok(row.assessment_skill_evidence?.some((skill) => skill.source === 'TCS' && skill.key === 'sql'))
+
+  const skillColumn = ATTEMPT_COLUMNS.indexOf('Skills mapped')
+  const perAttempt = attemptRows([row])
+  assert.ok(perAttempt.length >= 3)
+  assert.ok(perAttempt.every((attempt) => attempt.length === ATTEMPT_COLUMNS.length))
+  assert.match(perAttempt[0][skillColumn], /Problem Solving/)
+  assert.match(perAttempt[1][skillColumn], /AI Literacy/)
+  assert.match(perAttempt[2][skillColumn], /SQL/)
 })
 
 test('admin: enrichRow fills CalibiAI, Capgemini, company-wise and category-wise columns', () => {

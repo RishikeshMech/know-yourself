@@ -1,7 +1,8 @@
 // Pure row mapping for the admin export — no Node/server imports so unit
 // tests can load it directly and the browser could too if ever needed.
 import type { AdminStudentRow } from './csv'
-import { emptyEnrichment, enrichRow } from './adminAssessments.ts'
+import { emptyEnrichment, enrichRow, normalizePlatformResult } from './adminAssessments.ts'
+import { rollupAssessmentSkills } from './assessmentSkills.ts'
 
 const num = (v: any): string => {
   if (v === null || v === undefined || v === '') return ''
@@ -62,7 +63,16 @@ export function buildRow(input: {
   const sk = mergeSkills(p.skills ?? p.profile_skills, input.resume_parsed ?? p.resume_parsed)
   // CalibiAI columns start from assessment 1 alone; enrichRow() later adds the
   // Capgemini mock and company mocks when that data is loaded.
-  return enrichRow({
+  const inputAssessmentNo = Number(scoreObj?.assessment_no ?? s?.assessment_no ?? 1) === 2 ? 2 : 1
+  const platformResult = s && inputAssessmentNo === 1 ? normalizePlatformResult({
+    ...s,
+    total: s.total ?? scoreObj?.total,
+    grade: s.grade ?? scoreObj?.grade,
+    percentile: s.percentile ?? scoreObj?.percentile,
+    created_at: input.assessed_at ?? s.created_at,
+    scores: scoreObj,
+  }, 1) : null
+  const baseRow = {
     ...emptyEnrichment(),
     student_id: txt(input.student_id),
     email: txt(input.email ?? p.email),
@@ -120,7 +130,8 @@ export function buildRow(input: {
     feedback_message: txt(input.feedback?.message),
     feedback_at: txt(input.feedback?.created_at),
     feedback_count: input.feedback_count ? num(input.feedback_count) : '',
-  }, null)
+  }
+  return enrichRow(baseRow, platformResult ? { a1: platformResult, company: [] } : null)
 }
 
 /**
@@ -177,9 +188,32 @@ export function fillAssessmentFrom(row: AdminStudentRow, source: AdminStudentRow
       || candidate.verifiable_hash !== ''
     return hasResult ? 2 : candidate.has_assessment === 'Yes' ? 1 : 0
   }
-  if (rank(source) <= rank(row)) return row
-  const merged = { ...row, has_assessment: 'Yes' }
-  for (const field of resultFields) merged[field] = source[field] as never
+  const merged: AdminStudentRow = { ...row }
+  if (rank(source) > rank(row)) {
+    merged.has_assessment = 'Yes'
+    for (const field of resultFields) merged[field] = source[field] as never
+  }
+
+  // Identity/profile values still come from the live row, but assessment skill
+  // evidence from either store is additive and must not disappear in a merge.
+  const evidenceByObservation = new Map<string, NonNullable<AdminStudentRow['assessment_skill_evidence']>[number]>()
+  for (const item of [...(row.assessment_skill_evidence || []), ...(source.assessment_skill_evidence || [])]) {
+    evidenceByObservation.set(`${item.key}|${item.source}|${item.assessedAt || ''}`, item)
+  }
+  const evidence = [...evidenceByObservation.values()]
+  if (evidence.length) {
+    const skills = rollupAssessmentSkills(evidence)
+    merged.assessment_skill_evidence = evidence
+    merged.assessment_skills = skills.map((skill) =>
+      `${skill.name} (${Math.round(skill.score * 10) / 10}%${skill.assessmentCount > 1 ? `, ${skill.assessmentCount} assessments` : ''})`,
+    ).join('; ')
+    merged.all_skills = mergeSkills(merged.skills, {
+      skills: [...merged.resume_skills.split(','), ...skills.map((skill) => skill.name)],
+    }).all_skills
+  } else {
+    merged.assessment_skill_evidence = row.assessment_skill_evidence || source.assessment_skill_evidence || []
+    merged.assessment_skills = row.assessment_skills || source.assessment_skills || ''
+  }
   return merged
 }
 

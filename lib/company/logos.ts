@@ -1,0 +1,73 @@
+/**
+ * Official company domains used by Google's public favicon service for the
+ * catalog's logo marks. The domain is mapped locally so rendering does not
+ * need a third-party logo SDK or an API key.
+ */
+export const COMPANY_LOGO_DOMAINS: Readonly<Record<string, string>> = {
+  tcs: 'tcs.com',
+  infosys: 'infosys.com',
+  wipro: 'wipro.com',
+  cognizant: 'cognizant.com',
+  accenture: 'accenture.com',
+  capgemini: 'capgemini.com',
+  hcltech: 'hcltech.com',
+  'tech-mahindra': 'techmahindra.com',
+  ltimindtree: 'ltimindtree.com',
+  deloitte: 'deloitte.com',
+  ibm: 'ibm.com',
+  'dxc-technology': 'dxc.com',
+  mphasis: 'mphasis.com',
+  hexaware: 'hexaware.com',
+  'persistent-systems': 'persistent.com',
+  google: 'google.com',
+  microsoft: 'microsoft.com',
+  amazon: 'amazon.com',
+  meta: 'meta.com',
+  apple: 'apple.com',
+  adobe: 'adobe.com',
+  linkedin: 'linkedin.com',
+  nvidia: 'nvidia.com',
+  uber: 'uber.com',
+  atlassian: 'atlassian.com',
+  salesforce: 'salesforce.com',
+  oracle: 'oracle.com',
+  sap: 'sap.com',
+  cisco: 'cisco.com',
+  'walmart-global-tech': 'walmart.com',
+  flipkart: 'flipkart.com',
+  phonepe: 'phonepe.com',
+  razorpay: 'razorpay.com',
+  swiggy: 'swiggy.com',
+  zomato: 'zomato.com',
+  meesho: 'meesho.com',
+  cred: 'cred.club',
+  groww: 'groww.in',
+  zepto: 'zeptonow.com',
+  dream11: 'dream11.com',
+  paytm: 'paytm.com',
+  juspay: 'juspay.io',
+  ola: 'olacabs.com',
+  myntra: 'myntra.com',
+  inmobi: 'inmobi.com',
+  navi: 'navi.com',
+  udaan: 'udaan.com',
+  zoho: 'zoho.com',
+  freshworks: 'freshworks.com',
+  postman: 'postman.com',
+  browserstack: 'browserstack.com',
+  chargebee: 'chargebee.com',
+  druva: 'druva.com',
+  'goldman-sachs': 'goldmansachs.com',
+  'morgan-stanley': 'morganstanley.com',
+  'jp-morgan': 'jpmorganchase.com',
+  hsbc: 'hsbc.com',
+  qualcomm: 'qualcomm.com',
+  siemens: 'siemens.com',
+  bosch: 'bosch.com',
+}
+
+export function companyLogoUrl(slug: string): string | null {
+  const domain = COMPANY_LOGO_DOMAINS[slug]
+  if (!domain) return null
+  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`
+}

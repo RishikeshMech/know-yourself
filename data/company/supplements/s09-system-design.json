@@ -1,36 +1,842 @@
 {
-  "section": "s9",
-  "_about": "Objective system-design items: trade-offs, scaling, data, messaging, reliability and back-of-envelope estimation (computations executed by verify.mjs).",
-  "mcq": [
-    { "topic": "CAP Theorem", "area": "data", "difficulty": "easy", "q": "According to the CAP theorem, during a network partition a distributed system must choose between:", "options": ["Consistency and availability", "Latency and throughput", "Durability and isolation", "Scalability and security"], "answer": "Consistency and availability" },
-    { "topic": "Partitioning", "area": "scale", "difficulty": "medium", "q": "What is the main benefit of consistent hashing?", "options": ["Only a small fraction of keys move when nodes are added or removed", "It encrypts keys", "It guarantees strong consistency", "It removes the need for replication"], "answer": "Only a small fraction of keys move when nodes are added or removed" },
-    { "topic": "Caching", "area": "data", "difficulty": "easy", "q": "Which caching policy writes to the cache and the database synchronously on every write?", "options": ["Write-through", "Write-back", "Cache-aside", "Write-around"], "answer": "Write-through" },
-    { "topic": "Caching", "area": "data", "difficulty": "hard", "q": "A popular cache key expires and thousands of requests hit the database at once. What mitigates this?", "options": ["Request coalescing or a lock so a single request recomputes the value", "Shortening the TTL further", "Disabling the cache", "Adding more database indexes only"], "answer": "Request coalescing or a lock so a single request recomputes the value" },
-    { "topic": "Data Stores", "area": "data", "difficulty": "medium", "q": "Which store is a typical fit for very high write volumes of time-ordered events (e.g., IoT readings)?", "options": ["A wide-column or time-series database such as Cassandra", "A single relational table without indexes", "An in-browser cache", "A spreadsheet"], "answer": "A wide-column or time-series database such as Cassandra" },
-    { "topic": "Replication", "area": "data", "difficulty": "medium", "q": "What consistency problem do asynchronous read replicas introduce?", "options": ["Replication lag can serve stale reads", "Writes become impossible", "Deadlocks on every query", "Data is permanently lost"], "answer": "Replication lag can serve stale reads" },
-    { "topic": "Messaging", "area": "messaging", "difficulty": "medium", "q": "Why must consumers be idempotent under at-least-once delivery?", "options": ["The same message may be delivered more than once", "Messages are always delivered out of order", "Queues cannot store messages", "Producers never retry"], "answer": "The same message may be delivered more than once" },
-    { "topic": "Messaging", "area": "messaging", "difficulty": "easy", "q": "What is a dead-letter queue used for?", "options": ["Holding messages that repeatedly fail processing so they can be inspected", "Deleting old messages", "Prioritising VIP messages", "Encrypting messages"], "answer": "Holding messages that repeatedly fail processing so they can be inspected" },
-    { "topic": "Load Balancing", "area": "reliability", "difficulty": "easy", "q": "Which component spreads traffic across instances and stops routing to unhealthy ones?", "options": ["A load balancer with health checks", "A CDN", "A message queue", "A DNS resolver cache"], "answer": "A load balancer with health checks" },
-    { "topic": "Estimation", "area": "scale", "difficulty": "medium", "q": "Roughly how many distinct 7-character short codes can a base62 URL shortener generate?", "code": "print(62 ** 7)", "options": ["About 3.5 trillion", "About 35 million", "About 3.5 billion", "About 350 trillion"], "answer": "About 3.5 trillion", "verify": { "lang": "python", "src": "print('About 3.5 trillion' if 3.4e12 < 62**7 < 3.6e12 else 62**7)" } },
-    { "topic": "Partitioning", "area": "scale", "difficulty": "easy", "q": "What is the technique of splitting one large table's rows across multiple machines by a key?", "options": ["Sharding (horizontal partitioning)", "Normalisation", "Vertical scaling", "Replication"], "answer": "Sharding (horizontal partitioning)" },
-    { "topic": "CDN", "area": "scale", "difficulty": "easy", "q": "What does a CDN primarily reduce?", "options": ["Latency, by serving content from edge locations near users", "Database write amplification", "Code complexity", "Authentication time"], "answer": "Latency, by serving content from edge locations near users" },
-    { "topic": "Rate Limiting", "area": "reliability", "difficulty": "medium", "q": "Which rate-limiting algorithm allows short bursts up to a capacity while refilling at a steady rate?", "options": ["Token bucket", "Fixed window counter", "Round robin", "Consistent hashing"], "answer": "Token bucket" },
-    { "topic": "Estimation", "area": "scale", "difficulty": "medium", "q": "A service receives 100 million requests per day. What is the approximate average request rate?", "options": ["About 1,200 requests per second", "About 12 requests per second", "About 12,000 requests per second", "About 120,000 requests per second"], "answer": "About 1,200 requests per second", "verify": { "lang": "python", "src": "r = 100_000_000 / 86_400\nprint('About 1,200 requests per second' if 1100 < r < 1300 else r)" } },
-    { "topic": "Architecture", "area": "messaging", "difficulty": "medium", "q": "What is the main benefit of an event-driven architecture built on a message broker?", "options": ["Services are decoupled and can scale and fail independently", "Every request becomes synchronous", "No database is needed", "Latency always drops to zero"], "answer": "Services are decoupled and can scale and fail independently" },
-    { "topic": "Replication", "area": "data", "difficulty": "easy", "q": "In leader–follower replication, where do writes go?", "options": ["To the leader, which propagates changes to followers", "To any follower at random", "To every follower directly by the client", "Only to a cache"], "answer": "To the leader, which propagates changes to followers" },
-    { "topic": "Consistency", "area": "data", "difficulty": "hard", "q": "With N = 3 replicas, when do quorum reads and writes guarantee that a read sees the latest write?", "options": ["When R + W > N, e.g. R = 2 and W = 2", "When R = W = 1", "When R + W = N", "Never"], "answer": "When R + W > N, e.g. R = 2 and W = 2" },
-    { "topic": "Distributed Transactions", "area": "reliability", "difficulty": "hard", "q": "What is the Saga pattern used for?", "options": ["Coordinating a distributed transaction as local transactions with compensating actions", "Caching session data", "Sharding a database", "Load balancing HTTP traffic"], "answer": "Coordinating a distributed transaction as local transactions with compensating actions" },
-    { "topic": "Resilience", "area": "reliability", "difficulty": "medium", "q": "What does a circuit breaker prevent?", "options": ["Cascading failures, by failing fast while a dependency is unhealthy", "SQL injection", "Cache misses", "Slow DNS resolution"], "answer": "Cascading failures, by failing fast while a dependency is unhealthy" },
-    { "topic": "Storage", "area": "data", "difficulty": "easy", "q": "Where should large, immutable media files (videos, images) usually be stored?", "options": ["Object storage such as S3, served through a CDN", "A relational database BLOB column", "The application server's memory", "Browser localStorage"], "answer": "Object storage such as S3, served through a CDN" },
-    { "topic": "Observability", "area": "reliability", "difficulty": "medium", "q": "What does a p99 latency of 300 ms mean?", "options": ["99% of requests complete in 300 ms or less", "The average latency is 300 ms", "1% of requests complete in 300 ms", "The fastest request takes 300 ms"], "answer": "99% of requests complete in 300 ms or less" },
-    { "topic": "Messaging", "area": "messaging", "difficulty": "easy", "q": "Why put a queue between order placement and sending the confirmation email?", "options": ["So email is sent asynchronously and order placement stays fast and reliable", "So emails are never sent", "To encrypt emails", "To remove the need for a database"], "answer": "So email is sent asynchronously and order placement stays fast and reliable" },
-    { "topic": "Geospatial", "area": "data", "difficulty": "medium", "q": "What is geohashing used for?", "options": ["Indexing locations so that nearby points share key prefixes", "Encrypting GPS coordinates", "Compressing map images", "Load balancing by country"], "answer": "Indexing locations so that nearby points share key prefixes" },
-    { "topic": "Real-time", "area": "messaging", "difficulty": "easy", "q": "Which technology best suits pushing new chat messages from server to client in real time?", "options": ["WebSockets", "Daily batch jobs", "FTP", "SMTP polling"], "answer": "WebSockets" },
-    { "topic": "Scaling", "area": "scale", "difficulty": "medium", "q": "What makes horizontally scaling web servers that hold user sessions easier?", "options": ["Moving session state to a shared store such as Redis", "Pinning every user to one server forever", "Storing sessions in local files", "Disabling sessions"], "answer": "Moving session state to a shared store such as Redis" },
-    { "topic": "Consistency", "area": "data", "difficulty": "medium", "q": "What does 'eventual consistency' guarantee?", "options": ["If no new updates occur, all replicas eventually converge to the same value", "Every read returns the latest write", "Writes are never lost", "Replicas are always identical"], "answer": "If no new updates occur, all replicas eventually converge to the same value" },
-    { "topic": "Data Structures at Scale", "area": "data", "difficulty": "hard", "q": "What can a Bloom filter tell you about an item?", "options": ["It is definitely not in the set, or it is possibly in the set", "Its exact position in the set", "How many times it was inserted", "That it is definitely in the set"], "answer": "It is definitely not in the set, or it is possibly in the set" },
-    { "topic": "Autocomplete", "area": "data", "difficulty": "hard", "q": "How do autocomplete services usually serve suggestions within a few milliseconds?", "options": ["From a prefix index (e.g., a trie) with precomputed top-k results per prefix, heavily cached", "By running a full-text database scan for every keystroke", "By asking a human moderator", "By sorting the whole query log per request"], "answer": "From a prefix index (e.g., a trie) with precomputed top-k results per prefix, heavily cached" },
-    { "topic": "Resilience", "area": "reliability", "difficulty": "medium", "q": "What does adding jitter to exponential backoff prevent?", "options": ["Many clients retrying in synchronised waves", "Message duplication", "Data corruption", "Cache invalidation"], "answer": "Many clients retrying in synchronised waves" },
-    { "topic": "Availability", "area": "reliability", "difficulty": "hard", "q": "A request must pass through two independent services in series, each 99.9% available. What is the combined availability?", "options": ["About 99.8%", "99.9%", "About 99.99%", "About 98%"], "answer": "About 99.8%", "verify": { "lang": "python", "src": "a = 0.999 ** 2\nprint('About 99.8%' if abs(a - 0.998) < 0.0005 else a)" } }
-  ]
+ "section": "s9",
+ "_about": "Objective system-design items: trade-offs, scaling, data, messaging, reliability and back-of-envelope estimation (computations executed by verify.mjs).",
+ "mcq": [
+  {
+   "topic": "CAP Theorem",
+   "area": "data",
+   "difficulty": "easy",
+   "q": "According to the CAP theorem, during a network partition a distributed system must choose between:",
+   "options": [
+    "Consistency and availability",
+    "Latency and throughput",
+    "Durability and isolation",
+    "Scalability and security"
+   ],
+   "answer": "Consistency and availability"
+  },
+  {
+   "topic": "Partitioning",
+   "area": "scale",
+   "difficulty": "medium",
+   "q": "What is the main benefit of consistent hashing?",
+   "options": [
+    "Only a small fraction of keys move when nodes are added or removed",
+    "It encrypts keys",
+    "It guarantees strong consistency",
+    "It removes the need for replication"
+   ],
+   "answer": "Only a small fraction of keys move when nodes are added or removed"
+  },
+  {
+   "topic": "Caching",
+   "area": "data",
+   "difficulty": "easy",
+   "q": "Which caching policy writes to the cache and the database synchronously on every write?",
+   "options": [
+    "Write-through",
+    "Write-back",
+    "Cache-aside",
+    "Write-around"
+   ],
+   "answer": "Write-through"
+  },
+  {
+   "topic": "Caching",
+   "area": "data",
+   "difficulty": "hard",
+   "q": "A popular cache key expires and thousands of requests hit the database at once. What mitigates this?",
+   "options": [
+    "Request coalescing or a lock so a single request recomputes the value",
+    "Shortening the TTL further",
+    "Disabling the cache",
+    "Adding more database indexes only"
+   ],
+   "answer": "Request coalescing or a lock so a single request recomputes the value"
+  },
+  {
+   "topic": "Data Stores",
+   "area": "data",
+   "difficulty": "medium",
+   "q": "Which store is a typical fit for very high write volumes of time-ordered events (e.g., IoT readings)?",
+   "options": [
+    "A wide-column or time-series database such as Cassandra",
+    "A single relational table without indexes",
+    "An in-browser cache",
+    "A spreadsheet"
+   ],
+   "answer": "A wide-column or time-series database such as Cassandra"
+  },
+  {
+   "topic": "Replication",
+   "area": "data",
+   "difficulty": "medium",
+   "q": "What consistency problem do asynchronous read replicas introduce?",
+   "options": [
+    "Replication lag can serve stale reads",
+    "Writes become impossible",
+    "Deadlocks on every query",
+    "Data is permanently lost"
+   ],
+   "answer": "Replication lag can serve stale reads"
+  },
+  {
+   "topic": "Messaging",
+   "area": "messaging",
+   "difficulty": "medium",
+   "q": "Why must consumers be idempotent under at-least-once delivery?",
+   "options": [
+    "The same message may be delivered more than once",
+    "Messages are always delivered out of order",
+    "Queues cannot store messages",
+    "Producers never retry"
+   ],
+   "answer": "The same message may be delivered more than once"
+  },
+  {
+   "topic": "Messaging",
+   "area": "messaging",
+   "difficulty": "easy",
+   "q": "What is a dead-letter queue used for?",
+   "options": [
+    "Holding messages that repeatedly fail processing so they can be inspected",
+    "Deleting old messages",
+    "Prioritising VIP messages",
+    "Encrypting messages"
+   ],
+   "answer": "Holding messages that repeatedly fail processing so they can be inspected"
+  },
+  {
+   "topic": "Load Balancing",
+   "area": "reliability",
+   "difficulty": "easy",
+   "q": "Which component spreads traffic across instances and stops routing to unhealthy ones?",
+   "options": [
+    "A load balancer with health checks",
+    "A CDN",
+    "A message queue",
+    "A DNS resolver cache"
+   ],
+   "answer": "A load balancer with health checks"
+  },
+  {
+   "topic": "Estimation",
+   "area": "scale",
+   "difficulty": "medium",
+   "q": "Roughly how many distinct 7-character short codes can a base62 URL shortener generate?",
+   "code": "print(62 ** 7)",
+   "options": [
+    "About 3.5 trillion",
+    "About 35 million",
+    "About 3.5 billion",
+    "About 350 trillion"
+   ],
+   "answer": "About 3.5 trillion",
+   "verify": {
+    "lang": "python",
+    "src": "print('About 3.5 trillion' if 3.4e12 < 62**7 < 3.6e12 else 62**7)"
+   }
+  },
+  {
+   "topic": "Partitioning",
+   "area": "scale",
+   "difficulty": "easy",
+   "q": "What is the technique of splitting one large table's rows across multiple machines by a key?",
+   "options": [
+    "Sharding (horizontal partitioning)",
+    "Normalisation",
+    "Vertical scaling",
+    "Replication"
+   ],
+   "answer": "Sharding (horizontal partitioning)"
+  },
+  {
+   "topic": "CDN",
+   "area": "scale",
+   "difficulty": "easy",
+   "q": "What does a CDN primarily reduce?",
+   "options": [
+    "Latency, by serving content from edge locations near users",
+    "Database write amplification",
+    "Code complexity",
+    "Authentication time"
+   ],
+   "answer": "Latency, by serving content from edge locations near users"
+  },
+  {
+   "topic": "Rate Limiting",
+   "area": "reliability",
+   "difficulty": "medium",
+   "q": "Which rate-limiting algorithm allows short bursts up to a capacity while refilling at a steady rate?",
+   "options": [
+    "Token bucket",
+    "Fixed window counter",
+    "Round robin",
+    "Consistent hashing"
+   ],
+   "answer": "Token bucket"
+  },
+  {
+   "topic": "Estimation",
+   "area": "scale",
+   "difficulty": "medium",
+   "q": "A service receives 100 million requests per day. What is the approximate average request rate?",
+   "options": [
+    "About 1,200 requests per second",
+    "About 12 requests per second",
+    "About 12,000 requests per second",
+    "About 120,000 requests per second"
+   ],
+   "answer": "About 1,200 requests per second",
+   "verify": {
+    "lang": "python",
+    "src": "r = 100_000_000 / 86_400\nprint('About 1,200 requests per second' if 1100 < r < 1300 else r)"
+   }
+  },
+  {
+   "topic": "Architecture",
+   "area": "messaging",
+   "difficulty": "medium",
+   "q": "What is the main benefit of an event-driven architecture built on a message broker?",
+   "options": [
+    "Services are decoupled and can scale and fail independently",
+    "Every request becomes synchronous",
+    "No database is needed",
+    "Latency always drops to zero"
+   ],
+   "answer": "Services are decoupled and can scale and fail independently"
+  },
+  {
+   "topic": "Replication",
+   "area": "data",
+   "difficulty": "easy",
+   "q": "In leader–follower replication, where do writes go?",
+   "options": [
+    "To the leader, which propagates changes to followers",
+    "To any follower at random",
+    "To every follower directly by the client",
+    "Only to a cache"
+   ],
+   "answer": "To the leader, which propagates changes to followers"
+  },
+  {
+   "topic": "Consistency",
+   "area": "data",
+   "difficulty": "hard",
+   "q": "With N = 3 replicas, when do quorum reads and writes guarantee that a read sees the latest write?",
+   "options": [
+    "When R + W > N, e.g. R = 2 and W = 2",
+    "When R = W = 1",
+    "When R + W = N",
+    "Never"
+   ],
+   "answer": "When R + W > N, e.g. R = 2 and W = 2"
+  },
+  {
+   "topic": "Distributed Transactions",
+   "area": "reliability",
+   "difficulty": "hard",
+   "q": "What is the Saga pattern used for?",
+   "options": [
+    "Coordinating a distributed transaction as local transactions with compensating actions",
+    "Caching session data",
+    "Sharding a database",
+    "Load balancing HTTP traffic"
+   ],
+   "answer": "Coordinating a distributed transaction as local transactions with compensating actions"
+  },
+  {
+   "topic": "Resilience",
+   "area": "reliability",
+   "difficulty": "medium",
+   "q": "What does a circuit breaker prevent?",
+   "options": [
+    "Cascading failures, by failing fast while a dependency is unhealthy",
+    "SQL injection",
+    "Cache misses",
+    "Slow DNS resolution"
+   ],
+   "answer": "Cascading failures, by failing fast while a dependency is unhealthy"
+  },
+  {
+   "topic": "Storage",
+   "area": "data",
+   "difficulty": "easy",
+   "q": "Where should large, immutable media files (videos, images) usually be stored?",
+   "options": [
+    "Object storage such as S3, served through a CDN",
+    "A relational database BLOB column",
+    "The application server's memory",
+    "Browser localStorage"
+   ],
+   "answer": "Object storage such as S3, served through a CDN"
+  },
+  {
+   "topic": "Observability",
+   "area": "reliability",
+   "difficulty": "medium",
+   "q": "What does a p99 latency of 300 ms mean?",
+   "options": [
+    "99% of requests complete in 300 ms or less",
+    "The average latency is 300 ms",
+    "1% of requests complete in 300 ms",
+    "The fastest request takes 300 ms"
+   ],
+   "answer": "99% of requests complete in 300 ms or less"
+  },
+  {
+   "topic": "Messaging",
+   "area": "messaging",
+   "difficulty": "easy",
+   "q": "Why put a queue between order placement and sending the confirmation email?",
+   "options": [
+    "So email is sent asynchronously and order placement stays fast and reliable",
+    "So emails are never sent",
+    "To encrypt emails",
+    "To remove the need for a database"
+   ],
+   "answer": "So email is sent asynchronously and order placement stays fast and reliable"
+  },
+  {
+   "topic": "Geospatial",
+   "area": "data",
+   "difficulty": "medium",
+   "q": "What is geohashing used for?",
+   "options": [
+    "Indexing locations so that nearby points share key prefixes",
+    "Encrypting GPS coordinates",
+    "Compressing map images",
+    "Load balancing by country"
+   ],
+   "answer": "Indexing locations so that nearby points share key prefixes"
+  },
+  {
+   "topic": "Real-time",
+   "area": "messaging",
+   "difficulty": "easy",
+   "q": "Which technology best suits pushing new chat messages from server to client in real time?",
+   "options": [
+    "WebSockets",
+    "Daily batch jobs",
+    "FTP",
+    "SMTP polling"
+   ],
+   "answer": "WebSockets"
+  },
+  {
+   "topic": "Scaling",
+   "area": "scale",
+   "difficulty": "medium",
+   "q": "What makes horizontally scaling web servers that hold user sessions easier?",
+   "options": [
+    "Moving session state to a shared store such as Redis",
+    "Pinning every user to one server forever",
+    "Storing sessions in local files",
+    "Disabling sessions"
+   ],
+   "answer": "Moving session state to a shared store such as Redis"
+  },
+  {
+   "topic": "Consistency",
+   "area": "data",
+   "difficulty": "medium",
+   "q": "What does 'eventual consistency' guarantee?",
+   "options": [
+    "If no new updates occur, all replicas eventually converge to the same value",
+    "Every read returns the latest write",
+    "Writes are never lost",
+    "Replicas are always identical"
+   ],
+   "answer": "If no new updates occur, all replicas eventually converge to the same value"
+  },
+  {
+   "topic": "Data Structures at Scale",
+   "area": "data",
+   "difficulty": "hard",
+   "q": "What can a Bloom filter tell you about an item?",
+   "options": [
+    "It is definitely not in the set, or it is possibly in the set",
+    "Its exact position in the set",
+    "How many times it was inserted",
+    "That it is definitely in the set"
+   ],
+   "answer": "It is definitely not in the set, or it is possibly in the set"
+  },
+  {
+   "topic": "Autocomplete",
+   "area": "data",
+   "difficulty": "hard",
+   "q": "How do autocomplete services usually serve suggestions within a few milliseconds?",
+   "options": [
+    "From a prefix index (e.g., a trie) with precomputed top-k results per prefix, heavily cached",
+    "By running a full-text database scan for every keystroke",
+    "By asking a human moderator",
+    "By sorting the whole query log per request"
+   ],
+   "answer": "From a prefix index (e.g., a trie) with precomputed top-k results per prefix, heavily cached"
+  },
+  {
+   "topic": "Resilience",
+   "area": "reliability",
+   "difficulty": "medium",
+   "q": "What does adding jitter to exponential backoff prevent?",
+   "options": [
+    "Many clients retrying in synchronised waves",
+    "Message duplication",
+    "Data corruption",
+    "Cache invalidation"
+   ],
+   "answer": "Many clients retrying in synchronised waves"
+  },
+  {
+   "topic": "Availability",
+   "area": "reliability",
+   "difficulty": "hard",
+   "q": "A request must pass through two independent services in series, each 99.9% available. What is the combined availability?",
+   "options": [
+    "About 99.8%",
+    "99.9%",
+    "About 99.99%",
+    "About 98%"
+   ],
+   "answer": "About 99.8%",
+   "verify": {
+    "lang": "python",
+    "src": "a = 0.999 ** 2\nprint('About 99.8%' if abs(a - 0.998) < 0.0005 else a)"
+   }
+  }
+ ],
+ "written": [
+  {
+   "group": "hld-url-shortener-v2",
+   "topic": "URL Shortener Architecture",
+   "area": "architecture",
+   "difficulty": "hard",
+   "q": "Design a global URL-shortening service expected to create 100 million links per day and serve redirects with a 99th-percentile latency below 50 ms. Cover the create and redirect APIs, short-code generation and collision handling, read/write data models, partitioning and replication, hot-link caching, custom aliases, expiration, abuse prevention, and analytics. Trace a redirect request end to end, estimate the storage and traffic order of magnitude, and explain how the design behaves when the cache or an analytics consumer is unavailable.",
+   "minWords": 220,
+   "maxWords": 450,
+   "rubric": [
+    {
+     "label": "Requirements and capacity estimates",
+     "any": [
+      "100 million",
+      "read heavy",
+      "qps",
+      "requests per second",
+      "storage estimate",
+      "latency target"
+     ]
+    },
+    {
+     "label": "Code generation and collision policy",
+     "any": [
+      "base62",
+      "unique id",
+      "collision",
+      "snowflake",
+      "range allocation"
+     ]
+    },
+    {
+     "label": "Redirect data path and schema",
+     "any": [
+      "redirect api",
+      "mapping table",
+      "short code",
+      "long url",
+      "http 301",
+      "http 302"
+     ]
+    },
+    {
+     "label": "Scale and hot-key handling",
+     "any": [
+      "cache",
+      "redis",
+      "cdn",
+      "sharding",
+      "partition",
+      "hot key"
+     ]
+    },
+    {
+     "label": "Async analytics and reliability",
+     "any": [
+      "asynchronous analytics",
+      "message queue",
+      "event stream",
+      "retry",
+      "dead-letter"
+     ]
+    },
+    {
+     "label": "Security, expiry, and observability",
+     "any": [
+      "abuse detection",
+      "rate limit",
+      "malware",
+      "expiration",
+      "metrics",
+      "availability"
+     ]
+    }
+   ]
+  },
+  {
+   "group": "hld-chat-system-v2",
+   "topic": "Real-Time Chat Architecture",
+   "area": "architecture",
+   "difficulty": "hard",
+   "q": "Design a multi-region chat platform for 10 million daily active users with one-to-one and group conversations, delivery to multiple devices, offline history, and a 99.99% availability target. Explain connection management, message APIs, durable storage and ordering, fan-out for large groups, unread state, push notifications, reconnect and replay, and the consistency guarantees users see. Include partition keys, back-pressure, privacy controls, and what happens during a region or message-broker outage.",
+   "minWords": 220,
+   "maxWords": 450,
+   "rubric": [
+    {
+     "label": "Requirements and message contract",
+     "any": [
+      "message id",
+      "conversation id",
+      "delivery receipt",
+      "ordering guarantee",
+      "read receipt"
+     ]
+    },
+    {
+     "label": "Persistent connections and gateways",
+     "any": [
+      "websocket",
+      "connection gateway",
+      "heartbeat",
+      "reconnect",
+      "sticky session"
+     ]
+    },
+    {
+     "label": "Persistence, ordering, and partitioning",
+     "any": [
+      "durable storage",
+      "message log",
+      "sequence number",
+      "partition by conversation",
+      "replication"
+     ]
+    },
+    {
+     "label": "Fan-out and offline delivery",
+     "any": [
+      "fan-out",
+      "group chat",
+      "offline queue",
+      "push notification",
+      "multiple devices"
+     ]
+    },
+    {
+     "label": "Reliability and flow control",
+     "any": [
+      "back-pressure",
+      "retry",
+      "idempotency",
+      "region failure",
+      "message broker"
+     ]
+    },
+    {
+     "label": "Privacy and observability",
+     "any": [
+      "encryption",
+      "access control",
+      "retention",
+      "metrics",
+      "delivery latency"
+     ]
+    }
+   ]
+  },
+  {
+   "group": "hld-food-delivery-v2",
+   "topic": "Food Delivery Architecture",
+   "area": "architecture",
+   "difficulty": "hard",
+   "q": "Design a food-delivery platform serving several cities, with restaurant search, order placement, payment, courier assignment, live location, and customer tracking. An order must not be charged twice, courier locations update every few seconds, and restaurants and couriers may go offline. Describe the services and data ownership, APIs and event flow, geospatial indexing, matching and dispatch, payment/order consistency, status updates, and client notifications. State peak-load assumptions and explain how you handle delayed events, cancellation, and a dependency outage.",
+   "minWords": 220,
+   "maxWords": 450,
+   "rubric": [
+    {
+     "label": "Service boundaries and core data",
+     "any": [
+      "restaurant service",
+      "order service",
+      "payment service",
+      "courier service",
+      "delivery status"
+     ]
+    },
+    {
+     "label": "Order and payment consistency",
+     "any": [
+      "saga",
+      "idempotency key",
+      "payment authorization",
+      "compensation",
+      "state machine"
+     ]
+    },
+    {
+     "label": "Geospatial search and dispatch",
+     "any": [
+      "geospatial index",
+      "geohash",
+      "h3",
+      "nearest courier",
+      "matching"
+     ]
+    },
+    {
+     "label": "Event-driven status and location",
+     "any": [
+      "location update",
+      "event stream",
+      "websocket",
+      "push notification",
+      "message queue"
+     ]
+    },
+    {
+     "label": "Scale, partitioning, and hotspots",
+     "any": [
+      "peak traffic",
+      "partitioning",
+      "city shard",
+      "back-pressure",
+      "hotspot"
+     ]
+    },
+    {
+     "label": "Failure, retry, and cancellation",
+     "any": [
+      "courier offline",
+      "delayed event",
+      "retry",
+      "cancellation",
+      "dead-letter"
+     ]
+    }
+   ]
+  },
+  {
+   "group": "hld-autocomplete-v2",
+   "topic": "Autocomplete Search Architecture",
+   "area": "architecture",
+   "difficulty": "hard",
+   "q": "Design an autocomplete service for a search product receiving 50,000 keystroke queries per second across multiple regions. Suggestions must return in under 30 ms, reflect popularity changes within minutes, and support prefix matching, ranking, typo tolerance, and regional language settings. Describe the online query path and offline ingestion pipeline, the index and ranking model, sharding and cache strategy, freshness and consistency, privacy and abuse limits, and a fallback when the index or analytics pipeline is degraded. Include a capacity assumption and the key metrics you would alert on.",
+   "minWords": 220,
+   "maxWords": 450,
+   "rubric": [
+    {
+     "label": "Latency and traffic estimates",
+     "any": [
+      "50,000",
+      "qps",
+      "30 ms",
+      "keystroke",
+      "p99"
+     ]
+    },
+    {
+     "label": "Prefix index and ranking",
+     "any": [
+      "trie",
+      "finite state",
+      "prefix index",
+      "top-k",
+      "ranking",
+      "popularity"
+     ]
+    },
+    {
+     "label": "Ingestion and freshness",
+     "any": [
+      "offline pipeline",
+      "streaming update",
+      "batch",
+      "freshness",
+      "minutes"
+     ]
+    },
+    {
+     "label": "Sharding, caching, and regions",
+     "any": [
+      "shard",
+      "regional",
+      "cache",
+      "replication",
+      "hot prefix"
+     ]
+    },
+    {
+     "label": "Privacy and abuse protections",
+     "any": [
+      "privacy",
+      "personal data",
+      "rate limit",
+      "abuse",
+      "filter"
+     ]
+    },
+    {
+     "label": "Degraded mode and metrics",
+     "any": [
+      "fallback",
+      "stale index",
+      "p99 latency",
+      "cache hit rate",
+      "error rate"
+     ]
+    }
+   ]
+  },
+  {
+   "group": "hld-global-rate-limiter-v2",
+   "topic": "Distributed Rate Limiter",
+   "area": "reliability",
+   "difficulty": "hard",
+   "q": "Design a rate-limiting service used by API gateways in three regions to enforce per-user and per-tenant quotas, burst allowances, and endpoint-specific limits. The decision should add less than 5 ms at the 99th percentile, support configuration changes within seconds, and remain predictable during a regional network partition. Compare token bucket with at least one alternative; explain key design, atomic updates, storage and partitioning, local caching, fail-open versus fail-closed policy, fairness, observability, and how you would test clock skew and concurrent requests.",
+   "minWords": 220,
+   "maxWords": 450,
+   "rubric": [
+    {
+     "label": "Algorithm and burst semantics",
+     "any": [
+      "token bucket",
+      "sliding window",
+      "leaky bucket",
+      "burst",
+      "refill rate"
+     ]
+    },
+    {
+     "label": "Key design and atomicity",
+     "any": [
+      "user id",
+      "tenant id",
+      "atomic increment",
+      "lua script",
+      "compare-and-swap"
+     ]
+    },
+    {
+     "label": "Regional and cache architecture",
+     "any": [
+      "multi-region",
+      "local cache",
+      "redis",
+      "partition",
+      "configuration propagation"
+     ]
+    },
+    {
+     "label": "Latency and capacity",
+     "any": [
+      "5 ms",
+      "p99",
+      "qps",
+      "shard",
+      "hot key"
+     ]
+    },
+    {
+     "label": "Partition policy and fairness",
+     "any": [
+      "fail open",
+      "fail closed",
+      "network partition",
+      "fairness",
+      "grace limit"
+     ]
+    },
+    {
+     "label": "Operations and testing",
+     "any": [
+      "clock skew",
+      "concurrent requests",
+      "metrics",
+      "shadow mode",
+      "load test"
+     ]
+    }
+   ]
+  },
+  {
+   "group": "hld-video-platform-v2",
+   "topic": "Video Upload and Streaming",
+   "area": "architecture",
+   "difficulty": "hard",
+   "q": "Design a video-upload and playback platform for user-generated videos. Uploads may be several gigabytes and resumable; a video should become playable in multiple resolutions, be protected by access controls, and stream globally with low startup delay. Describe upload APIs and chunk state, durable object storage, asynchronous transcoding and job retries, metadata and search, CDN/origin behavior, publication state, quotas and abuse scanning, and deletion/retention. Estimate the major storage and bandwidth costs and explain how you prevent a failed transcode from losing the original upload.",
+   "minWords": 220,
+   "maxWords": 450,
+   "rubric": [
+    {
+     "label": "Resumable upload and object storage",
+     "any": [
+      "multipart upload",
+      "chunk",
+      "resume",
+      "object storage",
+      "checksum"
+     ]
+    },
+    {
+     "label": "Async transcoding pipeline",
+     "any": [
+      "transcoding",
+      "message queue",
+      "worker",
+      "retry",
+      "dead-letter"
+     ]
+    },
+    {
+     "label": "Playback formats and CDN",
+     "any": [
+      "adaptive bitrate",
+      "hls",
+      "dash",
+      "cdn",
+      "origin"
+     ]
+    },
+    {
+     "label": "Metadata and publication lifecycle",
+     "any": [
+      "metadata",
+      "processing state",
+      "published",
+      "access control",
+      "manifest"
+     ]
+    },
+    {
+     "label": "Durability, deletion, and security",
+     "any": [
+      "original file",
+      "durability",
+      "retention",
+      "virus scan",
+      "signed url"
+     ]
+    },
+    {
+     "label": "Capacity and observability",
+     "any": [
+      "bandwidth estimate",
+      "storage estimate",
+      "startup latency",
+      "transcode latency",
+      "quota"
+     ]
+    }
+   ]
+  }
+ ]
 }

@@ -24,11 +24,13 @@ export interface TestCaseResult {
   expected?: string
   message?: string
 }
+export type TestEngine = 'node' | 'python' | 'java' | 'c' | 'cpp' | 'rust' | 'go'
+
 export interface TestRunResult {
   passed: number
   total: number
   results: TestCaseResult[]
-  engine: 'node' | 'python'
+  engine: TestEngine
   error?: string
   timedOut?: boolean
 }

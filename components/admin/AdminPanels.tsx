@@ -105,7 +105,7 @@ export function StudentAssessments({ row, onUnauthorized }: { row: AdminStudentR
         <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3 text-xs font-semibold text-slate-400">No assessment completed yet.</div>
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-slate-100">
-          <table className="w-full min-w-[760px] text-[11px]">
+          <table className="w-full min-w-[900px] text-[11px]">
             <thead>
               <tr className="bg-slate-50/80 text-[9px] uppercase tracking-wider text-slate-400">
                 <th className="px-3 py-2 text-left font-black">Assessment</th>
@@ -114,6 +114,7 @@ export function StudentAssessments({ row, onUnauthorized }: { row: AdminStudentR
                 <th className="px-3 py-2 text-center font-black">/1000</th>
                 <th className="px-3 py-2 text-left font-black">Result</th>
                 <th className="px-3 py-2 text-left font-black">Rounds</th>
+                <th className="px-3 py-2 text-left font-black">Skills mapped</th>
                 <th className="px-3 py-2 text-center font-black">Integrity</th>
                 <th className="px-3 py-2 text-center font-black">Date</th>
               </tr>
@@ -121,6 +122,11 @@ export function StudentAssessments({ row, onUnauthorized }: { row: AdminStudentR
             <tbody>
               {entries.map((e) => {
                 const a = e.company ? byCompany.get(e.company) : undefined
+                const source = e.kind === 'core' ? 'CalibiAI Assessment' : e.kind === 'capgemini' ? 'Capgemini 2027 Mock' : ''
+                const skillEvidence = e.kind === 'company'
+                  ? a?.skillEvidence || []
+                  : (row.assessment_skill_evidence || []).filter((skill) => skill.source === source)
+                const skillsMapped = skillEvidence.map((skill) => `${skill.name} ${Math.round(skill.score)}%`).join(' · ')
                 return (
                   <tr key={e.key} className="border-t border-slate-100">
                     <td className="px-3 py-2 font-bold text-slate-800">{e.label}</td>
@@ -135,6 +141,9 @@ export function StudentAssessments({ row, onUnauthorized }: { row: AdminStudentR
                           ? `English ${row.a2_english}/200 · Technical ${dash(row.a2_technical)}/250 · Debugging ${dash(row.a2_debugging)}/200 · AI coding ${dash(row.a2_ai_coding)}/200 · Cognitive ${dash(row.a2_cognitive)}/150`
                           : '—'}
                     </td>
+                    <td className="max-w-[280px] px-3 py-2 text-slate-500" title={skillsMapped || 'No mapped skills'}>
+                      {skillsMapped || '—'}
+                    </td>
                     <td className="px-3 py-2 text-center text-slate-500">
                       {a ? `${a.strikes ?? 0} strike${a.strikes === 1 ? '' : 's'} · cam ${a.camera === null ? '—' : a.camera ? 'on' : 'off'}${a.auto_submitted ? ' · auto-submitted' : ''}` : '—'}
                     </td>
@@ -147,6 +156,7 @@ export function StudentAssessments({ row, onUnauthorized }: { row: AdminStudentR
                   <td className="px-3 py-2 font-bold text-slate-800">{a.name}</td>
                   <td className="px-3 py-2"><span className="inline-block whitespace-nowrap rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-700">{a.category}</span></td>
                   <td className="px-3 py-2 text-center text-amber-700" colSpan={3}>In progress — not counted in the CalibiAI Score yet</td>
+                  <td className="px-3 py-2 text-slate-400">—</td>
                   <td className="px-3 py-2 text-slate-400">—</td>
                   <td className="px-3 py-2 text-center text-slate-500">{a.strikes ?? 0} strikes</td>
                   <td className="px-3 py-2 text-center text-slate-500">{fmtDate(a.started_at)}</td>

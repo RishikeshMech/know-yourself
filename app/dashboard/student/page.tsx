@@ -1,6 +1,6 @@
 'use client'
 export const dynamic = 'force-dynamic'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FeedbackGate } from '@/components/FeedbackGate'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -16,6 +16,8 @@ import { SkillChips } from '@/components/SkillChips'
 import { WhatsAppCommunityCard } from '@/components/WhatsAppCommunity'
 import { CompanyCatalog } from '@/components/company/CompanyCatalog'
 import { CalibiScoreCard } from '@/components/CalibiScoreCard'
+import { AssessmentSkillList } from '@/components/AssessmentSkillList'
+import { platformAssessmentSkills, rollupAssessmentSkills } from '@/lib/assessmentSkills'
 import type { AttemptSummary } from '@/lib/company/types'
 
 function Inner(){
@@ -36,6 +38,11 @@ function Inner(){
   const ticketChecked = useRef(false)
   // True once the cached account has been validated against Supabase Auth.
   const [validated, setValidated] = useState(false)
+  const assessmentSkillRollups = useMemo(() => rollupAssessmentSkills([
+    ...platformAssessmentSkills(scores, 1),
+    ...platformAssessmentSkills(scores2, 2),
+    ...companyAttempts.flatMap(attempt => attempt.skillEvidence || []),
+  ]), [scores, scores2, companyAttempts])
 
   // Protect the student dashboard: a signed-out visitor is sent to /login
   // smoothly, and a cached account is validated against Supabase Auth first so
@@ -227,6 +234,39 @@ function Inner(){
         {/* Headline: the average of every completed assessment. */}
         <CalibiScoreCard a1={scores} a2={scores2} company={companyAttempts} companyLoaded={companyLoaded || !user?.id} startHref={startHref} />
 
+        {/* Keep claimed/resume skills separate from the assessment-derived skill map. */}
+        <div className="glass-card !p-5 mt-6 animate-fade-up">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-sm font-bold text-slate-700">Your profile & skill map</div>
+            <div className="flex gap-3">
+              <Link href="/profile" className="text-xs font-semibold text-indigo-600">See my profile →</Link>
+              <Link href="/edit-profile" className="text-xs font-semibold text-indigo-600">Edit profile →</Link>
+            </div>
+          </div>
+          <div className="mt-3 grid gap-4 lg:grid-cols-3">
+            <div className="space-y-2 text-sm text-slate-600">
+              <div>👤 {profile?.full_name || '—'}</div>
+              <div>🎓 {profile?.college || '—'}</div>
+            </div>
+            <div className="min-w-0">
+              <div className="mb-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-slate-500">Self-reported skills</div>
+              <SkillChips skills={profile?.skills} icon="🛠️" />
+            </div>
+            <div className="min-w-0">
+              <div className="mb-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-slate-500">Resume-detected skills</div>
+              <SkillChips skills={Array.isArray(resume?.parsed?.skills) ? resume.parsed.skills.join(', ') : ''} icon="📄" />
+            </div>
+          </div>
+          <div className="mt-4 border-t border-slate-100 pt-4">
+            <div className="mb-2 text-[10px] font-black uppercase tracking-[0.15em] text-indigo-600">Skills mapped from completed assessments</div>
+            {assessmentSkillRollups.length ? (
+              <AssessmentSkillList skills={assessmentSkillRollups} />
+            ) : (
+              <p className="text-xs text-slate-500">Complete an assessment and its scored skills will appear here automatically.</p>
+            )}
+          </div>
+        </div>
+
         <div className="mt-6 grid lg:grid-cols-3 gap-6">
           {/* Assessment 1 */}
           <div className="lg:col-span-2 glass-card animate-fade-up" style={{animationDelay:'.05s'}}>
@@ -388,19 +428,6 @@ function Inner(){
           />
         )}
 
-        {/* Profile strip */}
-        {profile && (
-          <div className="glass-card !p-5 mt-6 animate-fade-up" style={{animationDelay:'.2s'}}>
-            <div className="text-sm font-bold text-slate-700">Your profile</div>
-            <div className="mt-2 text-sm text-slate-600 grid sm:grid-cols-3 gap-2">
-              <div>👤 {profile.full_name || '—'}</div>
-              <div>🎓 {profile.college || '—'}</div>
-              <div className="sm:col-span-3 min-w-0"><SkillChips skills={profile.skills} icon="🛠️" /></div>
-            </div>
-            <Link href="/profile" className="mt-3 inline-block text-xs font-semibold text-indigo-600">See my profile →</Link>
-            <Link href="/edit-profile" className="mt-3 ml-3 inline-block text-xs font-semibold text-indigo-600">Edit profile →</Link>
-          </div>
-        )}
       </main>
     </div>
   )

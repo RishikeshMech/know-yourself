@@ -31,12 +31,18 @@ const RESULT_COLUMNS = [
   'a2_english:scores->english->total', 'a2_technical:scores->ai_literacy',
   'a2_debugging:scores->debugging_total', 'a2_debug_mcq:scores->debug_mcq', 'a2_debug_lab:scores->debug_lab',
   'a2_ai_coding:scores->ai_coding', 'a2_cognitive:scores->cognitive->total',
+  'skill_english:scores->english', 'skill_problem_solving:scores->problem_solving',
+  'skill_ai_debugging:scores->ai_debugging', 'skill_ai_feature:scores->ai_feature',
+  'skill_prompt_engineering:scores->prompt_engineering', 'skill_ai_literacy:scores->ai_literacy',
+  'skill_debug_mcq:scores->debug_mcq', 'skill_debug_lab:scores->debug_lab',
+  'skill_ai_coding:scores->ai_coding', 'skill_cognitive:scores->cognitive',
 ].join(',')
 const RESULT_COLUMNS_LEGACY = RESULT_COLUMNS.split(',').filter((c) => c !== 'assessment_no').join(',')
 
 const ATTEMPT_COLUMNS = [
   'student_id', 'company_slug', 'status', 'score', 'verdict', 'started_at', 'submitted_at', 'duration_sec',
-  'auto_submitted', 'submit_reason', 'strikes:proctoring->strikes', 'camera:proctoring->camera', 'rounds:result->rounds',
+  'auto_submitted', 'submit_reason', 'strikes:proctoring->strikes', 'camera:proctoring->camera',
+  'rounds:result->rounds', 'skill_items:result->items',
 ].join(',')
 
 /** Full assessment-1 rows, only fetched to repair rows from a pre-0008 view. */
@@ -241,9 +247,9 @@ export async function enrichStudentRows(
   }
   const out = base.map((r) => {
     const d = lookup(r)
-    // The row's own A1 fields are authoritative for the CalibiAI average (they
-    // are what the table shows); fall back to the loaded result when absent.
-    return enrichRow(r, { ...d, a1: r.score !== '' ? null : d.a1 })
+    // The row's own A1 scalar fields stay authoritative; enrichRow preserves
+    // the result-derived skill evidence from the loaded assessment separately.
+    return enrichRow(r, d)
   })
   return { rows: out, warning: [...new Set(warnings)].join(' ') || undefined }
 }

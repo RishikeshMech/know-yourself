@@ -9,6 +9,8 @@ import { getCompany } from '@/lib/company/catalog'
 import { SECTION_BY_ID } from '@/lib/company/sections'
 import { companyApi } from '@/lib/company/client'
 import { CompanyBadge } from '@/components/company/CompanyBadge'
+import { AssessmentSkillList } from '@/components/AssessmentSkillList'
+import { companyAssessmentSkills, rollupAssessmentSkills } from '@/lib/assessmentSkills'
 import type { PublicResult } from '@/lib/company/scoring'
 import type { AttemptSummary } from '@/lib/company/types'
 
@@ -60,6 +62,9 @@ export default function Page({ params }: { params: { slug: string } }) {
   const areas = useMemo(() => (result?.areas || []).filter((a) => a.items >= 2 || a.possible >= 10), [result])
   const strengths = useMemo(() => areas.filter((a) => a.percent >= 60).sort((a, b) => b.percent - a.percent).slice(0, 5), [areas])
   const focus = useMemo(() => areas.filter((a) => a.percent < 50).sort((a, b) => a.percent - b.percent).slice(0, 5), [areas])
+  const mappedSkills = useMemo(() => rollupAssessmentSkills(
+    companyAssessmentSkills(result, company?.slug || params.slug, attempt?.submitted_at),
+  ), [result, company, params.slug, attempt?.submitted_at])
 
   if (!company) {
     return <div><Navbar /><main className="max-w-3xl mx-auto px-4 py-16 text-center text-sm text-slate-600">This company assessment does not exist.</main></div>
@@ -179,6 +184,14 @@ export default function Page({ params }: { params: { slug: string } }) {
                     ))}</ul>
                   ) : <p className="mt-3 text-sm text-slate-500">Nothing below 50% — great balance across areas.</p>}
                 </div>
+              </div>
+            )}
+
+            {mappedSkills.length > 0 && (
+              <div className="glass-card animate-fade-up">
+                <h2 className="font-black text-slate-900">Skills mapped from this assessment</h2>
+                <p className="mb-3 mt-1 text-xs text-slate-500">Area-level scores from this completed company assessment are added to your profile skill map automatically.</p>
+                <AssessmentSkillList skills={mappedSkills} />
               </div>
             )}
 

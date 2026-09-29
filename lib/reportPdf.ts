@@ -17,6 +17,8 @@
 /* ------------------------------------------------------------------ */
 'use client'
 
+import { platformAssessmentSkills, rollupAssessmentSkills } from './assessmentSkills.ts'
+
 export type SectionDatum = {
   key: string
   label: string
@@ -472,6 +474,26 @@ export async function generateReportPdf({ scores, profile = {}, user = {}, sampl
         sx = ML
         sy += 6.6
       }
+    }
+    y = sy + 5 + 6
+  }
+
+  /* ---- assessment-derived skill map ---- */
+  const mappedSkills = rollupAssessmentSkills(platformAssessmentSkills(scores, isA2 ? 2 : 1))
+  if (mappedSkills.length) {
+    y = sectionTitle('Assessment skill map', y, 'mapped from scored assessment modules')
+    y = fit(y, 8)
+    let sx = ML
+    let sy = y + 4.6
+    for (const skill of mappedSkills) {
+      const label = `${skill.name} · ${Math.round(skill.score)}%`
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(7.2)
+      const w = doc.getTextWidth(label) + 5
+      if (sx > ML && sx + w > 210 - MR) { sx = ML; sy += 6.6 }
+      if (sy + 8 > BOTTOM_LIMIT) { sy = newPage(); sx = ML }
+      const actualWidth = chip(sx, sy, label)
+      sx += actualWidth + 2
     }
     y = sy + 5 + 6
   }
