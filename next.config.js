@@ -46,6 +46,12 @@ const nextConfig = {
     // "spawn node EAGAIN". Force a single worker so the build fits the limits.
     cpus: 1,
     workerThreads: false,
+    // The company-assessment question bank (answer keys + hidden tests) is read
+    // from disk on the server only — never bundled. Declare it so serverless /
+    // standalone output traces it alongside the API routes that need it.
+    outputFileTracingIncludes: {
+      '/api/company-assessments/**': ['./data/company/bank.json'],
+    },
   },
   webpack: (config) => {
     // Apply only when the real package is missing from node_modules.

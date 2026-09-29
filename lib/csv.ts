@@ -15,6 +15,10 @@ export interface AdminFeedbackEntry {
   created_at: string
 }
 
+import type { ScoreEntry } from './calibiScore.ts'
+import type { AdminCompanyAttempt } from './adminAssessments.ts'
+import { COMPANIES, COMPANY_TAGS } from './company/catalog.ts'
+
 export interface AdminStudentRow {
   student_id: string
   email: string
@@ -71,6 +75,41 @@ export interface AdminStudentRow {
   logical_total: string
   verifiable_hash: string
   assessed_at: string
+  // CalibiAI Score = average of EVERY completed assessment (lib/calibiScore.ts)
+  calibi_score: string
+  calibi_grade: string
+  assessments_taken: string
+  tests_taken: string
+  // Assessment 2 — Capgemini 2027 mock
+  a2_score: string
+  a2_grade: string
+  a2_percentile: string
+  a2_english: string
+  a2_technical: string
+  a2_debugging: string
+  a2_ai_coding: string
+  a2_cognitive: string
+  a2_at: string
+  // Company mock assessments
+  company_taken: string
+  company_in_progress: string
+  company_avg: string
+  company_best: string
+  company_list: string
+  // Category averages (percent)
+  cat_platform: string
+  cat_it_services: string
+  cat_big_tech: string
+  cat_product_startups: string
+  cat_saas: string
+  cat_bfsi: string
+  cat_engineering: string
+  /** Company slug → score (/100) of every completed company mock (per-company CSV columns). */
+  company_scores?: Record<string, number>
+  /** Per-assessment breakdown behind the CalibiAI Score (UI + JSON export). */
+  assessments?: ScoreEntry[]
+  /** Every company-mock attempt, including in-progress ones. */
+  company_attempts?: AdminCompanyAttempt[]
   // Feedback the candidate gave about the assessment (latest submission)
   feedback_rating: string
   feedback_message: string
@@ -97,7 +136,11 @@ export const CSV_COLUMNS: { key: keyof AdminStudentRow; label: string }[] = [
   { key: 'linkedin_url', label: 'LinkedIn URL' },
   { key: 'github_url', label: 'GitHub URL' },
   { key: 'resume_score', label: 'Resume Score (/100)' },
-  { key: 'score', label: 'CalibiAI Score (/1000)' },
+  { key: 'calibi_score', label: 'CalibiAI Score (average of all assessments, /1000)' },
+  { key: 'calibi_grade', label: 'CalibiAI Grade' },
+  { key: 'assessments_taken', label: 'Assessments Completed' },
+  { key: 'tests_taken', label: 'Assessments Taken [Category]' },
+  { key: 'score', label: 'CalibiAI Assessment Score (/1000)' },
   { key: 'grade', label: 'Grade' },
   { key: 'percentile', label: 'Percentile' },
   { key: 'english', label: 'English (/200)' },
@@ -127,6 +170,22 @@ export const CSV_COLUMNS: { key: keyof AdminStudentRow; label: string }[] = [
   { key: 'problem_total', label: 'Problem Solving Total' },
   { key: 'logical_correct', label: 'Logical Correct' },
   { key: 'logical_total', label: 'Logical Total' },
+  { key: 'a2_score', label: 'Capgemini 2027 Mock Score (/1000)' },
+  { key: 'a2_grade', label: 'Capgemini Mock Grade' },
+  { key: 'a2_percentile', label: 'Capgemini Mock Percentile' },
+  { key: 'a2_english', label: 'Capgemini - English (/200)' },
+  { key: 'a2_technical', label: 'Capgemini - Technical (/250)' },
+  { key: 'a2_debugging', label: 'Capgemini - Debugging (/200)' },
+  { key: 'a2_ai_coding', label: 'Capgemini - AI-assisted Coding (/200)' },
+  { key: 'a2_cognitive', label: 'Capgemini - Cognitive (/150)' },
+  { key: 'a2_at', label: 'Capgemini Mock Date' },
+  { key: 'company_taken', label: 'Company Mocks Completed' },
+  { key: 'company_in_progress', label: 'Company Mocks In Progress' },
+  { key: 'company_avg', label: 'Company Mocks Average (/100)' },
+  { key: 'company_best', label: 'Best Company Result' },
+  { key: 'company_list', label: 'Company Results (score, verdict)' },
+  { key: 'cat_platform', label: 'Category Avg - Platform Assessments (%)' },
+  ...COMPANY_TAGS.map((t) => ({ key: `cat_${t.id.replace(/-/g, '_')}` as keyof AdminStudentRow, label: `Category Avg - ${t.label} (%)` })),
   { key: 'feedback_rating', label: 'Feedback Rating (1-5)' },
   { key: 'feedback_message', label: 'Feedback Comment' },
   { key: 'feedback_at', label: 'Feedback Date' },
@@ -143,16 +202,35 @@ function escapeCell(value: string): string {
   return v
 }
 
-export function rowsToCsv(rows: AdminStudentRow[]): string {
-  const header = CSV_COLUMNS.map(c => escapeCell(c.label)).join(',')
-  const body = rows.map(r => CSV_COLUMNS.map(c => escapeCell(String((r as any)[c.key] ?? ''))).join(','))
+/** One "Company - <name> (/100)" column per company mock, in plan order. */
+export const COMPANY_CSV_COLUMNS: { slug: string; label: string }[] = COMPANIES.map((c) => ({ slug: c.slug, label: `Company - ${c.name} (/100)` }))
+
+/**
+ * Students CSV. With `companies` (default) it appends one score column per
+ * company mock so company-wise results can be filtered/pivoted in Excel.
+ */
+export function rowsToCsv(rows: AdminStudentRow[], opts: { companies?: boolean } = {}): string {
+  const withCompanies = opts.companies !== false
+  const header = [...CSV_COLUMNS.map(c => c.label), ...(withCompanies ? COMPANY_CSV_COLUMNS.map(c => c.label) : [])].map(escapeCell).join(',')
+  const body = rows.map(r => [
+    ...CSV_COLUMNS.map(c => escapeCell(String((r as any)[c.key] ?? ''))),
+    ...(withCompanies ? COMPANY_CSV_COLUMNS.map(c => {
+      const v = r.company_scores?.[c.slug]
+      return escapeCell(v === undefined || v === null ? '' : String(v))
+    }) : []),
+  ].join(','))
   // BOM so Excel opens UTF-8 (✓, names, etc.) correctly; CRLF per RFC 4180.
   return '\uFEFF' + [header, ...body].join('\r\n')
 }
 
-export function downloadFilename(scope: string): string {
+/** Generic CSV from a header + rows (same escaping/BOM rules). */
+export function tableToCsv(header: readonly string[], rows: string[][]): string {
+  return '\uFEFF' + [header.map(escapeCell).join(','), ...rows.map(r => r.map(v => escapeCell(String(v ?? ''))).join(','))].join('\r\n')
+}
+
+export function downloadFilename(scope: string, kind = 'students', ext = 'csv'): string {
   const date = new Date().toISOString().slice(0, 10)
-  return `calibiai_students_${scope}_${date}.csv`
+  return `calibiai_${kind}_${scope}_${date}.${ext}`
 }
 
 /** Trigger a browser download from a CSV string (client-side). */

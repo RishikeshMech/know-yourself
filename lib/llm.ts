@@ -87,6 +87,39 @@ export interface CallLlmOptions {
 }
 
 /**
+ * In-process usage counters (since server start), surfaced to admins by
+ * GET /api/admin/ai-status so production can prove the model is really being
+ * used — and see why when it is not. Never contains prompts or keys.
+ */
+export interface LlmTelemetry {
+  ok: number
+  failed: number
+  lastOkAt: string | null
+  lastErrorAt: string | null
+  lastError: string | null
+  byLabel: Record<string, { ok: number; failed: number; lastOkAt: string | null; lastError: string | null }>
+}
+
+export const llmTelemetry: LlmTelemetry = { ok: 0, failed: 0, lastOkAt: null, lastErrorAt: null, lastError: null, byLabel: {} }
+
+function track(label: string, ok: boolean, error?: string) {
+  const now = new Date().toISOString()
+  const b = (llmTelemetry.byLabel[label] ||= { ok: 0, failed: 0, lastOkAt: null, lastError: null })
+  if (ok) {
+    llmTelemetry.ok++
+    llmTelemetry.lastOkAt = now
+    b.ok++
+    b.lastOkAt = now
+  } else {
+    llmTelemetry.failed++
+    llmTelemetry.lastErrorAt = now
+    llmTelemetry.lastError = `${label}: ${error || 'unknown error'}`.slice(0, 200)
+    b.failed++
+    b.lastError = (error || 'unknown error').slice(0, 200)
+  }
+}
+
+/**
  * Call the model and return the raw assistant message text.
  * Returns `null` on any failure (no key, HTTP error, timeout, empty body) so
  * every caller can fall back to its heuristic engine.
@@ -118,14 +151,17 @@ export async function callLlm(opts: CallLlmOptions): Promise<string | null> {
 
     if (!res.ok) {
       console.error(`[${label}] model error`, res.status, await res.text().catch(() => ''))
+      track(label, false, `HTTP ${res.status}`)
       return null
     }
 
     const data: any = await res.json()
     const content: string | undefined = data?.choices?.[0]?.message?.content
+    track(label, !!content, content ? undefined : 'empty reply')
     return content ? String(content) : null
-  } catch (e) {
+  } catch (e: any) {
     console.error(`[${label}] model call failed`, e)
+    track(label, false, e?.name === 'AbortError' || /abort|timeout/i.test(String(e?.message)) ? 'timeout' : String(e?.message || e))
     return null
   }
 }

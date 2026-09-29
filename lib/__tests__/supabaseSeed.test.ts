@@ -202,7 +202,7 @@ test('mergeStudentRows keeps the feedback of a shadowed local row', () => {
 
 test('CSV exports the feedback columns', () => {
   const keys = CSV_COLUMNS.map(c => c.key)
-  assert.equal(CSV_COLUMNS.length, 52)
+  assert.equal(CSV_COLUMNS.length, 77)
   for (const key of ['feedback_rating', 'feedback_message', 'feedback_at', 'feedback_count'] as const) {
     assert.ok(keys.includes(key), `${key} missing from the CSV`)
   }

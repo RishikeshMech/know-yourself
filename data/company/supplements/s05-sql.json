@@ -1,0 +1,524 @@
+{
+  "section": "s5",
+  "_about": "SQL items. Query-result questions run against the shown tables in SQLite via verify.mjs; concept items are reviewed.",
+  "mcq": [
+    {
+      "topic": "Filtering",
+      "area": "query",
+      "difficulty": "easy",
+      "q": "How many rows does this query return as its count?",
+      "code": "employees\nid | name  | dept  | salary | manager_id\n1  | Asha  | Eng   | 90000  | NULL\n2  | Ravi  | Eng   | 75000  | 1\n3  | Meera | Sales | 60000  | NULL\n4  | John  | Sales | 60000  | 3\n5  | Priya | HR    | 50000  | NULL\n6  | Karan | Eng   | 75000  | 1\n\nSELECT COUNT(*) FROM employees WHERE salary > 60000;",
+      "options": [
+        "3",
+        "4",
+        "2",
+        "6"
+      ],
+      "answer": "3",
+      "verify": {
+        "lang": "sql",
+        "setup": "CREATE TABLE employees(id INTEGER, name TEXT, dept TEXT, salary INTEGER, manager_id INTEGER);\nINSERT INTO employees VALUES (1,'Asha','Eng',90000,NULL),(2,'Ravi','Eng',75000,1),(3,'Meera','Sales',60000,NULL),(4,'John','Sales',60000,3),(5,'Priya','HR',50000,NULL),(6,'Karan','Eng',75000,1);",
+        "query": "SELECT COUNT(*) FROM employees WHERE salary > 60000;"
+      }
+    },
+    {
+      "topic": "Aggregation",
+      "area": "query",
+      "difficulty": "medium",
+      "q": "What does this query return?",
+      "code": "employees\nid | name  | dept  | salary | manager_id\n1  | Asha  | Eng   | 90000  | NULL\n2  | Ravi  | Eng   | 75000  | 1\n3  | Meera | Sales | 60000  | NULL\n4  | John  | Sales | 60000  | 3\n5  | Priya | HR    | 50000  | NULL\n6  | Karan | Eng   | 75000  | 1\n\nSELECT dept, COUNT(*) FROM employees GROUP BY dept HAVING COUNT(*) > 1 ORDER BY dept;",
+      "options": [
+        "Eng | 3, Sales | 2",
+        "Eng | 3",
+        "Eng | 3, HR | 1, Sales | 2",
+        "Sales | 2"
+      ],
+      "answer": "Eng | 3, Sales | 2",
+      "verify": {
+        "lang": "sql",
+        "setup": "CREATE TABLE employees(id INTEGER, name TEXT, dept TEXT, salary INTEGER, manager_id INTEGER);\nINSERT INTO employees VALUES (1,'Asha','Eng',90000,NULL),(2,'Ravi','Eng',75000,1),(3,'Meera','Sales',60000,NULL),(4,'John','Sales',60000,3),(5,'Priya','HR',50000,NULL),(6,'Karan','Eng',75000,1);",
+        "query": "SELECT dept, COUNT(*) FROM employees GROUP BY dept HAVING COUNT(*) > 1 ORDER BY dept;"
+      }
+    },
+    {
+      "topic": "Ranking Queries",
+      "area": "query",
+      "difficulty": "easy",
+      "q": "What does this query return?",
+      "code": "employees\nid | name  | dept  | salary | manager_id\n1  | Asha  | Eng   | 90000  | NULL\n2  | Ravi  | Eng   | 75000  | 1\n3  | Meera | Sales | 60000  | NULL\n4  | John  | Sales | 60000  | 3\n5  | Priya | HR    | 50000  | NULL\n6  | Karan | Eng   | 75000  | 1\n\nSELECT MAX(salary) FROM employees WHERE salary < (SELECT MAX(salary) FROM employees);",
+      "options": [
+        "75000",
+        "90000",
+        "60000",
+        "NULL"
+      ],
+      "answer": "75000",
+      "verify": {
+        "lang": "sql",
+        "setup": "CREATE TABLE employees(id INTEGER, name TEXT, dept TEXT, salary INTEGER, manager_id INTEGER);\nINSERT INTO employees VALUES (1,'Asha','Eng',90000,NULL),(2,'Ravi','Eng',75000,1),(3,'Meera','Sales',60000,NULL),(4,'John','Sales',60000,3),(5,'Priya','HR',50000,NULL),(6,'Karan','Eng',75000,1);",
+        "query": "SELECT MAX(salary) FROM employees WHERE salary < (SELECT MAX(salary) FROM employees);"
+      }
+    },
+    {
+      "topic": "Aggregation",
+      "area": "query",
+      "difficulty": "easy",
+      "q": "What does this query return?",
+      "code": "employees\nid | name  | dept  | salary | manager_id\n1  | Asha  | Eng   | 90000  | NULL\n2  | Ravi  | Eng   | 75000  | 1\n3  | Meera | Sales | 60000  | NULL\n4  | John  | Sales | 60000  | 3\n5  | Priya | HR    | 50000  | NULL\n6  | Karan | Eng   | 75000  | 1\n\nSELECT COUNT(DISTINCT salary) FROM employees;",
+      "options": [
+        "4",
+        "6",
+        "5",
+        "3"
+      ],
+      "answer": "4",
+      "verify": {
+        "lang": "sql",
+        "setup": "CREATE TABLE employees(id INTEGER, name TEXT, dept TEXT, salary INTEGER, manager_id INTEGER);\nINSERT INTO employees VALUES (1,'Asha','Eng',90000,NULL),(2,'Ravi','Eng',75000,1),(3,'Meera','Sales',60000,NULL),(4,'John','Sales',60000,3),(5,'Priya','HR',50000,NULL),(6,'Karan','Eng',75000,1);",
+        "query": "SELECT COUNT(DISTINCT salary) FROM employees;"
+      }
+    },
+    {
+      "topic": "Joins",
+      "area": "query",
+      "difficulty": "medium",
+      "q": "How many rows does this self-join return?",
+      "code": "employees\nid | name  | dept  | salary | manager_id\n1  | Asha  | Eng   | 90000  | NULL\n2  | Ravi  | Eng   | 75000  | 1\n3  | Meera | Sales | 60000  | NULL\n4  | John  | Sales | 60000  | 3\n5  | Priya | HR    | 50000  | NULL\n6  | Karan | Eng   | 75000  | 1\n\nSELECT e.name, m.name FROM employees e JOIN employees m ON e.manager_id = m.id;",
+      "options": [
+        "3",
+        "6",
+        "2",
+        "0"
+      ],
+      "answer": "3",
+      "verify": {
+        "lang": "sql",
+        "setup": "CREATE TABLE employees(id INTEGER, name TEXT, dept TEXT, salary INTEGER, manager_id INTEGER);\nINSERT INTO employees VALUES (1,'Asha','Eng',90000,NULL),(2,'Ravi','Eng',75000,1),(3,'Meera','Sales',60000,NULL),(4,'John','Sales',60000,3),(5,'Priya','HR',50000,NULL),(6,'Karan','Eng',75000,1);",
+        "query": "SELECT COUNT(*) FROM employees e JOIN employees m ON e.manager_id = m.id;"
+      }
+    },
+    {
+      "topic": "Joins",
+      "area": "query",
+      "difficulty": "medium",
+      "q": "What count does this query return?",
+      "code": "employees\nid | name  | dept  | salary | manager_id\n1  | Asha  | Eng   | 90000  | NULL\n2  | Ravi  | Eng   | 75000  | 1\n3  | Meera | Sales | 60000  | NULL\n4  | John  | Sales | 60000  | 3\n5  | Priya | HR    | 50000  | NULL\n6  | Karan | Eng   | 75000  | 1\n\nSELECT COUNT(*) FROM employees e LEFT JOIN employees m ON e.manager_id = m.id;",
+      "options": [
+        "6",
+        "3",
+        "9",
+        "4"
+      ],
+      "answer": "6",
+      "verify": {
+        "lang": "sql",
+        "setup": "CREATE TABLE employees(id INTEGER, name TEXT, dept TEXT, salary INTEGER, manager_id INTEGER);\nINSERT INTO employees VALUES (1,'Asha','Eng',90000,NULL),(2,'Ravi','Eng',75000,1),(3,'Meera','Sales',60000,NULL),(4,'John','Sales',60000,3),(5,'Priya','HR',50000,NULL),(6,'Karan','Eng',75000,1);",
+        "query": "SELECT COUNT(*) FROM employees e LEFT JOIN employees m ON e.manager_id = m.id;"
+      }
+    },
+    {
+      "topic": "Sorting & Limits",
+      "area": "query",
+      "difficulty": "medium",
+      "q": "Which name does this query return?",
+      "code": "employees\nid | name  | dept  | salary | manager_id\n1  | Asha  | Eng   | 90000  | NULL\n2  | Ravi  | Eng   | 75000  | 1\n3  | Meera | Sales | 60000  | NULL\n4  | John  | Sales | 60000  | 3\n5  | Priya | HR    | 50000  | NULL\n6  | Karan | Eng   | 75000  | 1\n\nSELECT name FROM employees ORDER BY salary DESC, name ASC LIMIT 1 OFFSET 2;",
+      "options": [
+        "Ravi",
+        "Karan",
+        "John",
+        "Asha"
+      ],
+      "answer": "Ravi",
+      "verify": {
+        "lang": "sql",
+        "setup": "CREATE TABLE employees(id INTEGER, name TEXT, dept TEXT, salary INTEGER, manager_id INTEGER);\nINSERT INTO employees VALUES (1,'Asha','Eng',90000,NULL),(2,'Ravi','Eng',75000,1),(3,'Meera','Sales',60000,NULL),(4,'John','Sales',60000,3),(5,'Priya','HR',50000,NULL),(6,'Karan','Eng',75000,1);",
+        "query": "SELECT name FROM employees ORDER BY salary DESC, name ASC LIMIT 1 OFFSET 2;"
+      }
+    },
+    {
+      "topic": "Aggregation",
+      "area": "query",
+      "difficulty": "easy",
+      "q": "What does this query return?",
+      "code": "employees\nid | name  | dept  | salary | manager_id\n1  | Asha  | Eng   | 90000  | NULL\n2  | Ravi  | Eng   | 75000  | 1\n3  | Meera | Sales | 60000  | NULL\n4  | John  | Sales | 60000  | 3\n5  | Priya | HR    | 50000  | NULL\n6  | Karan | Eng   | 75000  | 1\n\nSELECT AVG(salary) FROM employees WHERE dept = 'Eng';",
+      "options": [
+        "80000",
+        "75000",
+        "90000",
+        "72500"
+      ],
+      "answer": "80000",
+      "verify": {
+        "lang": "sql",
+        "setup": "CREATE TABLE employees(id INTEGER, name TEXT, dept TEXT, salary INTEGER, manager_id INTEGER);\nINSERT INTO employees VALUES (1,'Asha','Eng',90000,NULL),(2,'Ravi','Eng',75000,1),(3,'Meera','Sales',60000,NULL),(4,'John','Sales',60000,3),(5,'Priya','HR',50000,NULL),(6,'Karan','Eng',75000,1);",
+        "query": "SELECT AVG(salary) FROM employees WHERE dept = 'Eng';"
+      }
+    },
+    {
+      "topic": "Window Functions",
+      "area": "query",
+      "difficulty": "hard",
+      "q": "What rank does John get?",
+      "code": "employees\nid | name  | dept  | salary | manager_id\n1  | Asha  | Eng   | 90000  | NULL\n2  | Ravi  | Eng   | 75000  | 1\n3  | Meera | Sales | 60000  | NULL\n4  | John  | Sales | 60000  | 3\n5  | Priya | HR    | 50000  | NULL\n6  | Karan | Eng   | 75000  | 1\n\nSELECT name, DENSE_RANK() OVER (ORDER BY salary DESC) AS r FROM employees;",
+      "options": [
+        "3",
+        "4",
+        "5",
+        "2"
+      ],
+      "answer": "3",
+      "verify": {
+        "lang": "sql",
+        "setup": "CREATE TABLE employees(id INTEGER, name TEXT, dept TEXT, salary INTEGER, manager_id INTEGER);\nINSERT INTO employees VALUES (1,'Asha','Eng',90000,NULL),(2,'Ravi','Eng',75000,1),(3,'Meera','Sales',60000,NULL),(4,'John','Sales',60000,3),(5,'Priya','HR',50000,NULL),(6,'Karan','Eng',75000,1);",
+        "query": "SELECT r FROM (SELECT name, DENSE_RANK() OVER (ORDER BY salary DESC) AS r FROM employees) WHERE name = 'John';"
+      }
+    },
+    {
+      "topic": "NULL Handling",
+      "area": "query",
+      "difficulty": "medium",
+      "q": "What does this query return?",
+      "code": "employees\nid | name  | dept  | salary | manager_id\n1  | Asha  | Eng   | 90000  | NULL\n2  | Ravi  | Eng   | 75000  | 1\n3  | Meera | Sales | 60000  | NULL\n4  | John  | Sales | 60000  | 3\n5  | Priya | HR    | 50000  | NULL\n6  | Karan | Eng   | 75000  | 1\n\nSELECT COUNT(manager_id) FROM employees;",
+      "options": [
+        "3",
+        "6",
+        "0",
+        "NULL"
+      ],
+      "answer": "3",
+      "verify": {
+        "lang": "sql",
+        "setup": "CREATE TABLE employees(id INTEGER, name TEXT, dept TEXT, salary INTEGER, manager_id INTEGER);\nINSERT INTO employees VALUES (1,'Asha','Eng',90000,NULL),(2,'Ravi','Eng',75000,1),(3,'Meera','Sales',60000,NULL),(4,'John','Sales',60000,3),(5,'Priya','HR',50000,NULL),(6,'Karan','Eng',75000,1);",
+        "query": "SELECT COUNT(manager_id) FROM employees;"
+      }
+    },
+    {
+      "topic": "NULL Handling",
+      "area": "query",
+      "difficulty": "hard",
+      "q": "What count does this query return?",
+      "code": "employees\nid | name  | dept  | salary | manager_id\n1  | Asha  | Eng   | 90000  | NULL\n2  | Ravi  | Eng   | 75000  | 1\n3  | Meera | Sales | 60000  | NULL\n4  | John  | Sales | 60000  | 3\n5  | Priya | HR    | 50000  | NULL\n6  | Karan | Eng   | 75000  | 1\n\nSELECT COUNT(*) FROM employees WHERE manager_id <> 1;",
+      "options": [
+        "1",
+        "4",
+        "3",
+        "2"
+      ],
+      "answer": "1",
+      "verify": {
+        "lang": "sql",
+        "setup": "CREATE TABLE employees(id INTEGER, name TEXT, dept TEXT, salary INTEGER, manager_id INTEGER);\nINSERT INTO employees VALUES (1,'Asha','Eng',90000,NULL),(2,'Ravi','Eng',75000,1),(3,'Meera','Sales',60000,NULL),(4,'John','Sales',60000,3),(5,'Priya','HR',50000,NULL),(6,'Karan','Eng',75000,1);",
+        "query": "SELECT COUNT(*) FROM employees WHERE manager_id <> 1;"
+      }
+    },
+    {
+      "topic": "Filtering",
+      "area": "query",
+      "difficulty": "easy",
+      "q": "What does this query return?",
+      "code": "employees\nid | name  | dept  | salary | manager_id\n1  | Asha  | Eng   | 90000  | NULL\n2  | Ravi  | Eng   | 75000  | 1\n3  | Meera | Sales | 60000  | NULL\n4  | John  | Sales | 60000  | 3\n5  | Priya | HR    | 50000  | NULL\n6  | Karan | Eng   | 75000  | 1\n\nSELECT SUM(salary) FROM employees WHERE dept IN ('HR', 'Sales');",
+      "options": [
+        "170000",
+        "110000",
+        "120000",
+        "260000"
+      ],
+      "answer": "170000",
+      "verify": {
+        "lang": "sql",
+        "setup": "CREATE TABLE employees(id INTEGER, name TEXT, dept TEXT, salary INTEGER, manager_id INTEGER);\nINSERT INTO employees VALUES (1,'Asha','Eng',90000,NULL),(2,'Ravi','Eng',75000,1),(3,'Meera','Sales',60000,NULL),(4,'John','Sales',60000,3),(5,'Priya','HR',50000,NULL),(6,'Karan','Eng',75000,1);",
+        "query": "SELECT SUM(salary) FROM employees WHERE dept IN ('HR', 'Sales');"
+      }
+    },
+    {
+      "topic": "Aggregation",
+      "area": "query",
+      "difficulty": "medium",
+      "q": "Which customer does this query return?",
+      "code": "orders\nid | customer | amount | order_date\n1  | A        | 100    | 2024-01-01\n2  | B        | 200    | 2024-01-02\n3  | A        | 150    | 2024-01-03\n4  | C        | 50     | 2024-01-03\n5  | B        | 300    | 2024-01-05\n\ncustomers\nname\nA\nB\nC\nD\n\nSELECT customer FROM orders GROUP BY customer ORDER BY SUM(amount) DESC LIMIT 1;",
+      "options": [
+        "B",
+        "A",
+        "C",
+        "D"
+      ],
+      "answer": "B",
+      "verify": {
+        "lang": "sql",
+        "setup": "CREATE TABLE orders(id INTEGER, customer TEXT, amount INTEGER, order_date TEXT);\nINSERT INTO orders VALUES (1,'A',100,'2024-01-01'),(2,'B',200,'2024-01-02'),(3,'A',150,'2024-01-03'),(4,'C',50,'2024-01-03'),(5,'B',300,'2024-01-05');\nCREATE TABLE customers(name TEXT);\nINSERT INTO customers VALUES ('A'),('B'),('C'),('D');",
+        "query": "SELECT customer FROM orders GROUP BY customer ORDER BY SUM(amount) DESC LIMIT 1;"
+      }
+    },
+    {
+      "topic": "Window Functions",
+      "area": "query",
+      "difficulty": "hard",
+      "q": "What is the running_total value for the order with id 3?",
+      "code": "orders\nid | customer | amount | order_date\n1  | A        | 100    | 2024-01-01\n2  | B        | 200    | 2024-01-02\n3  | A        | 150    | 2024-01-03\n4  | C        | 50     | 2024-01-03\n5  | B        | 300    | 2024-01-05\n\ncustomers\nname\nA\nB\nC\nD\n\nSELECT id, SUM(amount) OVER (ORDER BY id) AS running_total FROM orders;",
+      "options": [
+        "450",
+        "150",
+        "250",
+        "800"
+      ],
+      "answer": "450",
+      "verify": {
+        "lang": "sql",
+        "setup": "CREATE TABLE orders(id INTEGER, customer TEXT, amount INTEGER, order_date TEXT);\nINSERT INTO orders VALUES (1,'A',100,'2024-01-01'),(2,'B',200,'2024-01-02'),(3,'A',150,'2024-01-03'),(4,'C',50,'2024-01-03'),(5,'B',300,'2024-01-05');\nCREATE TABLE customers(name TEXT);\nINSERT INTO customers VALUES ('A'),('B'),('C'),('D');",
+        "query": "SELECT running_total FROM (SELECT id, SUM(amount) OVER (ORDER BY id) AS running_total FROM orders) WHERE id = 3;"
+      }
+    },
+    {
+      "topic": "Filtering",
+      "area": "query",
+      "difficulty": "easy",
+      "q": "What count does this query return?",
+      "code": "orders\nid | customer | amount | order_date\n1  | A        | 100    | 2024-01-01\n2  | B        | 200    | 2024-01-02\n3  | A        | 150    | 2024-01-03\n4  | C        | 50     | 2024-01-03\n5  | B        | 300    | 2024-01-05\n\ncustomers\nname\nA\nB\nC\nD\n\nSELECT COUNT(*) FROM orders WHERE order_date BETWEEN '2024-01-02' AND '2024-01-03';",
+      "options": [
+        "3",
+        "2",
+        "4",
+        "1"
+      ],
+      "answer": "3",
+      "verify": {
+        "lang": "sql",
+        "setup": "CREATE TABLE orders(id INTEGER, customer TEXT, amount INTEGER, order_date TEXT);\nINSERT INTO orders VALUES (1,'A',100,'2024-01-01'),(2,'B',200,'2024-01-02'),(3,'A',150,'2024-01-03'),(4,'C',50,'2024-01-03'),(5,'B',300,'2024-01-05');\nCREATE TABLE customers(name TEXT);\nINSERT INTO customers VALUES ('A'),('B'),('C'),('D');",
+        "query": "SELECT COUNT(*) FROM orders WHERE order_date BETWEEN '2024-01-02' AND '2024-01-03';"
+      }
+    },
+    {
+      "topic": "Set Operations",
+      "area": "query",
+      "difficulty": "medium",
+      "q": "Which name(s) does this query return?",
+      "code": "orders\nid | customer | amount | order_date\n1  | A        | 100    | 2024-01-01\n2  | B        | 200    | 2024-01-02\n3  | A        | 150    | 2024-01-03\n4  | C        | 50     | 2024-01-03\n5  | B        | 300    | 2024-01-05\n\ncustomers\nname\nA\nB\nC\nD\n\nSELECT name FROM customers WHERE name NOT IN (SELECT customer FROM orders);",
+      "options": [
+        "D",
+        "A, B, C",
+        "C, D",
+        "No rows"
+      ],
+      "answer": "D",
+      "verify": {
+        "lang": "sql",
+        "setup": "CREATE TABLE orders(id INTEGER, customer TEXT, amount INTEGER, order_date TEXT);\nINSERT INTO orders VALUES (1,'A',100,'2024-01-01'),(2,'B',200,'2024-01-02'),(3,'A',150,'2024-01-03'),(4,'C',50,'2024-01-03'),(5,'B',300,'2024-01-05');\nCREATE TABLE customers(name TEXT);\nINSERT INTO customers VALUES ('A'),('B'),('C'),('D');",
+        "query": "SELECT name FROM customers WHERE name NOT IN (SELECT customer FROM orders);"
+      }
+    },
+    {
+      "topic": "Aggregation",
+      "area": "query",
+      "difficulty": "medium",
+      "q": "How many rows does this query return?",
+      "code": "orders\nid | customer | amount | order_date\n1  | A        | 100    | 2024-01-01\n2  | B        | 200    | 2024-01-02\n3  | A        | 150    | 2024-01-03\n4  | C        | 50     | 2024-01-03\n5  | B        | 300    | 2024-01-05\n\ncustomers\nname\nA\nB\nC\nD\n\nSELECT customer, COUNT(*) AS n FROM orders GROUP BY customer HAVING COUNT(*) >= 2;",
+      "options": [
+        "2",
+        "1",
+        "3",
+        "5"
+      ],
+      "answer": "2",
+      "verify": {
+        "lang": "sql",
+        "setup": "CREATE TABLE orders(id INTEGER, customer TEXT, amount INTEGER, order_date TEXT);\nINSERT INTO orders VALUES (1,'A',100,'2024-01-01'),(2,'B',200,'2024-01-02'),(3,'A',150,'2024-01-03'),(4,'C',50,'2024-01-03'),(5,'B',300,'2024-01-05');\nCREATE TABLE customers(name TEXT);\nINSERT INTO customers VALUES ('A'),('B'),('C'),('D');",
+        "query": "SELECT COUNT(*) FROM (SELECT customer, COUNT(*) AS n FROM orders GROUP BY customer HAVING COUNT(*) >= 2);"
+      }
+    },
+    {
+      "topic": "HAVING Clause",
+      "area": "concepts",
+      "difficulty": "easy",
+      "q": "Which clause filters groups after aggregation?",
+      "options": [
+        "HAVING",
+        "WHERE",
+        "ORDER BY",
+        "LIMIT"
+      ],
+      "answer": "HAVING"
+    },
+    {
+      "topic": "DDL vs DML",
+      "area": "concepts",
+      "difficulty": "medium",
+      "q": "Which statement about TRUNCATE compared with DELETE is correct?",
+      "options": [
+        "TRUNCATE removes all rows at once and cannot take a WHERE clause",
+        "TRUNCATE can delete selected rows with WHERE",
+        "TRUNCATE drops the table definition",
+        "TRUNCATE fires row-level triggers for every row"
+      ],
+      "answer": "TRUNCATE removes all rows at once and cannot take a WHERE clause"
+    },
+    {
+      "topic": "Set Operations",
+      "area": "concepts",
+      "difficulty": "easy",
+      "q": "What is the difference between UNION and UNION ALL?",
+      "options": [
+        "UNION removes duplicate rows; UNION ALL keeps them",
+        "UNION ALL removes duplicates; UNION keeps them",
+        "They are identical",
+        "UNION ALL sorts the result"
+      ],
+      "answer": "UNION removes duplicate rows; UNION ALL keeps them"
+    },
+    {
+      "topic": "Indexes",
+      "area": "concepts",
+      "difficulty": "hard",
+      "q": "What is a covering index?",
+      "options": [
+        "An index containing every column a query needs, so the table itself is not read",
+        "An index on every column of the table",
+        "A clustered index on the primary key",
+        "An index that covers all rows but no columns"
+      ],
+      "answer": "An index containing every column a query needs, so the table itself is not read"
+    },
+    {
+      "topic": "NULL Handling",
+      "area": "concepts",
+      "difficulty": "hard",
+      "q": "Why can `WHERE id NOT IN (subquery)` unexpectedly return no rows?",
+      "options": [
+        "If the subquery returns a NULL, every comparison becomes unknown",
+        "NOT IN only works on indexed columns",
+        "NOT IN is not valid SQL",
+        "Subqueries cannot be used with NOT IN"
+      ],
+      "answer": "If the subquery returns a NULL, every comparison becomes unknown"
+    },
+    {
+      "topic": "Functions",
+      "area": "concepts",
+      "difficulty": "easy",
+      "q": "Which of these is NOT an aggregate function?",
+      "options": [
+        "COALESCE",
+        "SUM",
+        "AVG",
+        "COUNT"
+      ],
+      "answer": "COALESCE"
+    },
+    {
+      "topic": "NULL Handling",
+      "area": "concepts",
+      "difficulty": "easy",
+      "q": "What does COALESCE(a, b, c) return?",
+      "options": [
+        "The first non-NULL argument",
+        "The largest argument",
+        "The number of non-NULL arguments",
+        "NULL if any argument is NULL"
+      ],
+      "answer": "The first non-NULL argument"
+    },
+    {
+      "topic": "DML",
+      "area": "concepts",
+      "difficulty": "easy",
+      "q": "Which SQL statement modifies existing rows?",
+      "options": [
+        "UPDATE",
+        "INSERT",
+        "ALTER",
+        "SELECT"
+      ],
+      "answer": "UPDATE"
+    },
+    {
+      "topic": "Concurrency",
+      "area": "concepts",
+      "difficulty": "hard",
+      "q": "How is optimistic locking usually implemented?",
+      "options": [
+        "A version (or timestamp) column checked when updating",
+        "Locking the whole table before reading",
+        "Disabling transactions",
+        "Using SELECT … FOR UPDATE on every read"
+      ],
+      "answer": "A version (or timestamp) column checked when updating"
+    },
+    {
+      "topic": "Indexes",
+      "area": "concepts",
+      "difficulty": "medium",
+      "q": "Which index type is ideal for equality lookups but cannot serve range queries?",
+      "options": [
+        "Hash index",
+        "B-tree index",
+        "Clustered index",
+        "Composite B-tree index"
+      ],
+      "answer": "Hash index"
+    },
+    {
+      "topic": "Scaling",
+      "area": "concepts",
+      "difficulty": "medium",
+      "q": "What is database sharding?",
+      "options": [
+        "Splitting a table's rows across multiple database servers",
+        "Copying the database to a backup",
+        "Adding more indexes",
+        "Normalising the schema"
+      ],
+      "answer": "Splitting a table's rows across multiple database servers"
+    },
+    {
+      "topic": "Scaling",
+      "area": "concepts",
+      "difficulty": "easy",
+      "q": "What do read replicas mainly help with?",
+      "options": [
+        "Scaling read-heavy traffic",
+        "Speeding up writes",
+        "Enforcing foreign keys",
+        "Reducing storage"
+      ],
+      "answer": "Scaling read-heavy traffic"
+    },
+    {
+      "topic": "Indexes",
+      "area": "concepts",
+      "difficulty": "medium",
+      "q": "A composite index exists on (a, b). Which filter can use it most effectively?",
+      "options": [
+        "WHERE a = ? AND b = ?",
+        "WHERE b = ? only",
+        "WHERE a + b = ?",
+        "WHERE LOWER(b) = ?"
+      ],
+      "answer": "WHERE a = ? AND b = ?"
+    },
+    {
+      "topic": "Performance",
+      "area": "concepts",
+      "difficulty": "easy",
+      "q": "What does EXPLAIN (or EXPLAIN ANALYZE) show?",
+      "options": [
+        "The query execution plan",
+        "The table's data",
+        "The list of users",
+        "The database version"
+      ],
+      "answer": "The query execution plan"
+    },
+    {
+      "topic": "Transactions",
+      "area": "concepts",
+      "difficulty": "medium",
+      "q": "Which statement permanently saves the changes made in the current transaction?",
+      "options": [
+        "COMMIT",
+        "SAVEPOINT",
+        "ROLLBACK",
+        "BEGIN"
+      ],
+      "answer": "COMMIT"
+    }
+  ]
+}

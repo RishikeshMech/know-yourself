@@ -111,6 +111,8 @@ const STATS_ROW = {
 // ---------------------------------------------------------------- stand-in
 
 const mode = { view: 'ok' as 'ok' | 'missing', attemptedCol: true, narrowFails: false, stats: 'ok' as 'ok' | 'missing' }
+/** Rows as PostgREST returns them for the loader's JSON-path select. */
+const COMPANY_ATTEMPTS: any[] = []
 const requested: string[] = []
 
 const likeToRegExp = (pattern: string): RegExp => {
@@ -171,6 +173,10 @@ const server = http.createServer((req, res) => {
     return json(200, [])
   }
 
+  if (table === 'company_assessment_attempts') {
+    const set = new Set(inList(sp.get('student_id')))
+    return json(200, COMPANY_ATTEMPTS.filter(a => !sp.has('student_id') || set.has(a.student_id)))
+  }
   if (table === 'resume_analyses' || table === 'assessment_results') return json(200, [])
 
   if (table === 'student_profiles_full') {
@@ -391,7 +397,8 @@ test('meta: single-row stats view + local merge', async () => {
   const meta = await fetchAdminMeta()
   assert.ok(requested.some(u => u.includes('GET admin_stats')), 'stats view queried')
   assert.deepEqual(meta.colleges, ['COEP', 'PCCOE'])
-  assert.deepEqual(meta.stats, { total: 11, colleges: 2, assessed: 10, avg: 801 })
+  // STATS_ROW predates migration 0010 → the CalibiAI/company aggregates are unknown (null).
+  assert.deepEqual(meta.stats, { total: 11, colleges: 2, assessed: 10, avg: 801, calibiAvg: null, companyCompleted: null })
 })
 
 test('meta: falls back to a bounded scan without migration 0006', async () => {
@@ -402,7 +409,7 @@ test('meta: falls back to a bounded scan without migration 0006', async () => {
     const scan = requested.find(u => u.includes('GET student_profiles_full'))
     assert.ok(scan && scan.includes('select=talent_score'), `bounded scan used: ${scan}`)
     assert.ok(scan && scan.includes('limit=100'), `scan is capped: ${scan}`)
-    assert.deepEqual(meta.stats, { total: 11, colleges: 2, assessed: 9, avg: 801 })
+    assert.deepEqual(meta.stats, { total: 11, colleges: 2, assessed: 9, avg: 801, calibiAvg: null, companyCompleted: null })
   } finally {
     mode.stats = 'missing'
   }
@@ -438,4 +445,46 @@ after(async () => {
   await new Promise<void>(resolve => server.close(() => resolve()))
   await flushDB()
   fs.rmSync(dir, { recursive: true, force: true })
+})
+
+test('meta: migration 0010 columns add the CalibiAI average and completed company mocks', async () => {
+  const saved = { ...STATS_ROW }
+  const savedMode = mode.stats
+  mode.stats = 'ok'
+  Object.assign(STATS_ROW, { calibi_students: 8, avg_calibi: 790, company_attempts_completed: 5 })
+  try {
+    const meta = await fetchAdminMeta()
+    // 8 remote students averaging 790 + the unique local topper (960, assessment 1 only).
+    assert.equal(meta.stats.calibiAvg, Math.round((8 * 790 + 960) / 9))
+    assert.equal(meta.stats.companyCompleted, 5)
+  } finally {
+    for (const k of ['calibi_students', 'avg_calibi', 'company_attempts_completed']) delete (STATS_ROW as any)[k]
+    Object.assign(STATS_ROW, saved)
+    mode.stats = savedMode
+  }
+})
+
+test('page rows carry remote company mocks — read for the page ids only, narrow projection', async () => {
+  COMPANY_ATTEMPTS.push(
+    { student_id: R1, company_slug: 'amazon', status: 'submitted', score: 70, verdict: 'almost', started_at: '2026-09-06T08:00:00.000Z', submitted_at: '2026-09-06T10:00:00.000Z', duration_sec: 6000, auto_submitted: false, submit_reason: null, strikes: 1, camera: true, rounds: [{ id: 'oa', label: 'Online Assessment', percent: 70, cleared: true }] },
+    { student_id: R1, company_slug: 'tcs', status: 'in_progress', score: null, verdict: null, started_at: '2026-09-07T08:00:00.000Z', submitted_at: null, duration_sec: 6000, auto_submitted: false, submit_reason: null, strikes: 0, camera: null, rounds: null },
+  )
+  requested.length = 0
+  try {
+    const page = await fetchStudentsPage(parsePageParams({ page: '1', pageSize: '5' }))
+    const r1 = page.students.find(s => s.student_id === R1)!
+    assert.equal(r1.score, '900')
+    assert.equal(r1.company_taken, '1')
+    assert.equal(r1.company_in_progress, '1')
+    assert.equal(r1.calibi_score, '800') // (90 + 70) / 2
+    assert.equal(r1.cat_big_tech, '70')
+    assert.equal(r1.company_attempts?.find(a => a.company === 'amazon')?.rounds[0].label, 'Online Assessment')
+    const reads = requested.filter(u => u.includes('GET company_assessment_attempts'))
+    assert.equal(reads.length, 1, 'one company read per page')
+    assert.ok(reads[0].includes('student_id=in.'), 'filtered to the page ids — never a full-table read')
+    assert.ok(reads[0].includes('strikes%3Aproctoring-%3Estrikes') || reads[0].includes('strikes:proctoring->strikes'), `narrow JSON-path projection: ${reads[0]}`)
+    assert.ok(!/select=\*/.test(reads[0]))
+  } finally {
+    COMPANY_ATTEMPTS.length = 0
+  }
 })

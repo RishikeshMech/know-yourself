@@ -38,6 +38,7 @@ export function AssessmentReview({
   onJump,
   onCancel,
   onSubmit,
+  scoreLabel = 'score',
 }: {
   sections: ReviewSection[]
   stats: ReviewStats
@@ -49,6 +50,8 @@ export function AssessmentReview({
   onJump: (target: ReviewTarget) => void
   onCancel: () => void
   onSubmit: () => void
+  /** What the locked result is called in the footer copy (company mocks pass their own). */
+  scoreLabel?: string
 }) {
   const [confirming, setConfirming] = useState(false)
   const unanswered = stats.total - stats.answered
@@ -255,7 +258,7 @@ export function AssessmentReview({
           {readOnly ? (
             <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm font-semibold text-slate-700">
-                Your answers have been locked and submitted — continue to see your CalibiAI Score and report.
+                Your answers have been locked and submitted — continue to see your {scoreLabel} and report.
               </p>
               <button
                 onClick={onSubmit}
@@ -277,7 +280,7 @@ export function AssessmentReview({
           ) : confirming ? (
             <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm font-semibold text-slate-700">
-                Once submitted, your CalibiAI Score is locked — you can't go back and change anything.
+                Once submitted, your {scoreLabel} is locked — you can't go back and change anything.
                 {unanswered > 0 && (
                   <span className="ml-1 font-bold text-amber-600">{unanswered} unanswered will score 0.</span>
                 )}

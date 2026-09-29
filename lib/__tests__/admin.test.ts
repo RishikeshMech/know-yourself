@@ -153,10 +153,18 @@ test('filterRows narrows by college (case-insensitive) and free search', () => {
 
 test('CSV columns cover personal, skills, resume and all module scores', () => {
   const labels = CSV_COLUMNS.map(c => c.label)
-  for (const required of ['Name', 'PRN', 'Mobile Number', 'College', 'Profile Skills', 'All Skills', 'CalibiAI Score (/1000)', 'English (/200)', 'Cognitive (/200)', 'Feedback Rating (1-5)', 'Feedback Comment']) {
+  for (const required of [
+    'Name', 'PRN', 'Mobile Number', 'College', 'Profile Skills', 'All Skills',
+    'CalibiAI Score (average of all assessments, /1000)', 'Assessments Completed', 'Assessments Taken [Category]',
+    'CalibiAI Assessment Score (/1000)', 'English (/200)', 'Cognitive (/200)',
+    'Capgemini 2027 Mock Score (/1000)', 'Company Mocks Completed', 'Company Mocks Average (/100)', 'Company Results (score, verdict)',
+    'Category Avg - IT Services & Consulting (%)', 'Feedback Rating (1-5)', 'Feedback Comment',
+  ]) {
     assert.ok(labels.includes(required), `missing column ${required}`)
   }
-  assert.equal(CSV_COLUMNS.length, 52)
+  // 52 original columns + CalibiAI average (4) + Capgemini mock (9) + company summary (5) + categories (7);
+  // rowsToCsv appends one column per company on top (see calibiScore.test.ts).
+  assert.equal(CSV_COLUMNS.length, 77)
 })
 
 test('rowsToCsv adds BOM, CRLF, quotes and guards formula injection', () => {

@@ -14,11 +14,17 @@ import { getLiveUser } from '@/lib/session'
 import { ReportModal } from '@/components/ReportModal'
 import { SkillChips } from '@/components/SkillChips'
 import { WhatsAppCommunityCard } from '@/components/WhatsAppCommunity'
+import { CompanyCatalog } from '@/components/company/CompanyCatalog'
+import { CalibiScoreCard } from '@/components/CalibiScoreCard'
+import type { AttemptSummary } from '@/lib/company/types'
 
 function Inner(){
   const router = useRouter()
   const { user, profile, setProfile, resume, setResume, scores, setScores, scores2, setScores2, hydrated, setUser, reconcileForUser } = useStore()
   const [showReport, setShowReport] = useState(false)
+  const [companyAttempts, setCompanyAttempts] = useState<AttemptSummary[]>([])
+  const [companyLoaded, setCompanyLoaded] = useState(false)
+  const onCompanyAttempts = useCallback((list: AttemptSummary[] | null) => { if (list) setCompanyAttempts(list); setCompanyLoaded(true) }, [])
   // Which assessment the report pop-up is showing (1 = CalibiAI, 2 = Capgemini mock).
   const [reportFor, setReportFor] = useState<1 | 2>(1)
   const [downloading, setDownloading] = useState(false)
@@ -184,7 +190,7 @@ function Inner(){
               <div className="flex items-start gap-3">
                 <span className="text-2xl" aria-hidden>🎉</span>
                 <div>
-                  <div className="text-sm font-black text-emerald-800">Assessment submitted — your CalibiAI Score is ready</div>
+                  <div className="text-sm font-black text-emerald-800">Assessment submitted — your CalibiAI Score is updated</div>
                   <p className="mt-1 text-xs text-emerald-700">
                     This dashboard is your home from now on: score, full report, PDF download and resume all live here.
                   </p>
@@ -218,10 +224,13 @@ function Inner(){
           </div>
         )}
 
+        {/* Headline: the average of every completed assessment. */}
+        <CalibiScoreCard a1={scores} a2={scores2} company={companyAttempts} companyLoaded={companyLoaded || !user?.id} startHref={startHref} />
+
         <div className="mt-6 grid lg:grid-cols-3 gap-6">
-          {/* Score */}
+          {/* Assessment 1 */}
           <div className="lg:col-span-2 glass-card animate-fade-up" style={{animationDelay:'.05s'}}>
-            <div className="text-sm font-bold text-slate-700">Latest CalibiAI Score</div>
+            <div className="text-sm font-bold text-slate-700">CalibiAI Assessment <span className="font-medium text-slate-400">· 120-minute core assessment</span></div>
             {scores ? (
               <div className="mt-4">
                 <div className="flex items-baseline gap-3 flex-wrap">
@@ -364,6 +373,11 @@ function Inner(){
               <Link href={startHref} className="btn-soft mt-4 inline-flex !py-2.5 text-xs">Start your first assessment →</Link>
             </div>
           )}
+        </div>
+
+        {/* ---------------- Company assessments — every company, grouped by tag ---------------- */}
+        <div id="company-assessments" className="mt-6 glass-card animate-fade-up scroll-mt-24" style={{animationDelay:'.2s'}}>
+          <CompanyCatalog onAttempts={onCompanyAttempts} />
         </div>
 
         {/* Report pop-up — assessment 1 or 2 depending on which card opened it */}

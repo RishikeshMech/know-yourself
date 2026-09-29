@@ -1,0 +1,493 @@
+{
+  "sections": {
+    "s1": {
+      "file": "Section_1_Aptitude_and_Cognitive_Ability_450_Questions.docx",
+      "claimed": 450,
+      "parsed": 450,
+      "unique": 215,
+      "verifiedKeys": 210,
+      "reviewedKeys": 5
+    },
+    "s2": {
+      "file": "Section_2_Programming_Fundamentals_250_Questions.docx",
+      "claimed": 250,
+      "parsed": 250,
+      "unique": 38,
+      "verifiedKeys": 0,
+      "reviewedKeys": 38
+    },
+    "s3": {
+      "file": "Section_3_Data_Structures_and_Algorithms_700_Questions.docx",
+      "claimed": 700,
+      "parsed": 700,
+      "unique": 23,
+      "verifiedKeys": 0,
+      "reviewedKeys": 23
+    },
+    "s4": {
+      "file": "Section_4_-_Computer_Science_Fundamentals.docx",
+      "claimed": 350,
+      "parsed": 350,
+      "unique": 30,
+      "verifiedKeys": 0,
+      "reviewedKeys": 0
+    },
+    "s5": {
+      "file": "Section_5_-_SQL_and_Databases.docx",
+      "claimed": 200,
+      "parsed": 200,
+      "unique": 30,
+      "verifiedKeys": 0,
+      "reviewedKeys": 0
+    },
+    "s6": {
+      "file": "Section_6_-_AI-Assisted_Coding_and_Debugging.docx",
+      "claimed": 200,
+      "parsed": 200,
+      "unique": 30,
+      "verifiedKeys": 0,
+      "reviewedKeys": 0
+    },
+    "s7": {
+      "file": "Section_7_-_Web_Development_and_APIs.docx",
+      "claimed": 200,
+      "parsed": 200,
+      "unique": 30,
+      "verifiedKeys": 0,
+      "reviewedKeys": 0
+    },
+    "s8": {
+      "file": "Section_8_-_LLD_and_OOP_Design.docx",
+      "claimed": 150,
+      "parsed": 150,
+      "unique": 30,
+      "verifiedKeys": 0,
+      "reviewedKeys": 0
+    },
+    "s9": {
+      "file": "Section_9_-_System_Design_and_HLD.docx",
+      "claimed": 150,
+      "parsed": 150,
+      "unique": 30,
+      "verifiedKeys": 0,
+      "reviewedKeys": 0
+    },
+    "s10": {
+      "file": "Section_10_-_Software_Engineering,_Testing_and_DevOps.docx",
+      "claimed": 150,
+      "parsed": 150,
+      "unique": 30,
+      "verifiedKeys": 0,
+      "reviewedKeys": 0
+    },
+    "s11": {
+      "file": "Section_11_-_Technical_and_Behavioral_Interviews.docx",
+      "claimed": 200,
+      "parsed": 200,
+      "unique": 30,
+      "verifiedKeys": 0,
+      "reviewedKeys": 0
+    }
+  },
+  "fixes": [
+    {
+      "refs": [
+        70
+      ],
+      "section": "s1",
+      "kind": "duplicate-distractor",
+      "before": [
+        "₹120.00",
+        "₹30.00",
+        "₹30.00",
+        "₹870.00"
+      ],
+      "after": [
+        "₹120.00",
+        "₹30.00",
+        "₹240.00",
+        "₹870.00"
+      ]
+    },
+    {
+      "refs": [
+        71
+      ],
+      "section": "s1",
+      "kind": "duplicate-distractor",
+      "before": [
+        "₹193.75",
+        "₹38.75",
+        "₹38.75",
+        "₹968.75"
+      ],
+      "after": [
+        "₹193.75",
+        "₹38.75",
+        "₹387.50",
+        "₹968.75"
+      ]
+    },
+    {
+      "refs": [
+        90
+      ],
+      "section": "s1",
+      "kind": "duplicate-distractor",
+      "before": [
+        "₹200.00",
+        "₹50.00",
+        "₹50.00",
+        "₹1450.00"
+      ],
+      "after": [
+        "₹200.00",
+        "₹50.00",
+        "₹400.00",
+        "₹1450.00"
+      ]
+    },
+    {
+      "refs": [
+        108
+      ],
+      "section": "s1",
+      "kind": "ill-posed-rephrased",
+      "before": "Two quantities are in the ratio 5:5. If their total is 280, what is the smaller quantity?",
+      "after": "Two quantities are in the ratio 5:5. If their total is 280, what is the value of each quantity?"
+    },
+    {
+      "refs": [
+        109
+      ],
+      "section": "s1",
+      "kind": "ill-posed-rephrased",
+      "before": "Two quantities are in the ratio 6:6. If their total is 348, what is the smaller quantity?",
+      "after": "Two quantities are in the ratio 6:6. If their total is 348, what is the value of each quantity?"
+    },
+    {
+      "refs": [
+        110
+      ],
+      "section": "s1",
+      "kind": "ill-posed-rephrased",
+      "before": "Two quantities are in the ratio 7:7. If their total is 420, what is the smaller quantity?",
+      "after": "Two quantities are in the ratio 7:7. If their total is 420, what is the value of each quantity?"
+    },
+    {
+      "refs": [
+        111
+      ],
+      "section": "s1",
+      "kind": "ill-posed-rephrased",
+      "before": "Two quantities are in the ratio 8:8. If their total is 496, what is the smaller quantity?",
+      "after": "Two quantities are in the ratio 8:8. If their total is 496, what is the value of each quantity?"
+    },
+    {
+      "refs": [
+        112
+      ],
+      "section": "s1",
+      "kind": "ill-posed-rephrased",
+      "before": "Two quantities are in the ratio 9:9. If their total is 576, what is the smaller quantity?",
+      "after": "Two quantities are in the ratio 9:9. If their total is 576, what is the value of each quantity?"
+    },
+    {
+      "refs": [
+        113
+      ],
+      "section": "s1",
+      "kind": "ill-posed-rephrased",
+      "before": "Two quantities are in the ratio 10:10. If their total is 660, what is the smaller quantity?",
+      "after": "Two quantities are in the ratio 10:10. If their total is 660, what is the value of each quantity?"
+    },
+    {
+      "refs": [
+        117
+      ],
+      "section": "s1",
+      "kind": "wrong-implied-key",
+      "q": "Two quantities are in the ratio 6:5. If their total is 407, what is the smaller quantity?",
+      "implied": "222",
+      "correct": "185"
+    },
+    {
+      "refs": [
+        118
+      ],
+      "section": "s1",
+      "kind": "wrong-implied-key",
+      "q": "Two quantities are in the ratio 7:6. If their total is 494, what is the smaller quantity?",
+      "implied": "266",
+      "correct": "228"
+    },
+    {
+      "refs": [
+        119
+      ],
+      "section": "s1",
+      "kind": "wrong-implied-key",
+      "q": "Two quantities are in the ratio 8:7. If their total is 585, what is the smaller quantity?",
+      "implied": "312",
+      "correct": "273"
+    },
+    {
+      "refs": [
+        120
+      ],
+      "section": "s1",
+      "kind": "wrong-implied-key",
+      "q": "Two quantities are in the ratio 9:8. If their total is 680, what is the smaller quantity?",
+      "implied": "360",
+      "correct": "320"
+    },
+    {
+      "refs": [
+        301,
+        302,
+        303,
+        304,
+        305,
+        306,
+        307,
+        308,
+        309,
+        310,
+        311,
+        312,
+        313,
+        314,
+        315,
+        316,
+        317,
+        318,
+        319,
+        320,
+        321,
+        322,
+        323,
+        324,
+        325,
+        326,
+        327,
+        328,
+        329,
+        330
+      ],
+      "section": "s1",
+      "kind": "restated-premise-key",
+      "before": "All analysts are readers",
+      "after": "Some readers are analysts"
+    }
+  ],
+  "supplements": {
+    "s01-aptitude.json": 99,
+    "s02-programming.json": 51,
+    "s03-coding.json": 43,
+    "s03-dsa.json": 136,
+    "s04-cs-fundamentals.json": 51,
+    "s05-sql.json": 32,
+    "s06-ai-coding.json": 26,
+    "s07-web-apis.json": 32,
+    "s08-lld.json": 26,
+    "s09-system-design.json": 30,
+    "s10-se-devops.json": 30,
+    "s11-communication.json": 8
+  },
+  "generated": 109,
+  "bank": {
+    "s1": {
+      "total": 423,
+      "mcq": 423,
+      "written": 0,
+      "coding": 0,
+      "ques": 215,
+      "supplement": 99,
+      "generated": 109,
+      "easy": 208,
+      "medium": 162,
+      "hard": 53,
+      "areas": {
+        "quant": 272,
+        "reasoning": 93,
+        "verbal": 42,
+        "finance": 16
+      }
+    },
+    "s2": {
+      "total": 89,
+      "mcq": 89,
+      "written": 0,
+      "coding": 0,
+      "ques": 38,
+      "supplement": 51,
+      "generated": 0,
+      "easy": 49,
+      "medium": 29,
+      "hard": 11,
+      "areas": {
+        "concepts": 49,
+        "output": 40
+      }
+    },
+    "s3": {
+      "total": 202,
+      "mcq": 159,
+      "written": 0,
+      "coding": 43,
+      "ques": 23,
+      "supplement": 179,
+      "generated": 0,
+      "easy": 41,
+      "medium": 76,
+      "hard": 85,
+      "areas": {
+        "concepts": 101,
+        "coding": 43,
+        "analysis": 58
+      }
+    },
+    "s4": {
+      "total": 81,
+      "mcq": 51,
+      "written": 30,
+      "coding": 0,
+      "ques": 30,
+      "supplement": 51,
+      "generated": 0,
+      "easy": 21,
+      "medium": 43,
+      "hard": 17,
+      "areas": {
+        "os": 24,
+        "dbms": 14,
+        "cn": 17,
+        "compilers": 8,
+        "oop": 11,
+        "coa": 7
+      }
+    },
+    "s5": {
+      "total": 62,
+      "mcq": 32,
+      "written": 30,
+      "coding": 0,
+      "ques": 30,
+      "supplement": 32,
+      "generated": 0,
+      "easy": 19,
+      "medium": 25,
+      "hard": 18,
+      "areas": {
+        "query": 33,
+        "concepts": 29
+      }
+    },
+    "s6": {
+      "total": 56,
+      "mcq": 26,
+      "written": 30,
+      "coding": 0,
+      "ques": 30,
+      "supplement": 26,
+      "generated": 0,
+      "easy": 14,
+      "medium": 22,
+      "hard": 20,
+      "areas": {
+        "debugging": 22,
+        "prompting": 10,
+        "review": 24
+      }
+    },
+    "s7": {
+      "total": 62,
+      "mcq": 32,
+      "written": 30,
+      "coding": 0,
+      "ques": 30,
+      "supplement": 32,
+      "generated": 0,
+      "easy": 17,
+      "medium": 27,
+      "hard": 18,
+      "areas": {
+        "http": 15,
+        "api": 20,
+        "security": 21,
+        "frontend": 6
+      }
+    },
+    "s8": {
+      "total": 56,
+      "mcq": 26,
+      "written": 30,
+      "coding": 0,
+      "ques": 30,
+      "supplement": 26,
+      "generated": 0,
+      "easy": 11,
+      "medium": 25,
+      "hard": 20,
+      "areas": {
+        "modeling": 21,
+        "principles": 17,
+        "patterns": 18
+      }
+    },
+    "s9": {
+      "total": 60,
+      "mcq": 30,
+      "written": 30,
+      "coding": 0,
+      "ques": 30,
+      "supplement": 30,
+      "generated": 0,
+      "easy": 12,
+      "medium": 23,
+      "hard": 25,
+      "areas": {
+        "scale": 16,
+        "messaging": 13,
+        "data": 22,
+        "reliability": 9
+      }
+    },
+    "s10": {
+      "total": 60,
+      "mcq": 30,
+      "written": 30,
+      "coding": 0,
+      "ques": 30,
+      "supplement": 30,
+      "generated": 0,
+      "easy": 19,
+      "medium": 28,
+      "hard": 13,
+      "areas": {
+        "testing": 17,
+        "process": 17,
+        "devops": 26
+      }
+    },
+    "s11": {
+      "total": 38,
+      "mcq": 0,
+      "written": 38,
+      "coding": 0,
+      "ques": 30,
+      "supplement": 8,
+      "generated": 0,
+      "easy": 6,
+      "medium": 18,
+      "hard": 14,
+      "areas": {
+        "technical": 14,
+        "behavioral": 16,
+        "communication": 8
+      }
+    }
+  },
+  "total": 1189,
+  "version": "a165d4a058d0"
+}

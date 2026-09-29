@@ -1,0 +1,885 @@
+{
+  "_about": "Grading rubrics for the open-ended prompts of Ques Sections 4-11. Each base prompt gets a content-calibrated difficulty (its angle variant is one level harder) and 5-6 key concepts. Phrases are lower-case substrings; matching any phrase credits the point. Used by the heuristic grader and passed to the LLM grader as the reference rubric.",
+  "s4": [
+    { "base": "Explain the difference between a process and a thread.", "topic": "Processes & Threads", "area": "os", "difficulty": "easy", "rubric": [
+      { "label": "Processes have separate address spaces", "any": ["address space", "separate memory", "own memory", "isolated memory", "independent memory", "memory space"] },
+      { "label": "Threads share the process's memory and resources", "any": ["share memory", "shared memory", "share the same memory", "share the heap", "same address space", "shares memory", "share resources"] },
+      { "label": "Creation and context-switch cost", "any": ["context switch", "lightweight", "lighter", "overhead", "cheaper", "faster to create"] },
+      { "label": "Communication: IPC vs shared data", "any": ["ipc", "inter-process", "interprocess", "pipe", "message passing", "socket", "shared variable"] },
+      { "label": "Fault isolation", "any": ["crash", "isolation", "fault", "brings down", "whole process", "affect other"] },
+      { "label": "Synchronisation needs", "any": ["race condition", "mutex", "lock", "synchroniz", "synchronis", "semaphore"] }
+    ] },
+    { "base": "Compare deadlock prevention, avoidance, detection, and recovery.", "topic": "Deadlocks", "area": "os", "difficulty": "hard", "rubric": [
+      { "label": "Coffman conditions", "any": ["mutual exclusion", "hold and wait", "no preemption", "circular wait", "coffman", "four conditions"] },
+      { "label": "Prevention breaks a necessary condition", "any": ["prevention", "prevent", "break one", "resource ordering", "lock ordering", "request all"] },
+      { "label": "Avoidance with safe states / Banker's algorithm", "any": ["banker", "safe state", "avoidance", "unsafe state"] },
+      { "label": "Detection with wait-for / resource graphs", "any": ["detection", "wait-for graph", "resource allocation graph", "cycle", "detect"] },
+      { "label": "Recovery by preemption, rollback or termination", "any": ["recovery", "rollback", "roll back", "terminate", "kill", "preempt", "victim"] },
+      { "label": "Trade-offs between the strategies", "any": ["trade-off", "tradeoff", "overhead", "utilization", "utilisation", "throughput", "cost"] }
+    ] },
+    { "base": "Explain paging, segmentation, and virtual memory.", "topic": "Memory Management", "area": "os", "difficulty": "medium", "rubric": [
+      { "label": "Paging: fixed-size pages and frames", "any": ["page", "frame", "fixed size", "fixed-size", "page table"] },
+      { "label": "Segmentation: variable-size logical segments", "any": ["segment", "variable size", "variable-size", "logical unit", "code segment", "stack segment"] },
+      { "label": "Virtual memory abstraction", "any": ["virtual memory", "virtual address", "larger than physical", "illusion", "logical address"] },
+      { "label": "Address translation (MMU/TLB)", "any": ["mmu", "tlb", "translation", "page table", "translate"] },
+      { "label": "Page faults and demand paging", "any": ["page fault", "demand paging", "swap", "swapping", "disk", "replacement"] },
+      { "label": "Fragmentation trade-offs", "any": ["fragmentation", "internal fragmentation", "external fragmentation", "thrashing"] }
+    ] },
+    { "base": "Differentiate preemptive and non-preemptive CPU scheduling.", "topic": "CPU Scheduling", "area": "os", "difficulty": "easy", "rubric": [
+      { "label": "Preemptive: OS can interrupt a running process", "any": ["interrupt", "preempt", "taken away", "forcibly", "time slice", "time quantum"] },
+      { "label": "Non-preemptive: runs until it blocks or finishes", "any": ["until it finishes", "until completion", "voluntarily", "until it blocks", "runs to completion", "cannot be interrupted"] },
+      { "label": "Example algorithms", "any": ["round robin", "srtf", "shortest remaining", "fcfs", "first come", "sjf", "priority scheduling"] },
+      { "label": "Responsiveness and fairness", "any": ["responsive", "response time", "fair", "interactive", "starvation"] },
+      { "label": "Overhead of context switching", "any": ["context switch", "overhead", "cost"] }
+    ] },
+    { "base": "Explain normalization up to BCNF with a suitable example.", "topic": "Normalization", "area": "dbms", "difficulty": "medium", "rubric": [
+      { "label": "Goal: remove redundancy and anomalies", "any": ["redundan", "anomal", "duplicate data", "update anomaly", "insertion anomaly", "deletion anomaly"] },
+      { "label": "1NF: atomic values", "any": ["1nf", "first normal", "atomic", "repeating group"] },
+      { "label": "2NF: no partial dependency", "any": ["2nf", "second normal", "partial dependency", "partial dependenc"] },
+      { "label": "3NF: no transitive dependency", "any": ["3nf", "third normal", "transitive"] },
+      { "label": "BCNF: every determinant is a candidate key", "any": ["bcnf", "boyce", "determinant", "superkey", "super key", "candidate key"] },
+      { "label": "Worked example with decomposition", "any": ["for example", "e.g.", "table", "decompos", "split into", "student", "course"] }
+    ] },
+    { "base": "Compare TCP and UDP and give practical use cases.", "topic": "Transport Protocols", "area": "cn", "difficulty": "easy", "rubric": [
+      { "label": "TCP is connection-oriented (handshake)", "any": ["connection-oriented", "connection oriented", "handshake", "three-way", "3-way"] },
+      { "label": "Reliability, ordering and retransmission", "any": ["reliab", "retransmi", "acknowledg", "in order", "ordering", "guaranteed delivery"] },
+      { "label": "UDP is connectionless and lightweight", "any": ["connectionless", "no handshake", "lightweight", "low overhead", "best effort", "best-effort"] },
+      { "label": "Flow and congestion control", "any": ["flow control", "congestion", "window", "sliding window"] },
+      { "label": "Use cases for each", "any": ["streaming", "video call", "gaming", "dns", "voip", "http", "email", "file transfer", "web browsing"] }
+    ] },
+    { "base": "Explain compiler, assembler, linker, loader, and interpreter.", "topic": "Language Processors", "area": "compilers", "difficulty": "medium", "rubric": [
+      { "label": "Compiler translates source to machine/object code", "any": ["compiler", "compiles", "source code to", "object code", "machine code"] },
+      { "label": "Assembler converts assembly to machine code", "any": ["assembler", "assembly"] },
+      { "label": "Linker combines object files and libraries", "any": ["linker", "link", "object files", "libraries", "symbol", "executable"] },
+      { "label": "Loader places the program in memory", "any": ["loader", "load", "into memory", "relocat"] },
+      { "label": "Interpreter executes line by line", "any": ["interpreter", "line by line", "line-by-line", "statement by statement", "at runtime"] },
+      { "label": "Trade-offs (speed, portability, errors)", "any": ["faster", "slower", "portab", "error", "trade-off", "jit"] }
+    ] },
+    { "base": "Describe inheritance, polymorphism, abstraction, and encapsulation.", "topic": "OOP Pillars", "area": "oop", "difficulty": "easy", "rubric": [
+      { "label": "Inheritance: reuse via is-a", "any": ["inherit", "is-a", "is a", "subclass", "parent class", "base class", "derived"] },
+      { "label": "Polymorphism: one interface, many forms", "any": ["polymorph", "overrid", "overload", "many forms", "dynamic dispatch"] },
+      { "label": "Abstraction: expose essentials, hide detail", "any": ["abstract", "hide complexity", "essential", "interface"] },
+      { "label": "Encapsulation: bundle data and restrict access", "any": ["encapsulat", "private", "getter", "setter", "data hiding", "bundle"] },
+      { "label": "Concrete example", "any": ["for example", "e.g.", "such as", "animal", "shape", "vehicle", "bank account"] }
+    ] },
+    { "base": "Explain race conditions and synchronization mechanisms.", "topic": "Concurrency", "area": "os", "difficulty": "medium", "rubric": [
+      { "label": "Race condition definition", "any": ["race condition", "interleav", "timing", "concurrent access", "order of execution"] },
+      { "label": "Critical section", "any": ["critical section", "shared resource", "shared data", "shared variable"] },
+      { "label": "Locks / mutexes", "any": ["mutex", "lock", "spinlock"] },
+      { "label": "Semaphores / monitors / condition variables", "any": ["semaphore", "monitor", "condition variable", "wait", "signal"] },
+      { "label": "Atomic operations", "any": ["atomic", "compare-and-swap", "compare and swap", "cas", "volatile"] },
+      { "label": "Pitfalls: deadlock, starvation, contention", "any": ["deadlock", "starvation", "contention", "priority inversion", "livelock"] }
+    ] },
+    { "base": "Compare cache memory, RAM, ROM, and secondary storage.", "topic": "Memory Hierarchy", "area": "coa", "difficulty": "easy", "rubric": [
+      { "label": "Cache: fastest, smallest, near the CPU", "any": ["cache", "l1", "l2", "fastest", "closest to the cpu", "sram"] },
+      { "label": "RAM: volatile main memory", "any": ["ram", "main memory", "volatile", "dram"] },
+      { "label": "ROM: non-volatile firmware storage", "any": ["rom", "firmware", "bios", "read-only", "read only"] },
+      { "label": "Secondary storage: large, persistent, slow", "any": ["secondary", "hdd", "ssd", "hard disk", "persistent", "non-volatile"] },
+      { "label": "Speed / cost / capacity trade-off", "any": ["hierarchy", "cost per", "capacity", "speed", "latency", "trade-off"] }
+    ] },
+    { "base": "Explain indexing and its effect on database performance.", "topic": "Indexing", "area": "dbms", "difficulty": "medium", "rubric": [
+      { "label": "Index as a lookup structure", "any": ["index", "lookup", "pointer", "sorted"] },
+      { "label": "B-tree / hash structures", "any": ["b-tree", "b tree", "b+ tree", "b+tree", "hash index", "balanced tree"] },
+      { "label": "Faster reads / avoids full scans", "any": ["full table scan", "full scan", "faster read", "faster search", "log n", "seek"] },
+      { "label": "Slower writes and extra storage", "any": ["slower write", "insert", "update", "storage", "maintenance", "overhead"] },
+      { "label": "Clustered vs non-clustered / composite", "any": ["clustered", "non-clustered", "nonclustered", "composite", "covering"] },
+      { "label": "Choosing columns (selectivity, query plans)", "any": ["selectiv", "cardinality", "explain", "query plan", "where clause", "frequently"] }
+    ] },
+    { "base": "Describe the OSI and TCP/IP models.", "topic": "Network Models", "area": "cn", "difficulty": "medium", "rubric": [
+      { "label": "Seven OSI layers", "any": ["seven layer", "7 layer", "physical", "data link", "presentation", "session layer"] },
+      { "label": "Four/five TCP/IP layers", "any": ["four layer", "4 layer", "five layer", "link layer", "internet layer", "tcp/ip model"] },
+      { "label": "Layer responsibilities", "any": ["routing", "framing", "end-to-end", "encryption", "addressing", "error detection"] },
+      { "label": "Protocols per layer", "any": ["http", "tcp", "udp", "ip", "ethernet", "arp", "dns"] },
+      { "label": "Mapping between the models", "any": ["map", "correspond", "combines", "merged", "equivalent"] }
+    ] },
+    { "base": "Explain public, private, protected, and default access modifiers.", "topic": "Access Modifiers", "area": "oop", "difficulty": "easy", "rubric": [
+      { "label": "Public: accessible everywhere", "any": ["public", "anywhere", "everywhere", "any class"] },
+      { "label": "Private: only within the class", "any": ["private", "same class", "within the class", "only the class"] },
+      { "label": "Protected: class, subclasses (and package in Java)", "any": ["protected", "subclass", "child class", "derived class"] },
+      { "label": "Default / package-private", "any": ["default", "package-private", "package private", "same package", "no modifier"] },
+      { "label": "Why: encapsulation and API design", "any": ["encapsulat", "information hiding", "api", "invariant", "control access"] }
+    ] },
+    { "base": "Compare static binding and dynamic binding.", "topic": "Binding", "area": "oop", "difficulty": "medium", "rubric": [
+      { "label": "Static binding resolved at compile time", "any": ["compile time", "compile-time", "early binding", "static binding"] },
+      { "label": "Dynamic binding resolved at runtime", "any": ["runtime", "run time", "run-time", "late binding", "dynamic binding", "dynamic dispatch"] },
+      { "label": "Overloading vs overriding", "any": ["overload", "overrid"] },
+      { "label": "Virtual functions / vtable", "any": ["virtual", "vtable", "v-table", "method table"] },
+      { "label": "Performance vs flexibility", "any": ["flexib", "performance", "faster", "extensib", "polymorph"] }
+    ] },
+    { "base": "Explain garbage collection and memory leaks.", "topic": "Memory Management", "area": "compilers", "difficulty": "medium", "rubric": [
+      { "label": "GC reclaims unreachable objects automatically", "any": ["garbage collect", "unreachable", "reclaim", "automatic memory", "free memory"] },
+      { "label": "Algorithms: mark-and-sweep, reference counting, generational", "any": ["mark and sweep", "mark-and-sweep", "reference count", "generational", "copying collector"] },
+      { "label": "Memory leak definition", "any": ["memory leak", "never freed", "not released", "still referenced", "keeps growing"] },
+      { "label": "Leaks even with GC (lingering references)", "any": ["listener", "cache", "static", "global", "closure", "lingering reference"] },
+      { "label": "Detection and tools", "any": ["profil", "heap dump", "valgrind", "memory usage", "heap snapshot", "monitor"] }
+    ] }
+  ],
+  "s5": [
+    { "base": "Write SQL to find the second-highest salary.", "topic": "Ranking Queries", "area": "query", "difficulty": "easy", "rubric": [
+      { "label": "Uses MAX with a subquery or ORDER BY", "any": ["max(", "order by", "desc"] },
+      { "label": "Handles duplicate salaries with DISTINCT", "any": ["distinct"] },
+      { "label": "LIMIT/OFFSET or TOP alternative", "any": ["limit", "offset", "top ", "fetch first"] },
+      { "label": "Window function alternative (DENSE_RANK)", "any": ["dense_rank", "rank()", "row_number"] },
+      { "label": "Edge cases: fewer than two salaries, ties, NULL", "any": ["null", "no second", "tie", "only one", "duplicate"] }
+    ] },
+    { "base": "Write SQL to identify duplicate email addresses.", "topic": "Aggregation", "area": "query", "difficulty": "easy", "rubric": [
+      { "label": "GROUP BY email", "any": ["group by"] },
+      { "label": "HAVING COUNT(*) > 1", "any": ["having", "count(*) > 1", "count(*)>1", "count(email) > 1"] },
+      { "label": "Normalises case/whitespace", "any": ["lower(", "upper(", "trim(", "case-insensitive", "case insensitive"] },
+      { "label": "Returns the duplicate rows (join or window)", "any": ["join", "in (select", "over (partition", "row_number"] },
+      { "label": "Prevention with a unique constraint", "any": ["unique", "constraint", "index"] }
+    ] },
+    { "base": "Explain INNER JOIN, LEFT JOIN, RIGHT JOIN, and FULL JOIN.", "topic": "Joins", "area": "concepts", "difficulty": "easy", "rubric": [
+      { "label": "INNER JOIN returns only matching rows", "any": ["inner join", "only matching", "both tables", "intersection"] },
+      { "label": "LEFT JOIN keeps all left rows", "any": ["left join", "all rows from the left", "all records from the left", "left table"] },
+      { "label": "RIGHT JOIN keeps all right rows", "any": ["right join", "right table"] },
+      { "label": "FULL JOIN keeps rows from both sides", "any": ["full join", "full outer", "both sides", "all rows from both"] },
+      { "label": "NULLs fill unmatched columns", "any": ["null"] },
+      { "label": "Example tables", "any": ["for example", "e.g.", "employee", "department", "customer", "order"] }
+    ] },
+    { "base": "Write SQL to find employees earning more than their department average.", "topic": "Subqueries", "area": "query", "difficulty": "medium", "rubric": [
+      { "label": "Computes AVG per department", "any": ["avg(", "average"] },
+      { "label": "Correlated subquery or derived table", "any": ["where salary >", "> (select", "e2.", "derived", "join (select", "correlated"] },
+      { "label": "GROUP BY department", "any": ["group by", "partition by"] },
+      { "label": "Window-function alternative", "any": ["over (partition", "over(partition", "window"] },
+      { "label": "Performance / NULL considerations", "any": ["index", "null", "performance", "department_id"] }
+    ] },
+    { "base": "Explain primary key, foreign key, candidate key, and composite key.", "topic": "Keys", "area": "concepts", "difficulty": "easy", "rubric": [
+      { "label": "Primary key: unique, not null identifier", "any": ["primary key", "uniquely identif", "not null", "unique"] },
+      { "label": "Foreign key: references another table", "any": ["foreign key", "references", "referential integrity", "parent table"] },
+      { "label": "Candidate key: minimal unique key options", "any": ["candidate key", "minimal", "could be the primary"] },
+      { "label": "Composite key: multiple columns", "any": ["composite", "more than one column", "multiple columns", "combination of"] },
+      { "label": "Examples", "any": ["for example", "e.g.", "student_id", "order_id", "email", "roll"] }
+    ] },
+    { "base": "Write SQL to return the top three salaries in each department.", "topic": "Window Functions", "area": "query", "difficulty": "hard", "rubric": [
+      { "label": "Partitions by department", "any": ["partition by", "group by department", "per department"] },
+      { "label": "Ranks with DENSE_RANK / ROW_NUMBER", "any": ["dense_rank", "row_number", "rank()"] },
+      { "label": "Filters rank <= 3 in an outer query / CTE", "any": ["<= 3", "<=3", "< 4", "with ", "cte", "subquery"] },
+      { "label": "Handles ties deliberately", "any": ["tie", "duplicate", "dense_rank vs", "same salary"] },
+      { "label": "Correlated-count alternative for older engines", "any": ["count(distinct", "correlated", "not exists", "self join", "self-join"] }
+    ] },
+    { "base": "Explain WHERE, HAVING, GROUP BY, and ORDER BY.", "topic": "Clauses", "area": "concepts", "difficulty": "easy", "rubric": [
+      { "label": "WHERE filters rows before grouping", "any": ["where", "before group", "individual rows", "filters rows"] },
+      { "label": "GROUP BY aggregates rows", "any": ["group by", "aggregate", "count(", "sum("] },
+      { "label": "HAVING filters groups after aggregation", "any": ["having", "after group", "filter groups", "aggregated"] },
+      { "label": "ORDER BY sorts the result", "any": ["order by", "sort", "asc", "desc"] },
+      { "label": "Logical execution order", "any": ["execution order", "order of execution", "evaluated", "from where group"] }
+    ] },
+    { "base": "Write SQL to find records present in one table but not another.", "topic": "Set Operations", "area": "query", "difficulty": "medium", "rubric": [
+      { "label": "LEFT JOIN … WHERE right.key IS NULL", "any": ["left join", "is null"] },
+      { "label": "NOT EXISTS", "any": ["not exists"] },
+      { "label": "NOT IN and its NULL pitfall", "any": ["not in", "null"] },
+      { "label": "EXCEPT / MINUS", "any": ["except", "minus"] },
+      { "label": "Performance comparison", "any": ["performance", "index", "anti-join", "anti join", "faster"] }
+    ] },
+    { "base": "Explain clustered and non-clustered indexes.", "topic": "Indexes", "area": "concepts", "difficulty": "medium", "rubric": [
+      { "label": "Clustered index defines physical row order", "any": ["physical order", "physically", "sorted order of the table", "data pages", "stored in order"] },
+      { "label": "Only one clustered index per table", "any": ["only one", "one per table", "single clustered"] },
+      { "label": "Non-clustered index is a separate structure with pointers", "any": ["separate structure", "pointer", "row locator", "bookmark", "points to"] },
+      { "label": "Many non-clustered indexes allowed", "any": ["multiple", "many non-clustered", "several"] },
+      { "label": "Read/write trade-offs and use cases", "any": ["range", "write", "insert", "lookup", "covering", "trade-off"] }
+    ] },
+    { "base": "Write SQL to calculate a running total.", "topic": "Window Functions", "area": "query", "difficulty": "medium", "rubric": [
+      { "label": "SUM() OVER (ORDER BY …)", "any": ["sum(", "over (order by", "over(order by", "over ("] },
+      { "label": "Frame clause (ROWS BETWEEN …)", "any": ["rows between", "unbounded preceding", "current row"] },
+      { "label": "PARTITION BY for per-group totals", "any": ["partition by"] },
+      { "label": "Self-join / correlated alternative", "any": ["self join", "self-join", "correlated", "<= t1", "subquery"] },
+      { "label": "Ordering / tie considerations", "any": ["tie", "order by date", "deterministic", "unique order"] }
+    ] },
+    { "base": "Explain transactions and ACID properties.", "topic": "Transactions", "area": "concepts", "difficulty": "medium", "rubric": [
+      { "label": "Transaction as a unit of work", "any": ["unit of work", "begin", "commit", "rollback", "all or nothing"] },
+      { "label": "Atomicity", "any": ["atomicity", "atomic"] },
+      { "label": "Consistency", "any": ["consistency", "consistent", "constraints"] },
+      { "label": "Isolation (and isolation levels)", "any": ["isolation", "read committed", "serializable", "repeatable read", "dirty read"] },
+      { "label": "Durability", "any": ["durability", "durable", "persist", "write-ahead", "log"] },
+      { "label": "Example (bank transfer)", "any": ["transfer", "bank", "debit", "credit", "for example"] }
+    ] },
+    { "base": "Write SQL to remove duplicate rows while retaining one record.", "topic": "Data Cleaning", "area": "query", "difficulty": "hard", "rubric": [
+      { "label": "Identifies duplicates with ROW_NUMBER / GROUP BY", "any": ["row_number", "group by", "partition by"] },
+      { "label": "Keeps one row (MIN/MAX id or rn = 1)", "any": ["min(", "max(", "rn = 1", "rn=1", "keep"] },
+      { "label": "DELETE with join/subquery/CTE", "any": ["delete", "cte", "with ", "not in (select", "join"] },
+      { "label": "Safety: transaction / backup / preview", "any": ["transaction", "backup", "select first", "preview", "rollback"] },
+      { "label": "Prevent recurrence with a unique constraint", "any": ["unique", "constraint", "index"] }
+    ] },
+    { "base": "Compare DELETE, TRUNCATE, and DROP.", "topic": "DDL vs DML", "area": "concepts", "difficulty": "easy", "rubric": [
+      { "label": "DELETE removes selected rows (DML, WHERE)", "any": ["delete", "where", "dml", "specific rows", "row by row"] },
+      { "label": "TRUNCATE removes all rows quickly", "any": ["truncate", "all rows", "faster", "deallocat", "reset"] },
+      { "label": "DROP removes the table structure", "any": ["drop", "structure", "schema", "definition", "entire table"] },
+      { "label": "Rollback / logging differences", "any": ["rollback", "roll back", "log", "transaction"] },
+      { "label": "Triggers / identity reset", "any": ["trigger", "identity", "auto increment", "auto-increment"] }
+    ] },
+    { "base": "Explain correlated and non-correlated subqueries.", "topic": "Subqueries", "area": "concepts", "difficulty": "medium", "rubric": [
+      { "label": "Non-correlated runs once independently", "any": ["non-correlated", "independent", "runs once", "executed once"] },
+      { "label": "Correlated references the outer query", "any": ["correlated", "outer query", "references the outer", "each row"] },
+      { "label": "Executed per outer row", "any": ["per row", "each row", "for every row", "row by row"] },
+      { "label": "Performance implications / rewrite as join", "any": ["performance", "slow", "join", "rewrite", "optimi"] },
+      { "label": "Examples", "any": ["for example", "e.g.", "exists", "avg(", "select"] }
+    ] },
+    { "base": "Write SQL to find consecutive login dates for a user.", "topic": "Gaps and Islands", "area": "query", "difficulty": "hard", "rubric": [
+      { "label": "Uses LAG/LEAD or ROW_NUMBER", "any": ["lag(", "lead(", "row_number"] },
+      { "label": "Date minus row number (islands technique)", "any": ["date - ", "dateadd", "date_sub", "interval", "island", "grp"] },
+      { "label": "Partitions by user and orders by date", "any": ["partition by user", "partition by", "order by login"] },
+      { "label": "Handles duplicate logins per day", "any": ["distinct", "duplicate", "same day", "cast("] },
+      { "label": "Counts streak length", "any": ["count(", "streak", "min(", "max(", "having"] }
+    ] }
+  ],
+  "s6": [
+    { "base": "Review an AI-generated function that returns the wrong maximum value and identify the likely defect.", "topic": "Code Review", "area": "debugging", "difficulty": "easy", "rubric": [
+      { "label": "Bad initialisation (0 instead of first element / -inf)", "any": ["initial", "starts at 0", "set to 0", "first element", "negative infinity", "-infinity", "float('-inf')", "math.inf"] },
+      { "label": "Negative numbers / empty input edge cases", "any": ["negative", "empty", "all negative"] },
+      { "label": "Comparison or loop-bound mistakes", "any": ["comparison", "<", "off-by-one", "off by one", "loop bound", "skips"] },
+      { "label": "Reproduce with a failing test", "any": ["test", "reproduce", "failing case", "assert"] },
+      { "label": "Fix and verify", "any": ["fix", "correct", "verify", "re-run", "rerun"] }
+    ] },
+    { "base": "Create a prompt that asks an AI tool to explain a legacy function without changing its behavior.", "topic": "Prompting", "area": "prompting", "difficulty": "easy", "rubric": [
+      { "label": "Sets role and context", "any": ["act as", "you are", "role", "context", "legacy"] },
+      { "label": "Explicit constraint: do not modify behaviour/code", "any": ["do not change", "don't change", "do not modify", "without changing", "no changes", "read-only"] },
+      { "label": "Requests structured output", "any": ["step by step", "bullet", "format", "sections", "summary", "inputs and outputs"] },
+      { "label": "Asks about side effects and edge cases", "any": ["side effect", "edge case", "assumption", "dependenc"] },
+      { "label": "Includes the code / relevant context", "any": ["paste", "code below", "include the code", "provide the function", "```"] }
+    ] },
+    { "base": "Explain how you would verify an AI-generated solution before committing it.", "topic": "Verification", "area": "review", "difficulty": "medium", "rubric": [
+      { "label": "Read and understand every line", "any": ["read", "understand", "line by line", "review"] },
+      { "label": "Run and write tests", "any": ["test", "unit test", "run it"] },
+      { "label": "Edge and failure cases", "any": ["edge case", "boundary", "negative", "failure"] },
+      { "label": "Security and dependency checks", "any": ["security", "vulnerab", "dependenc", "license", "secret"] },
+      { "label": "Standards, linting and code review", "any": ["lint", "style", "standard", "code review", "peer review"] },
+      { "label": "Performance / complexity", "any": ["performance", "complexity", "benchmark"] }
+    ] },
+    { "base": "Given an off-by-one loop bug, describe a systematic debugging process.", "topic": "Debugging Process", "area": "debugging", "difficulty": "easy", "rubric": [
+      { "label": "Reproduce with a minimal failing case", "any": ["reproduce", "minimal", "failing test", "failing case"] },
+      { "label": "Inspect loop bounds and conditions", "any": ["bound", "< vs <=", "<=", "start index", "end index", "range("] },
+      { "label": "Trace with prints/debugger", "any": ["debugger", "breakpoint", "print", "log", "trace", "step through"] },
+      { "label": "Test boundaries (0, 1, n, empty)", "any": ["boundary", "empty", "single element", "first element", "last element"] },
+      { "label": "Fix and add a regression test", "any": ["regression", "add a test", "fix", "verify"] }
+    ] },
+    { "base": "Ask an AI assistant to generate unit tests for a string parser and define the required edge cases.", "topic": "Test Generation", "area": "prompting", "difficulty": "medium", "rubric": [
+      { "label": "Specifies the parser contract", "any": ["input", "output", "expected", "specification", "contract", "format"] },
+      { "label": "Empty / whitespace input", "any": ["empty", "whitespace", "blank"] },
+      { "label": "Malformed / invalid input and errors", "any": ["invalid", "malformed", "error", "exception"] },
+      { "label": "Unicode / special characters", "any": ["unicode", "special character", "emoji", "escape", "quote"] },
+      { "label": "Very long / boundary inputs", "any": ["long", "large", "boundary", "max length"] },
+      { "label": "Names the test framework and structure", "any": ["pytest", "jest", "junit", "unittest", "framework", "assert"] }
+    ] },
+    { "base": "Explain how to detect hallucinated APIs in AI-generated code.", "topic": "Hallucinations", "area": "review", "difficulty": "medium", "rubric": [
+      { "label": "Check official documentation", "any": ["documentation", "docs", "official"] },
+      { "label": "Compile / run / type-check", "any": ["compile", "run", "type check", "type-check", "typescript", "import error"] },
+      { "label": "IDE autocompletion / static analysis", "any": ["ide", "autocomplet", "lint", "static analysis", "intellisense"] },
+      { "label": "Version mismatch awareness", "any": ["version", "deprecated", "changelog"] },
+      { "label": "Tests that exercise the call", "any": ["test", "unit test"] }
+    ] },
+    { "base": "Review an AI-generated SQL query for injection risks.", "topic": "Secure Code Review", "area": "review", "difficulty": "medium", "rubric": [
+      { "label": "Spots string concatenation of user input", "any": ["concatenat", "string format", "f-string", "interpolat", "+ user"] },
+      { "label": "Parameterised queries / prepared statements", "any": ["parameter", "prepared statement", "placeholder", "bind"] },
+      { "label": "Input validation and allow-lists", "any": ["validat", "sanitiz", "sanitis", "allow list", "allowlist", "whitelist"] },
+      { "label": "Least-privilege database account", "any": ["least privilege", "permission", "privilege"] },
+      { "label": "Test with malicious payloads", "any": ["' or 1=1", "or 1=1", "payload", "malicious", "sqlmap"] }
+    ] },
+    { "base": "Describe how you would compare AI-generated code with project coding standards.", "topic": "Code Standards", "area": "review", "difficulty": "easy", "rubric": [
+      { "label": "Linters / formatters", "any": ["lint", "eslint", "prettier", "black", "formatter"] },
+      { "label": "Naming and structure conventions", "any": ["naming", "convention", "structure", "folder"] },
+      { "label": "Error handling and logging patterns", "any": ["error handling", "exception", "logging"] },
+      { "label": "Tests and coverage expectations", "any": ["test", "coverage"] },
+      { "label": "Code review checklist / style guide", "any": ["checklist", "style guide", "code review", "guideline"] }
+    ] },
+    { "base": "Create a debugging checklist for code that works locally but fails in production.", "topic": "Production Debugging", "area": "debugging", "difficulty": "hard", "rubric": [
+      { "label": "Configuration and environment variables", "any": ["environment variable", "config", "env", "secret"] },
+      { "label": "Dependency / version differences", "any": ["version", "dependenc", "lock file", "package"] },
+      { "label": "Data differences and scale", "any": ["data", "scale", "volume", "load"] },
+      { "label": "Logs, metrics and traces", "any": ["log", "metric", "trace", "monitor"] },
+      { "label": "Network, permissions and infrastructure", "any": ["network", "permission", "firewall", "timeout", "dns"] },
+      { "label": "Reproduce in staging / rollback plan", "any": ["staging", "reproduce", "rollback", "feature flag"] }
+    ] },
+    { "base": "Explain why generated code should be tested with boundary, negative, and adversarial inputs.", "topic": "Robustness Testing", "area": "review", "difficulty": "medium", "rubric": [
+      { "label": "Generated code optimises for the happy path", "any": ["happy path", "typical", "common case", "plausible"] },
+      { "label": "Boundary values", "any": ["boundary", "zero", "max", "min", "empty"] },
+      { "label": "Negative / invalid inputs", "any": ["negative", "invalid", "null", "wrong type"] },
+      { "label": "Adversarial / security inputs", "any": ["adversarial", "malicious", "injection", "attack", "fuzz"] },
+      { "label": "Examples of failures found", "any": ["for example", "e.g.", "crash", "overflow", "exception"] }
+    ] },
+    { "base": "Design a prompt for refactoring duplicated code while preserving public interfaces.", "topic": "Refactoring Prompts", "area": "prompting", "difficulty": "hard", "rubric": [
+      { "label": "Constraint: keep public signatures unchanged", "any": ["public interface", "signature", "api", "do not change", "backward compatible", "backwards compatible"] },
+      { "label": "Identify and extract duplication", "any": ["duplicat", "extract", "helper", "shared function", "dry"] },
+      { "label": "Require tests to prove behaviour is preserved", "any": ["test", "behavio", "regression"] },
+      { "label": "Ask for a diff and explanation", "any": ["diff", "explain", "rationale", "step by step"] },
+      { "label": "Scope limits (no new dependencies, style)", "any": ["no new dependenc", "style", "scope", "only refactor", "minimal"] }
+    ] },
+    { "base": "Explain how to use logs, stack traces, and minimal reproducible examples with an AI assistant.", "topic": "Debugging with AI", "area": "debugging", "difficulty": "medium", "rubric": [
+      { "label": "Share the full stack trace / error", "any": ["stack trace", "traceback", "error message"] },
+      { "label": "Relevant logs with context", "any": ["log", "timestamp", "context"] },
+      { "label": "Minimal reproducible example", "any": ["minimal", "reproducible", "mre", "reprex", "smallest"] },
+      { "label": "Expected vs actual behaviour", "any": ["expected", "actual"] },
+      { "label": "Redact secrets / sensitive data", "any": ["redact", "secret", "sensitive", "password", "token", "pii"] }
+    ] },
+    { "base": "Identify risks of blindly accepting generated dependency versions.", "topic": "Supply Chain", "area": "review", "difficulty": "medium", "rubric": [
+      { "label": "Non-existent or typosquatted packages", "any": ["typosquat", "non-existent", "does not exist", "hallucinat", "malicious package", "slopsquat"] },
+      { "label": "Known vulnerabilities (CVEs)", "any": ["vulnerab", "cve", "security", "npm audit", "pip-audit"] },
+      { "label": "Breaking changes / incompatibility", "any": ["breaking", "incompatib", "major version", "conflict"] },
+      { "label": "Licence issues", "any": ["licen"] },
+      { "label": "Pinning, lock files and review", "any": ["pin", "lock file", "lockfile", "package-lock", "review", "renovate", "dependabot"] }
+    ] },
+    { "base": "Describe how to ask an AI assistant for multiple algorithmic approaches and complexity analysis.", "topic": "Algorithm Prompts", "area": "prompting", "difficulty": "medium", "rubric": [
+      { "label": "State the problem and constraints (input sizes)", "any": ["constraint", "input size", "n up to", "limits", "requirements"] },
+      { "label": "Ask for at least two approaches", "any": ["two approaches", "multiple approaches", "alternative", "brute force", "optimal"] },
+      { "label": "Time and space complexity for each", "any": ["time complexity", "space complexity", "big o", "o(n"] },
+      { "label": "Trade-offs and recommendation", "any": ["trade-off", "tradeoff", "recommend", "when to use"] },
+      { "label": "Verify the claims yourself", "any": ["verify", "test", "benchmark", "check"] }
+    ] },
+    { "base": "Explain how to validate generated authentication or authorization logic.", "topic": "Security Review", "area": "review", "difficulty": "hard", "rubric": [
+      { "label": "Distinguish authentication vs authorization", "any": ["authentication", "authorization", "authorisation", "who you are", "what you can"] },
+      { "label": "Password hashing / token handling", "any": ["hash", "bcrypt", "argon", "jwt", "token", "session"] },
+      { "label": "Server-side checks on every request", "any": ["server-side", "server side", "every request", "middleware", "never trust the client"] },
+      { "label": "Test privilege escalation / IDOR / expiry", "any": ["privilege escalation", "idor", "expired", "expiry", "role", "access control"] },
+      { "label": "Follow standards (OWASP) and review", "any": ["owasp", "security review", "penetration", "pen test", "threat model"] }
+    ] }
+  ],
+  "s7": [
+    { "base": "Explain the request-response lifecycle in a web application.", "topic": "HTTP Lifecycle", "area": "http", "difficulty": "easy", "rubric": [
+      { "label": "DNS resolution and connection (TCP/TLS)", "any": ["dns", "tcp", "tls", "handshake", "connection"] },
+      { "label": "HTTP request (method, headers, body)", "any": ["request", "method", "header", "body"] },
+      { "label": "Server routing, middleware and business logic", "any": ["server", "route", "router", "middleware", "controller", "handler"] },
+      { "label": "Database / downstream calls", "any": ["database", "query", "service", "cache"] },
+      { "label": "Response with status code and rendering", "any": ["response", "status code", "render", "browser", "json"] }
+    ] },
+    { "base": "Compare GET, POST, PUT, PATCH, and DELETE.", "topic": "HTTP Methods", "area": "http", "difficulty": "easy", "rubric": [
+      { "label": "GET retrieves, safe and cacheable", "any": ["get", "retrieve", "read", "safe", "cache"] },
+      { "label": "POST creates / non-idempotent", "any": ["post", "create", "non-idempotent", "not idempotent"] },
+      { "label": "PUT replaces a resource, idempotent", "any": ["put", "replace", "entire resource", "full update"] },
+      { "label": "PATCH partially updates", "any": ["patch", "partial"] },
+      { "label": "DELETE removes; idempotency discussion", "any": ["delete", "remove", "idempoten"] }
+    ] },
+    { "base": "Explain REST constraints and idempotency.", "topic": "REST", "area": "api", "difficulty": "medium", "rubric": [
+      { "label": "Client-server and statelessness", "any": ["stateless", "client-server", "client server"] },
+      { "label": "Uniform interface / resources", "any": ["uniform interface", "resource", "uri", "hateoas"] },
+      { "label": "Cacheability and layered system", "any": ["cache", "layered"] },
+      { "label": "Idempotency definition", "any": ["idempoten", "same result", "multiple times", "repeated"] },
+      { "label": "Idempotency keys / safe retries", "any": ["idempotency key", "retry", "retries", "duplicate"] }
+    ] },
+    { "base": "Differentiate cookies, sessions, local storage, and tokens.", "topic": "Client State", "area": "security", "difficulty": "medium", "rubric": [
+      { "label": "Cookies sent automatically with requests", "any": ["cookie", "sent with every request", "automatically sent", "httponly", "samesite"] },
+      { "label": "Server-side sessions keyed by an id", "any": ["session", "server-side", "session id"] },
+      { "label": "localStorage is JS-accessible, not sent automatically", "any": ["local storage", "localstorage", "javascript access", "xss"] },
+      { "label": "Tokens (JWT) are stateless credentials", "any": ["token", "jwt", "bearer", "stateless"] },
+      { "label": "Security trade-offs (XSS vs CSRF)", "any": ["xss", "csrf", "secure flag", "expiry", "trade-off"] }
+    ] },
+    { "base": "Explain CORS and why browsers enforce it.", "topic": "CORS", "area": "security", "difficulty": "medium", "rubric": [
+      { "label": "Same-origin policy", "any": ["same-origin", "same origin", "origin"] },
+      { "label": "Access-Control-Allow-* headers", "any": ["access-control-allow", "allow-origin", "header"] },
+      { "label": "Preflight OPTIONS requests", "any": ["preflight", "options"] },
+      { "label": "Credentials and wildcard restrictions", "any": ["credentials", "wildcard", "*"] },
+      { "label": "Why: protect users from malicious sites", "any": ["malicious", "protect", "security", "cookies"] }
+    ] },
+    { "base": "Design an API endpoint for creating and retrieving orders.", "topic": "API Design", "area": "api", "difficulty": "medium", "rubric": [
+      { "label": "Resource-oriented routes (POST /orders, GET /orders/{id})", "any": ["post /orders", "get /orders", "/orders/{id}", "/orders/:id", "/orders"] },
+      { "label": "Request/response schema and validation", "any": ["schema", "validat", "json", "request body", "payload"] },
+      { "label": "Status codes (201, 400, 404)", "any": ["201", "400", "404", "status code"] },
+      { "label": "Authentication and authorisation", "any": ["auth", "token", "user_id", "permission"] },
+      { "label": "Idempotency, pagination and errors", "any": ["idempoten", "pagination", "error", "retry"] }
+    ] },
+    { "base": "Explain HTTP status codes 200, 201, 400, 401, 403, 404, 409, and 500.", "topic": "Status Codes", "area": "http", "difficulty": "easy", "rubric": [
+      { "label": "200 OK / 201 Created", "any": ["200", "201", "created", "ok"] },
+      { "label": "400 Bad Request", "any": ["400", "bad request", "invalid"] },
+      { "label": "401 unauthenticated vs 403 forbidden", "any": ["401", "403", "unauthori", "forbidden"] },
+      { "label": "404 Not Found / 409 Conflict", "any": ["404", "not found", "409", "conflict"] },
+      { "label": "500 server error", "any": ["500", "server error", "internal"] }
+    ] },
+    { "base": "Compare authentication and authorization.", "topic": "AuthN vs AuthZ", "area": "security", "difficulty": "easy", "rubric": [
+      { "label": "Authentication verifies identity", "any": ["authentication", "identity", "who you are", "verify"] },
+      { "label": "Authorization decides permissions", "any": ["authorization", "authorisation", "permission", "what you can", "access"] },
+      { "label": "Order: authN before authZ", "any": ["before", "first", "then"] },
+      { "label": "Mechanisms (passwords, OAuth, RBAC)", "any": ["password", "oauth", "rbac", "role", "mfa", "otp"] },
+      { "label": "Status codes 401 vs 403", "any": ["401", "403"] }
+    ] },
+    { "base": "Explain JWT structure and common security risks.", "topic": "JWT", "area": "security", "difficulty": "medium", "rubric": [
+      { "label": "Header.payload.signature", "any": ["header", "payload", "signature", "three parts"] },
+      { "label": "Base64url encoded, not encrypted", "any": ["base64", "not encrypted", "readable", "decode"] },
+      { "label": "Signature verification / alg none attack", "any": ["verify", "alg", "none", "hs256", "rs256", "secret"] },
+      { "label": "Expiry and revocation", "any": ["exp", "expir", "revoc", "refresh token", "short-lived"] },
+      { "label": "Storage risks (XSS) and sensitive data", "any": ["xss", "localstorage", "httponly", "sensitive", "pii"] }
+    ] },
+    { "base": "Describe pagination, filtering, sorting, and rate limiting in APIs.", "topic": "API Ergonomics", "area": "api", "difficulty": "medium", "rubric": [
+      { "label": "Offset vs cursor pagination", "any": ["offset", "cursor", "page", "limit"] },
+      { "label": "Filtering via query parameters", "any": ["filter", "query param", "?status="] },
+      { "label": "Sorting parameters and stable order", "any": ["sort", "order", "stable"] },
+      { "label": "Rate limiting algorithms", "any": ["rate limit", "token bucket", "leaky bucket", "sliding window", "fixed window"] },
+      { "label": "429 status and Retry-After headers", "any": ["429", "retry-after", "x-ratelimit"] }
+    ] },
+    { "base": "Explain webhooks and polling with use cases.", "topic": "Integration Patterns", "area": "api", "difficulty": "medium", "rubric": [
+      { "label": "Polling: client asks repeatedly", "any": ["poll", "repeatedly", "interval", "periodically"] },
+      { "label": "Webhooks: server pushes events via callbacks", "any": ["webhook", "callback", "push", "event"] },
+      { "label": "Efficiency and latency trade-offs", "any": ["latency", "efficien", "wasteful", "real-time", "real time"] },
+      { "label": "Webhook security and retries (signatures, idempotency)", "any": ["signature", "hmac", "retry", "idempoten", "secret"] },
+      { "label": "Use cases (payments, CI)", "any": ["payment", "stripe", "github", "ci", "status"] }
+    ] },
+    { "base": "Compare server-side rendering and client-side rendering.", "topic": "Rendering", "area": "frontend", "difficulty": "medium", "rubric": [
+      { "label": "SSR renders HTML on the server", "any": ["server-side", "server side", "ssr", "html on the server"] },
+      { "label": "CSR renders in the browser with JS", "any": ["client-side", "client side", "csr", "javascript", "browser"] },
+      { "label": "SEO and first contentful paint", "any": ["seo", "first paint", "fcp", "initial load", "time to first"] },
+      { "label": "Hydration / interactivity", "any": ["hydrat", "interactiv", "spa"] },
+      { "label": "Hybrid approaches (SSG, ISR)", "any": ["ssg", "static", "isr", "next.js", "hybrid"] }
+    ] },
+    { "base": "Explain CSRF, XSS, SQL injection, and mitigation strategies.", "topic": "Web Security", "area": "security", "difficulty": "hard", "rubric": [
+      { "label": "CSRF: forged requests using the victim's cookies", "any": ["csrf", "cross-site request", "forged"] },
+      { "label": "CSRF mitigations (tokens, SameSite)", "any": ["csrf token", "samesite", "anti-forgery", "origin check"] },
+      { "label": "XSS: injected script", "any": ["xss", "cross-site scripting", "script injection"] },
+      { "label": "XSS mitigations (escaping, CSP)", "any": ["escape", "encode", "csp", "content security policy", "sanitiz"] },
+      { "label": "SQL injection and parameterised queries", "any": ["sql injection", "parameter", "prepared statement"] }
+    ] },
+    { "base": "Design a versioning strategy for a public API.", "topic": "API Versioning", "area": "api", "difficulty": "hard", "rubric": [
+      { "label": "URI vs header vs query versioning", "any": ["/v1", "uri", "header", "accept", "query parameter"] },
+      { "label": "Backward compatibility rules", "any": ["backward compatib", "backwards compatib", "breaking change", "additive"] },
+      { "label": "Deprecation policy and timeline", "any": ["deprecat", "sunset", "timeline", "notice"] },
+      { "label": "Semantic versioning / changelog", "any": ["semantic", "semver", "changelog", "release notes"] },
+      { "label": "Communication and migration support", "any": ["migration", "documentation", "communicat", "sdk"] }
+    ] },
+    { "base": "Explain how to make an API observable and debuggable.", "topic": "Observability", "area": "api", "difficulty": "hard", "rubric": [
+      { "label": "Structured logging with request ids", "any": ["structured log", "request id", "correlation id", "log"] },
+      { "label": "Metrics (latency, error rate, throughput)", "any": ["metric", "latency", "error rate", "throughput", "p99", "p95"] },
+      { "label": "Distributed tracing", "any": ["trac", "opentelemetry", "span", "jaeger"] },
+      { "label": "Alerting and dashboards / SLOs", "any": ["alert", "dashboard", "slo", "sla", "grafana"] },
+      { "label": "Meaningful error responses and health checks", "any": ["error response", "health check", "error code", "/health"] }
+    ] }
+  ],
+  "s8": [
+    { "base": "Design a parking-lot system using suitable classes and relationships.", "topic": "Parking Lot", "area": "modeling", "difficulty": "medium", "rubric": [
+      { "label": "Core classes (ParkingLot, Level, Spot, Vehicle, Ticket)", "any": ["parkinglot", "parking lot", "spot", "level", "floor", "ticket"] },
+      { "label": "Vehicle/spot types via inheritance or enums", "any": ["car", "bike", "truck", "enum", "vehicle type", "spot type"] },
+      { "label": "Spot allocation strategy", "any": ["allocat", "strategy", "nearest", "assign", "find a spot"] },
+      { "label": "Payment and fee calculation", "any": ["payment", "fee", "rate", "charge", "billing"] },
+      { "label": "Concurrency for simultaneous entries", "any": ["concurren", "lock", "thread-safe", "synchroniz", "race"] },
+      { "label": "Relationships (composition/association)", "any": ["has-a", "composition", "association", "relationship", "aggregation"] }
+    ] },
+    { "base": "Design a library-management system.", "topic": "Library System", "area": "modeling", "difficulty": "medium", "rubric": [
+      { "label": "Entities: Book, BookCopy/Item, Member, Loan", "any": ["book", "member", "loan", "copy", "catalog"] },
+      { "label": "Issue/return workflow", "any": ["issue", "borrow", "return", "checkout", "check out"] },
+      { "label": "Fines and due dates", "any": ["fine", "due date", "overdue", "penalty"] },
+      { "label": "Search and reservation", "any": ["search", "reserv", "hold", "waitlist"] },
+      { "label": "Roles (librarian vs member)", "any": ["librarian", "admin", "role"] }
+    ] },
+    { "base": "Design a coffee-vending machine.", "topic": "Vending Machine", "area": "modeling", "difficulty": "medium", "rubric": [
+      { "label": "State pattern (idle, selecting, dispensing)", "any": ["state", "idle", "dispensing", "state machine"] },
+      { "label": "Beverage recipes and ingredients inventory", "any": ["recipe", "ingredient", "inventory", "milk", "stock"] },
+      { "label": "Payment and change handling", "any": ["payment", "coin", "change", "refund", "card"] },
+      { "label": "Error cases (out of stock, insufficient money)", "any": ["out of stock", "insufficient", "error", "refund"] },
+      { "label": "Extensibility for new drinks", "any": ["extensib", "open/closed", "new drink", "factory", "strategy"] }
+    ] },
+    { "base": "Design an elevator-control system.", "topic": "Elevator", "area": "modeling", "difficulty": "hard", "rubric": [
+      { "label": "Classes: Elevator, Controller/Dispatcher, Request, Floor", "any": ["elevator", "controller", "dispatcher", "request", "floor"] },
+      { "label": "Scheduling algorithm (SCAN/LOOK, nearest car)", "any": ["scan", "look", "nearest", "schedul", "direction"] },
+      { "label": "Elevator states (moving, idle, doors)", "any": ["state", "idle", "moving", "door"] },
+      { "label": "Internal vs external requests", "any": ["internal", "external", "hall call", "car call", "button"] },
+      { "label": "Safety, capacity and emergencies", "any": ["capacity", "overload", "emergency", "safety", "maintenance"] },
+      { "label": "Concurrency across multiple elevators", "any": ["concurren", "multiple elevators", "thread", "queue"] }
+    ] },
+    { "base": "Design a movie-ticket booking system.", "topic": "Ticket Booking", "area": "modeling", "difficulty": "hard", "rubric": [
+      { "label": "Entities: Movie, Theatre, Screen, Show, Seat, Booking", "any": ["movie", "theatre", "theater", "screen", "show", "seat"] },
+      { "label": "Seat locking / holds to prevent double booking", "any": ["lock", "hold", "double book", "double-book", "reserve temporarily"] },
+      { "label": "Concurrency control (optimistic/pessimistic)", "any": ["concurren", "optimistic", "pessimistic", "transaction", "race"] },
+      { "label": "Payment and booking states", "any": ["payment", "confirm", "cancel", "state"] },
+      { "label": "Pricing / seat categories", "any": ["pricing", "price", "category", "premium", "recliner"] },
+      { "label": "Timeouts for abandoned holds", "any": ["timeout", "expire", "ttl", "release"] }
+    ] },
+    { "base": "Explain SOLID principles with practical examples.", "topic": "SOLID", "area": "principles", "difficulty": "easy", "rubric": [
+      { "label": "Single Responsibility", "any": ["single responsibility", "one reason to change", "srp"] },
+      { "label": "Open/Closed", "any": ["open/closed", "open closed", "open for extension", "ocp"] },
+      { "label": "Liskov Substitution", "any": ["liskov", "substitut", "lsp"] },
+      { "label": "Interface Segregation", "any": ["interface segregation", "isp", "small interfaces", "fat interface"] },
+      { "label": "Dependency Inversion", "any": ["dependency inversion", "depend on abstractions", "dip"] },
+      { "label": "Practical examples", "any": ["for example", "e.g.", "class", "payment", "report"] }
+    ] },
+    { "base": "Compare composition and inheritance in a design.", "topic": "Composition vs Inheritance", "area": "principles", "difficulty": "easy", "rubric": [
+      { "label": "Inheritance models is-a", "any": ["is-a", "is a", "inherit", "subclass"] },
+      { "label": "Composition models has-a", "any": ["has-a", "has a", "composition", "contains"] },
+      { "label": "Tight coupling / fragile base class", "any": ["tight coupling", "tightly coupled", "fragile", "rigid", "deep hierarch"] },
+      { "label": "Composition enables runtime flexibility", "any": ["runtime", "flexib", "swap", "delegat", "strategy"] },
+      { "label": "Guideline: favour composition", "any": ["favor composition", "favour composition", "prefer composition"] }
+    ] },
+    { "base": "Design a notification system supporting email, SMS, and push.", "topic": "Notification Service", "area": "patterns", "difficulty": "medium", "rubric": [
+      { "label": "Channel abstraction (interface per channel)", "any": ["interface", "channel", "abstract", "notifier"] },
+      { "label": "Strategy / factory to choose channels", "any": ["strategy", "factory", "observer"] },
+      { "label": "User preferences and templates", "any": ["preference", "template", "opt-out", "opt out"] },
+      { "label": "Queueing and retries", "any": ["queue", "retry", "async", "asynchron"] },
+      { "label": "Rate limiting / deduplication / providers", "any": ["rate limit", "dedup", "provider", "twilio", "fallback"] }
+    ] },
+    { "base": "Design a rate limiter using object-oriented principles.", "topic": "Rate Limiter", "area": "patterns", "difficulty": "hard", "rubric": [
+      { "label": "Algorithm choice (token bucket, sliding window)", "any": ["token bucket", "sliding window", "leaky bucket", "fixed window"] },
+      { "label": "Interface with pluggable strategies", "any": ["interface", "strategy", "pluggable", "abstract"] },
+      { "label": "Per-client/key state", "any": ["per user", "per client", "per ip", "key", "map"] },
+      { "label": "Thread safety", "any": ["thread-safe", "thread safe", "lock", "atomic", "concurren"] },
+      { "label": "Distributed store (Redis) and expiry", "any": ["redis", "distributed", "ttl", "expir"] }
+    ] },
+    { "base": "Design a chess game at a high level.", "topic": "Chess", "area": "modeling", "difficulty": "hard", "rubric": [
+      { "label": "Board, Square/Cell, Piece hierarchy", "any": ["board", "square", "cell", "piece"] },
+      { "label": "Polymorphic move validation per piece", "any": ["polymorph", "valid move", "canmove", "can_move", "move validation", "override"] },
+      { "label": "Game, Player and turn management", "any": ["game", "player", "turn"] },
+      { "label": "Special rules (check, castling, en passant)", "any": ["check", "castl", "en passant", "promotion", "stalemate"] },
+      { "label": "Move history / undo", "any": ["history", "undo", "command pattern", "log"] }
+    ] },
+    { "base": "Explain the Factory, Strategy, Observer, and Singleton patterns.", "topic": "Design Patterns", "area": "patterns", "difficulty": "medium", "rubric": [
+      { "label": "Factory: encapsulates object creation", "any": ["factory", "creation", "instantiat"] },
+      { "label": "Strategy: interchangeable algorithms", "any": ["strategy", "interchangeable", "algorithm", "swap"] },
+      { "label": "Observer: publish/subscribe notifications", "any": ["observer", "subscribe", "publish", "notify", "listener"] },
+      { "label": "Singleton: one instance (and its pitfalls)", "any": ["singleton", "one instance", "single instance", "global"] },
+      { "label": "Use cases for each", "any": ["for example", "e.g.", "use case", "logger", "payment"] }
+    ] },
+    { "base": "Design a file-system abstraction.", "topic": "File System", "area": "modeling", "difficulty": "hard", "rubric": [
+      { "label": "Composite pattern: File and Directory", "any": ["composite", "file", "directory", "folder"] },
+      { "label": "Path resolution and hierarchy", "any": ["path", "tree", "hierarch", "parent"] },
+      { "label": "Operations (create, read, write, delete, list)", "any": ["create", "read", "write", "delete", "list"] },
+      { "label": "Metadata and permissions", "any": ["metadata", "permission", "size", "owner", "timestamp"] },
+      { "label": "Pluggable storage backends", "any": ["backend", "interface", "local", "s3", "adapter"] }
+    ] },
+    { "base": "Design a meeting-room booking system.", "topic": "Room Booking", "area": "modeling", "difficulty": "medium", "rubric": [
+      { "label": "Entities: Room, Booking, User, TimeSlot", "any": ["room", "booking", "slot", "user"] },
+      { "label": "Overlap / conflict detection", "any": ["overlap", "conflict", "double book", "interval"] },
+      { "label": "Search by capacity, time and amenities", "any": ["capacity", "amenit", "search", "available"] },
+      { "label": "Recurring meetings and cancellations", "any": ["recurr", "cancel", "reschedul"] },
+      { "label": "Concurrency when booking the same slot", "any": ["concurren", "lock", "transaction", "race"] }
+    ] },
+    { "base": "Explain how to make a class immutable.", "topic": "Immutability", "area": "principles", "difficulty": "easy", "rubric": [
+      { "label": "Final/readonly fields set in the constructor", "any": ["final", "readonly", "constructor", "private"] },
+      { "label": "No setters / mutators", "any": ["no setter", "no setters", "without setter", "no mutator"] },
+      { "label": "Defensive copies of mutable fields", "any": ["defensive cop", "copy", "clone", "unmodifiable"] },
+      { "label": "Prevent subclassing", "any": ["final class", "sealed", "subclass"] },
+      { "label": "Benefits: thread safety, caching", "any": ["thread-safe", "thread safe", "hashmap key", "cache", "predictab"] }
+    ] },
+    { "base": "Refactor a tightly coupled design using dependency injection.", "topic": "Dependency Injection", "area": "principles", "difficulty": "medium", "rubric": [
+      { "label": "Identify hard-coded dependencies (new inside class)", "any": ["new ", "hard-coded", "hardcoded", "tightly coupled", "instantiat"] },
+      { "label": "Depend on interfaces/abstractions", "any": ["interface", "abstraction", "abstract"] },
+      { "label": "Inject via constructor/setter", "any": ["constructor injection", "inject", "pass in", "setter injection"] },
+      { "label": "Testability with mocks", "any": ["test", "mock", "stub", "fake"] },
+      { "label": "DI containers / composition root", "any": ["container", "spring", "composition root", "framework"] }
+    ] }
+  ],
+  "s9": [
+    { "base": "Design a URL-shortening service.", "topic": "URL Shortener", "area": "scale", "difficulty": "medium", "rubric": [
+      { "label": "Key generation (base62, hashing, counters)", "any": ["base62", "base 62", "hash", "counter", "unique id", "snowflake"] },
+      { "label": "Data model and storage choice", "any": ["database", "key-value", "nosql", "table", "schema"] },
+      { "label": "Read-heavy caching", "any": ["cache", "redis", "cdn"] },
+      { "label": "Redirects (301 vs 302)", "any": ["301", "302", "redirect"] },
+      { "label": "Scale estimates and collisions", "any": ["collision", "qps", "estimate", "billion", "throughput"] },
+      { "label": "Expiry, abuse and analytics", "any": ["expir", "abuse", "analytics", "rate limit", "custom alias"] }
+    ] },
+    { "base": "Design a scalable chat application.", "topic": "Chat System", "area": "messaging", "difficulty": "hard", "rubric": [
+      { "label": "Persistent connections (WebSockets)", "any": ["websocket", "long polling", "persistent connection", "socket"] },
+      { "label": "Message storage and ordering", "any": ["message store", "ordering", "sequence", "cassandra", "database"] },
+      { "label": "Fan-out via pub/sub or queues", "any": ["pub/sub", "pubsub", "kafka", "queue", "fan-out", "fanout"] },
+      { "label": "Presence and delivery receipts", "any": ["presence", "online", "read receipt", "delivered", "ack"] },
+      { "label": "Group chats and scaling gateways", "any": ["group", "gateway", "shard", "partition", "horizontal"] },
+      { "label": "Offline delivery / push notifications", "any": ["offline", "push notification", "retry", "sync"] }
+    ] },
+    { "base": "Design a food-delivery platform.", "topic": "Food Delivery", "area": "scale", "difficulty": "hard", "rubric": [
+      { "label": "Core services (restaurants, orders, payments, delivery)", "any": ["restaurant", "order service", "payment", "delivery", "microservice"] },
+      { "label": "Search / discovery with geo-indexing", "any": ["geo", "geohash", "search", "elasticsearch", "location"] },
+      { "label": "Order state machine", "any": ["state", "placed", "preparing", "picked up", "delivered", "workflow"] },
+      { "label": "Rider assignment and live tracking", "any": ["rider", "assign", "dispatch", "tracking", "eta"] },
+      { "label": "Event-driven communication", "any": ["event", "kafka", "queue", "async"] },
+      { "label": "Peak-load scaling and reliability", "any": ["peak", "surge", "scale", "cache", "failover"] }
+    ] },
+    { "base": "Design a video-streaming platform.", "topic": "Video Streaming", "area": "scale", "difficulty": "hard", "rubric": [
+      { "label": "Upload and transcoding pipeline", "any": ["transcod", "encode", "upload", "pipeline"] },
+      { "label": "Adaptive bitrate streaming (HLS/DASH)", "any": ["adaptive", "bitrate", "hls", "dash", "chunk"] },
+      { "label": "CDN distribution", "any": ["cdn", "edge", "content delivery"] },
+      { "label": "Object storage for media", "any": ["object storage", "s3", "blob"] },
+      { "label": "Metadata, search and recommendations", "any": ["metadata", "search", "recommend"] },
+      { "label": "Scale and cost considerations", "any": ["scale", "cost", "bandwidth", "cache"] }
+    ] },
+    { "base": "Design a file-storage service.", "topic": "File Storage", "area": "data", "difficulty": "hard", "rubric": [
+      { "label": "Chunking and deduplication", "any": ["chunk", "dedup", "block"] },
+      { "label": "Metadata service vs blob storage", "any": ["metadata", "blob", "object storage", "s3"] },
+      { "label": "Sync and conflict resolution", "any": ["sync", "conflict", "version"] },
+      { "label": "Replication and durability", "any": ["replica", "durab", "redundan", "erasure"] },
+      { "label": "Sharing and permissions", "any": ["share", "permission", "acl", "access control"] },
+      { "label": "Upload resumption and CDN", "any": ["resum", "multipart", "cdn", "presigned"] }
+    ] },
+    { "base": "Design a notification delivery platform.", "topic": "Notification Platform", "area": "messaging", "difficulty": "medium", "rubric": [
+      { "label": "Ingestion API and queueing", "any": ["api", "queue", "kafka", "ingest"] },
+      { "label": "Channel workers (email, SMS, push)", "any": ["email", "sms", "push", "worker", "provider"] },
+      { "label": "Templates and user preferences", "any": ["template", "preference", "opt-out", "opt out"] },
+      { "label": "Retries, dead-letter queues and idempotency", "any": ["retry", "dead-letter", "dead letter", "dlq", "idempoten"] },
+      { "label": "Rate limiting, priorities and tracking", "any": ["rate limit", "priority", "tracking", "delivery status", "analytics"] }
+    ] },
+    { "base": "Explain horizontal scaling, vertical scaling, and auto-scaling.", "topic": "Scaling", "area": "scale", "difficulty": "easy", "rubric": [
+      { "label": "Vertical: bigger machine", "any": ["vertical", "scale up", "bigger machine", "more cpu", "more ram"] },
+      { "label": "Horizontal: more machines", "any": ["horizontal", "scale out", "more machines", "more servers", "more instances"] },
+      { "label": "Auto-scaling on metrics", "any": ["auto-scal", "autoscal", "metric", "cpu utilization", "threshold"] },
+      { "label": "Limits and costs of each", "any": ["limit", "cost", "single point", "hardware ceiling", "downtime"] },
+      { "label": "Stateless services / load balancing enable scale-out", "any": ["stateless", "load balancer", "session"] }
+    ] },
+    { "base": "Compare SQL and NoSQL for a high-volume application.", "topic": "SQL vs NoSQL", "area": "data", "difficulty": "medium", "rubric": [
+      { "label": "Relational model, schemas and joins", "any": ["relational", "schema", "join", "sql"] },
+      { "label": "ACID vs eventual consistency", "any": ["acid", "eventual", "consistency", "base"] },
+      { "label": "NoSQL types (document, key-value, wide-column)", "any": ["document", "key-value", "wide-column", "column family", "graph", "mongodb", "cassandra", "dynamodb"] },
+      { "label": "Scaling (sharding, horizontal)", "any": ["shard", "horizontal", "partition", "scale"] },
+      { "label": "Choice driven by access patterns", "any": ["access pattern", "query pattern", "use case", "workload", "depends"] }
+    ] },
+    { "base": "Explain caching strategies and cache invalidation.", "topic": "Caching", "area": "data", "difficulty": "medium", "rubric": [
+      { "label": "Cache-aside / read-through", "any": ["cache-aside", "cache aside", "lazy loading", "read-through", "read through"] },
+      { "label": "Write-through / write-back", "any": ["write-through", "write through", "write-back", "write back", "write-behind"] },
+      { "label": "Eviction policies (LRU, LFU, TTL)", "any": ["lru", "lfu", "ttl", "evict"] },
+      { "label": "Invalidation approaches", "any": ["invalidat", "purge", "versioned key", "event"] },
+      { "label": "Consistency issues (stale data, stampede)", "any": ["stale", "stampede", "thundering herd", "consisten"] }
+    ] },
+    { "base": "Design a URL redirect service with analytics.", "topic": "Redirect Analytics", "area": "scale", "difficulty": "medium", "rubric": [
+      { "label": "Fast redirect path with caching", "any": ["cache", "redis", "redirect", "301", "302"] },
+      { "label": "Asynchronous click logging", "any": ["async", "queue", "kafka", "log", "event"] },
+      { "label": "Analytics storage and aggregation", "any": ["aggregat", "analytics", "olap", "time series", "clickhouse", "warehouse"] },
+      { "label": "Dimensions (geo, device, referrer)", "any": ["geo", "device", "referrer", "country", "user agent"] },
+      { "label": "Scale and privacy", "any": ["scale", "privacy", "gdpr", "sampling"] }
+    ] },
+    { "base": "Explain load balancers and health checks.", "topic": "Load Balancing", "area": "reliability", "difficulty": "easy", "rubric": [
+      { "label": "Distributes traffic across servers", "any": ["distribut", "spread", "traffic", "multiple servers"] },
+      { "label": "Algorithms (round robin, least connections, hashing)", "any": ["round robin", "least connection", "hash", "weighted"] },
+      { "label": "L4 vs L7", "any": ["layer 4", "layer 7", "l4", "l7"] },
+      { "label": "Health checks remove unhealthy nodes", "any": ["health check", "unhealthy", "heartbeat", "remove"] },
+      { "label": "Sticky sessions and redundancy of the LB", "any": ["sticky", "session affinity", "redundan", "failover"] }
+    ] },
+    { "base": "Design a real-time location-tracking system.", "topic": "Location Tracking", "area": "messaging", "difficulty": "hard", "rubric": [
+      { "label": "Frequent location updates from devices", "any": ["gps", "update", "every few seconds", "device"] },
+      { "label": "Streaming ingestion", "any": ["kafka", "stream", "queue", "ingest"] },
+      { "label": "Geospatial indexing (geohash, quadtree)", "any": ["geohash", "quadtree", "geospatial", "h3", "s2"] },
+      { "label": "Push to subscribers (WebSockets)", "any": ["websocket", "push", "subscribe", "pub/sub"] },
+      { "label": "Storage of hot vs historical data", "any": ["redis", "in-memory", "history", "time series", "ttl"] },
+      { "label": "Battery / bandwidth optimisation", "any": ["battery", "bandwidth", "throttl", "batch"] }
+    ] },
+    { "base": "Explain message queues, retries, and dead-letter queues.", "topic": "Messaging", "area": "messaging", "difficulty": "medium", "rubric": [
+      { "label": "Decoupling producers and consumers", "any": ["decoupl", "producer", "consumer", "asynchron"] },
+      { "label": "Delivery guarantees (at-least-once, ordering)", "any": ["at-least-once", "at least once", "exactly-once", "ordering", "at-most-once"] },
+      { "label": "Retries with exponential backoff", "any": ["retry", "backoff", "exponential"] },
+      { "label": "Dead-letter queues for poison messages", "any": ["dead-letter", "dead letter", "dlq", "poison"] },
+      { "label": "Idempotent consumers", "any": ["idempoten", "duplicate", "dedup"] }
+    ] },
+    { "base": "Design a search autocomplete service.", "topic": "Autocomplete", "area": "data", "difficulty": "hard", "rubric": [
+      { "label": "Trie / prefix index", "any": ["trie", "prefix", "n-gram", "ngram"] },
+      { "label": "Ranking by popularity", "any": ["rank", "popular", "frequency", "top k", "top-k"] },
+      { "label": "Caching hot prefixes", "any": ["cache", "redis", "cdn"] },
+      { "label": "Offline aggregation pipeline for query logs", "any": ["log", "aggregat", "batch", "pipeline", "spark"] },
+      { "label": "Latency budget and debouncing", "any": ["latency", "ms", "debounc", "fast"] },
+      { "label": "Sharding / personalisation", "any": ["shard", "partition", "personaliz", "personalis"] }
+    ] },
+    { "base": "Explain consistency, availability, partition tolerance, and trade-offs.", "topic": "CAP Theorem", "area": "data", "difficulty": "medium", "rubric": [
+      { "label": "Consistency definition", "any": ["consistency", "latest write", "same data"] },
+      { "label": "Availability definition", "any": ["availability", "every request", "response"] },
+      { "label": "Partition tolerance definition", "any": ["partition", "network split", "network failure"] },
+      { "label": "Choose C or A during a partition", "any": ["cp", "ap", "during a partition", "choose between", "trade-off"] },
+      { "label": "Examples and PACELC / eventual consistency", "any": ["pacelc", "eventual", "cassandra", "dynamo", "bank", "zookeeper"] }
+    ] }
+  ],
+  "s10": [
+    { "base": "Compare unit, integration, system, regression, smoke, and sanity testing.", "topic": "Test Levels", "area": "testing", "difficulty": "easy", "rubric": [
+      { "label": "Unit tests isolate small units", "any": ["unit test", "single function", "isolat", "smallest"] },
+      { "label": "Integration tests check interactions", "any": ["integration", "interaction", "modules together", "components together"] },
+      { "label": "System tests validate the whole system", "any": ["system test", "end-to-end", "end to end", "whole system"] },
+      { "label": "Regression protects existing behaviour", "any": ["regression", "existing functionality", "previously working"] },
+      { "label": "Smoke vs sanity checks", "any": ["smoke", "sanity", "build verification", "quick check"] }
+    ] },
+    { "base": "Explain the software development life cycle.", "topic": "SDLC", "area": "process", "difficulty": "easy", "rubric": [
+      { "label": "Requirements", "any": ["requirement", "planning", "analysis"] },
+      { "label": "Design", "any": ["design", "architecture"] },
+      { "label": "Implementation", "any": ["implement", "development", "coding"] },
+      { "label": "Testing", "any": ["test"] },
+      { "label": "Deployment and maintenance", "any": ["deploy", "maintenance", "release", "support"] },
+      { "label": "Models (waterfall, agile)", "any": ["waterfall", "agile", "iterative", "v-model", "spiral"] }
+    ] },
+    { "base": "Compare Agile, Scrum, Kanban, and Waterfall.", "topic": "Methodologies", "area": "process", "difficulty": "easy", "rubric": [
+      { "label": "Waterfall: sequential phases", "any": ["waterfall", "sequential", "linear", "phase"] },
+      { "label": "Agile: iterative, incremental values", "any": ["agile", "iterative", "incremental", "manifesto"] },
+      { "label": "Scrum: sprints, roles and ceremonies", "any": ["scrum", "sprint", "stand-up", "standup", "product owner", "retrospective"] },
+      { "label": "Kanban: continuous flow and WIP limits", "any": ["kanban", "wip", "work in progress", "continuous flow", "board"] },
+      { "label": "When to use each", "any": ["when", "suitable", "fixed requirements", "changing requirements", "use case"] }
+    ] },
+    { "base": "Design test cases for a login form.", "topic": "Test Design", "area": "testing", "difficulty": "easy", "rubric": [
+      { "label": "Valid credentials succeed", "any": ["valid", "correct password", "successful login", "happy path"] },
+      { "label": "Invalid / empty credentials", "any": ["invalid", "wrong password", "empty", "blank"] },
+      { "label": "Security cases (SQL injection, brute force, lockout)", "any": ["sql injection", "brute force", "lockout", "captcha", "rate limit"] },
+      { "label": "Boundary lengths and special characters", "any": ["boundary", "length", "special character", "case sensitiv"] },
+      { "label": "UX: password masking, remember me, errors", "any": ["mask", "remember me", "error message", "forgot password", "accessib"] }
+    ] },
+    { "base": "Explain CI, continuous delivery, and continuous deployment.", "topic": "CI/CD", "area": "devops", "difficulty": "medium", "rubric": [
+      { "label": "CI: frequent merges with automated builds/tests", "any": ["continuous integration", "merge", "automated build", "automated test", "every commit"] },
+      { "label": "Continuous delivery: always releasable, manual release", "any": ["continuous delivery", "releasable", "manual approval", "manual step"] },
+      { "label": "Continuous deployment: automatic to production", "any": ["continuous deployment", "automatically deploy", "automatic", "every change"] },
+      { "label": "Pipelines and tools", "any": ["pipeline", "jenkins", "github actions", "gitlab", "circleci"] },
+      { "label": "Safety nets (tests, rollbacks, feature flags)", "any": ["rollback", "feature flag", "test", "monitor"] }
+    ] },
+    { "base": "Describe a Git branching strategy for a team.", "topic": "Branching", "area": "process", "difficulty": "medium", "rubric": [
+      { "label": "Named strategy (GitFlow, trunk-based, GitHub flow)", "any": ["gitflow", "git flow", "trunk", "github flow"] },
+      { "label": "Feature branches and pull requests", "any": ["feature branch", "pull request", "merge request", "pr"] },
+      { "label": "Code review and CI checks before merge", "any": ["review", "ci", "checks", "approval"] },
+      { "label": "Release / hotfix handling", "any": ["release", "hotfix", "tag"] },
+      { "label": "Merge vs rebase and protected branches", "any": ["rebase", "squash", "protected", "main"] }
+    ] },
+    { "base": "Explain Docker images, containers, volumes, and networks.", "topic": "Docker", "area": "devops", "difficulty": "medium", "rubric": [
+      { "label": "Image: immutable layered template", "any": ["image", "layer", "dockerfile", "template"] },
+      { "label": "Container: running instance", "any": ["container", "running instance", "instance of an image"] },
+      { "label": "Volumes persist data", "any": ["volume", "persist", "bind mount"] },
+      { "label": "Networks connect containers", "any": ["network", "bridge", "port", "dns"] },
+      { "label": "Isolation vs VMs", "any": ["isolation", "virtual machine", "vm", "kernel", "lightweight"] }
+    ] },
+    { "base": "Compare blue-green, rolling, and canary deployments.", "topic": "Deployment Strategies", "area": "devops", "difficulty": "medium", "rubric": [
+      { "label": "Blue-green: switch between two environments", "any": ["blue-green", "blue green", "two environments", "switch traffic"] },
+      { "label": "Rolling: replace instances gradually", "any": ["rolling", "gradual", "one by one", "batch"] },
+      { "label": "Canary: small percentage first", "any": ["canary", "small percentage", "subset of users", "5%", "1%"] },
+      { "label": "Rollback characteristics", "any": ["rollback", "roll back", "revert"] },
+      { "label": "Cost and risk trade-offs", "any": ["cost", "risk", "trade-off", "infrastructure", "monitor"] }
+    ] },
+    { "base": "Explain monitoring, logging, tracing, and alerting.", "topic": "Observability", "area": "devops", "difficulty": "medium", "rubric": [
+      { "label": "Monitoring metrics", "any": ["metric", "monitor", "cpu", "latency", "prometheus"] },
+      { "label": "Structured / centralised logging", "any": ["log", "elk", "structured", "centraliz", "centralis"] },
+      { "label": "Distributed tracing", "any": ["trac", "span", "opentelemetry", "jaeger"] },
+      { "label": "Alerting on symptoms / SLOs", "any": ["alert", "slo", "pager", "on-call", "threshold"] },
+      { "label": "How they work together in incidents", "any": ["incident", "root cause", "correlat", "dashboard"] }
+    ] },
+    { "base": "Describe how to investigate a failed production deployment.", "topic": "Incident Response", "area": "devops", "difficulty": "hard", "rubric": [
+      { "label": "Mitigate first: rollback / feature flag", "any": ["rollback", "roll back", "feature flag", "mitigat", "revert"] },
+      { "label": "Check logs, metrics and alerts", "any": ["log", "metric", "alert", "dashboard"] },
+      { "label": "Diff what changed (code, config, infra)", "any": ["diff", "what changed", "config", "commit", "change log", "changelog"] },
+      { "label": "Communicate status to stakeholders", "any": ["communicat", "stakeholder", "status page", "incident channel"] },
+      { "label": "Root cause and blameless postmortem", "any": ["root cause", "postmortem", "post-mortem", "blameless", "rca"] },
+      { "label": "Preventive actions (tests, canaries)", "any": ["prevent", "canary", "test", "checklist", "action item"] }
+    ] },
+    { "base": "Explain test-driven development and its benefits.", "topic": "TDD", "area": "testing", "difficulty": "easy", "rubric": [
+      { "label": "Red-green-refactor cycle", "any": ["red", "green", "refactor"] },
+      { "label": "Write the test before the code", "any": ["test first", "before writing", "write a failing test", "before the code"] },
+      { "label": "Design and confidence benefits", "any": ["design", "confidence", "regression", "safety net"] },
+      { "label": "Costs / when it is harder", "any": ["slower", "time", "learning curve", "legacy", "cost"] },
+      { "label": "Example", "any": ["for example", "e.g.", "function", "assert"] }
+    ] },
+    { "base": "Write acceptance criteria for a password-reset feature.", "topic": "Acceptance Criteria", "area": "testing", "difficulty": "medium", "rubric": [
+      { "label": "Given/When/Then structure", "any": ["given", "when", "then"] },
+      { "label": "Reset link / token with expiry", "any": ["link", "token", "expir", "one-time", "single use"] },
+      { "label": "Password policy validation", "any": ["policy", "minimum", "length", "complexity", "strength"] },
+      { "label": "Security: no user enumeration, rate limit", "any": ["enumeration", "same message", "rate limit", "does not reveal"] },
+      { "label": "Notifications and session invalidation", "any": ["email", "notif", "invalidate", "log out", "logout"] }
+    ] },
+    { "base": "Explain semantic versioning and release management.", "topic": "SemVer", "area": "process", "difficulty": "easy", "rubric": [
+      { "label": "MAJOR.MINOR.PATCH meaning", "any": ["major", "minor", "patch"] },
+      { "label": "Breaking changes bump MAJOR", "any": ["breaking", "incompatible"] },
+      { "label": "Pre-release and build metadata", "any": ["pre-release", "prerelease", "alpha", "beta", "rc"] },
+      { "label": "Changelogs and release notes", "any": ["changelog", "release notes"] },
+      { "label": "Release process (tagging, branches, rollback)", "any": ["tag", "release branch", "rollback", "cadence", "schedule"] }
+    ] },
+    { "base": "Compare infrastructure as code and manual provisioning.", "topic": "IaC", "area": "devops", "difficulty": "medium", "rubric": [
+      { "label": "IaC defines infrastructure in versioned code", "any": ["infrastructure as code", "iac", "version control", "declarative"] },
+      { "label": "Tools (Terraform, CloudFormation, Ansible)", "any": ["terraform", "cloudformation", "ansible", "pulumi", "bicep"] },
+      { "label": "Reproducibility and consistency", "any": ["reproducib", "consisten", "repeatable", "drift"] },
+      { "label": "Manual provisioning risks", "any": ["manual", "human error", "error-prone", "snowflake", "click"] },
+      { "label": "Review, testing and automation of changes", "any": ["review", "plan", "pipeline", "automat"] }
+    ] },
+    { "base": "Describe backup, rollback, and disaster-recovery planning.", "topic": "Disaster Recovery", "area": "devops", "difficulty": "hard", "rubric": [
+      { "label": "Backup types and schedules", "any": ["full backup", "incremental", "snapshot", "schedule", "backup"] },
+      { "label": "RPO and RTO targets", "any": ["rpo", "rto", "recovery point", "recovery time"] },
+      { "label": "Test restores regularly", "any": ["test restore", "restore test", "drill", "verify backup", "test the backup"] },
+      { "label": "Rollback strategies for releases", "any": ["rollback", "roll back", "previous version", "blue-green"] },
+      { "label": "Multi-region / off-site redundancy", "any": ["multi-region", "region", "off-site", "offsite", "replica", "failover"] },
+      { "label": "Runbooks and ownership", "any": ["runbook", "playbook", "owner", "communication plan"] }
+    ] }
+  ],
+  "s11": [
+    { "base": "Walk through a project you built and explain your exact contribution.", "topic": "Project Walkthrough", "area": "technical", "difficulty": "easy", "minWords": 100, "rubric": [
+      { "label": "Problem and goal of the project", "any": ["problem", "goal", "purpose", "aim", "users"] },
+      { "label": "Your specific contribution (first person)", "any": ["i built", "i implemented", "i designed", "my role", "i was responsible", "i developed", "i wrote"] },
+      { "label": "Tech stack and architecture", "any": ["react", "node", "python", "java", "database", "api", "architecture", "stack"] },
+      { "label": "Challenges and how you solved them", "any": ["challenge", "difficult", "problem we faced", "solved", "overcame"] },
+      { "label": "Outcome with evidence", "any": ["result", "users", "%", "improved", "deployed", "reduced", "outcome"] }
+    ] },
+    { "base": "Describe the most difficult bug you solved.", "topic": "Debugging Story", "area": "technical", "difficulty": "medium", "minWords": 100, "rubric": [
+      { "label": "Symptoms and context", "any": ["symptom", "crash", "error", "failing", "when", "context"] },
+      { "label": "Systematic investigation", "any": ["reproduce", "log", "debugger", "isolate", "bisect", "hypothes"] },
+      { "label": "Root cause identified", "any": ["root cause", "turned out", "the cause", "because"] },
+      { "label": "Fix and verification", "any": ["fix", "patch", "test", "verified"] },
+      { "label": "Lesson / prevention", "any": ["learned", "lesson", "prevent", "regression test", "monitor"] }
+    ] },
+    { "base": "Explain a technical decision you made and its trade-offs.", "topic": "Technical Decision", "area": "technical", "difficulty": "medium", "minWords": 100, "rubric": [
+      { "label": "Decision context and constraints", "any": ["constraint", "context", "requirement", "deadline", "scale"] },
+      { "label": "Options considered", "any": ["option", "alternative", "considered", "compared", "instead of"] },
+      { "label": "Explicit trade-offs", "any": ["trade-off", "tradeoff", "pros", "cons", "downside", "cost"] },
+      { "label": "Why you chose it (criteria)", "any": ["chose", "decided", "because", "criteria"] },
+      { "label": "Outcome and reflection", "any": ["result", "outcome", "in hindsight", "learned", "would"] }
+    ] },
+    { "base": "Tell us about a time you disagreed with a teammate.", "topic": "Conflict", "area": "behavioral", "difficulty": "medium", "minWords": 100, "rubric": [
+      { "label": "Situation and the disagreement", "any": ["situation", "disagree", "different opinion", "conflict", "we had"] },
+      { "label": "Listened to understand their view", "any": ["listen", "understand", "perspective", "their point", "asked"] },
+      { "label": "Used data / evidence to decide", "any": ["data", "evidence", "prototype", "benchmark", "test"] },
+      { "label": "Respectful resolution / compromise", "any": ["resolv", "compromise", "agreed", "together", "respect"] },
+      { "label": "Result and relationship afterwards", "any": ["result", "outcome", "relationship", "learned", "better"] }
+    ] },
+    { "base": "Describe how you prioritize tasks under a deadline.", "topic": "Prioritisation", "area": "behavioral", "difficulty": "easy", "minWords": 90, "rubric": [
+      { "label": "Clarify goals and impact", "any": ["impact", "goal", "priority", "important", "value"] },
+      { "label": "Framework (urgent/important, MoSCoW)", "any": ["eisenhower", "urgent", "moscow", "must have", "matrix"] },
+      { "label": "Break work into steps / estimates", "any": ["break", "estimate", "plan", "milestone", "smaller tasks"] },
+      { "label": "Communicate trade-offs with stakeholders", "any": ["communicat", "stakeholder", "manager", "negotiat", "scope"] },
+      { "label": "Concrete example and result", "any": ["for example", "once", "last semester", "during", "result", "delivered"] }
+    ] },
+    { "base": "Explain a situation where you learned a new technology quickly.", "topic": "Learning Agility", "area": "behavioral", "difficulty": "easy", "minWords": 90, "rubric": [
+      { "label": "Situation and why it was needed", "any": ["situation", "needed", "project", "required", "deadline"] },
+      { "label": "Learning approach (docs, tutorials, building)", "any": ["documentation", "docs", "tutorial", "course", "built a small", "prototype", "practice"] },
+      { "label": "Asking for help / mentors", "any": ["mentor", "asked", "community", "senior", "stack overflow"] },
+      { "label": "Applied it to deliver", "any": ["applied", "delivered", "implemented", "used it"] },
+      { "label": "Result and time frame", "any": ["week", "days", "result", "within"] }
+    ] },
+    { "base": "Describe a production incident and your response.", "topic": "Incident Story", "area": "technical", "difficulty": "hard", "minWords": 110, "rubric": [
+      { "label": "Impact and detection", "any": ["impact", "users", "alert", "detected", "noticed", "down"] },
+      { "label": "Immediate mitigation (rollback, hotfix)", "any": ["rollback", "roll back", "hotfix", "mitigat", "restart", "failover"] },
+      { "label": "Communication during the incident", "any": ["communicat", "update", "stakeholder", "team", "status"] },
+      { "label": "Root-cause analysis", "any": ["root cause", "rca", "investigat", "logs"] },
+      { "label": "Postmortem and prevention", "any": ["postmortem", "post-mortem", "prevent", "monitor", "test", "action item"] }
+    ] },
+    { "base": "Explain how you handle unclear requirements.", "topic": "Ambiguity", "area": "behavioral", "difficulty": "medium", "minWords": 90, "rubric": [
+      { "label": "Ask clarifying questions", "any": ["clarif", "ask", "question"] },
+      { "label": "Identify stakeholders and the underlying goal", "any": ["stakeholder", "user", "goal", "why", "problem"] },
+      { "label": "Document assumptions", "any": ["assumption", "document", "write down", "confirm"] },
+      { "label": "Prototype / iterate for feedback", "any": ["prototype", "mockup", "iterate", "mvp", "feedback", "demo"] },
+      { "label": "Example and outcome", "any": ["for example", "once", "result", "outcome"] }
+    ] },
+    { "base": "Discuss a time you received critical feedback.", "topic": "Feedback", "area": "behavioral", "difficulty": "medium", "minWords": 90, "rubric": [
+      { "label": "The feedback and its context", "any": ["feedback", "told me", "pointed out", "review"] },
+      { "label": "Receptive reaction (no defensiveness)", "any": ["listened", "accepted", "not defensive", "thanked", "reflected"] },
+      { "label": "Concrete actions taken", "any": ["i started", "improved", "changed", "practiced", "worked on"] },
+      { "label": "Follow-up / check-in", "any": ["follow up", "follow-up", "checked in", "asked again"] },
+      { "label": "Result and growth", "any": ["result", "grew", "learned", "better", "since then"] }
+    ] },
+    { "base": "Describe how you review another developer's code.", "topic": "Code Review", "area": "technical", "difficulty": "medium", "minWords": 90, "rubric": [
+      { "label": "Correctness and requirements", "any": ["correct", "requirement", "logic", "bug"] },
+      { "label": "Readability and maintainability", "any": ["readab", "naming", "maintainab", "clean"] },
+      { "label": "Tests and edge cases", "any": ["test", "edge case", "coverage"] },
+      { "label": "Security and performance", "any": ["security", "performance", "complexity"] },
+      { "label": "Constructive, respectful comments", "any": ["constructive", "respect", "suggest", "kind", "explain why", "praise"] }
+    ] },
+    { "base": "Explain a project failure and what you learned.", "topic": "Failure", "area": "behavioral", "difficulty": "medium", "minWords": 100, "rubric": [
+      { "label": "What went wrong", "any": ["failed", "failure", "went wrong", "missed", "did not work"] },
+      { "label": "Takes ownership", "any": ["my mistake", "i should have", "responsib", "ownership", "i underestimated"] },
+      { "label": "Root causes", "any": ["because", "cause", "reason", "due to"] },
+      { "label": "Lessons learned", "any": ["learned", "lesson", "takeaway"] },
+      { "label": "Applied the lesson later", "any": ["since then", "next time", "now i", "applied", "in my next"] }
+    ] },
+    { "base": "Describe how you communicate technical ideas to non-technical stakeholders.", "topic": "Communication", "area": "behavioral", "difficulty": "medium", "minWords": 90, "rubric": [
+      { "label": "Know the audience and their goals", "any": ["audience", "stakeholder", "business", "goal", "care about"] },
+      { "label": "Avoid jargon / use analogies", "any": ["jargon", "analogy", "simple", "plain language", "everyday"] },
+      { "label": "Visuals and demos", "any": ["diagram", "visual", "demo", "chart", "slide"] },
+      { "label": "Focus on impact, risks and options", "any": ["impact", "risk", "option", "cost", "timeline"] },
+      { "label": "Check understanding / invite questions", "any": ["check", "question", "feedback", "confirm", "summar"] }
+    ] },
+    { "base": "Explain how you would approach a completely unfamiliar codebase.", "topic": "Onboarding to Code", "area": "technical", "difficulty": "medium", "minWords": 90, "rubric": [
+      { "label": "Read docs / README and run the project", "any": ["readme", "documentation", "run it", "set up", "build"] },
+      { "label": "Map architecture and entry points", "any": ["architecture", "entry point", "main", "module", "diagram", "structure"] },
+      { "label": "Use tests and debugger to trace flows", "any": ["test", "debugger", "trace", "breakpoint", "log"] },
+      { "label": "Start with a small change / ticket", "any": ["small", "bug fix", "first ticket", "good first issue"] },
+      { "label": "Ask teammates and take notes", "any": ["ask", "teammate", "notes", "mentor", "pair"] }
+    ] },
+    { "base": "Describe a time you improved performance or reliability.", "topic": "Performance Story", "area": "technical", "difficulty": "hard", "minWords": 100, "rubric": [
+      { "label": "Baseline measurement", "any": ["measure", "baseline", "profil", "benchmark", "metric"] },
+      { "label": "Identified the bottleneck", "any": ["bottleneck", "slow", "hotspot", "n+1", "query"] },
+      { "label": "Specific technical change", "any": ["cache", "index", "optimi", "batch", "async", "retry", "queue"] },
+      { "label": "Quantified result", "any": ["%", "ms", "seconds", "x faster", "reduced", "from"] },
+      { "label": "Validation and monitoring afterwards", "any": ["monitor", "test", "alert", "verified", "load test"] }
+    ] },
+    { "base": "Why should we hire you for this role?", "topic": "Motivation & Fit", "area": "behavioral", "difficulty": "easy", "minWords": 80, "rubric": [
+      { "label": "Relevant skills for the role", "any": ["skill", "experience", "proficient", "strong in"] },
+      { "label": "Evidence (projects, internships, results)", "any": ["project", "internship", "built", "achieved", "result"] },
+      { "label": "Understanding of the company / role", "any": ["your company", "the role", "your team", "mission", "product"] },
+      { "label": "Soft skills (teamwork, ownership, learning)", "any": ["team", "ownership", "learn", "communicat", "adapt"] },
+      { "label": "Value you will add", "any": ["contribute", "value", "add", "impact", "help the team"] }
+    ] }
+  ]
+}

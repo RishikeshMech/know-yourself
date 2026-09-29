@@ -1,5 +1,12 @@
 # CALIBIAI SCORE — Scoring Formula (Portable, Trusted, /1000)
 
+> **Headline CalibiAI Score = average of every assessment.** This document
+> defines the score of the CalibiAI *assessment* (assessment 1, /1000). The
+> student's headline **CalibiAI Score** is the average of every assessment they
+> have completed — this one, the Capgemini 2027 mock (/1000) and each company
+> mock (/100 → ×10) — see `docs/CALIBIAI_SCORE_AND_ADMIN.md`.
+
+
 > The "credit score for employability." Weighted, auditable, verifiable.
 
 ---

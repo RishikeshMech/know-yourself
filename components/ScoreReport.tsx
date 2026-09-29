@@ -69,7 +69,7 @@ export function ScoreReport({ scores, sample = false }: Props) {
         <div className="glass-card animate-fade-up">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <div className="text-xs font-bold tracking-widest text-indigo-600 uppercase">Your CalibiAI Score</div>
+              <div className="text-xs font-bold tracking-widest text-indigo-600 uppercase">CalibiAI Assessment score</div>
               <div className="mt-2 flex items-baseline gap-3 flex-wrap">
                 <span className="text-6xl font-black text-gradient leading-none">{scores.total}</span>
                 <span className="text-slate-400 text-2xl font-bold">/ 1000</span>

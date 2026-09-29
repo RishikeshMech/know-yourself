@@ -1,0 +1,1927 @@
+{
+ "section": "s3",
+ "_about": "Supplementary DSA items across the same 23 topics as the Ques document (which contains 23 distinct questions repeated ~30 times each). Computed answers are executed by verify.mjs.",
+ "mcq": [
+  {
+   "topic": "Complexity Analysis",
+   "area": "analysis",
+   "difficulty": "medium",
+   "q": "What is the time complexity of this code?",
+   "code": "for (i = 1; i < n; i *= 2)\n    for (j = 0; j < n; j++)\n        work();",
+   "options": [
+    "O(n log n)",
+    "O(n²)",
+    "O(log n)",
+    "O(n)"
+   ],
+   "answer": "O(n log n)"
+  },
+  {
+   "topic": "Complexity Analysis",
+   "area": "analysis",
+   "difficulty": "easy",
+   "q": "What is the time complexity of this code?",
+   "code": "for i in range(n):\n    for j in range(i):\n        work()",
+   "options": [
+    "O(n²)",
+    "O(n)",
+    "O(n log n)",
+    "O(2ⁿ)"
+   ],
+   "answer": "O(n²)"
+  },
+  {
+   "topic": "Complexity Analysis",
+   "area": "analysis",
+   "difficulty": "medium",
+   "q": "The recurrence T(n) = 2T(n/2) + n solves to:",
+   "options": [
+    "Θ(n log n)",
+    "Θ(n)",
+    "Θ(n²)",
+    "Θ(log n)"
+   ],
+   "answer": "Θ(n log n)"
+  },
+  {
+   "topic": "Complexity Analysis",
+   "area": "analysis",
+   "difficulty": "medium",
+   "q": "The recurrence T(n) = T(n/2) + 1 solves to:",
+   "options": [
+    "Θ(log n)",
+    "Θ(n)",
+    "Θ(1)",
+    "Θ(n log n)"
+   ],
+   "answer": "Θ(log n)"
+  },
+  {
+   "topic": "Complexity Analysis",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "The recurrence T(n) = 2T(n − 1) + 1 with T(0) = 0 grows as:",
+   "options": [
+    "Θ(2ⁿ)",
+    "Θ(n²)",
+    "Θ(n log n)",
+    "Θ(n)"
+   ],
+   "answer": "Θ(2ⁿ)"
+  },
+  {
+   "topic": "Complexity Analysis",
+   "area": "analysis",
+   "difficulty": "medium",
+   "q": "A dynamic array doubles its capacity whenever it is full. What is the amortized cost of an append?",
+   "options": [
+    "O(1)",
+    "O(log n)",
+    "O(n)",
+    "O(n²)"
+   ],
+   "answer": "O(1)"
+  },
+  {
+   "topic": "Complexity Analysis",
+   "area": "analysis",
+   "difficulty": "easy",
+   "q": "What is the time complexity of this loop?",
+   "code": "i = n\nwhile i > 0:\n    i //= 3",
+   "options": [
+    "O(log n)",
+    "O(n)",
+    "O(√n)",
+    "O(1)"
+   ],
+   "answer": "O(log n)"
+  },
+  {
+   "topic": "Arrays",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "What does Kadane's algorithm compute in O(n) time?",
+   "options": [
+    "The maximum-sum contiguous subarray",
+    "The longest increasing subsequence",
+    "The median of an array",
+    "All pairs with a given sum"
+   ],
+   "answer": "The maximum-sum contiguous subarray"
+  },
+  {
+   "topic": "Arrays",
+   "area": "analysis",
+   "difficulty": "medium",
+   "q": "What is the maximum contiguous subarray sum of [2, -1, 3, -4, 5, -2]?",
+   "options": [
+    "5",
+    "4",
+    "6",
+    "3"
+   ],
+   "answer": "5",
+   "verify": {
+    "lang": "python",
+    "src": "a=[2,-1,3,-4,5,-2]\nbest=cur=a[0]\nfor x in a[1:]:\n    cur=max(x,cur+x); best=max(best,cur)\nprint(best)"
+   }
+  },
+  {
+   "topic": "Arrays",
+   "area": "concepts",
+   "difficulty": "easy",
+   "q": "After O(n) preprocessing, prefix sums answer a range-sum query in:",
+   "options": [
+    "O(1)",
+    "O(log n)",
+    "O(n)",
+    "O(√n)"
+   ],
+   "answer": "O(1)"
+  },
+  {
+   "topic": "Arrays",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "The Dutch National Flag algorithm sorts an array of 0s, 1s and 2s in:",
+   "options": [
+    "One pass, O(n) time and O(1) extra space",
+    "O(n log n) time",
+    "O(n) time with O(n) extra space",
+    "O(n²) time"
+   ],
+   "answer": "One pass, O(n) time and O(1) extra space"
+  },
+  {
+   "topic": "Arrays",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "The smallest subarray with sum ≥ K in an array of positive integers is best found with:",
+   "options": [
+    "A sliding window using two pointers",
+    "Binary search on every prefix",
+    "A max-heap",
+    "Topological sort"
+   ],
+   "answer": "A sliding window using two pointers"
+  },
+  {
+   "topic": "Strings",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "Which algorithm finds all occurrences of a pattern in O(n + m) time using a failure (LPS) array?",
+   "options": [
+    "Knuth–Morris–Pratt",
+    "Naive matching",
+    "Dijkstra",
+    "Kruskal"
+   ],
+   "answer": "Knuth–Morris–Pratt"
+  },
+  {
+   "topic": "Strings",
+   "area": "concepts",
+   "difficulty": "easy",
+   "q": "When are two strings anagrams of each other?",
+   "options": [
+    "When they have identical character frequency counts",
+    "When they have the same first letter",
+    "When one is the reverse of the other",
+    "When they have the same length"
+   ],
+   "answer": "When they have identical character frequency counts"
+  },
+  {
+   "topic": "Strings",
+   "area": "analysis",
+   "difficulty": "medium",
+   "q": "What is the length of the longest palindromic substring of 'babad'?",
+   "options": [
+    "3",
+    "2",
+    "5",
+    "1"
+   ],
+   "answer": "3",
+   "verify": {
+    "lang": "python",
+    "src": "s='babad'\nprint(max(j-i for i in range(len(s)) for j in range(i+1,len(s)+1) if s[i:j]==s[i:j][::-1]))"
+   }
+  },
+  {
+   "topic": "Strings",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "How can you check whether s2 is a rotation of s1 (strings of equal length)?",
+   "options": [
+    "Check whether s2 is a substring of s1 + s1",
+    "Sort both strings and compare",
+    "Reverse s1 and compare",
+    "Compare only the first characters"
+   ],
+   "answer": "Check whether s2 is a substring of s1 + s1"
+  },
+  {
+   "topic": "Hashing",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "In a hash table with separate chaining, what is the worst-case lookup time if every key collides?",
+   "options": [
+    "O(n)",
+    "O(1)",
+    "O(log n)",
+    "O(n²)"
+   ],
+   "answer": "O(n)"
+  },
+  {
+   "topic": "Hashing",
+   "area": "concepts",
+   "difficulty": "easy",
+   "q": "What is the load factor of a hash table?",
+   "options": [
+    "Entries stored divided by the number of buckets",
+    "The time taken to compute a hash",
+    "The number of collisions",
+    "The size of the largest bucket"
+   ],
+   "answer": "Entries stored divided by the number of buckets"
+  },
+  {
+   "topic": "Hashing",
+   "area": "concepts",
+   "difficulty": "easy",
+   "q": "Two Sum on an unsorted array is solved in O(n) time using:",
+   "options": [
+    "A hash map from value to index",
+    "Nested loops",
+    "Sorting and binary search on every pair",
+    "A stack"
+   ],
+   "answer": "A hash map from value to index"
+  },
+  {
+   "topic": "Linked Lists",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "Floyd's cycle-detection algorithm uses:",
+   "options": [
+    "Two pointers moving at different speeds",
+    "A hash set of visited nodes only",
+    "Recursion on every node",
+    "Sorting the node values"
+   ],
+   "answer": "Two pointers moving at different speeds"
+  },
+  {
+   "topic": "Linked Lists",
+   "area": "concepts",
+   "difficulty": "easy",
+   "q": "How much extra space does iteratively reversing a singly linked list require?",
+   "options": [
+    "O(1)",
+    "O(n)",
+    "O(log n)",
+    "O(n²)"
+   ],
+   "answer": "O(1)"
+  },
+  {
+   "topic": "Linked Lists",
+   "area": "concepts",
+   "difficulty": "easy",
+   "q": "How is the middle node of a singly linked list found in one pass?",
+   "options": [
+    "Advance a slow pointer by one and a fast pointer by two",
+    "Count all nodes twice",
+    "Use binary search",
+    "Sort the list first"
+   ],
+   "answer": "Advance a slow pointer by one and a fast pointer by two"
+  },
+  {
+   "topic": "Linked Lists",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "In a singly linked list, how do you delete a node when you only have a pointer to that node (and it is not the tail)?",
+   "options": [
+    "Copy the next node's data into it and unlink the next node",
+    "Traverse from the head to find its predecessor",
+    "Set the node pointer to null",
+    "It is impossible"
+   ],
+   "answer": "Copy the next node's data into it and unlink the next node"
+  },
+  {
+   "topic": "Stacks",
+   "area": "analysis",
+   "difficulty": "medium",
+   "q": "What is the value of the postfix expression 2 3 4 * + 5 − ?",
+   "options": [
+    "9",
+    "15",
+    "−1",
+    "13"
+   ],
+   "answer": "9",
+   "verify": {
+    "lang": "python",
+    "src": "st=[]\nfor t in '2 3 4 * + 5 -'.split():\n    if t.isdigit(): st.append(int(t))\n    else:\n        b=st.pop(); a=st.pop(); st.append({'+':a+b,'-':a-b,'*':a*b}[t])\nprint(st[0])"
+   }
+  },
+  {
+   "topic": "Stacks",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "Which problem is typically solved with a monotonic stack?",
+   "options": [
+    "Finding the next greater element for every array item",
+    "Shortest path in a weighted graph",
+    "Merging two sorted arrays",
+    "Finding the median"
+   ],
+   "answer": "Finding the next greater element for every array item"
+  },
+  {
+   "topic": "Stacks",
+   "area": "concepts",
+   "difficulty": "easy",
+   "q": "Which data structure is used to check whether brackets are balanced?",
+   "options": [
+    "Stack",
+    "Queue",
+    "Heap",
+    "Trie"
+   ],
+   "answer": "Stack"
+  },
+  {
+   "topic": "Stacks",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "A queue implemented with two stacks has what amortized cost per dequeue?",
+   "options": [
+    "O(1)",
+    "O(n)",
+    "O(log n)",
+    "O(n²)"
+   ],
+   "answer": "O(1)"
+  },
+  {
+   "topic": "Queues",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "In an array-based circular queue of size n that keeps one slot empty, when is the queue full?",
+   "options": [
+    "(rear + 1) % n == front",
+    "rear == front",
+    "rear == n − 1",
+    "front == 0"
+   ],
+   "answer": "(rear + 1) % n == front"
+  },
+  {
+   "topic": "Queues",
+   "area": "concepts",
+   "difficulty": "easy",
+   "q": "Which structure supports insertion and deletion at both ends in O(1)?",
+   "options": [
+    "Deque",
+    "Stack",
+    "Binary search tree",
+    "Priority queue"
+   ],
+   "answer": "Deque"
+  },
+  {
+   "topic": "Queues",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "The maximum of every window of size k in an array can be found in O(n) using:",
+   "options": [
+    "A monotonic deque of indices",
+    "A sorted array per window",
+    "A trie",
+    "Recursion"
+   ],
+   "answer": "A monotonic deque of indices"
+  },
+  {
+   "topic": "Recursion",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "f(n) = f(n−1) + f(n−2) with f(0) = f(1) = 1 is implemented recursively without memoization. How many calls to f are made in total when computing f(4)?",
+   "options": [
+    "9",
+    "5",
+    "8",
+    "15"
+   ],
+   "answer": "9",
+   "verify": {
+    "lang": "python",
+    "src": "c=0\ndef f(n):\n    global c\n    c+=1\n    return 1 if n<2 else f(n-1)+f(n-2)\nf(4)\nprint(c)"
+   }
+  },
+  {
+   "topic": "Recursion",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "What is tail recursion?",
+   "options": [
+    "The recursive call is the function's final action, so its frame can be reused",
+    "Recursion that starts from the end of an array",
+    "Recursion without a base case",
+    "Two functions calling each other"
+   ],
+   "answer": "The recursive call is the function's final action, so its frame can be reused"
+  },
+  {
+   "topic": "Backtracking",
+   "area": "analysis",
+   "difficulty": "easy",
+   "q": "How many subsets does a set of 5 distinct elements have?",
+   "options": [
+    "32",
+    "25",
+    "10",
+    "120"
+   ],
+   "answer": "32"
+  },
+  {
+   "topic": "Backtracking",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "The N-Queens problem is typically solved with:",
+   "options": [
+    "Backtracking with pruning on columns and diagonals",
+    "Dijkstra's algorithm",
+    "A greedy choice per row",
+    "Binary search"
+   ],
+   "answer": "Backtracking with pruning on columns and diagonals"
+  },
+  {
+   "topic": "Backtracking",
+   "area": "analysis",
+   "difficulty": "easy",
+   "q": "How many permutations does [1, 2, 3, 4] have?",
+   "options": [
+    "24",
+    "16",
+    "12",
+    "4"
+   ],
+   "answer": "24"
+  },
+  {
+   "topic": "Sorting",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "Which sorting algorithm is stable and guarantees O(n log n) in the worst case?",
+   "options": [
+    "Merge sort",
+    "Quicksort",
+    "Heap sort",
+    "Selection sort"
+   ],
+   "answer": "Merge sort"
+  },
+  {
+   "topic": "Sorting",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "When does quicksort hit its O(n²) worst case?",
+   "options": [
+    "When the pivot is always the smallest or largest element",
+    "When all elements are distinct",
+    "When the array has an even length",
+    "When the array fits in cache"
+   ],
+   "answer": "When the pivot is always the smallest or largest element"
+  },
+  {
+   "topic": "Sorting",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "Which algorithm performs best on an almost-sorted array?",
+   "options": [
+    "Insertion sort",
+    "Selection sort",
+    "Heap sort",
+    "Quicksort with a fixed first pivot"
+   ],
+   "answer": "Insertion sort"
+  },
+  {
+   "topic": "Sorting",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "Counting sort runs in:",
+   "options": [
+    "O(n + k), where k is the range of values",
+    "O(n log n)",
+    "O(n²)",
+    "O(k log n)"
+   ],
+   "answer": "O(n + k), where k is the range of values"
+  },
+  {
+   "topic": "Sorting",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "What is the lower bound on the worst-case number of comparisons for any comparison-based sort?",
+   "options": [
+    "Ω(n log n)",
+    "Ω(n)",
+    "Ω(log n)",
+    "Ω(n²)"
+   ],
+   "answer": "Ω(n log n)"
+  },
+  {
+   "topic": "Sorting",
+   "area": "analysis",
+   "difficulty": "medium",
+   "q": "What is [5, 1, 4, 2, 8] after exactly one pass of ascending bubble sort?",
+   "options": [
+    "[1, 4, 2, 5, 8]",
+    "[1, 2, 4, 5, 8]",
+    "[1, 5, 4, 2, 8]",
+    "[5, 1, 4, 2, 8]"
+   ],
+   "answer": "[1, 4, 2, 5, 8]",
+   "verify": {
+    "lang": "python",
+    "src": "a=[5,1,4,2,8]\nfor j in range(len(a)-1):\n    if a[j]>a[j+1]: a[j],a[j+1]=a[j+1],a[j]\nprint(a)"
+   }
+  },
+  {
+   "topic": "Searching",
+   "area": "analysis",
+   "difficulty": "medium",
+   "q": "Standard binary search (mid = (lo + hi) // 2) looks for 11 in [1, 3, 5, 7, 9, 11, 13]. How many elements are compared before 11 is found (including the match)?",
+   "options": [
+    "2",
+    "3",
+    "1",
+    "4"
+   ],
+   "answer": "2",
+   "verify": {
+    "lang": "python",
+    "src": "a=[1,3,5,7,9,11,13]\nlo,hi,c=0,len(a)-1,0\nwhile lo<=hi:\n    m=(lo+hi)//2; c+=1\n    if a[m]==11: break\n    if a[m]<11: lo=m+1\n    else: hi=m-1\nprint(c)"
+   }
+  },
+  {
+   "topic": "Searching",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "To find the FIRST occurrence of a target in a sorted array with duplicates, binary search should:",
+   "options": [
+    "Record the match and keep searching the left half",
+    "Stop at the first match",
+    "Search the right half after a match",
+    "Switch to linear search"
+   ],
+   "answer": "Record the match and keep searching the left half"
+  },
+  {
+   "topic": "Searching",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "Searching for a value in a rotated sorted array of distinct elements can be done in:",
+   "options": [
+    "O(log n)",
+    "O(n)",
+    "O(n log n)",
+    "O(1)"
+   ],
+   "answer": "O(log n)"
+  },
+  {
+   "topic": "Trees",
+   "area": "analysis",
+   "difficulty": "medium",
+   "q": "What is the maximum number of nodes in a binary tree of height h (a single root has height 0)?",
+   "options": [
+    "2^(h+1) − 1",
+    "2^h",
+    "h²",
+    "2h + 1"
+   ],
+   "answer": "2^(h+1) − 1"
+  },
+  {
+   "topic": "Trees",
+   "area": "analysis",
+   "difficulty": "medium",
+   "q": "A binary tree has root A with children B (left) and C (right). B has children D (left) and E (right). C has a right child F. What is its postorder traversal?",
+   "options": [
+    "D E B F C A",
+    "A B D E C F",
+    "D B E A C F",
+    "D E F B C A"
+   ],
+   "answer": "D E B F C A"
+  },
+  {
+   "topic": "Trees",
+   "area": "concepts",
+   "difficulty": "easy",
+   "q": "How many edges does a tree with n nodes have?",
+   "options": [
+    "n − 1",
+    "n",
+    "n + 1",
+    "2n"
+   ],
+   "answer": "n − 1"
+  },
+  {
+   "topic": "Trees",
+   "area": "concepts",
+   "difficulty": "easy",
+   "q": "Level-order traversal of a tree is implemented with:",
+   "options": [
+    "A queue",
+    "A stack",
+    "A heap",
+    "A hash map"
+   ],
+   "answer": "A queue"
+  },
+  {
+   "topic": "BST",
+   "area": "concepts",
+   "difficulty": "easy",
+   "q": "What does an inorder traversal of a binary search tree produce?",
+   "options": [
+    "The keys in sorted order",
+    "The keys in insertion order",
+    "The keys in reverse insertion order",
+    "Only the leaf keys"
+   ],
+   "answer": "The keys in sorted order"
+  },
+  {
+   "topic": "BST",
+   "area": "analysis",
+   "difficulty": "medium",
+   "q": "Keys 50, 30, 70, 20, 40, 60, 80 are inserted in that order into an empty BST. What is the tree's height (edges on the longest root-to-leaf path)?",
+   "options": [
+    "2",
+    "3",
+    "6",
+    "1"
+   ],
+   "answer": "2",
+   "verify": {
+    "lang": "python",
+    "src": "def ins(t,k):\n    if t is None: return [k,None,None]\n    if k<t[0]: t[1]=ins(t[1],k)\n    else: t[2]=ins(t[2],k)\n    return t\nh=lambda t: -1 if t is None else 1+max(h(t[1]),h(t[2]))\nt=None\nfor k in [50,30,70,20,40,60,80]: t=ins(t,k)\nprint(h(t))"
+   }
+  },
+  {
+   "topic": "BST",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "What is the worst-case search time in an unbalanced BST with n nodes?",
+   "options": [
+    "O(n)",
+    "O(log n)",
+    "O(1)",
+    "O(n log n)"
+   ],
+   "answer": "O(n)"
+  },
+  {
+   "topic": "BST",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "In a BST, the inorder successor of a node that has a right child is:",
+   "options": [
+    "The leftmost node of its right subtree",
+    "Its parent",
+    "The rightmost node of its left subtree",
+    "The root"
+   ],
+   "answer": "The leftmost node of its right subtree"
+  },
+  {
+   "topic": "Heaps",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "Building a binary heap from n unsorted elements with bottom-up heapify takes:",
+   "options": [
+    "O(n)",
+    "O(n log n)",
+    "O(log n)",
+    "O(n²)"
+   ],
+   "answer": "O(n)"
+  },
+  {
+   "topic": "Heaps",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "In a 0-indexed array-based binary heap, where are the children of index i?",
+   "options": [
+    "2i + 1 and 2i + 2",
+    "2i and 2i + 1",
+    "i + 1 and i + 2",
+    "i / 2 and i / 2 + 1"
+   ],
+   "answer": "2i + 1 and 2i + 2"
+  },
+  {
+   "topic": "Heaps",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "What is the efficient way to keep the k largest elements of a large stream?",
+   "options": [
+    "A min-heap of size k",
+    "A max-heap of all elements",
+    "Sorting after every insertion",
+    "A queue of size k"
+   ],
+   "answer": "A min-heap of size k"
+  },
+  {
+   "topic": "Graphs",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "When does Dijkstra's algorithm fail to give correct shortest paths?",
+   "options": [
+    "When the graph has negative edge weights",
+    "When the graph is directed",
+    "When the graph has cycles",
+    "When the graph is sparse"
+   ],
+   "answer": "When the graph has negative edge weights"
+  },
+  {
+   "topic": "Graphs",
+   "area": "concepts",
+   "difficulty": "easy",
+   "q": "What is the time complexity of BFS on a graph with V vertices and E edges stored as adjacency lists?",
+   "options": [
+    "O(V + E)",
+    "O(V²)",
+    "O(E log V)",
+    "O(V · E)"
+   ],
+   "answer": "O(V + E)"
+  },
+  {
+   "topic": "Graphs",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "Which algorithm finds a minimum spanning tree?",
+   "options": [
+    "Kruskal's algorithm",
+    "Kahn's algorithm",
+    "Floyd's cycle detection",
+    "KMP"
+   ],
+   "answer": "Kruskal's algorithm"
+  },
+  {
+   "topic": "Graphs",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "Which data structure efficiently detects a cycle while adding edges to an undirected graph?",
+   "options": [
+    "Union-Find (disjoint set union)",
+    "Trie",
+    "Min-heap",
+    "Deque"
+   ],
+   "answer": "Union-Find (disjoint set union)"
+  },
+  {
+   "topic": "Graphs",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "What can the Bellman–Ford algorithm detect that Dijkstra's cannot?",
+   "options": [
+    "Negative-weight cycles reachable from the source",
+    "Bridges in an undirected graph",
+    "Strongly connected components",
+    "Articulation points"
+   ],
+   "answer": "Negative-weight cycles reachable from the source"
+  },
+  {
+   "topic": "DFS",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "During DFS on a directed graph, what does a back edge indicate?",
+   "options": [
+    "A cycle",
+    "A disconnected component",
+    "A shortest path",
+    "A bipartite graph"
+   ],
+   "answer": "A cycle"
+  },
+  {
+   "topic": "DFS",
+   "area": "concepts",
+   "difficulty": "easy",
+   "q": "How is the number of islands in a grid of land and water usually counted?",
+   "options": [
+    "Flood-fill with DFS/BFS from each unvisited land cell",
+    "Sorting the rows",
+    "Binary search on each row",
+    "A single pass counting land cells"
+   ],
+   "answer": "Flood-fill with DFS/BFS from each unvisited land cell"
+  },
+  {
+   "topic": "Topological Sort",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "Kahn's algorithm for topological sorting repeatedly removes:",
+   "options": [
+    "Nodes with in-degree zero",
+    "Nodes with the highest out-degree",
+    "Leaf nodes of a DFS tree",
+    "Nodes on the longest path"
+   ],
+   "answer": "Nodes with in-degree zero"
+  },
+  {
+   "topic": "Topological Sort",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "If Kahn's algorithm outputs fewer than V nodes, the directed graph:",
+   "options": [
+    "Contains a cycle",
+    "Is disconnected",
+    "Is a tree",
+    "Has negative weights"
+   ],
+   "answer": "Contains a cycle"
+  },
+  {
+   "topic": "Topological Sort",
+   "area": "analysis",
+   "difficulty": "medium",
+   "q": "Which is a valid topological order for the edges A→B, A→C, B→D, C→D?",
+   "options": [
+    "A, C, B, D",
+    "B, A, C, D",
+    "A, D, B, C",
+    "D, C, B, A"
+   ],
+   "answer": "A, C, B, D"
+  },
+  {
+   "topic": "Greedy",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "The greedy solution to activity selection picks the next activity with the:",
+   "options": [
+    "Earliest finish time",
+    "Earliest start time",
+    "Longest duration",
+    "Shortest duration"
+   ],
+   "answer": "Earliest finish time"
+  },
+  {
+   "topic": "Greedy",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "With coin denominations {1, 3, 4}, what happens when greedy change-making is used for amount 6?",
+   "options": [
+    "Greedy uses 3 coins (4+1+1) but the optimum is 2 coins (3+3)",
+    "Greedy finds the optimum of 2 coins",
+    "Greedy cannot make 6",
+    "Greedy uses 6 coins"
+   ],
+   "answer": "Greedy uses 3 coins (4+1+1) but the optimum is 2 coins (3+3)"
+  },
+  {
+   "topic": "Greedy",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "Huffman coding builds its tree by repeatedly:",
+   "options": [
+    "Merging the two least-frequent nodes",
+    "Merging the two most-frequent nodes",
+    "Splitting the alphabet in half",
+    "Sorting symbols alphabetically"
+   ],
+   "answer": "Merging the two least-frequent nodes"
+  },
+  {
+   "topic": "Dynamic Programming",
+   "area": "analysis",
+   "difficulty": "easy",
+   "q": "In how many ways can you climb 5 stairs taking 1 or 2 steps at a time?",
+   "options": [
+    "8",
+    "5",
+    "10",
+    "13"
+   ],
+   "answer": "8",
+   "verify": {
+    "lang": "python",
+    "src": "a,b=1,1\nfor _ in range(5): a,b=b,a+b\nprint(a)"
+   }
+  },
+  {
+   "topic": "Dynamic Programming",
+   "area": "analysis",
+   "difficulty": "medium",
+   "q": "What is the length of the longest common subsequence of 'ABCBDAB' and 'BDCABA'?",
+   "options": [
+    "4",
+    "3",
+    "5",
+    "6"
+   ],
+   "answer": "4",
+   "verify": {
+    "lang": "python",
+    "src": "a,b='ABCBDAB','BDCABA'\nd=[[0]*(len(b)+1) for _ in range(len(a)+1)]\nfor i in range(1,len(a)+1):\n    for j in range(1,len(b)+1):\n        d[i][j]=d[i-1][j-1]+1 if a[i-1]==b[j-1] else max(d[i-1][j],d[i][j-1])\nprint(d[-1][-1])"
+   }
+  },
+  {
+   "topic": "Dynamic Programming",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "The standard DP for 0/1 knapsack with n items and capacity W runs in:",
+   "options": [
+    "O(nW)",
+    "O(n log n)",
+    "O(2ⁿ)",
+    "O(n + W)"
+   ],
+   "answer": "O(nW)"
+  },
+  {
+   "topic": "Dynamic Programming",
+   "area": "analysis",
+   "difficulty": "easy",
+   "q": "What is the minimum number of coins needed to make 11 using denominations {1, 2, 5}?",
+   "options": [
+    "3",
+    "2",
+    "4",
+    "5"
+   ],
+   "answer": "3",
+   "verify": {
+    "lang": "python",
+    "src": "dp=[0]+[10**9]*11\nfor v in range(1,12):\n    dp[v]=min(dp[v-c]+1 for c in (1,2,5) if c<=v)\nprint(dp[11])"
+   }
+  },
+  {
+   "topic": "Dynamic Programming",
+   "area": "analysis",
+   "difficulty": "medium",
+   "q": "What is the edit (Levenshtein) distance between 'kitten' and 'sitting'?",
+   "options": [
+    "3",
+    "2",
+    "4",
+    "5"
+   ],
+   "answer": "3",
+   "verify": {
+    "lang": "python",
+    "src": "a,b='kitten','sitting'\nd=[[i+j if i*j==0 else 0 for j in range(len(b)+1)] for i in range(len(a)+1)]\nfor i in range(1,len(a)+1):\n    for j in range(1,len(b)+1):\n        d[i][j]=min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]!=b[j-1]))\nprint(d[-1][-1])"
+   }
+  },
+  {
+   "topic": "Dynamic Programming",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "How does memoization differ from tabulation?",
+   "options": [
+    "It solves subproblems top-down on demand and caches the results",
+    "It always uses less memory",
+    "It only works for greedy problems",
+    "It fills a table bottom-up in a fixed order"
+   ],
+   "answer": "It solves subproblems top-down on demand and caches the results"
+  },
+  {
+   "topic": "Dynamic Programming",
+   "area": "analysis",
+   "difficulty": "medium",
+   "q": "What is the length of the longest strictly increasing subsequence of [10, 9, 2, 5, 3, 7, 101, 18]?",
+   "options": [
+    "4",
+    "3",
+    "5",
+    "6"
+   ],
+   "answer": "4",
+   "verify": {
+    "lang": "python",
+    "src": "a=[10,9,2,5,3,7,101,18]\nd=[1]*len(a)\nfor i in range(len(a)):\n    for j in range(i):\n        if a[j]<a[i]: d[i]=max(d[i],d[j]+1)\nprint(max(d))"
+   }
+  },
+  {
+   "topic": "Bit Manipulation",
+   "area": "concepts",
+   "difficulty": "easy",
+   "q": "For n > 0, what does the check n & (n − 1) == 0 tell you?",
+   "options": [
+    "n is a power of two",
+    "n is even",
+    "n is prime",
+    "n is odd"
+   ],
+   "answer": "n is a power of two"
+  },
+  {
+   "topic": "Bit Manipulation",
+   "area": "analysis",
+   "difficulty": "easy",
+   "q": "How many set bits (1s) does the binary representation of 29 have?",
+   "options": [
+    "4",
+    "3",
+    "5",
+    "2"
+   ],
+   "answer": "4",
+   "verify": {
+    "lang": "python",
+    "src": "print(bin(29).count('1'))"
+   }
+  },
+  {
+   "topic": "Bit Manipulation",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "Every element of an array appears twice except one. How do you find it in O(n) time and O(1) space?",
+   "options": [
+    "XOR all the elements",
+    "Sort and scan",
+    "Use a hash map of counts",
+    "Sum all the elements"
+   ],
+   "answer": "XOR all the elements"
+  },
+  {
+   "topic": "Bit Manipulation",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "In two's complement, what does x & (−x) isolate?",
+   "options": [
+    "The lowest set bit of x",
+    "The highest set bit of x",
+    "The sign bit",
+    "All bits except the lowest"
+   ],
+   "answer": "The lowest set bit of x"
+  },
+  {
+   "topic": "Tries",
+   "area": "concepts",
+   "difficulty": "easy",
+   "q": "What is the time to insert a word of length L into a trie?",
+   "options": [
+    "O(L)",
+    "O(log L)",
+    "O(1)",
+    "O(L²)"
+   ],
+   "answer": "O(L)"
+  },
+  {
+   "topic": "Tries",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "When is a trie preferred over a hash set of words?",
+   "options": [
+    "When you need prefix queries such as autocomplete",
+    "When you only need exact-match lookups",
+    "When memory is extremely limited",
+    "When keys are integers"
+   ],
+   "answer": "When you need prefix queries such as autocomplete"
+  },
+  {
+   "topic": "Intervals",
+   "area": "analysis",
+   "difficulty": "easy",
+   "q": "What is the result of merging the intervals [[1,3], [2,6], [8,10], [15,18]]?",
+   "options": [
+    "[[1,6], [8,10], [15,18]]",
+    "[[1,3], [2,6], [8,18]]",
+    "[[1,10], [15,18]]",
+    "[[1,18]]"
+   ],
+   "answer": "[[1,6], [8,10], [15,18]]"
+  },
+  {
+   "topic": "Intervals",
+   "area": "analysis",
+   "difficulty": "medium",
+   "q": "What is the minimum number of meeting rooms needed for the meetings [[0,30], [5,10], [15,20]]?",
+   "options": [
+    "2",
+    "1",
+    "3",
+    "0"
+   ],
+   "answer": "2",
+   "verify": {
+    "lang": "python",
+    "src": "import heapq\nm=sorted([[0,30],[5,10],[15,20]])\nh=[]\nfor s,e in m:\n    if h and h[0]<=s: heapq.heapreplace(h,e)\n    else: heapq.heappush(h,e)\nprint(len(h))"
+   }
+  },
+  {
+   "topic": "Intervals",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "When do the closed intervals [a, b] and [c, d] overlap?",
+   "options": [
+    "When a ≤ d and c ≤ b",
+    "When a < c",
+    "When b = c only",
+    "When a + b = c + d"
+   ],
+   "answer": "When a ≤ d and c ≤ b"
+  },
+  {
+   "topic": "Matrices",
+   "area": "concepts",
+   "difficulty": "medium",
+   "q": "How can an n×n matrix be rotated 90° clockwise in place?",
+   "options": [
+    "Transpose it, then reverse each row",
+    "Reverse each column only",
+    "Swap the two diagonals",
+    "Sort every row"
+   ],
+   "answer": "Transpose it, then reverse each row"
+  },
+  {
+   "topic": "Matrices",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "A matrix has rows and columns sorted in ascending order. Where can an O(m + n) search start?",
+   "options": [
+    "The top-right corner, moving left or down",
+    "The centre cell",
+    "The top-left corner, moving right only",
+    "Any random cell"
+   ],
+   "answer": "The top-right corner, moving left or down"
+  },
+  {
+   "topic": "Matrices",
+   "area": "analysis",
+   "difficulty": "medium",
+   "q": "How many unique paths lead from the top-left to the bottom-right of a 3×3 grid if you can only move right or down?",
+   "options": [
+    "6",
+    "9",
+    "4",
+    "12"
+   ],
+   "answer": "6",
+   "verify": {
+    "lang": "python",
+    "src": "from math import comb\nprint(comb(4,2))"
+   }
+  },
+  {
+   "topic": "Complexity Analysis",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "What is the time complexity of this code?",
+   "code": "i = n\nwhile i > 1:\n    j = 0\n    while j < i:\n        j += 1\n    i //= 2",
+   "options": [
+    "O(n)",
+    "O(n log n)",
+    "O(log² n)",
+    "O(n²)"
+   ],
+   "answer": "O(n)"
+  },
+  {
+   "topic": "Complexity Analysis",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "What is the time complexity of this code?",
+   "code": "for i in range(1, n + 1):\n    j = i\n    while j <= n:\n        j += i",
+   "options": [
+    "O(n log n)",
+    "O(n²)",
+    "O(n)",
+    "O(n√n)"
+   ],
+   "answer": "O(n log n)"
+  },
+  {
+   "topic": "Complexity Analysis",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "Which bound solves the recurrence T(n) = 3·T(n/2) + n?",
+   "options": [
+    "Θ(n^log₂3) ≈ Θ(n^1.585)",
+    "Θ(n log n)",
+    "Θ(n²)",
+    "Θ(n)"
+   ],
+   "answer": "Θ(n^log₂3) ≈ Θ(n^1.585)"
+  },
+  {
+   "topic": "Complexity Analysis",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "What is the time complexity of this loop?",
+   "code": "i = 2\nwhile i < n:\n    i = i * i",
+   "options": [
+    "O(log log n)",
+    "O(log n)",
+    "O(√n)",
+    "O(1)"
+   ],
+   "answer": "O(log log n)"
+  },
+  {
+   "topic": "Complexity Analysis",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "What is the time complexity of this function (no memoisation)?",
+   "code": "def fib(n):\n    if n < 2:\n        return n\n    return fib(n - 1) + fib(n - 2)",
+   "options": [
+    "O(φⁿ) ≈ O(1.618ⁿ)",
+    "O(n)",
+    "O(n²)",
+    "O(n log n)"
+   ],
+   "answer": "O(φⁿ) ≈ O(1.618ⁿ)"
+  },
+  {
+   "topic": "Complexity Analysis",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "Two pointers scan a sorted array of n elements once from both ends. For each of the n outer iterations below, how much total work does the inner loop do across the whole run?",
+   "code": "j = 0\nfor i in range(n):\n    while j < n and a[j] - a[i] <= k:\n        j += 1\n    best = max(best, j - i)",
+   "options": [
+    "O(n) in total — j only ever moves forward",
+    "O(n²) — it restarts for every i",
+    "O(n log n)",
+    "O(1) per i, O(1) in total"
+   ],
+   "answer": "O(n) in total — j only ever moves forward"
+  },
+  {
+   "topic": "Dynamic Programming",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "What does this program print?",
+   "code": "a = [-2, 1, -3, 4, -1, 2, 1, -5, 4]\nbest = cur = a[0]\nfor x in a[1:]:\n    cur = max(x, cur + x)\n    best = max(best, cur)\nprint(best)",
+   "options": [
+    "6",
+    "7",
+    "4",
+    "5"
+   ],
+   "answer": "6",
+   "verify": {
+    "lang": "python"
+   }
+  },
+  {
+   "topic": "Dynamic Programming",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "What is the length of the longest strictly increasing subsequence of [0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15]?",
+   "options": [
+    "6",
+    "5",
+    "7",
+    "4"
+   ],
+   "answer": "6",
+   "verify": {
+    "lang": "python",
+    "src": "import bisect\na=[0,8,4,12,2,10,6,14,1,9,5,13,3,11,7,15]\nt=[]\nfor x in a:\n    i=bisect.bisect_left(t,x)\n    t[i:i+1]=[x]\nprint(len(t))"
+   }
+  },
+  {
+   "topic": "Dynamic Programming",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "What is the edit (Levenshtein) distance between \"intention\" and \"execution\"?",
+   "options": [
+    "5",
+    "4",
+    "6",
+    "8"
+   ],
+   "answer": "5",
+   "verify": {
+    "lang": "python",
+    "src": "a,b=\"intention\",\"execution\"\nd=[[0]*(len(b)+1) for _ in range(len(a)+1)]\nfor i in range(len(a)+1):\n    for j in range(len(b)+1):\n        if i==0 or j==0: d[i][j]=i+j\n        else: d[i][j]=min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]!=b[j-1]))\nprint(d[-1][-1])"
+   }
+  },
+  {
+   "topic": "Dynamic Programming",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "In how many distinct ways can you climb a staircase of 10 steps taking 1, 2 or 3 steps at a time?",
+   "options": [
+    "274",
+    "89",
+    "144",
+    "504"
+   ],
+   "answer": "274",
+   "verify": {
+    "lang": "python",
+    "src": "w=[1,1,2]\nfor i in range(3,11): w.append(w[-1]+w[-2]+w[-3])\nprint(w[10])"
+   }
+  },
+  {
+   "topic": "Dynamic Programming",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "What is the maximum value that fits in a knapsack of capacity 7 with items (weight, value) = (1, 1), (3, 4), (4, 5), (5, 7), each usable at most once?",
+   "options": [
+    "9",
+    "11",
+    "10",
+    "8"
+   ],
+   "answer": "9",
+   "verify": {
+    "lang": "python",
+    "src": "items=[(1,1),(3,4),(4,5),(5,7)]\ndp=[0]*8\nfor w,v in items:\n    for c in range(7,w-1,-1): dp[c]=max(dp[c],dp[c-w]+v)\nprint(dp[7])"
+   }
+  },
+  {
+   "topic": "Dynamic Programming",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "How many unique paths lead from the top-left to the bottom-right of a 3 × 4 grid (moving only right or down) if the cell in row 2, column 2 (1-indexed) is blocked?",
+   "options": [
+    "4",
+    "10",
+    "6",
+    "3"
+   ],
+   "answer": "4",
+   "verify": {
+    "lang": "python",
+    "src": "R,C=3,4\ng=[[0]*C for _ in range(R)]\nfor r in range(R):\n    for c in range(C):\n        if (r,c)==(1,1): g[r][c]=0; continue\n        g[r][c]=1 if r==0 and c==0 else (g[r-1][c] if r else 0)+(g[r][c-1] if c else 0)\nprint(g[-1][-1])"
+   }
+  },
+  {
+   "topic": "Greedy",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "Coins are [1, 3, 4] and the amount is 6. How many coins does the greedy \"largest coin first\" strategy use, and how many does the optimum use?",
+   "options": [
+    "Greedy 3 (4 + 1 + 1), optimum 2 (3 + 3)",
+    "Both use 2",
+    "Greedy 2, optimum 3",
+    "Greedy 4, optimum 2"
+   ],
+   "answer": "Greedy 3 (4 + 1 + 1), optimum 2 (3 + 3)"
+  },
+  {
+   "topic": "Intervals",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "What is the minimum number of meeting rooms needed for meetings [[0, 30], [5, 10], [15, 20], [10, 15], [25, 35]] (a meeting ending at t frees its room for one starting at t)?",
+   "options": [
+    "2",
+    "3",
+    "1",
+    "4"
+   ],
+   "answer": "2",
+   "verify": {
+    "lang": "python",
+    "src": "import heapq\nm=sorted([[0,30],[5,10],[15,20],[10,15],[25,35]])\nh=[]\nfor s,e in m:\n    if h and h[0]<=s: heapq.heapreplace(h,e)\n    else: heapq.heappush(h,e)\nprint(len(h))"
+   }
+  },
+  {
+   "topic": "Heaps",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "What does this program print?",
+   "code": "import heapq\nh = []\nfor x in [5, 3, 8, 1, 9, 2]:\n    heapq.heappush(h, x)\nheapq.heappop(h)\nheapq.heappop(h)\nprint(h[0])",
+   "options": [
+    "3",
+    "1",
+    "2",
+    "5"
+   ],
+   "answer": "3",
+   "verify": {
+    "lang": "python"
+   }
+  },
+  {
+   "topic": "Sorting",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "How many inversions (pairs i < j with a[i] > a[j]) does [3, 1, 4, 1, 5, 9, 2, 6] contain?",
+   "options": [
+    "8",
+    "6",
+    "7",
+    "9"
+   ],
+   "answer": "8",
+   "verify": {
+    "lang": "python",
+    "src": "a=[3,1,4,1,5,9,2,6]\nprint(sum(1 for i in range(len(a)) for j in range(i+1,len(a)) if a[i]>a[j]))"
+   }
+  },
+  {
+   "topic": "Strings",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "What is the KMP failure (longest proper prefix that is also a suffix) array for the pattern \"aabaaab\"?",
+   "options": [
+    "[0, 1, 0, 1, 2, 2, 3]",
+    "[0, 1, 0, 1, 2, 3, 3]",
+    "[0, 0, 1, 2, 2, 3, 0]",
+    "[0, 1, 1, 2, 2, 2, 3]"
+   ],
+   "answer": "[0, 1, 0, 1, 2, 2, 3]",
+   "verify": {
+    "lang": "python",
+    "src": "p=\"aabaaab\"\nf=[0]*len(p)\nk=0\nfor i in range(1,len(p)):\n    while k and p[i]!=p[k]: k=f[k-1]\n    if p[i]==p[k]: k+=1\n    f[i]=k\nprint(\"[\"+\", \".join(map(str,f))+\"]\")"
+   }
+  },
+  {
+   "topic": "Graphs",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "In a directed graph with edges A→B (4), A→C (1), C→B (2), B→D (1), C→D (5), what is the shortest distance from A to D?",
+   "options": [
+    "4",
+    "5",
+    "6",
+    "3"
+   ],
+   "answer": "4",
+   "verify": {
+    "lang": "python",
+    "src": "import heapq\ng={\"A\":[(\"B\",4),(\"C\",1)],\"C\":[(\"B\",2),(\"D\",5)],\"B\":[(\"D\",1)],\"D\":[]}\nd={\"A\":0};h=[(0,\"A\")];done=set()\nwhile h:\n    x,u=heapq.heappop(h)\n    if u in done: continue\n    done.add(u)\n    for v,w in g[u]:\n        if x+w<d.get(v,1e9): d[v]=x+w; heapq.heappush(h,(x+w,v))\nprint(d[\"D\"])"
+   }
+  },
+  {
+   "topic": "Topological Sort",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "How many distinct topological orderings does the DAG with edges a→b, a→c, b→d, c→d, d→e have?",
+   "options": [
+    "2",
+    "1",
+    "4",
+    "6"
+   ],
+   "answer": "2",
+   "verify": {
+    "lang": "python",
+    "src": "import itertools\nE=[(\"a\",\"b\"),(\"a\",\"c\"),(\"b\",\"d\"),(\"c\",\"d\"),(\"d\",\"e\")]\nprint(sum(1 for p in itertools.permutations(\"abcde\") if all(p.index(u)<p.index(v) for u,v in E)))"
+   }
+  },
+  {
+   "topic": "BST",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "Keys 50, 30, 70, 20, 40, 60, 80 are inserted into an empty BST, then 50 is deleted by replacing it with its in-order successor. What is the pre-order traversal now?",
+   "options": [
+    "60 30 20 40 70 80",
+    "40 30 20 70 60 80",
+    "60 30 20 40 80 70",
+    "30 20 40 60 70 80"
+   ],
+   "answer": "60 30 20 40 70 80"
+  },
+  {
+   "topic": "Bit Manipulation",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "What does this program print?",
+   "code": "x = 0b10110100\nprint(x & -x, x)",
+   "options": [
+    "4 180",
+    "4 176",
+    "2 180",
+    "8 164"
+   ],
+   "answer": "4 180",
+   "verify": {
+    "lang": "python"
+   }
+  },
+  {
+   "topic": "Bit Manipulation",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "What does this program print?",
+   "code": "bits = [0] * 9\nfor i in range(1, 9):\n    bits[i] = bits[i >> 1] + (i & 1)\nprint(bits)",
+   "options": [
+    "[0, 1, 1, 2, 1, 2, 2, 3, 1]",
+    "[0, 1, 2, 2, 3, 3, 3, 4, 4]",
+    "[0, 1, 1, 2, 2, 3, 3, 4, 4]",
+    "[1, 1, 2, 2, 3, 3, 4, 4, 5]"
+   ],
+   "answer": "[0, 1, 1, 2, 1, 2, 2, 3, 1]",
+   "verify": {
+    "lang": "python"
+   }
+  },
+  {
+   "topic": "Graphs",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "A union-find over elements 1–7 performs union(1, 2), union(3, 4), union(2, 3), union(5, 6). How many disjoint sets remain?",
+   "options": [
+    "3",
+    "4",
+    "2",
+    "5"
+   ],
+   "answer": "3",
+   "verify": {
+    "lang": "python",
+    "src": "p=list(range(8))\ndef f(x):\n    while p[x]!=x: x=p[x]\n    return x\nfor a,b in [(1,2),(3,4),(2,3),(5,6)]: p[f(a)]=f(b)\nprint(len({f(x) for x in range(1,8)}))"
+   }
+  },
+  {
+   "topic": "Matrices",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "How many islands (4-directionally connected groups of 1s) does this grid contain?",
+   "code": "1 1 0 0 1\n1 0 0 1 1\n0 0 1 0 0\n1 0 1 0 1",
+   "options": [
+    "5",
+    "4",
+    "3",
+    "6"
+   ],
+   "answer": "5",
+   "verify": {
+    "lang": "python",
+    "src": "g=[\"11001\",\"10011\",\"00100\",\"10101\"]\nR,C=len(g),len(g[0])\nseen=set();n=0\nfor r in range(R):\n    for c in range(C):\n        if g[r][c]==\"1\" and (r,c) not in seen:\n            n+=1;st=[(r,c)];seen.add((r,c))\n            while st:\n                x,y=st.pop()\n                for a,b in((x+1,y),(x-1,y),(x,y+1),(x,y-1)):\n                    if 0<=a<R and 0<=b<C and g[a][b]==\"1\" and (a,b) not in seen: seen.add((a,b));st.append((a,b))\nprint(n)"
+   }
+  },
+  {
+   "topic": "Stacks",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "For heights [2, 1, 5, 6, 2, 3], a monotonic-stack solution computes the largest rectangle in the histogram. What is it?",
+   "options": [
+    "10",
+    "12",
+    "8",
+    "6"
+   ],
+   "answer": "10",
+   "verify": {
+    "lang": "python",
+    "src": "h=[2,1,5,6,2,3]+[0]\ns=[];b=0\nfor i,x in enumerate(h):\n    st=i\n    while s and s[-1][1]>=x:\n        j,y=s.pop();b=max(b,y*(i-j));st=j\n    s.append((st,x))\nprint(b)"
+   }
+  },
+  {
+   "topic": "Queues",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "Using a monotonic deque, what is the sliding-window maximum of [1, 3, -1, -3, 5, 3, 6, 7] with window size 3?",
+   "options": [
+    "[3, 3, 5, 5, 6, 7]",
+    "[3, 3, 3, 5, 6, 7]",
+    "[1, 3, 5, 5, 6, 7]",
+    "[3, 5, 5, 6, 7, 7]"
+   ],
+   "answer": "[3, 3, 5, 5, 6, 7]",
+   "verify": {
+    "lang": "python",
+    "src": "from collections import deque\na=[1,3,-1,-3,5,3,6,7];k=3;q=deque();o=[]\nfor i,x in enumerate(a):\n    while q and a[q[-1]]<=x: q.pop()\n    q.append(i)\n    if q[0]<=i-k: q.popleft()\n    if i>=k-1: o.append(a[q[0]])\nprint(\"[\"+\", \".join(map(str,o))+\"]\")"
+   }
+  },
+  {
+   "topic": "Backtracking",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "How many distinct solutions does the 6-queens problem have?",
+   "options": [
+    "4",
+    "10",
+    "0",
+    "40"
+   ],
+   "answer": "4",
+   "verify": {
+    "lang": "python",
+    "src": "import itertools\nprint(sum(1 for p in itertools.permutations(range(6)) if len({p[i]+i for i in range(6)})==6 and len({p[i]-i for i in range(6)})==6))"
+   }
+  },
+  {
+   "topic": "Recursion",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "How many moves does the optimal Tower of Hanoi solution need for 10 disks?",
+   "options": [
+    "1023",
+    "1024",
+    "512",
+    "2047"
+   ],
+   "answer": "1023",
+   "verify": {
+    "lang": "python",
+    "src": "print(2**10-1)"
+   }
+  },
+  {
+   "topic": "Hashing",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "How many contiguous subarrays of [1, 2, 3, -3, 1, 2] sum to 3?",
+   "options": [
+    "6",
+    "5",
+    "4",
+    "7"
+   ],
+   "answer": "6",
+   "verify": {
+    "lang": "python",
+    "src": "a=[1,2,3,-3,1,2]\nprint(sum(1 for i in range(len(a)) for j in range(i,len(a)) if sum(a[i:j+1])==3))"
+   }
+  },
+  {
+   "topic": "Dynamic Programming",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "Which idea gives an O(n log n) algorithm for the longest increasing subsequence?",
+   "options": [
+    "Keep the smallest possible tail for each subsequence length and binary-search where each element goes",
+    "Sort the array, then take the longest run of equal gaps",
+    "Run Kadane’s algorithm on the differences between neighbours",
+    "Use a max-heap of the k largest elements"
+   ],
+   "answer": "Keep the smallest possible tail for each subsequence length and binary-search where each element goes"
+  },
+  {
+   "topic": "Arrays",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "You must answer 10⁵ range-sum queries interleaved with 10⁵ point updates on an array of 10⁵ numbers. Which structure fits best?",
+   "options": [
+    "A Fenwick tree (binary indexed tree): O(log n) per update and query",
+    "A prefix-sum array rebuilt after each update",
+    "A sorted copy of the array with binary search",
+    "A hash map from index to value"
+   ],
+   "answer": "A Fenwick tree (binary indexed tree): O(log n) per update and query"
+  },
+  {
+   "topic": "Graphs",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "When can Dijkstra’s algorithm return a wrong shortest-path distance?",
+   "options": [
+    "When some edge weights are negative",
+    "When the graph has cycles",
+    "When the graph is undirected",
+    "When two paths have equal length"
+   ],
+   "answer": "When some edge weights are negative"
+  },
+  {
+   "topic": "Graphs",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "With union by rank and path compression, what is the amortised cost per union-find operation?",
+   "options": [
+    "O(α(n)) — inverse Ackermann, effectively constant",
+    "O(log n)",
+    "O(√n)",
+    "O(n)"
+   ],
+   "answer": "O(α(n)) — inverse Ackermann, effectively constant"
+  },
+  {
+   "topic": "Greedy",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "Which of these problems generally needs dynamic programming because a greedy choice can be wrong?",
+   "options": [
+    "0/1 knapsack",
+    "Fractional knapsack",
+    "Activity selection (maximum non-overlapping intervals)",
+    "Huffman coding"
+   ],
+   "answer": "0/1 knapsack"
+  },
+  {
+   "topic": "Searching",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "What is the best worst-case time to find the k-th smallest element of an unsorted array?",
+   "options": [
+    "O(n) with median-of-medians selection",
+    "O(n log n) — you must sort",
+    "O(k log n) with a heap in every case",
+    "O(n²)"
+   ],
+   "answer": "O(n) with median-of-medians selection"
+  },
+  {
+   "topic": "Heaps",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "What is the time complexity of building a binary heap bottom-up (heapify) from n unsorted elements?",
+   "options": [
+    "O(n)",
+    "O(n log n)",
+    "O(log n)",
+    "O(n²)"
+   ],
+   "answer": "O(n)"
+  },
+  {
+   "topic": "DFS",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "During a DFS of a directed graph, what proves the graph has a cycle?",
+   "options": [
+    "An edge to a vertex that is still on the current recursion stack (a back edge)",
+    "An edge to any previously visited vertex",
+    "A vertex with in-degree zero",
+    "Two vertices with the same finishing time"
+   ],
+   "answer": "An edge to a vertex that is still on the current recursion stack (a back edge)"
+  },
+  {
+   "topic": "Graphs",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "Which statement about Bellman–Ford is true?",
+   "options": [
+    "It handles negative edges and detects negative cycles reachable from the source in O(V·E)",
+    "It needs non-negative weights, like Dijkstra",
+    "It runs in O(E log V) with a heap",
+    "It only works on DAGs"
+   ],
+   "answer": "It handles negative edges and detects negative cycles reachable from the source in O(V·E)"
+  },
+  {
+   "topic": "Backtracking",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "What does \"meet in the middle\" achieve for subset-sum with n = 40 items?",
+   "options": [
+    "Cuts roughly 2⁴⁰ subsets down to about 2 × 2²⁰ half-subsets that are sorted and matched",
+    "Makes it polynomial for any n",
+    "Lets greedy give the exact answer",
+    "Removes the need to consider negative numbers"
+   ],
+   "answer": "Cuts roughly 2⁴⁰ subsets down to about 2 × 2²⁰ half-subsets that are sorted and matched"
+  },
+  {
+   "topic": "Hashing",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "Which combination gives O(1) average get/put together with least-recently-used eviction?",
+   "options": [
+    "A hash map pointing into a doubly linked list",
+    "A min-heap keyed by insertion time",
+    "A balanced BST keyed by value",
+    "A circular array scanned on every access"
+   ],
+   "answer": "A hash map pointing into a doubly linked list"
+  },
+  {
+   "topic": "Graphs",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "What do Tarjan’s and Kosaraju’s algorithms compute?",
+   "options": [
+    "Strongly connected components in O(V + E)",
+    "All-pairs shortest paths in O(V³)",
+    "A minimum spanning tree in O(E log V)",
+    "A maximum flow in O(V·E²)"
+   ],
+   "answer": "Strongly connected components in O(V + E)"
+  },
+  {
+   "topic": "Trees",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "How many structurally distinct binary search trees can store n distinct keys?",
+   "options": [
+    "The n-th Catalan number, C(2n, n)/(n + 1)",
+    "n!",
+    "2ⁿ − 1",
+    "n²"
+   ],
+   "answer": "The n-th Catalan number, C(2n, n)/(n + 1)"
+  },
+  {
+   "topic": "Searching",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "What must hold for \"binary search on the answer\" (e.g. minimum capacity to ship packages in D days) to be correct?",
+   "options": [
+    "Feasibility is monotonic: if a value works, every larger value also works",
+    "The input array must be sorted",
+    "All values must be distinct",
+    "The answer must be a power of two"
+   ],
+   "answer": "Feasibility is monotonic: if a value works, every larger value also works"
+  },
+  {
+   "topic": "Strings",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "Why is Rabin–Karp’s worst case O(n·m) even though its expected time is O(n + m)?",
+   "options": [
+    "Many hash collisions force a character-by-character check at almost every position",
+    "Computing each rolling hash takes O(m)",
+    "It has to sort the text first",
+    "It backtracks like naive regex matching"
+   ],
+   "answer": "Many hash collisions force a character-by-character check at almost every position"
+  },
+  {
+   "topic": "Tries",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "A trie stores N keys of total length L. How long does checking whether some key starts with a prefix of length m take?",
+   "options": [
+    "O(m), independent of N",
+    "O(m log N)",
+    "O(L)",
+    "O(N·m)"
+   ],
+   "answer": "O(m), independent of N"
+  },
+  {
+   "topic": "Graphs",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "What does Floyd–Warshall compute, and at what cost?",
+   "options": [
+    "All-pairs shortest paths in O(V³); negative edges are fine but not negative cycles",
+    "Single-source shortest paths in O(E log V)",
+    "A minimum spanning tree in O(V²)",
+    "Strongly connected components in O(V + E)"
+   ],
+   "answer": "All-pairs shortest paths in O(V³); negative edges are fine but not negative cycles"
+  },
+  {
+   "topic": "Recursion",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "What is the extra space used by a recursive DFS on a path graph with n vertices?",
+   "options": [
+    "O(n) — the recursion depth grows to n",
+    "O(1) — recursion is free",
+    "O(log n)",
+    "O(n²)"
+   ],
+   "answer": "O(n) — the recursion depth grows to n"
+  },
+  {
+   "topic": "Linked Lists",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "Floyd’s tortoise-and-hare detects a cycle. After they meet, how do you find where the cycle starts?",
+   "options": [
+    "Reset one pointer to the head and advance both one step at a time; they meet at the cycle start",
+    "Double the speed of the fast pointer and wait for the next meeting",
+    "Count the nodes in the cycle and divide by two",
+    "Reverse the list and compare heads"
+   ],
+   "answer": "Reset one pointer to the head and advance both one step at a time; they meet at the cycle start"
+  },
+  {
+   "topic": "Sorting",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "Why does quicksort with a first-element pivot take O(n²) on an already-sorted array?",
+   "options": [
+    "Every partition is maximally unbalanced: 0 elements on one side and n − 1 on the other",
+    "Sorted input causes many swaps per element",
+    "Recursion depth is limited to log n",
+    "The pivot must be moved to the end every time"
+   ],
+   "answer": "Every partition is maximally unbalanced: 0 elements on one side and n − 1 on the other"
+  }
+ ]
+}

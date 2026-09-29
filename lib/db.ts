@@ -1,6 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { randomUUID } from 'crypto'
+import type { CompanyAttempt } from './company/types.ts'
 
 // ---------------------------------------------------------------------------
 // Demo-mode "database": a single JSON file on disk, made concurrency-safe.
@@ -70,6 +71,7 @@ const COLLECTIONS = [
   'tracking_events',
   'feedback',
   'help_requests',
+  'company_attempts',
 ] as const
 
 export interface User {
@@ -219,6 +221,8 @@ export interface DBData {
   tracking_events: TrackingEvent[]
   feedback: FeedbackSubmission[]
   help_requests: HelpRequest[]
+  /** One row per (student, company) — see lib/company/attempts.ts. */
+  company_attempts: CompanyAttempt[]
 }
 
 function emptyDB(): DBData {
@@ -231,6 +235,7 @@ function emptyDB(): DBData {
     tracking_events: [],
     feedback: [],
     help_requests: [],
+    company_attempts: [],
   }
 }
 
@@ -715,5 +720,36 @@ export function markHelpRequestSynced(id: string, error?: string) {
   db.help_requests[idx] = error
     ? { ...previous, synced: false, sync_error: error, attempts: (previous.attempts || 0) + 1 }
     : { ...previous, synced: true, sync_error: undefined, attempts: (previous.attempts || 0) + 1 }
+  saveDB(db)
+}
+
+/* ---------------------------- company attempts ---------------------------- */
+// A student gets exactly ONE attempt per company assessment. The attempt id is
+// derived from (student, company) — see lib/company/attempts.ts — so even two
+// workers racing to create it converge on a single row when the store merges
+// by id.
+
+export function getCompanyAttempt(studentId: string, company: string): CompanyAttempt | undefined {
+  const db = getDB()
+  return db.company_attempts.find(a => a.student_id === studentId && a.company === company)
+}
+
+export function getCompanyAttemptById(id: string): CompanyAttempt | undefined {
+  return getDB().company_attempts.find(a => a.id === id)
+}
+
+export function listCompanyAttempts(studentId: string): CompanyAttempt[] {
+  return getDB().company_attempts.filter(a => a.student_id === studentId)
+}
+
+export function listAllCompanyAttempts(): CompanyAttempt[] {
+  return [...getDB().company_attempts]
+}
+
+export function saveCompanyAttempt(attempt: CompanyAttempt) {
+  const db = getDB()
+  const idx = db.company_attempts.findIndex(a => a.id === attempt.id)
+  if (idx >= 0) db.company_attempts[idx] = attempt
+  else db.company_attempts.push(attempt)
   saveDB(db)
 }

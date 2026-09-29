@@ -6,7 +6,7 @@ import { useStore } from '@/lib/store'
 import { HelpButton } from '@/components/HelpButton'
 import { Logo } from '@/components/Logo'
 import { AiAvatar } from '@/components/AiAvatar'
-import { User, LogOut, ChevronDown, Users } from 'lucide-react'
+import { User, LogOut, ChevronDown, Users, Building2 } from 'lucide-react'
 import { COMMUNITY_APP_URL, COMMUNITY_NAV_ROUTES } from '@/lib/community'
 
 /** The name the user chose on their profile page wins over the account /
@@ -122,6 +122,15 @@ export function Navbar() {
                     >
                       <User className="h-4 w-4 text-slate-400" />
                       See My Profile
+                    </Link>
+                    <Link
+                      href="/company-assessments"
+                      role="menuitem"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-700"
+                    >
+                      <Building2 className="h-4 w-4 text-slate-400" />
+                      Company Assessments
                     </Link>
                     <button
                       onClick={logout}
