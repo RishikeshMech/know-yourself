@@ -35,8 +35,8 @@ export function SkillGraph({ skills }: { skills: SkillDatum[] }) {
             <polygon key={f} points={ringPoints(5, R * f)} fill="none" stroke="rgba(100,116,139,.18)" strokeWidth="1" strokeDasharray="4 5" />
           ))}
         </svg>
-        <p className="mt-2 text-xs font-semibold text-slate-400">No verified skills yet</p>
-        <p className="mt-1 text-[11px] text-slate-400">Take the assessment or upload your resume to unlock your skill graph.</p>
+        <p className="mt-2 text-xs font-semibold text-slate-400">Not enough scored skills to draw a graph yet</p>
+        <p className="mt-1 text-[11px] text-slate-400">Assessment-mapped skills and their scores appear in the list below.</p>
       </div>
     )
   }

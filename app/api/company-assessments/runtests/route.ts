@@ -10,7 +10,9 @@ import { resolveStudent } from '@/lib/company/auth'
 import { getCompany } from '@/lib/company/catalog'
 import { isFinal, loadAttempt } from '@/lib/company/attempts'
 import { loadBank } from '@/lib/company/bank'
-import { MAX_CODE_BYTES, runCodingTests, SUPPORTED_LANGS, type CodeLang } from '@/lib/company/codeRunner'
+import { MAX_CODE_BYTES, runCodingTests, type CodeLang } from '@/lib/company/codeRunner'
+import { isCodeLang } from '@/lib/company/languages'
+import { availableCodeLanguages } from '@/lib/company/nativeRunner'
 import { paperItemIds } from '@/lib/company/paper'
 import { createLimiter } from '@/lib/concurrency'
 import { jsonError, limited, ok, readJson } from '@/lib/company/http'
@@ -28,7 +30,10 @@ export async function POST(req: Request) {
   if (!company) return jsonError(404, 'Unknown company assessment')
   const code = String(body.code || '')
   if (code.length > MAX_CODE_BYTES) return jsonError(413, 'Code is too large to run.')
-  const lang: CodeLang = SUPPORTED_LANGS.includes(body.lang) ? body.lang : 'python'
+  const requestedLang = body.lang === undefined ? 'python' : body.lang
+  if (!isCodeLang(requestedLang)) return jsonError(400, 'Unsupported coding language')
+  const lang: CodeLang = requestedLang
+  if (!availableCodeLanguages().includes(lang)) return jsonError(503, `The ${lang} runtime is not installed on this server`)
   const sb = getServerClient()
   const who = await resolveStudent(req, body.student_id, sb)
   if (!who.ok) return jsonError(who.status, who.error)

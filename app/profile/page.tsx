@@ -13,6 +13,8 @@ import { SkillChips } from '@/components/SkillChips'
 import { flattenAssessmentResult } from '@/lib/resultShape'
 import { CALIBI_RULE, calibiFromSources } from '@/lib/calibiScore'
 import { companyApi } from '@/lib/company/client'
+import { platformAssessmentSkills, rollupAssessmentSkills } from '@/lib/assessmentSkills'
+import { AssessmentSkillList } from '@/components/AssessmentSkillList'
 import type { AttemptSummary } from '@/lib/company/types'
 
 /* ------------------------------------------------------------------ */
@@ -237,15 +239,17 @@ function ProfileInner() {
   }
 
   /* ------------------------- derived data ------------------------- */
-  const skillGraph: SkillDatum[] = useMemo(() => {
-    const s = activeScores
-    if (!s || !Number(s.total)) return []
-    return SECTIONS.map(([label, key, max]) => ({
-      label,
-      value: (sectionValue(s, key) / max) * 100,
-      sources: ['assessment'],
-    }))
-  }, [activeScores])
+  const assessmentSkillEvidence = useMemo(() => [
+    ...platformAssessmentSkills(activeScores, 1),
+    ...platformAssessmentSkills(scores2Local, 2),
+    ...companyList.flatMap(attempt => attempt.skillEvidence || []),
+  ], [activeScores, scores2Local, companyList])
+  const assessmentSkillRollups = useMemo(() => rollupAssessmentSkills(assessmentSkillEvidence), [assessmentSkillEvidence])
+  const skillGraph: SkillDatum[] = useMemo(() => assessmentSkillRollups.slice(0, 6).map(skill => ({
+    label: skill.name,
+    value: skill.score,
+    sources: skill.sources,
+  })), [assessmentSkillRollups])
 
   const skillChips: { name: string; sources: string[] }[] = useMemo(() => {
     const map = new Map<string, { name: string; sources: Set<string> }>()
@@ -473,7 +477,7 @@ function ProfileInner() {
               ) : (
                 <div className="mt-5 rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/40 p-8 text-center">
                   <div className="text-4xl">🎯</div>
-                  <p className="mt-2 text-sm text-slate-500">You haven't taken the assessment yet — it unlocks your score and skill graph.</p>
+                  <p className="mt-2 text-sm text-slate-500">You haven't taken Assessment 1 yet. Completed Assessment 2 and company assessments also populate your skill map below.</p>
                   <Link href={onboarded ? '/instructions' : '/onboarding'} className="btn-primary mt-4 inline-flex">
                     {onboarded ? 'Start your assessment →' : 'Complete profile, then start →'}
                   </Link>
@@ -558,22 +562,40 @@ function ProfileInner() {
 
           {/* -------- Right column -------- */}
           <div className="lg:col-span-5 space-y-6">
-            {/* Skill graph */}
+            {/* Assessment-backed skills and separately labelled profile/resume skills */}
             <div className="glass-card animate-fade-up hover-lift" style={{ animationDelay: '.08s' }}>
-              <PanelHead tag="Skill graph" title="Verified skills" right={skillGraph.length >= 3 ? <span className="text-lg" aria-hidden>🎯</span> : undefined} />
-              <div className="mt-3">
-                <SkillGraph skills={skillGraph.length >= 3 ? skillGraph : []} />
-                {skillChips.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {skillChips.slice(0, 14).map(s => (
+              <PanelHead tag="Skill evidence" title="Your skills" right={skillGraph.length >= 3 ? <span className="text-lg" aria-hidden>🎯</span> : undefined} />
+              <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                Assessment scores update these skill signals automatically. Skills you list yourself or on your resume stay separate.
+              </p>
+              {assessmentSkillRollups.length > 0 ? (
+                <>
+                  <div className="mt-2">
+                    <SkillGraph skills={skillGraph.length >= 3 ? skillGraph : []} />
+                  </div>
+                  <div className="mt-3">
+                    <div className="mb-2 text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">Skills mapped from completed assessments</div>
+                    <AssessmentSkillList skills={assessmentSkillRollups} />
+                  </div>
+                </>
+              ) : (
+                <div className="mt-4 rounded-xl border border-dashed border-indigo-200 bg-indigo-50/50 p-4 text-xs text-slate-600">
+                  Complete Assessment 1, Assessment 2, or a company assessment to start building your assessment skill map.
+                </div>
+              )}
+              {skillChips.length > 0 && (
+                <div className="mt-5 border-t border-slate-100 pt-4">
+                  <div className="mb-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Profile and resume skills</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {skillChips.map(s => (
                       <span key={s.name} className="chip !py-1">
                         {s.name}
                         <span className="text-[9px] font-bold uppercase tracking-wide text-indigo-400">{s.sources.join(' + ')}</span>
                       </span>
                     ))}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
             {/* Profile details */}

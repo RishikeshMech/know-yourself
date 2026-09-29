@@ -165,6 +165,20 @@ test('attempts: an abandoned attempt is finalised with its last autosave', async
   assert.equal((await startAttempt('u_jay', 'tcs', { now: c.now, bank, score })).outcome, 'completed')
 })
 
+test('attempt summaries expose mapped area skill scores but never raw item results', async () => {
+  freshStore()
+  const c = clock()
+  await startAttempt('u_skillmap', 'tcs', { now: c.now, bank, score })
+  const submitted = await submitAttempt('u_skillmap', 'tcs', { answers: {} }, { now: c.now, bank, score })
+  assert.ok(submitted.ok)
+  const summaries = await listSummaries('u_skillmap', { now: c.now, bank, score })
+  const summary = summaries.find((item) => item.company === 'tcs')!
+  assert.ok(summary.skillEvidence && summary.skillEvidence.length > 0)
+  assert.ok(summary.skillEvidence!.every((skill) => skill.sourceType === 'company' && skill.source === 'TCS'))
+  const serialized = JSON.stringify(summary)
+  assert.doesNotMatch(serialized, /"items"|"correct"|"answer"|"id"/)
+})
+
 test('attempts: a late final submission is ignored beyond the grace window', async () => {
   freshStore()
   const c = clock()
@@ -222,7 +236,7 @@ test('sanitizeAnswers keeps only well-formed answers for paper items', async () 
     foreign: 'nope',
   }, bank)
   assert.equal(clean[mcq.id], undefined)
-  assert.deepEqual(clean[code.id], { lang: 'python', code: 'fn main() {}' })
+  assert.deepEqual(clean[code.id], { lang: 'rust', code: 'fn main() {}' })
   assert.equal(String(clean[text.id]).length, 12_000)
   assert.equal(clean.foreign, undefined)
 })

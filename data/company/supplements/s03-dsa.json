@@ -1922,6 +1922,230 @@
     "The pivot must be moved to the end every time"
    ],
    "answer": "Every partition is maximally unbalanced: 0 elements on one side and n − 1 on the other"
+  },
+  {
+   "topic": "Graphs",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "In a DFS low-link algorithm for an undirected graph, which condition proves that removing tree edge (u,v) disconnects the subtree rooted at v?",
+   "options": [
+    "low[v] > disc[u]",
+    "low[v] >= disc[u]",
+    "disc[v] > low[u]",
+    "low[u] >= disc[v]"
+   ],
+   "answer": "low[v] > disc[u]",
+   "explanation": "Equality means the subtree can reach u through a back edge, so the tree edge is not a bridge; the inequality must be strict."
+  },
+  {
+   "topic": "Graphs",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "Dijkstra uses a binary min-heap without decrease-key. A later relaxation improves a vertex already represented in the heap. What is the correct approach?",
+   "options": [
+    "Push the improved pair and discard stale pairs when popped",
+    "Scan the entire heap and mutate the old entry",
+    "Mark the vertex visited at first insertion",
+    "Restart the algorithm from the source"
+   ],
+   "answer": "Push the improved pair and discard stale pairs when popped",
+   "explanation": "Lazy duplicate entries preserve correctness and keep the sparse-graph bound at O((V+E) log V)."
+  },
+  {
+   "topic": "Graphs",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "Contract each strongly connected component of a directed graph into one supernode, retaining edges between components. What must be true of the resulting condensation graph?",
+   "options": [
+    "It is a DAG",
+    "It is a tree",
+    "It is strongly connected",
+    "It has exactly one source"
+   ],
+   "answer": "It is a DAG",
+   "explanation": "A cycle between contracted components would make those components mutually reachable and therefore one SCC."
+  },
+  {
+   "topic": "Dynamic Programming",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "Weighted job scheduling sorts jobs by finish time. Let p(i) be the last job finishing no later than job i starts. Which recurrence correctly computes the best profit for the first i jobs?",
+   "options": [
+    "dp[i] = max(dp[i−1], profit[i] + dp[p(i)])",
+    "dp[i] = dp[i−1] + profit[i]",
+    "dp[i] = max(dp[p(i)], profit[i])",
+    "dp[i] = min(dp[i−1], profit[i] + dp[p(i)])"
+   ],
+   "answer": "dp[i] = max(dp[i−1], profit[i] + dp[p(i)])",
+   "explanation": "The optimum either excludes job i or includes it and adds the best compatible prefix."
+  },
+  {
+   "topic": "Dynamic Programming",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "A bitmask DP for traveling salesperson stores dp[mask][v], the cheapest path visiting mask and ending at v. What are the standard time and space bounds for n vertices?",
+   "options": [
+    "O(n²·2ⁿ) time and O(n·2ⁿ) space",
+    "O(n·2ⁿ) time and O(2ⁿ) space",
+    "O(n³) time and O(n²) space",
+    "O(2ⁿ) time and O(n) space"
+   ],
+   "answer": "O(n²·2ⁿ) time and O(n·2ⁿ) space",
+   "explanation": "There are O(n·2ⁿ) states and each may examine O(n) previous endpoints."
+  },
+  {
+   "topic": "Heaps",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "A streaming median uses a max-heap for the lower half and a min-heap for the upper half. Which invariant makes lookup O(1) and insertion O(log n)?",
+   "options": [
+    "Heap sizes differ by at most one and every lower value is ≤ every upper value",
+    "Both heaps contain the same values",
+    "The lower heap stores only the global minimum",
+    "The heaps are balanced by sum rather than count"
+   ],
+   "answer": "Heap sizes differ by at most one and every lower value is ≤ every upper value",
+   "explanation": "The roots expose the median value(s); size balance and ordering keep the partition valid."
+  },
+  {
+   "topic": "Intervals",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "Meeting intervals are half-open [start,end), so one ending at 10 does not overlap one starting at 10. After sorting by start, how should a min-heap of end times count rooms?",
+   "options": [
+    "Remove all ends ≤ start, insert the new end, and track maximum heap size",
+    "Remove only ends < start and track heap size",
+    "Keep only the earliest start in the heap",
+    "Sort end times once and subtract them from starts"
+   ],
+   "answer": "Remove all ends ≤ start, insert the new end, and track maximum heap size",
+   "explanation": "Equal endpoints do not overlap for half-open intervals; heap size is the simultaneous meeting count."
+  },
+  {
+   "topic": "Strings",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "KMP has matched j pattern characters before a mismatch. Why can it set j = pi[j−1] instead of rescanning the matched text?",
+   "options": [
+    "The prefix table gives the longest proper border that is also a prefix",
+    "It shifts the pattern by one regardless of content",
+    "It sorts the unmatched suffix",
+    "It guarantees the next text character matches"
+   ],
+   "answer": "The prefix table gives the longest proper border that is also a prefix",
+   "explanation": "The matched suffix may overlap a pattern prefix; following prefix links preserves that overlap and keeps scanning linear."
+  },
+  {
+   "topic": "Tries",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "A dictionary trie must support patterns where `.` matches exactly one character. Which search step handles the wildcard without scanning every stored word?",
+   "options": [
+    "At `.`, recursively explore each child; at a letter, follow only the matching child",
+    "Replace `.` with `*` and hash the pattern",
+    "Sort every word on each query",
+    "Hash the pattern and look for an equal word"
+   ],
+   "answer": "At `.`, recursively explore each child; at a letter, follow only the matching child",
+   "explanation": "Trie prefix sharing limits the search to nodes at the relevant depth; wildcard branching follows only existing children."
+  },
+  {
+   "topic": "Bit Manipulation",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "A reflected Gray-code sequence changes one bit between adjacent values. Which formula converts binary integer i to its Gray-code value?",
+   "options": [
+    "i XOR (i >> 1)",
+    "i AND (i − 1)",
+    "i OR (i >> 1)",
+    "i XOR (i << 1)"
+   ],
+   "answer": "i XOR (i >> 1)",
+   "explanation": "XORing each binary value with its right shift yields the reflected Gray-code mapping."
+  },
+  {
+   "topic": "Arrays",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "For every index i, return the maximum of nums[i−k+1…i] in O(n) total time. Which deque invariant supports amortized O(1) updates?",
+   "options": [
+    "Indices increase and values decrease; remove expired front indices",
+    "Values increase and no index is removed",
+    "Store every window in a tree and rebuild it",
+    "Keep only the maximum value, without its index"
+   ],
+   "answer": "Indices increase and values decrease; remove expired front indices",
+   "explanation": "Each index enters and leaves once; smaller values at the back can never beat a newer, larger value."
+  },
+  {
+   "topic": "Trees",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "A static tree needs millions of lowest-common-ancestor queries. Binary lifting stores each node’s 2ᵏ-th ancestor. What is its usual preprocessing/query trade-off?",
+   "options": [
+    "O(n log n) preprocessing and space; O(log n) per query",
+    "O(n) preprocessing and space; O(n) per query",
+    "O(n²) preprocessing; O(1) per query",
+    "O(log n) preprocessing; O(n log n) per query"
+   ],
+   "answer": "O(n log n) preprocessing and space; O(log n) per query",
+   "explanation": "Depth differences and simultaneous ancestor moves are decomposed into powers of two."
+  },
+  {
+   "topic": "Greedy",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "Kruskal’s algorithm has selected the lightest edge crossing a cut that respects its current forest. Which theorem makes that edge safe for a minimum spanning tree?",
+   "options": [
+    "The cut property",
+    "The master theorem",
+    "The Bellman optimality principle",
+    "The cycle property for directed graphs"
+   ],
+   "answer": "The cut property",
+   "explanation": "A minimum-weight edge crossing any cut that respects the current forest belongs to some MST."
+  },
+  {
+   "topic": "Topological Sort",
+   "area": "concepts",
+   "difficulty": "hard",
+   "q": "Kahn’s topological-sort queue empties after outputting 97 of 100 vertices. What follows?",
+   "options": [
+    "The graph contains a directed cycle among remaining vertices",
+    "The graph has exactly three components",
+    "The graph is acyclic but disconnected",
+    "The queue necessarily dropped three vertices"
+   ],
+   "answer": "The graph contains a directed cycle among remaining vertices",
+   "explanation": "Every DAG has a zero-indegree vertex at each step; vertices left after the queue empties are blocked by a cycle."
+  },
+  {
+   "topic": "Graphs",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "All edge weights in a graph are either 0 or 1. Which shortest-path method can run in O(V+E) from one source?",
+   "options": [
+    "0–1 BFS: push weight-0 relaxations to the deque front and weight-1 to the back",
+    "Ordinary BFS treating every edge equally",
+    "Prim’s minimum-spanning-tree algorithm",
+    "Bellman–Ford with a single edge scan"
+   ],
+   "answer": "0–1 BFS: push weight-0 relaxations to the deque front and weight-1 to the back",
+   "explanation": "The deque maintains nondecreasing distance order for binary weights, avoiding a general priority queue."
+  },
+  {
+   "topic": "Complexity Analysis",
+   "area": "analysis",
+   "difficulty": "hard",
+   "q": "A dynamic array doubles capacity when full. Why is append O(1) amortized even though a resize copies Θ(n) elements?",
+   "options": [
+    "Geometric growth makes total copied elements across n appends O(n)",
+    "Every append copies the full array, but small elements are cheap",
+    "Doubling makes each worst-case append O(1)",
+    "The copy is charged to future insertions only"
+   ],
+   "answer": "Geometric growth makes total copied elements across n appends O(n)",
+   "explanation": "Resize costs form a geometric sum; most individual appends are constant time, so the average over a sequence is O(1)."
   }
  ]
 }

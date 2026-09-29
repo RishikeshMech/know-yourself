@@ -17,6 +17,8 @@ export interface AdminFeedbackEntry {
 
 import type { ScoreEntry } from './calibiScore.ts'
 import type { AdminCompanyAttempt } from './adminAssessments.ts'
+import type { AssessmentSkillEvidence } from './assessmentSkills.ts'
+import { rollupAssessmentSkills } from './assessmentSkills.ts'
 import { COMPANIES, COMPANY_TAGS } from './company/catalog.ts'
 
 export interface AdminStudentRow {
@@ -35,6 +37,10 @@ export interface AdminStudentRow {
   cgpa: string
   skills: string
   resume_skills: string
+  /** Skill names and score averages derived from completed assessment results. */
+  assessment_skills?: string
+  /** Structured safe evidence used for per-assessment admin exports. */
+  assessment_skill_evidence?: AssessmentSkillEvidence[]
   all_skills: string
   linkedin_url: string
   github_url: string
@@ -132,6 +138,7 @@ export const CSV_COLUMNS: { key: keyof AdminStudentRow; label: string }[] = [
   { key: 'cgpa', label: 'CGPA' },
   { key: 'skills', label: 'Profile Skills' },
   { key: 'resume_skills', label: 'Resume Skills' },
+  { key: 'assessment_skills', label: 'Assessment Skills (mapped score)' },
   { key: 'all_skills', label: 'All Skills' },
   { key: 'linkedin_url', label: 'LinkedIn URL' },
   { key: 'github_url', label: 'GitHub URL' },

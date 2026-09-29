@@ -33,6 +33,7 @@ import { buildPaper, toClientPaper } from './paper.ts'
 import { scoreAttempt, type ScoreDeps } from './scoring.ts'
 import { gradeWritten, MAX_WRITTEN_CHARS } from './grading.ts'
 import { runCodingTests, MAX_CODE_BYTES, SUPPORTED_LANGS } from './codeRunner.ts'
+import { companyAssessmentSkills } from '../assessmentSkills.ts'
 import { createLimiter } from '../concurrency.ts'
 import type {
   AttemptSummary, ClientPaper, CompanyAttempt, ProctorEvent, ProctoringLog, StoredPaper,
@@ -317,6 +318,9 @@ export async function submitAttempt(
 }
 
 export function toSummary(a: CompanyAttempt): AttemptSummary {
+  const skillEvidence = a.result
+    ? companyAssessmentSkills(a.result, a.company, a.submitted_at ?? a.result.gradedAt)
+    : []
   return {
     company: a.company,
     status: a.status,
@@ -326,6 +330,7 @@ export function toSummary(a: CompanyAttempt): AttemptSummary {
     score: a.score ?? null,
     verdict: a.result?.verdict ?? null,
     auto_submitted: !!a.auto_submitted,
+    ...(skillEvidence.length ? { skillEvidence } : {}),
   }
 }
 
@@ -339,10 +344,16 @@ export async function listSummaries(studentId: string, deps: AttemptDeps = {}): 
     for (const r of rows || []) {
       const local = byCompany.get(r.company_slug)
       if (local && isFinal(local) && r.status === 'in_progress') continue
+      const skillResult = r.result || (Array.isArray(r.skill_items) ? { items: r.skill_items } : null)
+      const mappedEvidence = skillResult
+        ? companyAssessmentSkills(skillResult, r.company_slug, r.submitted_at)
+        : []
+      const skillEvidence = mappedEvidence.length ? mappedEvidence : local?.skillEvidence || []
       byCompany.set(r.company_slug, {
         company: r.company_slug, status: r.status, started_at: r.started_at, expires_at: r.expires_at,
         submitted_at: r.submitted_at ?? null, score: r.score == null ? null : Number(r.score),
         verdict: r.verdict ?? null, auto_submitted: !!r.auto_submitted,
+        ...(skillEvidence.length ? { skillEvidence } : {}),
       })
     }
   }

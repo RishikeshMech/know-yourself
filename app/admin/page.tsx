@@ -301,10 +301,20 @@ function ExpandedRow({ row, onUnauthorized }: { row: AdminStudentRow; onUnauthor
             </div>
             {row.all_skills && (
               <div>
-                <div className="text-xs font-black uppercase tracking-wide text-slate-400">Skills</div>
+                <div className="text-xs font-black uppercase tracking-wide text-slate-400">Profile, resume & assessment skill names</div>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {row.all_skills.split(',').map(s => s.trim()).filter(Boolean).map(s => (
                     <span key={s} className="chip !py-1">{s}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {!!row.assessment_skills && (
+              <div>
+                <div className="text-xs font-black uppercase tracking-wide text-indigo-600">Assessment-mapped skill scores</div>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {row.assessment_skills.split(';').map(s => s.trim()).filter(Boolean).map(s => (
+                    <span key={s} className="rounded-full border border-indigo-100 bg-indigo-50 px-2.5 py-1 text-[10px] font-semibold text-indigo-700">{s}</span>
                   ))}
                 </div>
               </div>

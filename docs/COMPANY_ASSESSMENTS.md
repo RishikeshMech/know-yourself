@@ -12,8 +12,8 @@ attempt per company.**
 |---|---|
 | Companies | 60 — the union of the document's prioritised target list and its 50 step sections (see *Company list* below) |
 | Tags | IT Services & Consulting (15) · Global Product & Big Tech (15) · Indian Product Companies & Startups (17) · SaaS & Developer Tools (6) · Banking & Financial Services (4) · Semiconductors & Engineering (3) |
-| Question bank | 1,189 validated items: every unique Ques question + reviewed supplements, generated quant, 159 DSA MCQs (hard is the largest band) and 43 LeetCode-style coding problems (21 medium, 22 hard; 379 hidden tests incl. 73 stress tests) |
-| Question types | MCQ (server-scored), written answers (rubric / LLM grader), coding (LeetCode-style judge: hidden + stress tests with per-test time limits, Python 3 or JavaScript) |
+| Question bank | 1,219 validated items: every unique Ques question + reviewed supplements, generated quant, 175 DSA MCQs (hard is the largest band) and 46 LeetCode-style coding problems (21 medium, 25 hard; 404 hidden tests incl. 77 stress tests) |
+| Question types | MCQ (server-scored), detailed written/design answers (rubric / LLM grader), coding (hidden + stress tests, with runtime-available Python, JavaScript, Java, C, C++, Rust and Go) |
 | Duration | 100–120 minutes per company, one server-side timer |
 | Proctoring | Same protections as the original assessments (see below) |
 
@@ -81,11 +81,12 @@ The documents also state *"No answer key is included"*. The build therefore:
   as `sourceDifficulty`,
 - adds **supplements** (`data/company/supplements/*.json`) so every section has
   a real pool: verbal/reasoning/finance aptitude, output-prediction and
-  pseudocode, DSA analysis, objective MCQs for sections 4–10, written
-  communication prompts, and 43 coding problems. Every computed key
-  (code output, SQL results, arithmetic) is **executed** by
-  `verify:company-bank`; coding reference solutions are run through the real
-  harness by the test suite in both languages,
+  pseudocode, DSA analysis, objective MCQs for sections 4–10, detailed written
+  communication prompts, five new LLD and six new HLD design explanations,
+  and 46 coding problems. Every computed key (code output, SQL results,
+  arithmetic) is **executed** by `verify:company-bank`; coding reference
+  solutions are run through the real Python and JavaScript harnesses, while
+  installed native toolchains are covered by language-specific runner tests,
 - attaches a **rubric** (5–6 key concepts) to every open-ended prompt
   (`supplements/rubrics.json`).
 
@@ -134,6 +135,13 @@ Enforced on the server, never trusted to the browser:
   item feedback carries a LeetCode-style verdict summary (e.g. `9/12 tests
   passed · stress 0/3 · 3 TLE`) and advice for time-outs, wrong answers and
   runtime errors.
+- **Evaluate with AI** is available beside every written-answer text area and
+  coding editor, including HLD/LLD design prompts. It sends the selected
+  question and current answer (plus the grading rubric for written responses)
+  to the server-side DeepSeek grader; hidden tests, answer keys and reference
+  solutions are excluded. Feedback is
+  practice-only and does not alter the final score. With no configured model,
+  the UI labels the local heuristic/checklist fallback explicitly.
 - Round % → weighted overall score (0–100); sectional cut-offs drive the verdict
   (*Interview-ready*, *Almost there*, *Borderline*, *Not yet ready*).
 - Candidates see round, section and area analytics plus written/coding feedback,
@@ -145,6 +153,15 @@ Every coding round is **LeetCode medium/hard** — there are no warm-up problems
 in the pool (blueprint mixes: entry 80/20, service 60/40, medium 50/50,
 product 30/70 medium/hard). The judge (`lib/company/codeRunner.ts`) runs the
 candidate's function against:
+
+**Languages:** Python 3 and JavaScript run directly; Java, C11, C++17, Rust
+and Go compile in short-lived per-submission work directories. The editor asks
+`GET /api/company-assessments/languages` which toolchains exist on the server
+and only offers those runtimes; a compiler missing on a host is not advertised
+as runnable. For all seven options to appear, install `python3`, `node`, `gcc`,
+`g++`, `openjdk` (`java` + `javac`), `rustc`, and `go` on the app host. Every
+language gets a generated signature-aware starter using safe 64-bit integer
+types where applicable.
 
 - **sample tests** — the statement's examples; when one fails the candidate
   sees *their output vs the expected output*;
@@ -172,7 +189,7 @@ expected outputs are stored as sha256 digests of canonical JSON.
 
 **Proof that the tests work** (`lib/__tests__/companyCoding.test.ts`, run by
 `npm test`): every reference solution passes every test in **both**
-languages; 38 deliberately naive solutions pass the samples but hit *Time
+languages; 40 deliberately naive solutions pass the samples but hit *Time
 Limit Exceeded* on a stress test; wrong answers, crashes, syntax errors,
 missing functions and infinite loops fail safely.
 
@@ -201,6 +218,8 @@ tested to contain no keys, rubrics or hidden tests.
 | `GET /api/company-assessments/attempt` | resume view for the exam page (never creates) |
 | `POST /api/company-assessments/save` | autosave answers + proctoring log |
 | `POST /api/company-assessments/runtests` | hidden tests for a coding item in the caller's paper |
+| `GET /api/company-assessments/languages` | installed interpreters and compilers available to the coding editor |
+| `POST /api/company-assessments/evaluate` | on-demand DeepSeek review of one written or coding answer |
 | `POST /api/company-assessments/submit` | final, idempotent, server-scored submission |
 | `GET /api/company-assessments/result` | graded result (public projection) |
 
@@ -215,8 +234,11 @@ tested to contain no keys, rubrics or hidden tests.
   `docs/CALIBIAI_SCORE_AND_ADMIN.md`.
 - Optional `COMPANY_PAPER_SECRET` salts paper seeds (falls back to
   `ADMIN_SECRET`).
-- The code runner uses the same subprocess sandboxing caveats as the existing
-  in-built compiler (see `lib/runTests.ts`).
+- Candidate code is compiled/executed in time-limited child processes with
+  bounded output and temporary work directories, but this is **not** an OS
+  security sandbox. Before running submissions from untrusted public users,
+  isolate the judge in a network-disabled container or microVM with CPU, memory
+  and process-count limits (see the production note in `lib/runTests.ts`).
 
 ## Company list
 

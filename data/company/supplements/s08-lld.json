@@ -1,32 +1,717 @@
 {
-  "section": "s8",
-  "_about": "Objective LLD / OOP design items: SOLID violations in context, pattern selection, UML and modelling judgement.",
-  "mcq": [
-    { "topic": "SOLID", "area": "principles", "difficulty": "easy", "q": "A single class parses user input, applies business rules and writes to the database. Which principle does it violate?", "options": ["Single Responsibility Principle", "Liskov Substitution Principle", "Interface Segregation Principle", "Open/Closed Principle"], "answer": "Single Responsibility Principle" },
-    { "topic": "SOLID", "area": "principles", "difficulty": "medium", "q": "Adding each new payment method requires editing a large switch statement in PaymentService. Which principle is violated?", "options": ["Open/Closed Principle", "Single Responsibility Principle", "Dependency Inversion Principle", "Law of Demeter"], "answer": "Open/Closed Principle" },
-    { "topic": "SOLID", "area": "principles", "difficulty": "medium", "q": "Square extends Rectangle, but setting a Square's width also changes its height, breaking callers that expect a Rectangle. Which principle is violated?", "options": ["Liskov Substitution Principle", "Interface Segregation Principle", "Single Responsibility Principle", "Open/Closed Principle"], "answer": "Liskov Substitution Principle" },
-    { "topic": "SOLID", "area": "principles", "difficulty": "easy", "q": "A BasicPrinter class is forced to implement fax() and scan() methods it cannot support. Which principle is violated?", "options": ["Interface Segregation Principle", "Dependency Inversion Principle", "Liskov Substitution Principle", "Single Responsibility Principle"], "answer": "Interface Segregation Principle" },
-    { "topic": "SOLID", "area": "principles", "difficulty": "medium", "q": "OrderService creates `new MySqlOrderRepository()` inside its constructor. Which principle does this violate?", "options": ["Dependency Inversion Principle", "Open/Closed Principle", "Interface Segregation Principle", "Liskov Substitution Principle"], "answer": "Dependency Inversion Principle" },
-    { "topic": "Design Patterns", "area": "patterns", "difficulty": "medium", "q": "Which pattern adds responsibilities to an object at runtime by wrapping it (e.g., adding logging or compression to a stream)?", "options": ["Decorator", "Factory Method", "Singleton", "Mediator"], "answer": "Decorator" },
-    { "topic": "Design Patterns", "area": "patterns", "difficulty": "easy", "q": "Which pattern provides one simplified interface to a complex subsystem?", "options": ["Facade", "Observer", "Prototype", "Visitor"], "answer": "Facade" },
-    { "topic": "Design Patterns", "area": "patterns", "difficulty": "easy", "q": "A third-party SMS SDK exposes send_text(), but your code expects notify(). Which pattern bridges the two interfaces?", "options": ["Adapter", "Builder", "Composite", "Flyweight"], "answer": "Adapter" },
-    { "topic": "Design Patterns", "area": "patterns", "difficulty": "medium", "q": "Which pattern encapsulates a request as an object, making undo/redo straightforward?", "options": ["Command", "Strategy", "Proxy", "Iterator"], "answer": "Command" },
-    { "topic": "Design Patterns", "area": "patterns", "difficulty": "medium", "q": "A vending machine behaves differently when idle, accepting money or dispensing. Which pattern models this cleanly?", "options": ["State", "Singleton", "Adapter", "Abstract Factory"], "answer": "State" },
-    { "topic": "Design Patterns", "area": "patterns", "difficulty": "easy", "q": "Which pattern constructs a complex object step by step, which helps with many optional fields?", "options": ["Builder", "Observer", "Bridge", "Template Method"], "answer": "Builder" },
-    { "topic": "Design Patterns", "area": "patterns", "difficulty": "medium", "q": "HTTP middleware where each handler either processes a request or passes it to the next one is an example of:", "options": ["Chain of Responsibility", "Composite", "Memento", "Flyweight"], "answer": "Chain of Responsibility" },
-    { "topic": "Design Patterns", "area": "patterns", "difficulty": "medium", "q": "Which pattern lets you treat individual files and whole folders uniformly in a tree?", "options": ["Composite", "Decorator", "Strategy", "Singleton"], "answer": "Composite" },
-    { "topic": "Design Patterns", "area": "patterns", "difficulty": "medium", "q": "Which pattern controls access to another object, for example to add lazy loading, caching or access checks?", "options": ["Proxy", "Builder", "Observer", "Interpreter"], "answer": "Proxy" },
-    { "topic": "Design Patterns", "area": "patterns", "difficulty": "medium", "q": "What is a common drawback of the Singleton pattern?", "options": ["It introduces hidden global state that complicates testing and concurrency", "It always wastes memory", "It cannot be used in Java", "It prevents polymorphism entirely"], "answer": "It introduces hidden global state that complicates testing and concurrency" },
-    { "topic": "Design Patterns", "area": "patterns", "difficulty": "easy", "q": "Event listeners and publish-subscribe systems are built on which pattern?", "options": ["Observer", "Visitor", "Builder", "Adapter"], "answer": "Observer" },
-    { "topic": "UML", "area": "modeling", "difficulty": "medium", "q": "In a UML class diagram, what does a filled (solid) diamond on an association denote?", "options": ["Composition", "Aggregation", "Inheritance", "Dependency"], "answer": "Composition" },
-    { "topic": "UML", "area": "modeling", "difficulty": "medium", "q": "In a UML class diagram, what does a line with a hollow triangular arrowhead denote?", "options": ["Generalisation (inheritance)", "Composition", "Association", "Realisation of a dependency"], "answer": "Generalisation (inheritance)" },
-    { "topic": "Object Modelling", "area": "modeling", "difficulty": "medium", "q": "In your domain, an Engine cannot exist without its Car. Which relationship models this best?", "options": ["Composition", "Aggregation", "Inheritance", "No relationship"], "answer": "Composition" },
-    { "topic": "Design Principles", "area": "principles", "difficulty": "hard", "q": "What does the 'Tell, Don't Ask' principle encourage?", "options": ["Asking objects to perform behaviour rather than pulling their data out to make decisions elsewhere", "Asking users for confirmation before every action", "Avoiding exceptions", "Using getters for every field"], "answer": "Asking objects to perform behaviour rather than pulling their data out to make decisions elsewhere" },
-    { "topic": "Design Principles", "area": "principles", "difficulty": "hard", "q": "What does the Law of Demeter recommend?", "options": ["A method should talk only to its immediate collaborators, not reach through chains like a.getB().getC().doX()", "Every class should have exactly one method", "Objects must never be passed as arguments", "Inheritance depth must not exceed two"], "answer": "A method should talk only to its immediate collaborators, not reach through chains like a.getB().getC().doX()" },
-    { "topic": "Immutability", "area": "principles", "difficulty": "medium", "q": "Why model Money or Date values as immutable value objects?", "options": ["They are thread-safe and cannot be corrupted after creation", "They use less CPU on every call", "They avoid the need for constructors", "They can be subclassed freely"], "answer": "They are thread-safe and cannot be corrupted after creation" },
-    { "topic": "Parking Lot", "area": "modeling", "difficulty": "easy", "q": "In a parking-lot design, the spot-allocation algorithm (nearest, by vehicle size, by floor) must be switchable at runtime. Which pattern fits?", "options": ["Strategy", "Singleton", "Memento", "Prototype"], "answer": "Strategy" },
-    { "topic": "Ticket Booking", "area": "modeling", "difficulty": "hard", "q": "How should a movie-ticket booking design prevent two users from booking the same seat?", "options": ["Atomically place a time-limited hold (lock) on the seat before payment", "Let both book and refund one later", "Check availability only in the UI", "Store seats in the user's browser"], "answer": "Atomically place a time-limited hold (lock) on the seat before payment" },
-    { "topic": "Dependency Injection", "area": "principles", "difficulty": "easy", "q": "What does dependency injection mainly improve?", "options": ["Testability and loose coupling", "Raw execution speed", "Binary size", "Network throughput"], "answer": "Testability and loose coupling" },
-    { "topic": "Design Patterns", "area": "patterns", "difficulty": "medium", "q": "Which pattern defines an algorithm's skeleton in a base class and lets subclasses override specific steps?", "options": ["Template Method", "Strategy", "Facade", "Observer"], "answer": "Template Method" }
-  ]
+ "section": "s8",
+ "_about": "Objective LLD / OOP design items: SOLID violations in context, pattern selection, UML and modelling judgement.",
+ "mcq": [
+  {
+   "topic": "SOLID",
+   "area": "principles",
+   "difficulty": "easy",
+   "q": "A single class parses user input, applies business rules and writes to the database. Which principle does it violate?",
+   "options": [
+    "Single Responsibility Principle",
+    "Liskov Substitution Principle",
+    "Interface Segregation Principle",
+    "Open/Closed Principle"
+   ],
+   "answer": "Single Responsibility Principle"
+  },
+  {
+   "topic": "SOLID",
+   "area": "principles",
+   "difficulty": "medium",
+   "q": "Adding each new payment method requires editing a large switch statement in PaymentService. Which principle is violated?",
+   "options": [
+    "Open/Closed Principle",
+    "Single Responsibility Principle",
+    "Dependency Inversion Principle",
+    "Law of Demeter"
+   ],
+   "answer": "Open/Closed Principle"
+  },
+  {
+   "topic": "SOLID",
+   "area": "principles",
+   "difficulty": "medium",
+   "q": "Square extends Rectangle, but setting a Square's width also changes its height, breaking callers that expect a Rectangle. Which principle is violated?",
+   "options": [
+    "Liskov Substitution Principle",
+    "Interface Segregation Principle",
+    "Single Responsibility Principle",
+    "Open/Closed Principle"
+   ],
+   "answer": "Liskov Substitution Principle"
+  },
+  {
+   "topic": "SOLID",
+   "area": "principles",
+   "difficulty": "easy",
+   "q": "A BasicPrinter class is forced to implement fax() and scan() methods it cannot support. Which principle is violated?",
+   "options": [
+    "Interface Segregation Principle",
+    "Dependency Inversion Principle",
+    "Liskov Substitution Principle",
+    "Single Responsibility Principle"
+   ],
+   "answer": "Interface Segregation Principle"
+  },
+  {
+   "topic": "SOLID",
+   "area": "principles",
+   "difficulty": "medium",
+   "q": "OrderService creates `new MySqlOrderRepository()` inside its constructor. Which principle does this violate?",
+   "options": [
+    "Dependency Inversion Principle",
+    "Open/Closed Principle",
+    "Interface Segregation Principle",
+    "Liskov Substitution Principle"
+   ],
+   "answer": "Dependency Inversion Principle"
+  },
+  {
+   "topic": "Design Patterns",
+   "area": "patterns",
+   "difficulty": "medium",
+   "q": "Which pattern adds responsibilities to an object at runtime by wrapping it (e.g., adding logging or compression to a stream)?",
+   "options": [
+    "Decorator",
+    "Factory Method",
+    "Singleton",
+    "Mediator"
+   ],
+   "answer": "Decorator"
+  },
+  {
+   "topic": "Design Patterns",
+   "area": "patterns",
+   "difficulty": "easy",
+   "q": "Which pattern provides one simplified interface to a complex subsystem?",
+   "options": [
+    "Facade",
+    "Observer",
+    "Prototype",
+    "Visitor"
+   ],
+   "answer": "Facade"
+  },
+  {
+   "topic": "Design Patterns",
+   "area": "patterns",
+   "difficulty": "easy",
+   "q": "A third-party SMS SDK exposes send_text(), but your code expects notify(). Which pattern bridges the two interfaces?",
+   "options": [
+    "Adapter",
+    "Builder",
+    "Composite",
+    "Flyweight"
+   ],
+   "answer": "Adapter"
+  },
+  {
+   "topic": "Design Patterns",
+   "area": "patterns",
+   "difficulty": "medium",
+   "q": "Which pattern encapsulates a request as an object, making undo/redo straightforward?",
+   "options": [
+    "Command",
+    "Strategy",
+    "Proxy",
+    "Iterator"
+   ],
+   "answer": "Command"
+  },
+  {
+   "topic": "Design Patterns",
+   "area": "patterns",
+   "difficulty": "medium",
+   "q": "A vending machine behaves differently when idle, accepting money or dispensing. Which pattern models this cleanly?",
+   "options": [
+    "State",
+    "Singleton",
+    "Adapter",
+    "Abstract Factory"
+   ],
+   "answer": "State"
+  },
+  {
+   "topic": "Design Patterns",
+   "area": "patterns",
+   "difficulty": "easy",
+   "q": "Which pattern constructs a complex object step by step, which helps with many optional fields?",
+   "options": [
+    "Builder",
+    "Observer",
+    "Bridge",
+    "Template Method"
+   ],
+   "answer": "Builder"
+  },
+  {
+   "topic": "Design Patterns",
+   "area": "patterns",
+   "difficulty": "medium",
+   "q": "HTTP middleware where each handler either processes a request or passes it to the next one is an example of:",
+   "options": [
+    "Chain of Responsibility",
+    "Composite",
+    "Memento",
+    "Flyweight"
+   ],
+   "answer": "Chain of Responsibility"
+  },
+  {
+   "topic": "Design Patterns",
+   "area": "patterns",
+   "difficulty": "medium",
+   "q": "Which pattern lets you treat individual files and whole folders uniformly in a tree?",
+   "options": [
+    "Composite",
+    "Decorator",
+    "Strategy",
+    "Singleton"
+   ],
+   "answer": "Composite"
+  },
+  {
+   "topic": "Design Patterns",
+   "area": "patterns",
+   "difficulty": "medium",
+   "q": "Which pattern controls access to another object, for example to add lazy loading, caching or access checks?",
+   "options": [
+    "Proxy",
+    "Builder",
+    "Observer",
+    "Interpreter"
+   ],
+   "answer": "Proxy"
+  },
+  {
+   "topic": "Design Patterns",
+   "area": "patterns",
+   "difficulty": "medium",
+   "q": "What is a common drawback of the Singleton pattern?",
+   "options": [
+    "It introduces hidden global state that complicates testing and concurrency",
+    "It always wastes memory",
+    "It cannot be used in Java",
+    "It prevents polymorphism entirely"
+   ],
+   "answer": "It introduces hidden global state that complicates testing and concurrency"
+  },
+  {
+   "topic": "Design Patterns",
+   "area": "patterns",
+   "difficulty": "easy",
+   "q": "Event listeners and publish-subscribe systems are built on which pattern?",
+   "options": [
+    "Observer",
+    "Visitor",
+    "Builder",
+    "Adapter"
+   ],
+   "answer": "Observer"
+  },
+  {
+   "topic": "UML",
+   "area": "modeling",
+   "difficulty": "medium",
+   "q": "In a UML class diagram, what does a filled (solid) diamond on an association denote?",
+   "options": [
+    "Composition",
+    "Aggregation",
+    "Inheritance",
+    "Dependency"
+   ],
+   "answer": "Composition"
+  },
+  {
+   "topic": "UML",
+   "area": "modeling",
+   "difficulty": "medium",
+   "q": "In a UML class diagram, what does a line with a hollow triangular arrowhead denote?",
+   "options": [
+    "Generalisation (inheritance)",
+    "Composition",
+    "Association",
+    "Realisation of a dependency"
+   ],
+   "answer": "Generalisation (inheritance)"
+  },
+  {
+   "topic": "Object Modelling",
+   "area": "modeling",
+   "difficulty": "medium",
+   "q": "In your domain, an Engine cannot exist without its Car. Which relationship models this best?",
+   "options": [
+    "Composition",
+    "Aggregation",
+    "Inheritance",
+    "No relationship"
+   ],
+   "answer": "Composition"
+  },
+  {
+   "topic": "Design Principles",
+   "area": "principles",
+   "difficulty": "hard",
+   "q": "What does the 'Tell, Don't Ask' principle encourage?",
+   "options": [
+    "Asking objects to perform behaviour rather than pulling their data out to make decisions elsewhere",
+    "Asking users for confirmation before every action",
+    "Avoiding exceptions",
+    "Using getters for every field"
+   ],
+   "answer": "Asking objects to perform behaviour rather than pulling their data out to make decisions elsewhere"
+  },
+  {
+   "topic": "Design Principles",
+   "area": "principles",
+   "difficulty": "hard",
+   "q": "What does the Law of Demeter recommend?",
+   "options": [
+    "A method should talk only to its immediate collaborators, not reach through chains like a.getB().getC().doX()",
+    "Every class should have exactly one method",
+    "Objects must never be passed as arguments",
+    "Inheritance depth must not exceed two"
+   ],
+   "answer": "A method should talk only to its immediate collaborators, not reach through chains like a.getB().getC().doX()"
+  },
+  {
+   "topic": "Immutability",
+   "area": "principles",
+   "difficulty": "medium",
+   "q": "Why model Money or Date values as immutable value objects?",
+   "options": [
+    "They are thread-safe and cannot be corrupted after creation",
+    "They use less CPU on every call",
+    "They avoid the need for constructors",
+    "They can be subclassed freely"
+   ],
+   "answer": "They are thread-safe and cannot be corrupted after creation"
+  },
+  {
+   "topic": "Parking Lot",
+   "area": "modeling",
+   "difficulty": "easy",
+   "q": "In a parking-lot design, the spot-allocation algorithm (nearest, by vehicle size, by floor) must be switchable at runtime. Which pattern fits?",
+   "options": [
+    "Strategy",
+    "Singleton",
+    "Memento",
+    "Prototype"
+   ],
+   "answer": "Strategy"
+  },
+  {
+   "topic": "Ticket Booking",
+   "area": "modeling",
+   "difficulty": "hard",
+   "q": "How should a movie-ticket booking design prevent two users from booking the same seat?",
+   "options": [
+    "Atomically place a time-limited hold (lock) on the seat before payment",
+    "Let both book and refund one later",
+    "Check availability only in the UI",
+    "Store seats in the user's browser"
+   ],
+   "answer": "Atomically place a time-limited hold (lock) on the seat before payment"
+  },
+  {
+   "topic": "Dependency Injection",
+   "area": "principles",
+   "difficulty": "easy",
+   "q": "What does dependency injection mainly improve?",
+   "options": [
+    "Testability and loose coupling",
+    "Raw execution speed",
+    "Binary size",
+    "Network throughput"
+   ],
+   "answer": "Testability and loose coupling"
+  },
+  {
+   "topic": "Design Patterns",
+   "area": "patterns",
+   "difficulty": "medium",
+   "q": "Which pattern defines an algorithm's skeleton in a base class and lets subclasses override specific steps?",
+   "options": [
+    "Template Method",
+    "Strategy",
+    "Facade",
+    "Observer"
+   ],
+   "answer": "Template Method"
+  }
+ ],
+ "written": [
+  {
+   "group": "lld-parking-lot-v2",
+   "topic": "Parking Lot Design",
+   "area": "modeling",
+   "difficulty": "hard",
+   "q": "Design a multi-floor parking-garage object model for cars, motorcycles, and accessible vehicles. State the core use cases and invariants; identify classes, interfaces, relationships, and ownership; explain how a pluggable allocation strategy finds compatible spaces; and show how ticket creation, payment, exit, lost tickets, concurrent arrivals, and retries are handled. Finish with a test plan and the changes needed to add electric charging.",
+   "minWords": 180,
+   "maxWords": 450,
+   "rubric": [
+    {
+     "label": "Core entities and responsibilities",
+     "any": [
+      "parkinglot",
+      "parking floor",
+      "parkingfloor",
+      "parking spot",
+      "parkingspot",
+      "vehicle",
+      "ticket",
+      "payment"
+     ]
+    },
+    {
+     "label": "Composition and relationships",
+     "any": [
+      "composition",
+      "owns",
+      "one-to-many",
+      "association",
+      "floor contains",
+      "spot belongs"
+     ]
+    },
+    {
+     "label": "Extensible allocation strategy",
+     "any": [
+      "strategy pattern",
+      "allocation strategy",
+      "spotassignmentstrategy",
+      "vehicle compatibility",
+      "vehicle size"
+     ]
+    },
+    {
+     "label": "Ticket and payment lifecycle",
+     "any": [
+      "entry ticket",
+      "exit flow",
+      "payment state",
+      "lost ticket",
+      "fee calculation"
+     ]
+    },
+    {
+     "label": "Concurrency and idempotency",
+     "any": [
+      "atomic reservation",
+      "concurrent entry",
+      "double assignment",
+      "idempotency key",
+      "transaction"
+     ]
+    },
+    {
+     "label": "Testing and extension",
+     "any": [
+      "unit test",
+      "integration test",
+      "electric charging",
+      "charging spot",
+      "mock allocator"
+     ]
+    }
+   ]
+  },
+  {
+   "group": "lld-elevator-controller-v2",
+   "topic": "Elevator Control",
+   "area": "modeling",
+   "difficulty": "hard",
+   "q": "Model an elevator system for a 30-storey office with several cars, hall-call buttons, in-car destinations, maintenance mode, and emergency stop. Describe the objects and interfaces, the state transitions for a car and a request, and a dispatch policy that can be replaced without rewriting the controller. Explain how simultaneous requests, door obstruction, stale sensor events, and failures are represented, then give example tests for scheduling and safety invariants.",
+   "minWords": 180,
+   "maxWords": 450,
+   "rubric": [
+    {
+     "label": "Domain classes and boundaries",
+     "any": [
+      "elevator",
+      "controller",
+      "dispatcher",
+      "request",
+      "floor",
+      "door",
+      "sensor"
+     ]
+    },
+    {
+     "label": "Explicit state machine",
+     "any": [
+      "idle",
+      "moving",
+      "doorsopen",
+      "door open",
+      "state machine",
+      "maintenance state",
+      "emergency stop"
+     ]
+    },
+    {
+     "label": "Replaceable dispatch algorithm",
+     "any": [
+      "strategy pattern",
+      "dispatch strategy",
+      "scan",
+      "look algorithm",
+      "nearest car",
+      "direction-aware"
+     ]
+    },
+    {
+     "label": "Concurrency and event handling",
+     "any": [
+      "concurrent request",
+      "event queue",
+      "stale event",
+      "synchronized",
+      "lock",
+      "thread-safe"
+     ]
+    },
+    {
+     "label": "Safety and fault behavior",
+     "any": [
+      "door obstruction",
+      "emergency stop",
+      "fail safe",
+      "maintenance mode",
+      "sensor failure"
+     ]
+    },
+    {
+     "label": "Tests and invariants",
+     "any": [
+      "unit test",
+      "safety invariant",
+      "never move with doors open",
+      "scheduler test",
+      "simulation"
+     ]
+    }
+   ]
+  },
+  {
+   "group": "lld-seat-reservation-v2",
+   "topic": "Seat Reservation Design",
+   "area": "modeling",
+   "difficulty": "hard",
+   "q": "Design the low-level model and service interfaces for reserving seats at a theatre. A seat can be temporarily held while a customer pays, but only one confirmed booking may own it; holds expire, payment callbacks can be duplicated or delayed, and a customer may retry after a timeout. Explain the entities, state transitions, transaction boundaries, and responsibilities of the booking, inventory, and payment components. Include how you would test races and recover abandoned holds.",
+   "minWords": 180,
+   "maxWords": 450,
+   "rubric": [
+    {
+     "label": "Entities and ownership",
+     "any": [
+      "show",
+      "screen",
+      "seat",
+      "seat inventory",
+      "booking",
+      "hold",
+      "payment"
+     ]
+    },
+    {
+     "label": "Reservation state transitions",
+     "any": [
+      "available",
+      "held",
+      "confirmed",
+      "expired",
+      "cancelled",
+      "state transition"
+     ]
+    },
+    {
+     "label": "Atomic seat allocation",
+     "any": [
+      "atomic hold",
+      "unique constraint",
+      "optimistic locking",
+      "compare-and-swap",
+      "transaction"
+     ]
+    },
+    {
+     "label": "Payment idempotency and recovery",
+     "any": [
+      "idempotency key",
+      "duplicate callback",
+      "payment timeout",
+      "compensating action",
+      "release hold"
+     ]
+    },
+    {
+     "label": "Separation of responsibilities",
+     "any": [
+      "booking service",
+      "inventory service",
+      "payment service",
+      "interface",
+      "dependency injection"
+     ]
+    },
+    {
+     "label": "Race and failure testing",
+     "any": [
+      "concurrent booking test",
+      "race condition",
+      "expiry test",
+      "retry test",
+      "failure injection"
+     ]
+    }
+   ]
+  },
+  {
+   "group": "lld-notification-service-v2",
+   "topic": "Notification Service Design",
+   "area": "modeling",
+   "difficulty": "hard",
+   "q": "Design a low-level notification service that sends transactional messages through email, SMS, and push providers. Products need different templates, user preferences, quiet hours, and provider failover; sending must be asynchronous and retries must not create duplicate notifications. Describe the domain objects and interfaces, how channel-specific behavior is extended, how delivery state and attempts are recorded, and how you would test provider failures, rate limits, and template changes.",
+   "minWords": 180,
+   "maxWords": 450,
+   "rubric": [
+    {
+     "label": "Notification domain and delivery states",
+     "any": [
+      "notification",
+      "recipient",
+      "template",
+      "delivery attempt",
+      "pending",
+      "sent",
+      "failed"
+     ]
+    },
+    {
+     "label": "Channel abstraction and extension",
+     "any": [
+      "channel interface",
+      "strategy pattern",
+      "email provider",
+      "sms provider",
+      "push provider",
+      "adapter"
+     ]
+    },
+    {
+     "label": "Preferences and template rendering",
+     "any": [
+      "user preference",
+      "quiet hours",
+      "template version",
+      "localization",
+      "rendering"
+     ]
+    },
+    {
+     "label": "Asynchronous delivery and retries",
+     "any": [
+      "message queue",
+      "retry policy",
+      "dead-letter queue",
+      "exponential backoff",
+      "provider failover"
+     ]
+    },
+    {
+     "label": "Idempotency and observability",
+     "any": [
+      "idempotency key",
+      "deduplication",
+      "delivery receipt",
+      "correlation id",
+      "metrics"
+     ]
+    },
+    {
+     "label": "Tests and provider failures",
+     "any": [
+      "mock provider",
+      "failure test",
+      "rate limit",
+      "contract test",
+      "retry test"
+     ]
+    }
+   ]
+  },
+  {
+   "group": "lld-lru-cache-v2",
+   "topic": "Cache Data Structure",
+   "area": "data-structures",
+   "difficulty": "hard",
+   "q": "Implement the object design for a bounded LRU cache with get(key), put(key,value), and optional time-to-live. Both get and put should be O(1) on average; updating a key changes recency, capacity zero is valid, and expired entries must never be returned. Explain the map/list invariants, the classes or private helpers you would use, how eviction and expiry interact, whether you would support concurrent callers, and a focused set of tests.",
+   "minWords": 160,
+   "maxWords": 400,
+   "rubric": [
+    {
+     "label": "Hash map plus doubly linked list",
+     "any": [
+      "hash map",
+      "dictionary",
+      "doubly linked list",
+      "linkedlist",
+      "node pointers"
+     ]
+    },
+    {
+     "label": "O(1) recency operations",
+     "any": [
+      "o(1)",
+      "move to front",
+      "move to head",
+      "least recently used",
+      "lru"
+     ]
+    },
+    {
+     "label": "Correct eviction and edge cases",
+     "any": [
+      "evict tail",
+      "capacity zero",
+      "update existing key",
+      "empty cache",
+      "least-recent"
+     ]
+    },
+    {
+     "label": "TTL design",
+     "any": [
+      "time-to-live",
+      "ttl",
+      "expiry timestamp",
+      "lazy expiration",
+      "expiration queue"
+     ]
+    },
+    {
+     "label": "Concurrency decision",
+     "any": [
+      "thread-safe",
+      "mutex",
+      "lock",
+      "concurrent callers",
+      "single-threaded"
+     ]
+    },
+    {
+     "label": "Invariant-based tests",
+     "any": [
+      "map and list size",
+      "eviction test",
+      "recency test",
+      "expiry test",
+      "property test"
+     ]
+    }
+   ]
+  }
+ ]
 }

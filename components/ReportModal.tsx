@@ -2,6 +2,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useStore } from '@/lib/store'
 import { reportSections, aiTaskLabel, tierFor, num } from '@/lib/reportPdf'
+import { platformAssessmentSkills, rollupAssessmentSkills } from '@/lib/assessmentSkills'
+import { AssessmentSkillList } from '@/components/AssessmentSkillList'
 import { X, Download, TrendingUp, AlertCircle, Sparkles, CheckCircle2 } from 'lucide-react'
 
 /* ------------------------------------------------------------------ */
@@ -46,6 +48,7 @@ export function ReportModal({ scores, onClose }: Props) {
   const [error, setError] = useState('')
 
   const sections = useMemo(() => (scores ? reportSections(scores) : []), [scores])
+  const mappedSkills = useMemo(() => rollupAssessmentSkills(platformAssessmentSkills(scores, Number(scores?.assessment_no) === 2 ? 2 : 1)), [scores])
   const total = num(scores?.total)
   const grade = String(scores?.grade || '—').toUpperCase()
   const percentile = num(scores?.percentile)
@@ -171,6 +174,14 @@ export function ReportModal({ scores, onClose }: Props) {
               ))}
             </div>
           </div>
+
+          {/* Assessment-derived skill map */}
+          {mappedSkills.length > 0 && (
+            <div className="mt-5 rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4">
+              <h3 className="mb-3 text-xs font-black uppercase tracking-[0.16em] text-indigo-700">Skills mapped from this assessment</h3>
+              <AssessmentSkillList skills={mappedSkills} />
+            </div>
+          )}
 
           {/* Lacking / improve */}
           {(weakAreas.length > 0 || aiImprovements.length > 0) && (

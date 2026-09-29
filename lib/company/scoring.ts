@@ -15,7 +15,8 @@ import type {
 } from './types.ts'
 import type { LoadedBank } from './bank.ts'
 import type { WrittenGrade } from './grading.ts'
-import type { CodeLang } from './codeRunner.ts'
+import type { CodeLang } from './languages.ts'
+import { isCodeLang } from './languages.ts'
 import type { TestRunResult } from '../runTests.ts'
 
 export interface CodingAnswer {
@@ -54,7 +55,7 @@ export function readCodingAnswer(v: unknown): CodingAnswer | null {
   if (typeof v === 'string') return v.trim() ? { lang: 'python', code: v } : null
   if (typeof v === 'object') {
     const o = v as any
-    const lang: CodeLang = o.lang === 'javascript' ? 'javascript' : 'python'
+    const lang: CodeLang = isCodeLang(o.lang) ? o.lang : 'python'
     const code = typeof o.code === 'string' ? o.code : ''
     return code.trim() ? { lang, code } : null
   }

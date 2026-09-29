@@ -78,9 +78,29 @@ test('buildRow maps a scored student into a flat export row', () => {
   assert.equal(row.problem_solving, '170')
   assert.equal(row.cognitive, '170')
   assert.equal(row.teamwork, '80')
-  assert.equal(row.all_skills, 'Python, React, SQL')
+  assert.equal(row.skills, 'Python, React')
+  assert.equal(row.resume_skills, 'Python, SQL')
+  assert.match(row.assessment_skills || '', /Problem Solving \(85%\)/)
+  assert.match(row.assessment_skills || '', /Listening Comprehension \(90%\)/)
+  assert.match(row.all_skills, /Python, React, SQL/)
+  assert.match(row.all_skills, /Listening Comprehension/)
+  assert.match(row.all_skills, /Problem Solving/)
   assert.equal(row.has_assessment, 'Yes')
   assert.equal(row.resume_score, '78')
+})
+
+test('buildRow does not mislabel an Assessment 2 view row as Assessment 1 skill evidence', () => {
+  const row = buildRow({
+    student_id: 'a2-view-row',
+    profile: { skills: 'Java' },
+    scores: {
+      total: 650, grade: 'B',
+      scores: { assessment_no: 2, english: { total: 150 }, ai_literacy: 190, debug_mcq: 90, debug_lab: 50, ai_coding: 120, cognitive: { total: 80, grid: 25, logical: 30, behavioural: 25 } },
+    },
+  })
+  assert.equal(row.assessment_skill_evidence?.length || 0, 0)
+  assert.equal(row.assessment_skills || '', '')
+  assert.equal(row.all_skills, 'Java')
 })
 
 test('buildRow leaves an unassessed student blank rather than zeroed', () => {
@@ -162,9 +182,9 @@ test('CSV columns cover personal, skills, resume and all module scores', () => {
   ]) {
     assert.ok(labels.includes(required), `missing column ${required}`)
   }
-  // 52 original columns + CalibiAI average (4) + Capgemini mock (9) + company summary (5) + categories (7);
+  // Includes separate profile, resume and assessment-derived skills columns;
   // rowsToCsv appends one column per company on top (see calibiScore.test.ts).
-  assert.equal(CSV_COLUMNS.length, 77)
+  assert.equal(CSV_COLUMNS.length, 78)
 })
 
 test('rowsToCsv adds BOM, CRLF, quotes and guards formula injection', () => {

@@ -283,14 +283,14 @@
   "supplements": {
     "s01-aptitude.json": 99,
     "s02-programming.json": 51,
-    "s03-coding.json": 43,
-    "s03-dsa.json": 136,
+    "s03-coding.json": 46,
+    "s03-dsa.json": 152,
     "s04-cs-fundamentals.json": 51,
     "s05-sql.json": 32,
     "s06-ai-coding.json": 26,
     "s07-web-apis.json": 32,
-    "s08-lld.json": 26,
-    "s09-system-design.json": 30,
+    "s08-lld.json": 31,
+    "s09-system-design.json": 36,
     "s10-se-devops.json": 30,
     "s11-communication.json": 8
   },
@@ -331,20 +331,20 @@
       }
     },
     "s3": {
-      "total": 202,
-      "mcq": 159,
+      "total": 221,
+      "mcq": 175,
       "written": 0,
-      "coding": 43,
+      "coding": 46,
       "ques": 23,
-      "supplement": 179,
+      "supplement": 198,
       "generated": 0,
       "easy": 41,
       "medium": 76,
-      "hard": 85,
+      "hard": 104,
       "areas": {
-        "concepts": 101,
-        "coding": 43,
-        "analysis": 58
+        "concepts": 107,
+        "coding": 46,
+        "analysis": 68
       }
     },
     "s4": {
@@ -419,38 +419,40 @@
       }
     },
     "s8": {
-      "total": 56,
+      "total": 61,
       "mcq": 26,
-      "written": 30,
+      "written": 35,
       "coding": 0,
       "ques": 30,
-      "supplement": 26,
+      "supplement": 31,
       "generated": 0,
       "easy": 11,
       "medium": 25,
-      "hard": 20,
+      "hard": 25,
       "areas": {
-        "modeling": 21,
+        "modeling": 25,
         "principles": 17,
-        "patterns": 18
+        "patterns": 18,
+        "data-structures": 1
       }
     },
     "s9": {
-      "total": 60,
+      "total": 66,
       "mcq": 30,
-      "written": 30,
+      "written": 36,
       "coding": 0,
       "ques": 30,
-      "supplement": 30,
+      "supplement": 36,
       "generated": 0,
       "easy": 12,
       "medium": 23,
-      "hard": 25,
+      "hard": 31,
       "areas": {
         "scale": 16,
         "messaging": 13,
         "data": 22,
-        "reliability": 9
+        "reliability": 10,
+        "architecture": 5
       }
     },
     "s10": {
@@ -488,6 +490,6 @@
       }
     }
   },
-  "total": 1189,
-  "version": "a165d4a058d0"
+  "total": 1219,
+  "version": "62fbeed49aae"
 }

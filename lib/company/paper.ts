@@ -19,6 +19,8 @@ import type {
   PartSpec, StoredPaper, StoredPaperItem,
 } from './types.ts'
 import type { LoadedBank } from './bank.ts'
+import { CODE_LANGUAGES, type CodeLang } from './languages.ts'
+import { starterFor } from './codeTemplates.ts'
 
 const LEVELS: Difficulty[] = ['easy', 'medium', 'hard']
 const RANK: Record<Difficulty, number> = { easy: 0, medium: 1, hard: 2 }
@@ -191,9 +193,10 @@ export function toClientPaper(company: Company, paper: StoredPaper, bank: Loaded
         } else if (q.kind === 'written') {
           items.push({ kind: 'written', ...base, q: q.q, minWords: q.minWords, maxWords: q.maxWords })
         } else {
+          const starter = Object.fromEntries(CODE_LANGUAGES.map(({ id }) => [id, starterFor(q, id)])) as Record<CodeLang, string>
           items.push({
             kind: 'coding', ...base, title: q.title, statement: q.statement, examples: q.examples,
-            constraints: q.constraints, starter: q.starter, testCount: q.tests.length,
+            constraints: q.constraints, starter, testCount: q.tests.length,
           })
         }
       }

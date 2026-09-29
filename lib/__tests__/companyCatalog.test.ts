@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import { COMPANIES, COMPANY_TAGS, companiesByTag, companyMockFacts, getCompany } from '../company/catalog.ts'
 import { BLUEPRINTS } from '../company/blueprints.ts'
 import { RESEARCH_STEPS, RESEARCH_TARGETS } from '../company/generated/researchSteps.ts'
+import { COMPANY_LOGO_DOMAINS, companyLogoUrl } from '../company/logos.ts'
 import { SECTION_BY_ID } from '../company/sections.ts'
 
 test('catalog: every research target and every documented company is present (60 total)', () => {
@@ -24,6 +25,18 @@ test('catalog: slugs are unique, url-safe and resolvable', () => {
     assert.equal(getCompany(c.slug.toUpperCase())?.name, c.name)
   }
   assert.equal(getCompany('not-a-company'), undefined)
+})
+
+test('catalog: every company has an official-domain logo URL with initials available as fallback', () => {
+  assert.deepEqual(Object.keys(COMPANY_LOGO_DOMAINS).sort(), COMPANIES.map((company) => company.slug).sort())
+  for (const company of COMPANIES) {
+    assert.ok(company.initials, `${company.name} needs initials for logo fallback`)
+    const url = new URL(companyLogoUrl(company.slug)!)
+    assert.equal(url.hostname, 'www.google.com', company.name)
+    assert.equal(url.pathname, '/s2/favicons', company.name)
+    assert.equal(url.searchParams.get('domain'), COMPANY_LOGO_DOMAINS[company.slug], company.name)
+    assert.equal(url.searchParams.get('sz'), '128', company.name)
+  }
 })
 
 test('catalog: priorities follow the research document', () => {

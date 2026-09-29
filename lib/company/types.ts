@@ -13,6 +13,9 @@
  *  - Attempt   one student's single sitting of one company's mock.
  */
 
+import type { CodeLang } from './languages.ts'
+import type { AssessmentSkillEvidence } from '../assessmentSkills.ts'
+
 export type SectionId =
   | 's1' | 's2' | 's3' | 's4' | 's5' | 's6' | 's7' | 's8' | 's9' | 's10' | 's11'
 
@@ -90,7 +93,7 @@ export interface CodingTest {
   /** Expected return value, or `{"$digest": sha256}` of its canonical JSON. */
   expected: unknown
   /** Per-test time limit in ms (number, or per language). Default 1000. */
-  limitMs?: number | { python?: number; javascript?: number }
+  limitMs?: number | { python?: number; javascript?: number; java?: number; c?: number; cpp?: number; rust?: number; go?: number }
   /** Performance test on a large input — an inefficient solution times out. */
   stress?: boolean
   /** Mirrors a statement example; the candidate sees their output if wrong. */
@@ -240,7 +243,7 @@ export type ClientItem =
       kind: 'coding'; id: string; section: SectionId; topic: string; difficulty: Difficulty
       marks: number; part?: string; title: string; statement: string
       examples: Array<{ input: string; output: string; explain?: string }>
-      constraints: string[]; starter: { python: string; javascript: string }; testCount: number
+      constraints: string[]; starter: Record<CodeLang, string>; testCount: number
     }
 
 export interface ClientRound {
@@ -361,4 +364,6 @@ export interface AttemptSummary {
   score?: number | null
   verdict?: Verdict | null
   auto_submitted?: boolean
+  /** Safe section/area skill scores derived from the completed result. */
+  skillEvidence?: AssessmentSkillEvidence[]
 }

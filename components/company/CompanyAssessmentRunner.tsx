@@ -1,7 +1,7 @@
 'use client'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bookmark, BookmarkCheck, ChevronLeft, ChevronRight, Maximize2, Play, RotateCcw, Send, CheckCircle2, XCircle, Timer, AlertTriangle } from 'lucide-react'
+import { Bookmark, BookmarkCheck, ChevronLeft, ChevronRight, Maximize2, Play, RotateCcw, Send, CheckCircle2, XCircle, Timer, AlertTriangle, Sparkles } from 'lucide-react'
 import { useStore } from '@/lib/store'
 import { Logo } from '@/components/Logo'
 import { AssessmentReview } from '@/components/AssessmentReview'
@@ -11,12 +11,14 @@ import { companyApi, type AttemptView } from '@/lib/company/client'
 import { buildCompanyReview, itemAnswered } from '@/lib/company/review'
 import { MAX_FOCUS_STRIKES } from '@/lib/proctoring'
 import type { ClientItem } from '@/lib/company/types'
+import { CODE_LANGUAGES, codeLanguageLabel, type CodeLang } from '@/lib/company/languages'
 import type { TestRunResult } from '@/lib/runTests'
+import type { OnDemandReview } from '@/lib/company/aiReview'
 import { useProctoring } from './useProctoring'
 import { ProctorOverlays, Watermark } from './ProctorOverlays'
 import { CompanyBadge } from './CompanyBadge'
 
-type CodeValue = { lang: 'python' | 'javascript'; code: string }
+type CodeValue = { lang: CodeLang; code: string }
 
 const SAVE_MIN_INTERVAL_MS = 10_000
 const SAVE_DEBOUNCE_MS = 1_500
@@ -51,7 +53,7 @@ export function CompanyAssessmentRunner({ slug }: { slug: string }) {
   const [view, setView] = useState<AttemptView | null>(null)
   const [answers, setAnswers] = useState<Record<string, unknown>>({})
   const [flags, setFlags] = useState<Record<string, boolean>>({})
-  const [drafts, setDrafts] = useState<Record<string, Partial<Record<'python' | 'javascript', string>>>>({})
+  const [drafts, setDrafts] = useState<Record<string, Partial<Record<CodeLang, string>>>>({})
   const [roundIdx, setRoundIdx] = useState(0)
   const [itemIdx, setItemIdx] = useState(0)
   const [remaining, setRemaining] = useState(0)
@@ -62,6 +64,13 @@ export function CompanyAssessmentRunner({ slug }: { slug: string }) {
   const [submitError, setSubmitError] = useState('')
   const [tests, setTests] = useState<Record<string, TestRunResult | undefined>>({})
   const [running, setRunning] = useState<Record<string, boolean>>({})
+  const [availableLangs, setAvailableLangs] = useState<CodeLang[]>([])
+  const [checkingLangs, setCheckingLangs] = useState(true)
+  const [languageCheckFailed, setLanguageCheckFailed] = useState(false)
+  const [aiReviews, setAiReviews] = useState<Record<string, OnDemandReview | undefined>>({})
+  const [aiErrors, setAiErrors] = useState<Record<string, string | undefined>>({})
+  const [aiBusy, setAiBusy] = useState<Record<string, boolean>>({})
+  const reviewSeq = useRef<Record<string, number>>({})
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'offline'>('idle')
 
   const offsetRef = useRef(0)
@@ -113,6 +122,29 @@ export function CompanyAssessmentRunner({ slug }: { slug: string }) {
 
   const proctoring = useProctoring({ active: live, onTerminate: beginAutoSubmit })
   proctorRef.current = proctoring
+
+  /* -------------------------- coding runtimes ----------------------------- */
+  useEffect(() => {
+    let active = true
+    void companyApi.languages().then((res) => {
+      if (!active) return
+      if (res.ok) {
+        const known = new Set(CODE_LANGUAGES.map(({ id }) => id))
+        const next = res.data.languages.map(({ id }) => id).filter((id): id is CodeLang => known.has(id as CodeLang))
+        setAvailableLangs(next)
+        setLanguageCheckFailed(false)
+      } else {
+        setLanguageCheckFailed(true)
+      }
+      setCheckingLangs(false)
+    }).catch(() => {
+      if (!active) return
+      setAvailableLangs([])
+      setLanguageCheckFailed(true)
+      setCheckingLangs(false)
+    })
+    return () => { active = false }
+  }, [])
 
   /* --------------------------------- load --------------------------------- */
   useEffect(() => {
@@ -216,12 +248,20 @@ export function CompanyAssessmentRunner({ slug }: { slug: string }) {
   /* ------------------------------- answers -------------------------------- */
   const setAnswer = useCallback((id: string, value: unknown) => {
     if (!live) return
+    reviewSeq.current[id] = (reviewSeq.current[id] || 0) + 1
+    setAiReviews((reviews) => ({ ...reviews, [id]: undefined }))
+    setAiErrors((errors) => ({ ...errors, [id]: undefined }))
+    setAiBusy((busy) => ({ ...busy, [id]: false }))
     setAnswers((a) => ({ ...a, [id]: value }))
     scheduleSave()
   }, [live, scheduleSave])
 
   const clearAnswer = useCallback((id: string) => {
     if (!live) return
+    reviewSeq.current[id] = (reviewSeq.current[id] || 0) + 1
+    setAiReviews((reviews) => ({ ...reviews, [id]: undefined }))
+    setAiErrors((errors) => ({ ...errors, [id]: undefined }))
+    setAiBusy((busy) => ({ ...busy, [id]: false }))
     setAnswers((a) => { const next = { ...a }; delete next[id]; return next })
     scheduleSave()
   }, [live, scheduleSave])
@@ -265,8 +305,9 @@ export function CompanyAssessmentRunner({ slug }: { slug: string }) {
   /* -------------------------------- coding -------------------------------- */
   const codeOf = (it: Extract<ClientItem, { kind: 'coding' }>): CodeValue => {
     const v = answers[it.id] as CodeValue | undefined
-    if (v && typeof v === 'object' && typeof v.code === 'string') return v
-    return { lang: 'python', code: it.starter.python }
+    if (v && typeof v === 'object' && typeof v.code === 'string' && CODE_LANGUAGES.some(({ id }) => id === v.lang)) return v as CodeValue
+    const defaultLang = availableLangs[0] || 'python'
+    return { lang: defaultLang, code: it.starter[defaultLang] }
   }
   const setCode = (it: Extract<ClientItem, { kind: 'coding' }>, patch: Partial<CodeValue>) => {
     const cur = codeOf(it)
@@ -274,7 +315,7 @@ export function CompanyAssessmentRunner({ slug }: { slug: string }) {
     setDrafts((d) => ({ ...d, [it.id]: { ...(d[it.id] || {}), [nextVal.lang]: nextVal.code } }))
     setAnswer(it.id, nextVal)
   }
-  const switchLang = (it: Extract<ClientItem, { kind: 'coding' }>, lang: 'python' | 'javascript') => {
+  const switchLang = (it: Extract<ClientItem, { kind: 'coding' }>, lang: CodeLang) => {
     const cur = codeOf(it)
     if (cur.lang === lang) return
     setDrafts((d) => ({ ...d, [it.id]: { ...(d[it.id] || {}), [cur.lang]: cur.code } }))
@@ -290,8 +331,29 @@ export function CompanyAssessmentRunner({ slug }: { slug: string }) {
     setRunning((r) => ({ ...r, [it.id]: false }))
     setTests((t) => ({
       ...t,
-      [it.id]: res.ok ? (res.data as TestRunResult) : { passed: 0, total: it.testCount, results: [], engine: cur.lang === 'python' ? 'python' : 'node', error: res.data?.error || 'The test runner is unavailable — please retry.' },
+      [it.id]: res.ok ? (res.data as TestRunResult) : { passed: 0, total: it.testCount, results: [], engine: cur.lang === 'javascript' ? 'node' : cur.lang, error: res.data?.error || 'The test runner is unavailable — please retry.' },
     }))
+  }
+  const evaluateWithAI = async (it: ClientItem) => {
+    if (!user?.id || it.kind === 'mcq') return
+    const answer = it.kind === 'written' ? String(answers[it.id] || '') : codeOf(it).code
+    const lang = it.kind === 'coding' ? codeOf(it).lang : undefined
+    const kind = it.kind
+    const seq = (reviewSeq.current[it.id] || 0) + 1
+    reviewSeq.current[it.id] = seq
+    setAiBusy((busy) => ({ ...busy, [it.id]: true }))
+    setAiReviews((reviews) => ({ ...reviews, [it.id]: undefined }))
+    setAiErrors((errors) => ({ ...errors, [it.id]: undefined }))
+    try {
+      const res = await companyApi.evaluateAnswer(user.id, slug, it.id, kind, answer, lang)
+      if (reviewSeq.current[it.id] !== seq) return
+      if (res.ok && res.data?.result) setAiReviews((reviews) => ({ ...reviews, [it.id]: res.data.result }))
+      else setAiErrors((errors) => ({ ...errors, [it.id]: res.data?.error || 'Could not evaluate this answer. Please retry.' }))
+    } catch {
+      if (reviewSeq.current[it.id] === seq) setAiErrors((errors) => ({ ...errors, [it.id]: 'Could not reach the evaluator. Check your connection and retry.' }))
+    } finally {
+      if (reviewSeq.current[it.id] === seq) setAiBusy((busy) => ({ ...busy, [it.id]: false }))
+    }
   }
   const onEditorKey = (e: React.KeyboardEvent<HTMLTextAreaElement>, it: Extract<ClientItem, { kind: 'coding' }>) => {
     if (e.key !== 'Tab' || e.shiftKey) return
@@ -514,6 +576,13 @@ export function CompanyAssessmentRunner({ slug }: { slug: string }) {
                           </div>
                         )
                       })()}
+                      <div className="mt-3">
+                        <button onClick={() => evaluateWithAI(item)} disabled={!live || aiBusy[item.id]} className="btn-soft !py-2 !px-4 !text-xs font-bold inline-flex items-center gap-1.5">
+                          <Sparkles className="h-3.5 w-3.5" aria-hidden /> {aiBusy[item.id] ? 'Evaluating…' : 'Evaluate with AI'}
+                        </button>
+                        {aiErrors[item.id] && <p className="mt-2 text-xs text-rose-600">{aiErrors[item.id]}</p>}
+                        {aiReviews[item.id] && <AIReviewCard review={aiReviews[item.id]!} />}
+                      </div>
                     </div>
                   )}
 
@@ -540,12 +609,13 @@ export function CompanyAssessmentRunner({ slug }: { slug: string }) {
                         </div>
                         <div>
                           <div className="flex items-center justify-between gap-2">
-                            <div className="inline-flex rounded-full border border-slate-200 bg-white p-0.5">
-                              {(['python', 'javascript'] as const).map((l) => (
-                                <button key={l} onClick={() => switchLang(item, l)} disabled={!live}
-                                  className={`px-3 py-1 rounded-full text-xs font-bold ${cv.lang === l ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-800'}`}>{l === 'python' ? 'Python 3' : 'JavaScript'}</button>
+                            <div className="flex flex-wrap gap-0.5 rounded-xl border border-slate-200 bg-white p-1">
+                              {CODE_LANGUAGES.filter(({ id }) => availableLangs.includes(id)).map(({ id, shortLabel }) => (
+                                <button key={id} onClick={() => switchLang(item, id)} disabled={!live} title={codeLanguageLabel(id)}
+                                  className={`px-2 py-1 rounded-lg text-[11px] font-bold ${cv.lang === id ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-800'}`}>{shortLabel}</button>
                               ))}
                             </div>
+                            {availableLangs.length === 0 && <span className="text-[10px] text-amber-700">{checkingLangs ? 'Checking runtimes…' : languageCheckFailed ? 'Could not check coding runtimes; refresh and retry.' : 'No coding runtime is installed on this server.'}</span>}
                             <button onClick={() => setCode(item, { code: item.starter[cv.lang] })} disabled={!live} className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-slate-800">
                               <RotateCcw className="h-3 w-3" aria-hidden /> Reset
                             </button>
@@ -553,11 +623,16 @@ export function CompanyAssessmentRunner({ slug }: { slug: string }) {
                           <textarea value={cv.code} onChange={(e) => setCode(item, { code: e.target.value })} onKeyDown={(e) => onEditorKey(e, item)} disabled={!live}
                             spellCheck={false} className="code-panel mt-2 w-full min-h-[300px] p-3.5 font-mono !text-xs leading-relaxed outline-none focus:ring-4 focus:ring-indigo-200" />
                           <div className="mt-2 flex items-center gap-2">
-                            <button onClick={() => runTests(item)} disabled={!live || running[item.id]} className="btn-soft !py-2 !px-4 !text-xs font-bold inline-flex items-center gap-1.5">
-                              <Play className="h-3.5 w-3.5" aria-hidden /> {running[item.id] ? 'Running tests…' : 'Run hidden tests'}
+                            <button onClick={() => runTests(item)} disabled={!live || running[item.id] || !availableLangs.includes(cv.lang)} className="btn-soft !py-2 !px-4 !text-xs font-bold inline-flex items-center gap-1.5">
+                              <Play className="h-3.5 w-3.5" aria-hidden /> {running[item.id] ? 'Running tests…' : availableLangs.includes(cv.lang) ? 'Run hidden tests' : 'Runtime unavailable'}
                             </button>
-                            <span className="text-[11px] text-slate-400">{cv.lang === 'python' ? 'Python 3' : 'Node.js'} · keep the function name</span>
+                            <button onClick={() => evaluateWithAI(item)} disabled={!live || aiBusy[item.id]} className="btn-soft !py-2 !px-4 !text-xs font-bold inline-flex items-center gap-1.5">
+                              <Sparkles className="h-3.5 w-3.5" aria-hidden /> {aiBusy[item.id] ? 'Evaluating…' : 'Evaluate with AI'}
+                            </button>
+                            <span className="text-[11px] text-slate-400">{codeLanguageLabel(cv.lang)} · keep the function name</span>
                           </div>
+                          {aiErrors[item.id] && <p className="mt-2 text-xs text-rose-600">{aiErrors[item.id]}</p>}
+                          {aiReviews[item.id] && <AIReviewCard review={aiReviews[item.id]!} />}
                           {tr && (
                             <div className={`mt-3 rounded-2xl border p-3.5 text-sm animate-fade-up ${tr.total > 0 && tr.passed === tr.total ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : tr.passed > 0 ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-rose-50 border-rose-200 text-rose-700'}`}>
                               <TestRunSummary tr={tr} />
@@ -695,5 +770,28 @@ function TestRunSummary({ tr }: { tr: TestRunResult }) {
         </ul>
       )}
     </>
+  )
+}
+
+function AIReviewCard({ review }: { review: OnDemandReview }) {
+  return (
+    <div className="mt-3 rounded-2xl border border-violet-200 bg-violet-50/80 p-4 text-sm text-slate-700">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="inline-flex items-center gap-1.5 font-bold text-violet-900">
+          <Sparkles className="h-4 w-4" aria-hidden /> {review.engine === 'deepseek' ? 'DeepSeek review' : 'Local review'}
+        </div>
+        <div className="flex items-center gap-2">
+          {typeof review.score === 'number' && <span className="rounded-full bg-white px-2.5 py-1 text-xs font-black text-violet-800">{review.score}/100</span>}
+          <span className="text-[10px] text-violet-700">Practice feedback · not part of your final score</span>
+        </div>
+      </div>
+      {review.summary && <p className="mt-2 leading-relaxed">{review.summary}</p>}
+      {(review.strengths.length > 0 || review.improvements.length > 0) && (
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          {review.strengths.length > 0 && <div><div className="text-[11px] font-black uppercase tracking-wide text-emerald-800">Strengths</div><ul className="mt-1 list-disc space-y-1 pl-4 text-xs">{review.strengths.map((item, i) => <li key={i}>{item}</li>)}</ul></div>}
+          {review.improvements.length > 0 && <div><div className="text-[11px] font-black uppercase tracking-wide text-amber-800">Next improvements</div><ul className="mt-1 list-disc space-y-1 pl-4 text-xs">{review.improvements.map((item, i) => <li key={i}>{item}</li>)}</ul></div>}
+        </div>
+      )}
+    </div>
   )
 }
