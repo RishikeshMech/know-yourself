@@ -10,6 +10,7 @@ export default function InterviewLivePage({ params }: { params: { id: string } }
   const [loading, setLoading] = useState(true)
   const [session, setSession] = useState<any>(null)
   const [currentQuestion, setCurrentQuestion] = useState<any>(null)
+  const [questionsPlan, setQuestionsPlan] = useState<any[]>([])
   const [error, setError] = useState<string | null>(null)
 
   const fetchSession = async () => {
@@ -18,8 +19,9 @@ export default function InterviewLivePage({ params }: { params: { id: string } }
       const res = await fetch(`/api/interviews/${params.id}`)
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to load session')
+      setCurrentQuestion(data.current_question || null)
+      setQuestionsPlan(Array.isArray(data.questions_plan) ? data.questions_plan : [])
       setSession(data.session)
-      setCurrentQuestion(data.current_question)
     } catch (e: any) {
       setError(e?.message || 'Failed to load')
     } finally {
@@ -27,7 +29,9 @@ export default function InterviewLivePage({ params }: { params: { id: string } }
     }
   }
 
-  useEffect(() => { fetchSession() }, [params.id])
+  useEffect(() => {
+    fetchSession()
+  }, [params.id])
 
   if (loading) {
     return (
@@ -47,7 +51,9 @@ export default function InterviewLivePage({ params }: { params: { id: string } }
         <main className="max-w-3xl mx-auto p-8">
           <div className="glass-card text-center py-12">
             <div className="text-rose-600 font-bold">{error}</div>
-            <Link href="/interviews" className="btn-primary mt-4 inline-flex">Back to interviews →</Link>
+            <Link href="/interviews" className="btn-primary mt-4 inline-flex">
+              Back to interviews →
+            </Link>
           </div>
         </main>
       </div>
@@ -64,7 +70,9 @@ export default function InterviewLivePage({ params }: { params: { id: string } }
           <div className="glass-card text-center py-12">
             <div className="text-4xl">📊</div>
             <div className="mt-2 text-sm font-bold">Interview completed — report ready</div>
-            <Link href={`/interviews/${session.id}/report`} className="btn-primary mt-4 inline-flex">View report →</Link>
+            <Link href={`/interviews/${session.id}/report`} className="btn-primary mt-4 inline-flex">
+              View report →
+            </Link>
           </div>
         </main>
       </div>
@@ -77,6 +85,7 @@ export default function InterviewLivePage({ params }: { params: { id: string } }
         <Navbar />
         <main className="py-6">
           <ConsentAndDeviceCheck
+            session={session}
             onComplete={async ({ consent, device }) => {
               try {
                 const res = await fetch(`/api/interviews/${session.id}/consent`, {
@@ -86,11 +95,9 @@ export default function InterviewLivePage({ params }: { params: { id: string } }
                 })
                 const data = await res.json()
                 if (!res.ok) throw new Error(data.error)
+                if (data.current_question) setCurrentQuestion(data.current_question)
+                if (Array.isArray(data.questions_plan)) setQuestionsPlan(data.questions_plan)
                 setSession(data.session)
-                // Fetch current question again
-                const sessRes = await fetch(`/api/interviews/${session.id}`)
-                const sessData = await sessRes.json()
-                setCurrentQuestion(sessData.current_question)
               } catch (e: any) {
                 alert('Consent failed: ' + (e?.message || e))
               }
@@ -105,7 +112,12 @@ export default function InterviewLivePage({ params }: { params: { id: string } }
     <div className="min-h-screen bg-[#eef1fb]">
       <Navbar />
       <main className="py-4">
-        <LiveInterview sessionId={session.id} initialSession={session} initialQuestion={currentQuestion} />
+        <LiveInterview
+          sessionId={session.id}
+          initialSession={session}
+          initialQuestion={currentQuestion}
+          initialQuestionsPlan={questionsPlan}
+        />
       </main>
     </div>
   )

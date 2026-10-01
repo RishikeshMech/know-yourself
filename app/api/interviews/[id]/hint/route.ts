@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server'
 import { getInterviewSessionFull, saveInterviewSession, getCustomOrBankQuestion } from '@/lib/interview/store.ts'
 import { gatewayCallLlm } from '@/lib/interview/llmGateway.ts'
 import { getServerClient } from '@/lib/supabaseServer.ts'
+import { randomUUID } from 'crypto'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
@@ -32,23 +33,35 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
     const hintText = question.hint_ladder[nextLevel - 1]
 
-    let interviewerHint = `Hint Level ${nextLevel}: ${hintText} (Note: using hints slightly affects scoring, but it's better to learn!)`
+    let interviewerHint = `Here is Hint ${nextLevel} of 3 for this question: ${hintText}. Take your time and continue your answer whenever you are ready. (Note: using a hint has a small score adjustment, but it is always better to keep progressing!)`
 
     try {
       const res = await gatewayCallLlm(
         [
           {
             role: 'system',
-            content: `You are Sam, a friendly interviewer. The student asked for a hint on question: "${question.prompt}". Provide hint level ${nextLevel}: "${hintText}". Keep under 40 words, encouraging, and mention hint affects score slightly. Do not reveal full answer.`,
+            content: `You are Sam, a friendly Indian technical interviewer. The student asked for a hint on question: "${question.prompt}". Provide hint level ${nextLevel}: "${hintText}". Keep under 45 words, warm and encouraging, and mention the hint affects score slightly. Do not reveal full answer.`,
           },
           { role: 'user', content: `Student requested hint level ${nextLevel}` },
         ],
         { temperature: 0.5, maxTokens: 100 },
       )
-      if (res) interviewerHint = res.text
+      if (res?.text) interviewerHint = res.text
     } catch {}
 
-    await saveInterviewSession(session, sb)
+    session.turns.push({
+      id: `t_${randomUUID().slice(0, 8)}`,
+      session_id: session.id,
+      section: question.section,
+      question_id: question.id,
+      role: 'interviewer',
+      text: interviewerHint,
+      hint_level: nextLevel,
+      timestamp: new Date().toISOString(),
+      latency_ms: 0,
+    })
+
+    await saveInterviewSession(session, sb, { persistTurns: true })
 
     return NextResponse.json({
       hint_level: nextLevel,
