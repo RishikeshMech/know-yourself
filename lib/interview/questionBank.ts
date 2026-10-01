@@ -27,7 +27,7 @@ export const QUESTION_BANK: InterviewQuestion[] = [
     difficulty: 1,
     years: [2, 3],
     type: 'warmup',
-    prompt: 'Tell me about yourself — your background, what you are studying, and what excites you about software engineering.',
+    prompt: 'Tell me about yourself — your background, what you are studying, and what excites you about Software Engineering.',
     reference_answer: 'Brief intro: name, year, branch, 1-2 projects, tech interests, career goal. STAR-lite structure, 60-90s.',
     key_points: ['Mentions year/branch', 'Mentions 1-2 projects or interests', 'Clear career motivation', 'Concise 60-90s structure'],
     common_mistakes: ['Too long life story', 'No technical content', 'Rambling without structure'],
@@ -43,7 +43,7 @@ export const QUESTION_BANK: InterviewQuestion[] = [
     difficulty: 1,
     years: [2, 3],
     type: 'warmup',
-    prompt: 'Why did you choose the {track} track for this mock interview?',
+    prompt: 'Why did you choose the Software Engineer (SWE) track for this mock interview, and how does it align with your career goals?',
     reference_answer: 'Links personal interest and career goal to track. Shows awareness of track scope.',
     key_points: ['States reason for track choice', 'Shows awareness of track scope', 'Links to past experience or goal'],
     common_mistakes: ['Generic answer', 'No connection to experience'],
@@ -734,12 +734,73 @@ export const QUESTION_BANK: InterviewQuestion[] = [
   },
 ]
 
-export function getQuestionById(id: string): InterviewQuestion | undefined {
-  return QUESTION_BANK.find(q => q.id === id)
+export function formatTrackName(track: InterviewTrack): string {
+  return track === 'ai_ml' ? 'AI/ML Engineer' : 'Software Engineer (SWE)'
+}
+
+export function formatTrackField(track: InterviewTrack): string {
+  return track === 'ai_ml'
+    ? 'Artificial Intelligence and Machine Learning (AI/ML)'
+    : 'Software Engineering (SWE)'
+}
+
+export function personalizeQuestion(
+  question: InterviewQuestion,
+  opts: {
+    track: InterviewTrack
+    year?: InterviewYear
+    studentName?: string
+    projectTitle?: string | null
+  },
+): InterviewQuestion {
+  const trackName = formatTrackName(opts.track)
+  const trackField = formatTrackField(opts.track)
+  const replacePlaceholders = (str: string) =>
+    String(str || '')
+      .replace(/\{track\}/gi, trackName)
+      .replace(/\{track_field\}/gi, trackField)
+
+  let prompt = replacePlaceholders(question.prompt)
+
+  if (question.id === 'warmup-intro-01') {
+    prompt = `Tell me about yourself — your background, what you are studying, and what excites you about ${trackField}.`
+  } else if (question.id === 'warmup-intro-02') {
+    prompt = `Why did you choose the ${trackName} track for this mock interview, and how does it align with your career goals?`
+  } else if (
+    (question.id === 'swe-project-01' || question.id === 'aiml-project-01') &&
+    opts.projectTitle &&
+    opts.projectTitle.trim().length > 1
+  ) {
+    const cleanTitle = opts.projectTitle.trim()
+    prompt = `Walk me through your project "${cleanTitle}" (${trackName} track). What problem did it solve, what was the hardest technical challenge, what trade-offs did you make, and what would you improve?`
+  }
+
+  return {
+    ...question,
+    prompt,
+    reference_answer: replacePlaceholders(question.reference_answer),
+    key_points: question.key_points.map(replacePlaceholders),
+    common_mistakes: question.common_mistakes.map(replacePlaceholders),
+    follow_ups: question.follow_ups.map(replacePlaceholders),
+    hint_ladder: [
+      replacePlaceholders(question.hint_ladder[0]),
+      replacePlaceholders(question.hint_ladder[1]),
+      replacePlaceholders(question.hint_ladder[2]),
+    ],
+  }
+}
+
+export function getQuestionById(id: string, track?: InterviewTrack): InterviewQuestion | undefined {
+  const found = QUESTION_BANK.find(q => q.id === id)
+  if (!found) return undefined
+  if (track) return personalizeQuestion(found, { track })
+  return found
 }
 
 export function getQuestionsByTrack(track: InterviewTrack, year: InterviewYear): InterviewQuestion[] {
-  return QUESTION_BANK.filter(q => (q.track === track || q.track === 'both') && q.years.includes(year))
+  return QUESTION_BANK
+    .filter(q => (q.track === track || q.track === 'both') && q.years.includes(year))
+    .map(q => personalizeQuestion(q, { track, year }))
 }
 
 export function getQuestionsBySection(track: InterviewTrack, year: InterviewYear, section: InterviewQuestion['section']): InterviewQuestion[] {
@@ -747,7 +808,9 @@ export function getQuestionsBySection(track: InterviewTrack, year: InterviewYear
 }
 
 export function getCodingQuestions(track: InterviewTrack): InterviewQuestion[] {
-  return QUESTION_BANK.filter(q => q.type === 'coding' && (q.track === track || q.track === 'both'))
+  return QUESTION_BANK
+    .filter(q => q.type === 'coding' && (q.track === track || q.track === 'both'))
+    .map(q => personalizeQuestion(q, { track }))
 }
 
 export function getRandomQuestions(

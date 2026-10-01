@@ -25,7 +25,7 @@ import {
   flushDB,
 } from '../db.ts'
 import { buildBlueprint } from './blueprint.ts'
-import { QUESTION_BANK } from './questionBank.ts'
+import { QUESTION_BANK, personalizeQuestion, formatTrackName } from './questionBank.ts'
 import { PROMPT_VERSION } from './prompts.ts'
 import {
   persistInterviewSession as persistSessionSupabase,
@@ -442,8 +442,357 @@ export async function saveFeedbackFlag(
 }
 
 export function getCustomOrBankQuestion(session: InterviewSession, questionId: string): InterviewQuestion | undefined {
-  if (session.custom_questions && session.custom_questions[questionId]) {
-    return session.custom_questions[questionId]
+  const raw =
+    session.custom_questions && session.custom_questions[questionId]
+      ? session.custom_questions[questionId]
+      : QUESTION_BANK.find(q => q.id === questionId)
+  if (!raw) return undefined
+  return personalizeQuestion(raw, {
+    track: session.track,
+    year: session.year,
+    studentName: session.student_name,
+    projectTitle: session.project_context?.title || null,
+  })
+}
+
+export interface SessionQuestionPlanItem {
+  question_number: number
+  total_questions: number
+  id: string
+  section: InterviewQuestion['section']
+  section_label: string
+  topic: string[]
+  type: InterviewQuestion['type']
+  difficulty: 1 | 2 | 3
+  time_limit_min: number
+  prompt: string
+  hint_ladder: [string, string, string]
+  follow_ups: string[]
+  coding_spec?: {
+    fn_name: any
+    starter_code: any
+    sample_input_output: any
+    target_complexity: string
   }
-  return QUESTION_BANK.find(q => q.id === questionId)
+  status: 'answered' | 'current' | 'skipped' | 'upcoming'
+  student_answer?: string
+  student_turn_timestamp?: string
+  follow_up_qa?: Array<{ interviewer: string; student?: string }>
+  interviewer_continuation_reply?: string
+  hints_used: number
+  evaluation_summary?: {
+    strengths: string[]
+    gaps: string[]
+    competency_scores: Record<string, number>
+    covered_points: number
+    total_points: number
+  }
+}
+
+export function buildSessionQuestionsPlan(session: InterviewSession): SessionQuestionPlanItem[] {
+  const sections = session.blueprint?.sections || []
+  const allEntries: Array<{ qId: string; sectionId: InterviewQuestion['section']; sectionLabel: string }> = []
+  for (const sec of sections) {
+    for (const qId of sec.question_ids || []) {
+      allEntries.push({ qId, sectionId: sec.id, sectionLabel: sec.label })
+    }
+  }
+
+  const total = allEntries.length
+  const currentQId = session.blueprint?.current_question_id || ''
+  const isSessionEnded = ['REPORT_READY', 'EVALUATING', 'ABANDONED', 'TERMINATED'].includes(session.state)
+  const skippedSet = new Set(session.skipped_questions || [])
+  const evalByQ = new Map<string, AnswerEvaluation>()
+  for (const ev of session.evaluations || []) {
+    evalByQ.set(ev.question_id, ev)
+  }
+
+  // Group student and interviewer turns per question_id
+  const turns = session.turns || []
+
+  let foundCurrent = false
+  return allEntries.map((entry, idx) => {
+    const q = getCustomOrBankQuestion(session, entry.qId)
+    const ev = evalByQ.get(entry.qId)
+    const studentTurnsForQ = turns.filter(t => t.role === 'student' && t.question_id === entry.qId)
+    const mainStudentTurn = studentTurnsForQ[0]
+    const hasAnswered = studentTurnsForQ.length > 0 || !!ev
+
+    let status: SessionQuestionPlanItem['status'] = 'upcoming'
+    if (entry.qId === currentQId && !isSessionEnded) {
+      status = 'current'
+      foundCurrent = true
+    } else if (skippedSet.has(entry.qId) || ev?.skipped) {
+      status = 'skipped'
+    } else if (hasAnswered || (!foundCurrent && currentQId && entry.qId !== currentQId)) {
+      status = hasAnswered ? 'answered' : 'upcoming'
+    }
+
+    // Collect follow-up Q&A on this question if any
+    const followUpQa: Array<{ interviewer: string; student?: string }> = []
+    const followUpInterviewerTurns = turns.filter(
+      t => t.role === 'interviewer' && t.question_id === entry.qId && t.is_follow_up,
+    )
+    followUpInterviewerTurns.forEach((ft, fIdx) => {
+      const followStudent = studentTurnsForQ[fIdx + 1]
+      followUpQa.push({
+        interviewer: ft.text,
+        student: followStudent?.text,
+      })
+    })
+
+    // Find the interviewer continuation turn that followed the student's answer to this question
+    let continuationReply: string | undefined
+    if (studentTurnsForQ.length > 0) {
+      const lastStudentTurnForQ = studentTurnsForQ[studentTurnsForQ.length - 1]
+      const lastIdx = turns.findIndex(t => t.id === lastStudentTurnForQ.id)
+      if (lastIdx >= 0 && turns[lastIdx + 1]?.role === 'interviewer') {
+        continuationReply = turns[lastIdx + 1].text
+      }
+    }
+
+    const coveredCount = ev?.key_points?.filter(k => k.status === 'covered' || k.status === 'partially').length || 0
+    const totalPoints = ev?.key_points?.length || q?.key_points?.length || 0
+
+    return {
+      question_number: idx + 1,
+      total_questions: total,
+      id: entry.qId,
+      section: entry.sectionId,
+      section_label: entry.sectionLabel,
+      topic: q?.topic || [],
+      type: q?.type || 'conceptual',
+      difficulty: q?.difficulty || 1,
+      time_limit_min: q?.time_limit_min || 3,
+      prompt: q?.prompt || '',
+      hint_ladder: q?.hint_ladder || ['', '', ''],
+      follow_ups: q?.follow_ups || [],
+      coding_spec: q?.coding_spec
+        ? {
+            fn_name: q.coding_spec.fn_name,
+            starter_code: q.coding_spec.starter_code,
+            sample_input_output: q.coding_spec.sample_input_output,
+            target_complexity: q.coding_spec.target_complexity,
+          }
+        : undefined,
+      status,
+      student_answer:
+        studentTurnsForQ.length > 0
+          ? studentTurnsForQ.map(t => t.text).join('\n\n[Follow-up Answer]: ')
+          : undefined,
+      student_turn_timestamp: mainStudentTurn?.timestamp,
+      follow_up_qa: followUpQa.length > 0 ? followUpQa : undefined,
+      interviewer_continuation_reply: continuationReply,
+      hints_used: session.hints_by_question?.[entry.qId] || 0,
+      evaluation_summary: ev
+        ? {
+            strengths: ev.strengths || [],
+            gaps: ev.gaps || [],
+            competency_scores: (ev.competency_scores as Record<string, number>) || {},
+            covered_points: coveredCount,
+            total_points: totalPoints,
+          }
+        : undefined,
+    }
+  })
+}
+
+/**
+ * Ensures any legacy `{track}` placeholder in turns/evaluations is cleaned
+ * and guarantees that an active interview session has Sam's opening turn
+ * asking Question 1 in continuation.
+ */
+export function ensureOpeningInterviewerTurn(session: InterviewSession): boolean {
+  let mutated = false
+  const trackName = formatTrackName(session.track)
+
+  // Sanitize any existing turns that may have unreplaced {track}
+  if (Array.isArray(session.turns)) {
+    for (const t of session.turns) {
+      if (typeof t.text === 'string' && /\{track\}/i.test(t.text)) {
+        t.text = t.text.replace(/\{track\}/gi, trackName)
+        mutated = true
+      }
+    }
+  }
+  if (Array.isArray(session.evaluations)) {
+    for (const ev of session.evaluations) {
+      if (typeof ev.question_prompt === 'string' && /\{track\}/i.test(ev.question_prompt)) {
+        ev.question_prompt = ev.question_prompt.replace(/\{track\}/gi, trackName)
+        mutated = true
+      }
+    }
+  }
+
+  const inactiveStates = ['SCHEDULED', 'CREATED', 'REPORT_READY', 'ABANDONED', 'TERMINATED']
+  if (inactiveStates.includes(session.state)) return mutated
+
+  if (!Array.isArray(session.turns)) session.turns = []
+  if (session.turns.length === 0 && session.blueprint?.current_question_id) {
+    const firstQ = getCustomOrBankQuestion(session, session.blueprint.current_question_id)
+    if (firstQ) {
+      const firstSection = session.blueprint.sections?.[0]
+      const totalQs = (session.blueprint.sections || []).reduce(
+        (sum, s) => sum + (s.question_ids?.length || 0),
+        0,
+      )
+      const studentFirst = session.student_name
+        ? session.student_name.trim().split(/\s+/)[0]
+        : 'Candidate'
+      const yearLabel = session.year === 2 ? '2nd Year' : '3rd Year'
+      const modeLabel =
+        session.mode === 'quick'
+          ? 'Quick Practice (15 min)'
+          : session.mode === 'full'
+            ? 'Full Simulation (45 min)'
+            : 'Standard Simulation (35 min)'
+
+      const openingText = `Namaste ${studentFirst}! Welcome to your ${trackName} AI mock interview (${yearLabel} · ${modeLabel}). We have ${totalQs} questions planned across ${session.blueprint.sections.length} sections, and I will ask each question in continuation based on your responses. Your microphone and live recording are active. Let's begin with Question 1 of ${totalQs} (${firstSection?.label || 'Welcome & Warm-up'}): ${firstQ.prompt}`
+
+      session.turns.push({
+        id: `t_${randomUUID().slice(0, 8)}`,
+        session_id: session.id,
+        section: firstQ.section,
+        question_id: firstQ.id,
+        role: 'interviewer',
+        text: openingText,
+        is_follow_up: false,
+        timestamp: session.started_at || new Date().toISOString(),
+        latency_ms: 0,
+      })
+      mutated = true
+    }
+  }
+
+  return mutated
+}
+
+/**
+ * Extracts a short, natural topic/phrase from the student's answer so Sam can
+ * acknowledge it in conversational continuation.
+ */
+function extractStudentHighlight(studentText: string, previousQuestion: InterviewQuestion): string | null {
+  const clean = String(studentText || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (!clean || clean === '[SKIPPED]' || clean.length < 8) return null
+
+  // Check if student mentioned any of the question's key points or topic words
+  for (const kp of previousQuestion.key_points || []) {
+    const words = kp
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter(w => w.length >= 4)
+    const matched = words.find(w => clean.toLowerCase().includes(w))
+    if (matched) {
+      return kp.toLowerCase()
+    }
+  }
+
+  // Otherwise extract a clean 4-8 word phrase from the student's first sentence
+  const firstSentence = clean.split(/[.?!]/)[0]?.trim() || clean
+  const words = firstSentence.split(/\s+/).slice(0, 9).join(' ')
+  if (words.length >= 10) {
+    return `"${words}${firstSentence.split(/\s+/).length > 9 ? '…' : ''}"`
+  }
+  return null
+}
+
+/**
+ * Builds a rich, natural conversational continuation reply from Sam that:
+ * 1. Acknowledges the student's answer to `previousQuestion`
+ * 2. Transitions smoothly in continuation to `nextQuestion` (mentioning track, section, question number)
+ * 3. Explicitly asks `nextQuestion.prompt` in full.
+ */
+export function buildContinuationInterviewerReply(opts: {
+  session: InterviewSession
+  previousQuestion: InterviewQuestion
+  studentText: string
+  isSkipped: boolean
+  evaluation: AnswerEvaluation
+  nextQuestion: InterviewQuestion
+  nextQuestionNumber: number
+  totalQuestions: number
+  nextSectionLabel: string
+  sameSection: boolean
+}): string {
+  const {
+    session,
+    previousQuestion,
+    studentText,
+    isSkipped,
+    evaluation,
+    nextQuestion,
+    nextQuestionNumber,
+    totalQuestions,
+    nextSectionLabel,
+    sameSection,
+  } = opts
+  const trackName = formatTrackName(session.track)
+
+  let acknowledgment = ''
+  if (isSkipped) {
+    acknowledgment = `No worries — we will skip that question and keep our momentum going in your ${trackName} interview.`
+  } else {
+    const highlight = extractStudentHighlight(studentText, previousQuestion)
+    const techScore = evaluation.competency_scores?.technical_knowledge || evaluation.competency_scores?.communication || 3
+    const coveredPoint = evaluation.key_points?.find(k => k.status === 'covered')?.point
+    const missingPoint = evaluation.key_points?.find(k => k.status === 'missing')?.point
+
+    if (previousQuestion.section === 'warmup') {
+      acknowledgment = highlight
+        ? `Thank you for sharing that! Your background around ${highlight} sets a great foundation for our ${trackName} session.`
+        : `Thank you for that introduction! That gives me helpful context for your ${trackName} mock interview.`
+    } else if (techScore >= 4 && coveredPoint) {
+      acknowledgment = `Well explained! You clearly covered ${coveredPoint.toLowerCase()}${missingPoint ? `, and keeping ${missingPoint.toLowerCase()} in mind will make it even stronger` : ''}.`
+    } else if (techScore >= 3) {
+      acknowledgment = highlight
+        ? `Good point on ${highlight}.${missingPoint ? ` In interviews, also remember to touch upon ${missingPoint.toLowerCase()}.` : ''}`
+        : `Thanks for walking through your approach on ${previousQuestion.topic.join(' & ')}.`
+    } else {
+      acknowledgment = `Thank you for your attempt on ${previousQuestion.topic.join(' & ')}.${missingPoint ? ` A key concept to review here is ${missingPoint.toLowerCase()}.` : ''}`
+    }
+  }
+
+  const nextTopics = nextQuestion.topic?.length ? ` (${nextQuestion.topic.join(', ')})` : ''
+  const bridge = sameSection
+    ? `Continuing in ${nextSectionLabel}, here is Question ${nextQuestionNumber} of ${totalQuestions}${nextTopics}:`
+    : `Moving forward in continuation to our next section — ${nextSectionLabel} — here is Question ${nextQuestionNumber} of ${totalQuestions}${nextTopics}:`
+
+  return `${acknowledgment} ${bridge} ${nextQuestion.prompt}`
+}
+
+/**
+ * Ensures that an LLM-generated interviewer reply never omits the actual next question
+ * and never leaves `{track}` unreplaced.
+ */
+export function ensureQuestionAskedInContinuation(
+  llmReply: string,
+  fallbackContinuationReply: string,
+  nextQuestion: InterviewQuestion,
+  nextQuestionNumber: number,
+  totalQuestions: number,
+  nextSectionLabel: string,
+  track: InterviewTrack,
+): string {
+  const trackName = formatTrackName(track)
+  const cleaned = String(llmReply || '')
+    .replace(/\{track\}/gi, trackName)
+    .trim()
+
+  if (!cleaned) return fallbackContinuationReply
+
+  // Check whether the LLM reply actually asked the new question
+  const promptCore = nextQuestion.prompt
+    .slice(0, Math.min(45, nextQuestion.prompt.length))
+    .toLowerCase()
+  const hasQuestionText = cleaned.toLowerCase().includes(promptCore)
+
+  if (hasQuestionText) {
+    return cleaned
+  }
+
+  // LLM gave conversational feedback/follow-up commentary but forgot to state the new question!
+  // Combine LLM's conversational acknowledgment with the explicit next question in continuation.
+  return `${cleaned}\n\nContinuing to Question ${nextQuestionNumber} of ${totalQuestions} (${nextSectionLabel} · ${nextQuestion.topic.join(', ')}): ${nextQuestion.prompt}`
 }
