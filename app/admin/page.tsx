@@ -24,7 +24,7 @@ import {
 import { Logo } from '@/components/Logo'
 import type { AdminStudentRow } from '@/lib/csv'
 import { downloadFilename } from '@/lib/csv'
-import { AiEnginePanel, CompanyResultsPanel, StudentAssessments, InterviewResultsPanel } from '@/components/admin/AdminPanels'
+import { AiEnginePanel, CompanyResultsPanel, StudentAssessments } from '@/components/admin/AdminPanels'
 
 type AuthState = 'checking' | 'guest' | 'authed'
 type SortKey = 'score' | 'name' | 'calibi'
@@ -1139,7 +1139,6 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           </p>
         )}
 
-        <InterviewResultsPanel />
         <CompanyResultsPanel onUnauthorized={onLogout} />
         <AiEnginePanel onUnauthorized={onLogout} />
         <HelpRequests />
