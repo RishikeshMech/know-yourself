@@ -5,6 +5,7 @@ import { filterRows } from '@/lib/adminFilters'
 import { downloadFilename, rowsToCsv, tableToCsv } from '@/lib/csv'
 import { ATTEMPT_COLUMNS, attemptRows, summarizeCompanies } from '@/lib/adminAssessments'
 import { CALIBI_RULE } from '@/lib/calibiScore'
+import { adminStoreUnavailable } from '@/lib/adminDataGuard'
 
 /**
  * GET /api/admin/export?kind=students|attempts|json&scope=all|filtered&college=&q=&assessed=1
@@ -27,6 +28,8 @@ export async function GET(req: Request) {
   if (!isAdminRequest(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  const storeDown = adminStoreUnavailable()
+  if (storeDown) return storeDown
   try {
     const url = new URL(req.url)
     const kind = url.searchParams.get('kind') || 'students'

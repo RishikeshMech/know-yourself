@@ -31,6 +31,7 @@ export async function POST(req: Request) {
     }
     return ok({ outcome: res.outcome, ...clientView(res.attempt, { sb }) })
   } catch (e: any) {
+    if (e?.name === 'CompanyStorageError') return jsonError(503, e.message, { retryable: true })
     return jsonError(500, 'Could not start the assessment', { detail: String(e?.message || e) })
   }
 }

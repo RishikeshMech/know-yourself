@@ -1,14 +1,17 @@
-// Supabase persistence helpers used by the API routes.
-// Every function receives the server client explicitly and degrades to a
-// logged no-op on failure — the local JSON store remains the source of truth
-// in demo mode, Supabase mirrors everything when configured.
+// Supabase persistence helpers used by the API routes. See docs/DATA_INTEGRITY.md.
 //
-// Feedback and help requests are the exception, and deliberately so: for those
-// two Supabase is the DESTINATION and the local store is only the retry queue
-// used while Postgres is unreachable (see lib/feedbackStore.ts /
-// lib/helpStore.ts). Both write with a plain INSERT plus explicit
-// unique-violation handling rather than `.upsert()`, so they work with the
-// anon key against insert-only RLS policies.
+// Each helper receives the client explicitly. Student-owned rows are written and
+// read with the STUDENT'S client (getUserClient: row-level security decides what
+// is visible), so they do not depend on the service key. Writes report their
+// outcome (PersistOutcome) instead of logging and returning success, so a route
+// can tell the candidate whether the data actually reached the database.
+//
+// Assessment start, autosave and final submit are single database functions
+// (migration 0012): each step is one transaction, applied completely or not at all.
+//
+// Feedback and help requests are the exception: Supabase is the DESTINATION and
+// the local store is only the retry queue used while Postgres is unreachable (see
+// lib/feedbackStore.ts / lib/helpStore.ts). Both write with a plain INSERT.
 import { randomUUID } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 // Same deterministic id mapping the "Write candidates into Supabase" job uses,
@@ -48,9 +51,6 @@ export function assessmentNoOf(row: any): number {
   const n = Number(row?.assessment_no ?? row?.scores?.assessment_no ?? row?.answers?.__assessment_no ?? 1)
   return Number.isFinite(n) && n >= 1 ? n : 1
 }
-
-/** Postgres error for "column does not exist" — migration 0008 not applied yet. */
-const UNDEFINED_COLUMN = '42703'
 
 function clean(v: any): string | null {
   const s = String(v ?? '').trim()
@@ -141,9 +141,16 @@ export async function supabaseSignIn(
   }
 }
 
-/** Mirrors the full onboarding form (mobile, gender, degree, …) into public.profiles. */
-export async function persistProfile(client: SupabaseClient, p: any): Promise<boolean> {
-  const row = {
+/* ------------------------------------------------------------------ */
+/* Profile, resume and tracking — rows owned by the signed-in student   */
+/* ------------------------------------------------------------------ */
+// Callers pass the STUDENT'S client (getUserClient): row-level security then
+// limits every statement to that student's own rows. Errors are returned as
+// outcomes, never swallowed, so the API can tell the candidate the truth.
+
+/** The Supabase row for an onboarding/profile save. `email` is NOT NULL. */
+function profileRow(p: any): Record<string, any> {
+  return {
     id: p.id || p.user_id,
     email: clean(p.email),
     full_name: clean(p.full_name),
@@ -161,32 +168,44 @@ export async function persistProfile(client: SupabaseClient, p: any): Promise<bo
     ai_avatar: p.ai_avatar && typeof p.ai_avatar === 'object' ? p.ai_avatar : null,
     updated_at: new Date().toISOString(),
   }
-  const { error } = await client
-    .from('profiles')
-    .upsert(row, { onConflict: 'id' })
-  if (error) {
-    console.warn('[supabase] profile persist failed:', error.message)
-    return false
-  }
-  return true
 }
 
-/** Latest profile row for a user (used by login to route returners correctly). */
-export async function fetchProfile(client: SupabaseClient, userId: string): Promise<any | null> {
+/** Mirrors the full onboarding form (mobile, gender, degree, …) into public.profiles. */
+export async function persistProfileOutcome(client: SupabaseClient, p: any): Promise<PersistOutcome> {
   try {
-    const { data } = await client
-      .from('profiles')
-      .select(PROFILE_SELECT)
-      .eq('id', userId)
-      .maybeSingle()
-    return data || null
-  } catch {
-    return null
+    const { error } = await client.from('profiles').upsert(profileRow(p), { onConflict: 'id' })
+    if (error) {
+      console.warn('[supabase] profile persist failed:', error.message)
+      return outcomeOf(error)
+    }
+    return { ok: true }
+  } catch (e: any) {
+    return { ok: false, message: e?.message || String(e) }
   }
 }
 
-export async function persistResumeAnalysis(client: SupabaseClient, rec: any): Promise<boolean> {
-  const { error } = await client.from('resume_analyses').insert({
+export async function persistProfile(client: SupabaseClient, p: any): Promise<boolean> {
+  return (await persistProfileOutcome(client, p)).ok
+}
+
+/** The student's profile row. A failed read is reported, not reported as "no profile". */
+export async function readProfile(client: SupabaseClient, userId: string): Promise<{ profile: any | null; error?: PersistOutcome }> {
+  try {
+    const { data, error } = await client.from('profiles').select(PROFILE_SELECT).eq('id', userId).maybeSingle()
+    if (error) return { profile: null, error: outcomeOf(error) }
+    return { profile: data || null }
+  } catch (e: any) {
+    return { profile: null, error: { ok: false, message: e?.message || String(e) } }
+  }
+}
+
+/** Latest profile row for a user (login/signup route on it; a failed read counts as none). */
+export async function fetchProfile(client: SupabaseClient, userId: string): Promise<any | null> {
+  return (await readProfile(client, userId)).profile
+}
+
+function resumeRow(rec: any): Record<string, any> {
+  return {
     student_id: rec.student_id,
     storage_key: rec.storage_key || null,
     resume_score: rec.resume_score ?? 0,
@@ -205,12 +224,77 @@ export async function persistResumeAnalysis(client: SupabaseClient, rec: any): P
       file_name: rec.file_name,
     },
     feedback: rec.feedback || {},
-  })
-  if (error) {
-    console.warn('[supabase] resume persist failed:', error.message)
-    return false
   }
-  return true
+}
+
+export async function persistResumeOutcome(client: SupabaseClient, rec: any): Promise<PersistOutcome> {
+  try {
+    const { error } = await client.from('resume_analyses').insert(resumeRow(rec))
+    if (error) {
+      console.warn('[supabase] resume persist failed:', error.message)
+      return outcomeOf(error)
+    }
+    return { ok: true }
+  } catch (e: any) {
+    return { ok: false, message: e?.message || String(e) }
+  }
+}
+
+export const RESUME_SELECT = 'id,student_id,storage_key,resume_score,parsed,feedback,created_at'
+
+/** The student's latest resume analysis, from Postgres. */
+export async function readLatestResume(client: SupabaseClient, studentId: string): Promise<{ analysis: any | null; error?: PersistOutcome }> {
+  try {
+    const { data, error } = await client
+      .from('resume_analyses')
+      .select(RESUME_SELECT)
+      .eq('student_id', studentId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (error) return { analysis: null, error: outcomeOf(error) }
+    return { analysis: data || null }
+  } catch (e: any) {
+    return { analysis: null, error: { ok: false, message: e?.message || String(e) } }
+  }
+}
+
+function trackingRow(ev: any): Record<string, any> {
+  return {
+    id: String(ev.id),
+    user_id: ev.user_id,
+    action: ev.action || '',
+    completed: !!ev.completed,
+    completed_at: ev.completed ? (ev.completed_at || new Date().toISOString()) : null,
+  }
+}
+
+/** WhatsApp / LinkedIn follow steps. The id is deterministic per student and action. */
+export async function persistTrackingOutcome(client: SupabaseClient, ev: any): Promise<PersistOutcome> {
+  try {
+    const { error } = await client.from('tracking_events').upsert(trackingRow(ev), { onConflict: 'id' })
+    if (error) {
+      console.warn('[supabase] tracking persist failed:', error.message)
+      return outcomeOf(error)
+    }
+    return { ok: true }
+  } catch (e: any) {
+    return { ok: false, message: e?.message || String(e) }
+  }
+}
+
+export async function readTrackingEvents(client: SupabaseClient, userId: string): Promise<{ events: any[]; error?: PersistOutcome }> {
+  try {
+    const { data, error } = await client
+      .from('tracking_events')
+      .select('id,user_id,action,completed,completed_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: true })
+    if (error) return { events: [], error: outcomeOf(error) }
+    return { events: data || [] }
+  } catch (e: any) {
+    return { events: [], error: { ok: false, message: e?.message || String(e) } }
+  }
 }
 
 /** What happened when a row was written to Postgres (or why it was not). */
@@ -440,204 +524,165 @@ export async function fetchFeedbackForStudent(
   }
 }
 
-export async function persistTrackingEvent(client: SupabaseClient, ev: any): Promise<boolean> {
-  const { error } = await client.from('tracking_events').upsert(
-    {
-      id: ev.id,
-      user_id: ev.user_id,
-      action: ev.action || '',
-      completed: !!ev.completed,
-      completed_at: ev.completed ? (ev.completed_at || new Date().toISOString()) : null,
-    },
-    { onConflict: 'id' },
-  )
-  if (error) {
-    console.warn('[supabase] tracking persist failed:', error.message)
-    return false
-  }
-  return true
+/* ------------------------------------------------------------------ */
+/* Assessments — every write is ONE database transaction (migration 0012) */
+/* ------------------------------------------------------------------ */
+// start / autosave / submit are each a single SQL function call, so the
+// database either applies the whole step or none of it:
+//   start_assessment_session  closes the previous attempt of the same assessment
+//                             and opens the new one;
+//   save_assessment_progress  autosave — never reopens or rewrites a finished attempt;
+//   submit_assessment         finalises the session AND stores its result, or neither.
+// The API never writes these tables with a separate statement any more.
+
+export interface AttemptWrite {
+  id: string
+  studentId: string
+  assessmentNo: number
+  answers?: Record<string, unknown>
+  tabSwitches?: number
+  startedAt?: string | null
+  expiresAt?: string | null
+  durationSec?: number
+  questionSeed?: number | null
 }
 
-/** Closes any active session for the student (before creating a new one). */
-export async function expireActiveAssessmentSessions(
-  client: SupabaseClient,
-  studentId: string,
-  exceptId?: string,
-  assessmentNo?: number,
-): Promise<void> {
+/** Opens an attempt; closes the same student's previous open attempt of this assessment. */
+export async function startAssessmentAttempt(client: SupabaseClient, a: AttemptWrite): Promise<PersistOutcome & { data?: any }> {
   try {
-    let q = client
-      .from('assessment_sessions')
-      .update({ status: 'expired' })
-      .eq('student_id', studentId)
-      .eq('status', 'in_progress')
-    if (exceptId) q = q.neq('id', exceptId)
-    // Only close sessions of the SAME assessment — starting the Capgemini mock
-    // must never expire an unfinished CalibiAI attempt (or vice versa).
-    if (assessmentNo) {
-      const scoped = await q.eq('assessment_no', assessmentNo)
-      if (!scoped.error || String((scoped.error as any)?.code) !== UNDEFINED_COLUMN) return
-      // Column missing (migration 0008 not applied) — fall through unscoped.
-      let retry = client
-        .from('assessment_sessions')
-        .update({ status: 'expired' })
-        .eq('student_id', studentId)
-        .eq('status', 'in_progress')
-      if (exceptId) retry = retry.neq('id', exceptId)
-      await retry
-      return
-    }
-    await q
-  } catch (e) {
-    console.warn('[supabase] session expiry failed:', (e as Error)?.message || e)
+    const { data, error } = await client.rpc('start_assessment_session', {
+      p_session_id: a.id,
+      p_student_id: a.studentId,
+      p_assessment_no: a.assessmentNo,
+      p_started_at: a.startedAt ?? null,
+      p_expires_at: a.expiresAt ?? null,
+      p_duration_sec: a.durationSec ?? 7200,
+      p_question_seed: a.questionSeed ?? null,
+      p_answers: a.answers ?? {},
+    })
+    if (error) return outcomeOf(error)
+    return { ok: true, data }
+  } catch (e: any) {
+    return { ok: false, message: e?.message || String(e) }
   }
 }
 
-/**
- * Mirrors an assessment session (start / progress save / submit status).
- * The local demo ids ("sess_…") are mapped to a real uuid up front, and the
- * partial unique index (one active session per student) is handled by expiring
- * any older active session before retrying.
- */
-export async function persistAssessmentSession(client: SupabaseClient, s: any): Promise<boolean> {
-  const studentId = toUuid(s.student_id, 'profile')
-  if (!studentId) {
-    console.warn('[supabase] session persist skipped: invalid student_id')
-    return false
-  }
-  const assessmentNo = assessmentNoOf(s)
-  // The marker also rides inside the answers JSONB so the assessment can be
-  // identified even when migration 0008 (the real column) has not been run.
-  const answers = { ...(s.answers || {}), __assessment_no: assessmentNo }
-  const row: Record<string, any> = {
-    id: toUuid(s.id, 'session') || randomUUID(),
-    student_id: studentId,
-    started_at: s.started_at ? new Date(s.started_at).toISOString() : new Date().toISOString(),
-    expires_at: s.expires_at ? new Date(s.expires_at).toISOString() : new Date(Date.now() + 7200 * 1000).toISOString(),
-    duration_sec: Number(s.duration_sec) || 7200,
-    status: s.status || 'in_progress',
-    question_seed: s.question_seed ? Number(s.question_seed) : undefined,
-    tab_switches: Number(s.tab_switches) || 0,
-    answers,
-    submitted_at: s.submitted_at ? new Date(s.submitted_at).toISOString() : null,
-    assessment_no: assessmentNo,
-  }
-  const write = (r: Record<string, any>) => client.from('assessment_sessions').upsert(r, { onConflict: 'id' })
-  let { error } = await write(row)
-  if (error && String((error as any).code) === UNDEFINED_COLUMN) {
-    // Migration 0008 not applied — retry without the dedicated column. The
-    // JSONB marker above still identifies the assessment.
-    const { assessment_no, ...legacy } = row
-    ;({ error } = await write(legacy))
-  }
-  if (error) {
-    if ((error as any).code === '23505') {
-      await expireActiveAssessmentSessions(client, studentId, row.id, assessmentNo)
-      const retry = await write(row)
-      if (!retry.error) return true
-    }
-    console.warn('[supabase] session persist failed:', error.message)
-    return false
-  }
-  return true
-}
-
-/** Mirrors the final evaluation result (scores) into public.assessment_results. */
-export async function persistAssessmentResult(client: SupabaseClient, r: any): Promise<boolean> {
-  const studentId = toUuid(r.student_id, 'profile')
-  const sessionId = toUuid(r.session_id, 'session')
-  if (!studentId || !sessionId) {
-    console.warn('[supabase] result persist skipped: invalid student_id/session_id')
-    return false
-  }
-  const assessmentNo = assessmentNoOf(r)
-  const row: Record<string, any> = {
-    session_id: sessionId,
-    student_id: studentId,
-    // Stamp the marker inside the JSONB too, so the assessment is identifiable
-    // even when migration 0008 (the dedicated column) has not been applied.
-    scores: { ...(r.scores || {}), assessment_no: assessmentNo },
-    total: Number(r.total) || 0,
-    grade: clean(r.grade) || undefined,
-    percentile: r.percentile != null ? Number(r.percentile) : undefined,
-    verifiable_hash: clean(r.verifiable_hash) || undefined,
-    ai_feedback: r.ai_feedback || {},
-    created_at: r.created_at ? new Date(r.created_at).toISOString() : undefined,
-    assessment_no: assessmentNo,
-  }
-  const write = (x: Record<string, any>) =>
-    client.from('assessment_results').upsert(x, { onConflict: 'session_id' })
-  let { error } = await write(row)
-  if (error && String((error as any).code) === UNDEFINED_COLUMN) {
-    const { assessment_no, ...legacy } = row
-    ;({ error } = await write(legacy))
-  }
-  if (error) {
-    console.warn('[supabase] result persist failed:', error.message)
-    return false
-  }
-  return true
-}
-
-/** Loads an assessment session by id from Supabase (service-role read). */
-export async function fetchAssessmentSession(client: SupabaseClient, sessionId: string): Promise<any | null> {
+/** Autosave of answers while the attempt is in progress. A finished attempt is returned unchanged. */
+export async function saveAssessmentProgress(client: SupabaseClient, a: AttemptWrite): Promise<PersistOutcome & { data?: any }> {
   try {
-    const { data } = await client
-      .from('assessment_sessions')
-      .select('*')
-      .eq('id', sessionId)
-      .maybeSingle()
-    return data || null
-  } catch {
-    return null
+    const { data, error } = await client.rpc('save_assessment_progress', {
+      p_session_id: a.id,
+      p_student_id: a.studentId,
+      p_assessment_no: a.assessmentNo,
+      p_answers: a.answers ?? {},
+      p_tab_switches: a.tabSwitches ?? 0,
+      p_started_at: a.startedAt ?? null,
+      p_expires_at: a.expiresAt ?? null,
+      p_duration_sec: a.durationSec ?? 7200,
+      p_question_seed: a.questionSeed ?? null,
+    })
+    if (error) return outcomeOf(error)
+    return { ok: true, data }
+  } catch (e: any) {
+    return { ok: false, message: e?.message || String(e) }
   }
 }
 
-/** Loads the student's active (in-progress) session from Supabase. */
-export async function fetchActiveAssessmentSession(
+export interface SubmitWrite extends AttemptWrite {
+  expired: boolean
+  submittedAt: string
+  scores: Record<string, unknown>
+  total: number
+  grade: string
+  percentile: number | null
+  verifiableHash: string | null
+  aiFeedback: Record<string, unknown>
+}
+
+/** Final submit: session + result in one transaction. Retrying the same submit is safe. */
+export async function submitAssessmentAttempt(client: SupabaseClient, s: SubmitWrite): Promise<PersistOutcome & { data?: any }> {
+  try {
+    const { data, error } = await client.rpc('submit_assessment', {
+      p_session_id: s.id,
+      p_student_id: s.studentId,
+      p_assessment_no: s.assessmentNo,
+      p_answers: s.answers ?? {},
+      p_tab_switches: s.tabSwitches ?? 0,
+      p_expired: !!s.expired,
+      p_submitted_at: s.submittedAt,
+      p_started_at: s.startedAt ?? null,
+      p_expires_at: s.expiresAt ?? null,
+      p_duration_sec: s.durationSec ?? 7200,
+      p_question_seed: s.questionSeed ?? null,
+      p_scores: s.scores,
+      p_total: s.total,
+      p_grade: s.grade,
+      p_percentile: s.percentile,
+      p_verifiable_hash: s.verifiableHash,
+      p_ai_feedback: s.aiFeedback,
+    })
+    if (error) return outcomeOf(error)
+    return { ok: true, data }
+  } catch (e: any) {
+    return { ok: false, message: e?.message || String(e) }
+  }
+}
+
+/** One assessment session row (RLS: the caller's own). A failed read is reported. */
+export async function readAssessmentSession(client: SupabaseClient, sessionId: string): Promise<{ session: any | null; error?: PersistOutcome }> {
+  try {
+    const { data, error } = await client.from('assessment_sessions').select('*').eq('id', sessionId).maybeSingle()
+    if (error) return { session: null, error: outcomeOf(error) }
+    return { session: data || null }
+  } catch (e: any) {
+    return { session: null, error: { ok: false, message: e?.message || String(e) } }
+  }
+}
+
+/** The student's open attempt for one assessment, if any. */
+export async function readActiveAssessmentSession(
   client: SupabaseClient,
   studentId: string,
   assessmentNo = 1,
-): Promise<any | null> {
+): Promise<{ session: any | null; error?: PersistOutcome }> {
   try {
-    // Fetch the recent active sessions and pick the one for this assessment.
-    // Filtering in Node (rather than `.eq('assessment_no', …)`) keeps this
-    // working before migration 0008 is applied, where the marker only exists
-    // inside the answers JSONB.
-    const { data } = await client
+    // Filtered in Node by the assessment marker so this also works before
+    // migration 0008 (the dedicated column) is applied.
+    const { data, error } = await client
       .from('assessment_sessions')
       .select('*')
       .eq('student_id', studentId)
       .eq('status', 'in_progress')
       .order('started_at', { ascending: false })
       .limit(5)
+    if (error) return { session: null, error: outcomeOf(error) }
     const rows = Array.isArray(data) ? data : []
-    return rows.find(row => assessmentNoOf(row) === assessmentNo) || null
-  } catch {
-    return null
+    return { session: rows.find(row => assessmentNoOf(row) === assessmentNo) || null }
+  } catch (e: any) {
+    return { session: null, error: { ok: false, message: e?.message || String(e) } }
   }
 }
 
-/** Latest assessment result for a student from Supabase. */
-export async function fetchLatestAssessmentResult(
+/** The student's latest result for one assessment. A failed read is reported. */
+export async function readLatestResult(
   client: SupabaseClient,
   studentId: string,
   assessmentNo = 1,
-): Promise<any | null> {
+): Promise<{ result: any | null; error?: PersistOutcome }> {
   try {
-    // A student now has at most one result per assessment, so a small window is
-    // enough. Filtering in Node keeps this correct before migration 0008 adds
-    // the dedicated column (the marker then lives in the scores JSONB).
-    const { data } = await client
+    // A student has at most one result per assessment, so a small window is
+    // enough; the marker is read from the row (column or JSONB) in Node.
+    const { data, error } = await client
       .from('assessment_results')
       .select(ASSESSMENT_RESULT_SELECT)
       .eq('student_id', studentId)
       .order('created_at', { ascending: false })
       .limit(5)
+    if (error) return { result: null, error: outcomeOf(error) }
     const rows = Array.isArray(data) ? data : []
-    return rows.find(row => assessmentNoOf(row) === assessmentNo) || null
-  } catch {
-    return null
+    return { result: rows.find(row => assessmentNoOf(row) === assessmentNo) || null }
+  } catch (e: any) {
+    return { result: null, error: { ok: false, message: e?.message || String(e) } }
   }
 }
 

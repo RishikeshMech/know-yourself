@@ -5,6 +5,7 @@ import { loadStudentRecord } from '@/lib/adminAssessmentData'
 import { getServerClient } from '@/lib/supabaseServer'
 import { rowsToCsv, tableToCsv } from '@/lib/csv'
 import { ATTEMPT_COLUMNS, attemptRows } from '@/lib/adminAssessments'
+import { adminStoreUnavailable } from '@/lib/adminDataGuard'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,6 +24,8 @@ export async function GET(req: Request) {
   if (!isAdminRequest(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  const storeDown = adminStoreUnavailable()
+  if (storeDown) return storeDown
   const url = new URL(req.url)
   const id = String(url.searchParams.get('id') || '').trim()
   const format = url.searchParams.get('format') === 'csv' ? 'csv' : 'json'

@@ -35,6 +35,7 @@ export async function POST(req: Request) {
     }
     return ok({ saved: true, saved_at: res.attempt.updated_at })
   } catch (e: any) {
+    if (e?.name === 'CompanyStorageError') return jsonError(503, e.message, { retryable: true })
     return jsonError(500, 'Autosave failed', { detail: String(e?.message || e) })
   }
 }

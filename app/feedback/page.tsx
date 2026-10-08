@@ -18,6 +18,7 @@ import {
 } from '@/lib/feedback'
 import { markJustSubmitted } from '@/lib/justSubmitted'
 import { fetchWithTimeout } from '@/lib/fetchTimeout'
+import { authHeaders } from '@/lib/authFetch'
 import { useStore } from '@/lib/store'
 
 export default function FeedbackPage() {
@@ -118,7 +119,7 @@ export default function FeedbackPage() {
       // released to their dashboard either way — an earlier build failed the
       // save, kept the "pending" ticket, and left them bouncing back here.
       const response = await fetchWithTimeout('/api/feedback', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+        method: 'POST', headers: await authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify(payload),
       }, 20000)
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data.error || 'Your feedback could not be saved. Please try again; your text is still here.')

@@ -32,6 +32,7 @@ import {
   normalizePhone,
   normalizePrn,
 } from '@/lib/validate'
+import { authFetch } from '@/lib/authFetch'
 
 const STEPS = [
   { id: 1, title: 'About you', blurb: 'The basics recruiters see first.', icon: '👤' },
@@ -396,19 +397,27 @@ export function OnboardingFlow({ variant = 'onboarding' }: { variant?: 'onboardi
       cgpa: Number(form.cgpa),
     }
     setProfile(payload)
+    // The profile is saved on the server before the student moves on. A refused
+    // or unreachable save stops here with the reason, so nothing is "saved" that
+    // is not in the database.
+    let problem = ''
     try {
-      const res = await fetch('/api/user/profile', {
+      const res = await authFetch('/api/user/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...payload, user_id: user?.id, email: user?.email }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || 'Could not save your profile.')
+        problem = data.error || 'Could not save your profile. Please try again.'
       }
-    } catch (err: any) {
-      // Offline / demo mode: the profile is still kept in the local store.
-      console.warn('profile save fell back to local store:', err?.message)
+    } catch {
+      problem = 'We could not reach the server to save your profile. Check your connection and try again.'
+    }
+    if (problem) {
+      setFormError(problem)
+      setBusy(false)
+      return
     }
     setSaved(true)
     // First-time onboarding continues to resume upload; the edit form returns

@@ -6,6 +6,7 @@ import { Stepper } from '@/components/Stepper'
 import { useEffect, useRef, useState } from 'react'
 import { resolveInstructionsRedirect, safeRead } from '@/lib/attemptAccess'
 import { AFTER_ASSESSMENT_ROUTE } from '@/lib/nextStep'
+import { authFetch } from '@/lib/authFetch'
 
 const ALLOCATION = [
   [1, 'English Communication', '15 min'],
@@ -44,6 +45,7 @@ function Inner(){
   const {setSession, user, hydrated} = useStore()
   const [checked,setChecked]=useState(false)
   const [starting,setStarting]=useState(false)
+  const [startError,setStartError]=useState('')
   // One-time assessment: users who already have a result (local or DB) are sent
   // to their student dashboard instead of being able to start another attempt, and a user
   // mid-attempt goes straight back to the in-progress assessment.
@@ -77,7 +79,7 @@ function Inner(){
     const finish = () => { if (cancelled || settled) return; settled = true; setGate('show') }
     const timer = setTimeout(finish, SCORES_LOOKUP_TIMEOUT_MS)
 
-    fetch('/api/user/scores?student_id=' + user.id)
+    authFetch('/api/user/scores?student_id=' + user.id)
       .then(r => r.json())
       .then(d => { if (cancelled) return; clearTimeout(timer); if (d?.result) go(AFTER_ASSESSMENT_ROUTE); else finish() })
       .catch(() => { clearTimeout(timer); finish() })
@@ -86,39 +88,40 @@ function Inner(){
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated, user?.id])
 
+  // Opening an attempt is a server write for the SIGNED-IN student (the access
+  // token identifies them). The candidate starts only once the server has
+  // recorded the attempt: a start that did not reach the database is not a start,
+  // so nothing is ever attributed to another account (the old client signed in as
+  // a fixed demo account to get an id).
   const start = async ()=>{
     if(starting) return
     setStarting(true)
+    setStartError('')
     const now = Date.now()
     const seed = Math.floor(Math.random()*1_000_000_000)
-    let session:any = null
+    if (!user?.id) {
+      setStartError('Please sign in again to start your assessment.')
+      setStarting(false)
+      return
+    }
+    let session: any = null
+    let problem = ''
     try {
-      const userRes = await fetch('/api/auth/login', {
+      const res = await authFetch('/api/user/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'demo@calibiai.local', password: 'demo' }),
+        body: JSON.stringify({ student_id: user.id, question_seed: seed }),
       })
-      const userData = await userRes.json()
-      const studentId = userData?.user?.id || (user?.id || '')
-      if (studentId) {
-        const sessionRes = await fetch('/api/user/session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ student_id: studentId, question_seed: seed }),
-        })
-        const sessionData = await sessionRes.json()
-        if (sessionData.session) session = sessionData.session
-      }
-    } catch (e) { /* fall through */ }
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data?.session?.id) session = data.session
+      else problem = data?.error || 'We could not start your assessment. Please try again.'
+    } catch {
+      problem = 'We could not reach the server to start your assessment. Check your connection and try again.'
+    }
     if (!session) {
-      session = { id: 'sess_'+Math.random().toString(16).slice(2,10), student_id: user?.id || '', started_at: new Date(now).toISOString(), expires_at: new Date(now+7200*1000).toISOString(), duration_sec: 7200, status:'in_progress', question_seed: seed }
-      try {
-        await fetch('/api/user/session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...session, student_id: user?.id || session.student_id || 'unknown' }),
-        })
-      } catch { /* demo mode */ }
+      setStartError(problem)
+      setStarting(false)
+      return
     }
     try{
       localStorage.setItem('calibiai_session', JSON.stringify(session))
@@ -218,6 +221,7 @@ function Inner(){
               className={`mt-4 w-full sm:w-auto px-8 py-3.5 rounded-full font-black text-sm transition ${checked && !starting ? 'btn-primary !py-3.5' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
               {starting ? 'Creating your session…' : 'START 120-MIN TIMER →'}
             </button>
+            {startError && <p role="alert" className="mt-3 text-sm font-bold text-rose-700">{startError}</p>}
           </div>
 
           <div className="space-y-4">

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { isAdminRequest } from '@/lib/adminAuth'
 import { fetchAdminMeta } from '@/lib/adminStudents'
+import { adminStoreUnavailable } from '@/lib/adminDataGuard'
 
 // College dropdown values + global stat cards. Already cheap (a single-row
 // stats view once migration 0006 is applied); the 60s cache is for bursts of
@@ -12,6 +13,8 @@ export async function GET(req: Request) {
   if (!isAdminRequest(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  const storeDown = adminStoreUnavailable()
+  if (storeDown) return storeDown
   try {
     if (cache && Date.now() - cache.at < CACHE_TTL_MS) {
       return NextResponse.json({ ...cache.payload, cached: true })

@@ -19,10 +19,13 @@ import { CalibiScoreCard } from '@/components/CalibiScoreCard'
 import { AssessmentSkillList } from '@/components/AssessmentSkillList'
 import { platformAssessmentSkills, rollupAssessmentSkills } from '@/lib/assessmentSkills'
 import type { AttemptSummary } from '@/lib/company/types'
+import { authFetch } from '@/lib/authFetch'
+import { flushPendingSubmissions } from '@/lib/submissionOutbox'
+import { syncTrackingSteps } from '@/lib/trackingSync'
 
 function Inner(){
   const router = useRouter()
-  const { user, profile, setProfile, resume, setResume, scores, setScores, scores2, setScores2, hydrated, setUser, reconcileForUser } = useStore()
+  const { user, profile, setProfile, resume, setResume, scores, setScores, scores2, setScores2, hydrated, setUser, reconcileForUser, tracking } = useStore()
   const [showReport, setShowReport] = useState(false)
   const [companyAttempts, setCompanyAttempts] = useState<AttemptSummary[]>([])
   const [companyLoaded, setCompanyLoaded] = useState(false)
@@ -112,19 +115,19 @@ function Inner(){
     const now = Date.now()
     if(!force && now - lastRefreshRef.current < 60000) return
     lastRefreshRef.current = now
-    fetch('/api/user/profile?user_id='+user.id).then(r=>r.json()).then(data=>{
+    authFetch('/api/user/profile?user_id='+user.id).then(r=>r.json()).then(data=>{
       if(data.profile) setProfile(data.profile)
     }).catch(()=>{})
-    fetch('/api/user/resume?student_id='+user.id).then(r=>r.json()).then(data=>{
+    authFetch('/api/user/resume?student_id='+user.id).then(r=>r.json()).then(data=>{
       if(data.analysis) setResume(data.analysis)
     }).catch(()=>{})
-    fetch('/api/user/scores?student_id='+user.id).then(r=>r.json()).then(data=>{
+    authFetch('/api/user/scores?student_id='+user.id).then(r=>r.json()).then(data=>{
       // Always write through — including `null` when there is no result, so a
       // stale cached score from a deleted/previous account never lingers on
       // screen or in the downloaded PDF.
       setScores(flattenAssessmentResult(data.result))
     }).catch(()=>{})
-    fetch('/api/user/scores?student_id='+user.id+'&assessment=2').then(r=>r.json()).then(data=>{
+    authFetch('/api/user/scores?student_id='+user.id+'&assessment=2').then(r=>r.json()).then(data=>{
       setScores2(flattenAssessmentResult(data.result))
     }).catch(()=>{})
   // The setters are intentionally omitted: they are context wrappers whose
@@ -136,6 +139,17 @@ function Inner(){
   useEffect(()=>{
     refresh(true)
   },[refresh])
+
+  // A final submission that never reached the server (the tab was closed, or the
+  // network dropped) is still on this device. Resend it now: the server's submit
+  // is idempotent, so this is always safe, and the score then appears here.
+  useEffect(()=>{
+    if(!validated || !user?.id) return
+    flushPendingSubmissions().then(stored => { if (stored) refresh(true) }).catch(()=>{})
+    // WhatsApp / LinkedIn steps recorded in this browser but not yet in the database.
+    syncTrackingSteps(user.id, tracking).catch(()=>{})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[validated, user?.id])
 
   // Re-sync when the user returns to this tab (e.g. after editing their profile
   // or resume on the dedicated pages) so the score reflects the latest data.

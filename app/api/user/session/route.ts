@@ -1,81 +1,108 @@
 import { randomUUID } from 'crypto'
 import { NextResponse } from 'next/server'
 import { saveAssessmentSession, getActiveSessionForStudent, getAssessmentSession, flushDB, type AssessmentSession } from '@/lib/db'
-import { getServerClient } from '@/lib/supabaseServer'
-import { fetchActiveAssessmentSession, fetchAssessmentSession, persistAssessmentSession, toUuid } from '@/lib/persist'
+import { isSupabaseConfigured } from '@/lib/supabase'
+import { resolveStudentAccess } from '@/lib/studentAuth'
+import {
+  readActiveAssessmentSession,
+  readAssessmentSession,
+  startAssessmentAttempt,
+  toUuid,
+} from '@/lib/persist'
 
 /** 1 = CalibiAI assessment (default), 2 = Capgemini 2027 mock. */
 function normalizeAssessmentNo(v: any): number {
   return Number(v) === 2 ? 2 : 1
 }
 
+/** Session columns the candidate's browser needs (never the answers blob). */
+function publicSession(row: any) {
+  if (!row) return null
+  const { answers: _answers, ...rest } = row
+  return rest
+}
+
+/**
+ * The attempt in progress for the signed-in student — by session id, or the open
+ * attempt for an assessment. Reads Supabase when it is configured.
+ */
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url)
     const sessionId = url.searchParams.get('session_id') || ''
     const studentId = url.searchParams.get('student_id') || ''
     const assessmentNo = normalizeAssessmentNo(url.searchParams.get('assessment'))
-    // Supabase may hold the session even when the local JSON store lost it
-    // (serverless instance / fresh deploy) — check it first when configured.
-    const sb = getServerClient()
-    if (sb) {
+    const who = await resolveStudentAccess(req, studentId || undefined)
+    if (!who.ok) return NextResponse.json({ error: who.error }, { status: who.status })
+
+    if (who.mode === 'supabase') {
       if (sessionId) {
-        const data = await fetchAssessmentSession(sb, sessionId)
-        if (data) return NextResponse.json({ session: data, supabase: true })
-      } else if (studentId) {
-        const data = await fetchActiveAssessmentSession(sb, studentId, assessmentNo)
-        if (data) return NextResponse.json({ session: data, supabase: true })
+        const { session, error } = await readAssessmentSession(who.client, toUuid(sessionId, 'session') || sessionId)
+        if (error) return NextResponse.json({ error: 'Could not load your attempt right now — please retry.' }, { status: 503 })
+        return NextResponse.json({ session: publicSession(session), supabase: true })
       }
+      const { session, error } = await readActiveAssessmentSession(who.client, who.studentId, assessmentNo)
+      if (error) return NextResponse.json({ error: 'Could not load your attempt right now — please retry.' }, { status: 503 })
+      return NextResponse.json({ session: publicSession(session), supabase: true })
     }
-    if (sessionId) {
-      const session = getAssessmentSession(sessionId)
-      return NextResponse.json({ session })
-    }
-    if (studentId) {
-      const session = getActiveSessionForStudent(studentId, assessmentNo)
-      return NextResponse.json({ session })
-    }
-    return NextResponse.json({ session: null })
+    if (sessionId) return NextResponse.json({ session: getAssessmentSession(sessionId) })
+    return NextResponse.json({ session: getActiveSessionForStudent(who.studentId, assessmentNo) })
   } catch (e: any) {
     return NextResponse.json({ error: e.message || 'Failed to fetch session' }, { status: 500 })
   }
 }
 
+/**
+ * Opens a new attempt. The previous open attempt of the SAME assessment is closed
+ * in the same database transaction, so there is never a moment with two.
+ */
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    // Session ids must be uuids everywhere: Supabase's `id uuid` column rejects
-    // the old "sess_…" demo ids, silently dropping the row and making returning
-    // students look like they never took the assessment. A stable id is also
-    // required — remapping a demo id on every request would create a new row
-    // per save instead of updating the same session.
+    const who = await resolveStudentAccess(req, body.student_id || body.user_id)
+    if (!who.ok) return NextResponse.json({ error: who.error }, { status: who.status })
+    // Session ids are UUIDs everywhere. The browser's id (or none) is only a hint.
     const id = toUuid(body.id, 'session') || toUuid(body.session_id, 'session') || randomUUID()
     const assessmentNo = normalizeAssessmentNo(body.assessment_no)
-    // Both assessments run a 120-minute timer.
-    const defaultDuration = 7200
-    const durationSec = Number(body.duration_sec) || defaultDuration
+    const durationSec = Number(body.duration_sec) || 7200
+    const startedAt = body.started_at || new Date().toISOString()
+    const expiresAt = body.expires_at || new Date(Date.parse(startedAt) + durationSec * 1000).toISOString()
+    const questionSeed = Number(body.question_seed) || Math.floor(Date.now() / 1000)
+
+    if (who.mode === 'supabase') {
+      const outcome = await startAssessmentAttempt(who.client, {
+        id, studentId: who.studentId, assessmentNo, startedAt, expiresAt, durationSec, questionSeed, answers: {},
+      })
+      if (!outcome.ok) {
+        if (outcome.code === '23505') {
+          return NextResponse.json({ error: 'You already have an attempt in progress for this assessment.' }, { status: 409 })
+        }
+        if (outcome.code === '42501') {
+          return NextResponse.json({ error: 'Your session has expired — please sign in again.' }, { status: 401 })
+        }
+        return NextResponse.json({ error: 'We could not start your attempt right now — please try again.' }, { status: 503 })
+      }
+      return NextResponse.json({ session: publicSession(outcome.data), saved: true, supabase: true, stored: 'supabase' })
+    }
+
     const session: AssessmentSession = {
       id,
-      student_id: body.student_id || body.user_id || '',
+      student_id: who.studentId,
       status: body.status || 'in_progress',
-      started_at: body.started_at || new Date().toISOString(),
-      expires_at: body.expires_at || new Date(Date.now() + durationSec * 1000).toISOString(),
+      started_at: startedAt,
+      expires_at: expiresAt,
       duration_sec: durationSec,
       answers: body.answers || {},
       submitted_at: body.submitted_at || null,
       tab_switches: body.tab_switches || 0,
-      question_seed: body.question_seed || Math.floor(Date.now() / 1000),
+      question_seed: questionSeed,
       assessment_no: assessmentNo,
       created_at: body.created_at || new Date().toISOString(),
     }
     saveAssessmentSession(session)
-    // The start of an attempt must be on disk before the candidate proceeds,
-    // or a crash would lose the fact they ever started.
+    // The start of an attempt must be on disk before the candidate proceeds.
     await flushDB()
-    const sb = getServerClient()
-    let supabase = false
-    if (sb) supabase = await persistAssessmentSession(sb, session)
-    return NextResponse.json({ session, saved: true, supabase })
+    return NextResponse.json({ session, saved: true, supabase: isSupabaseConfigured(), stored: 'local' })
   } catch (e: any) {
     return NextResponse.json({ error: e.message || 'Failed to save session' }, { status: 500 })
   }

@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { CheckCircle2, CircleHelp, Loader2, Mail, Send, ShieldCheck, X } from 'lucide-react'
 import { useStore } from '@/lib/store'
 import { fetchWithTimeout } from '@/lib/fetchTimeout'
+import { authHeaders } from '@/lib/authFetch'
 import { validHelpMessage, validHelpPhone } from '@/lib/help'
 
 /** In-document help: no new tab, navigation, fullscreen exit, or proctoring bypass. */
@@ -65,7 +66,7 @@ export function HelpButton({ assessment = false, disabled = false }: { assessmen
       // server queues + retries it if the database is momentarily unreachable.
       const response = await fetchWithTimeout('/api/help', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           id: requestId.current,
           student_id: user?.id || '',

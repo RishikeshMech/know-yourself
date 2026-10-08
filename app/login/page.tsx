@@ -147,7 +147,10 @@ export default function LoginPage() {
 
       if (authUser.id && data.has_onboarding) {
         try {
-          const pr = await fetch('/api/user/profile?user_id=' + authUser.id).then((r) => r.json())
+          // The session is set just below, so present the token from this response.
+          const pr = await fetch('/api/user/profile?user_id=' + authUser.id, {
+            headers: data.access_token ? { Authorization: `Bearer ${data.access_token}` } : {},
+          }).then((r) => r.json())
           if (pr?.profile?.full_name?.trim()) {
             resolvedName = pr.profile.full_name.trim()
             setProfile(pr.profile)

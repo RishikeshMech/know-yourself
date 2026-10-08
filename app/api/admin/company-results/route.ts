@@ -4,6 +4,7 @@ import { fetchAllStudents } from '@/lib/adminStudents'
 import { tableToCsv } from '@/lib/csv'
 import { ATTEMPT_COLUMNS, attemptRows, summarizeCompanies } from '@/lib/adminAssessments'
 import { COMPANY_TAGS } from '@/lib/company/catalog'
+import { adminStoreUnavailable } from '@/lib/adminDataGuard'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,6 +20,8 @@ export async function GET(req: Request) {
   if (!isAdminRequest(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  const storeDown = adminStoreUnavailable()
+  if (storeDown) return storeDown
   try {
     const url = new URL(req.url)
     const tag = url.searchParams.get('tag') || ''

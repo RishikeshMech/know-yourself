@@ -5,19 +5,15 @@ import { useStore } from '@/lib/store'
 import { Stepper } from '@/components/Stepper'
 import { WHATSAPP_COMMUNITY_URL } from '@/lib/community'
 import { WhatsAppGlyph } from '@/components/WhatsAppCommunity'
+import { recordTrackingStep } from '@/lib/trackingSync'
 
 function Inner(){
   const router = useRouter()
   const {tracking,setTracking,user} = useStore()
   const complete = async ()=>{
     setTracking({...tracking, whatsapp:true})
-    try {
-      await fetch('/api/user/tracking', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: user?.id, action: 'join_whatsapp', completed: true }),
-      })
-    } catch { /* demo mode */ }
+    // Retried here; the dashboard sends it again if it still has not reached the database.
+    if (user?.id) await recordTrackingStep(user.id, 'join_whatsapp')
     setTimeout(()=> router.replace('/tracking/linkedin'), 450)
   }
   return (

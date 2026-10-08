@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getUserByEmail, updateUserLogin, getLatestAssessmentResultForStudent, getProfileById } from '@/lib/db'
 import { verifyPassword } from '@/lib/auth'
 import { isProfileComplete } from '@/lib/validate'
-import { getServerClient } from '@/lib/supabaseServer'
+import { getServerClient, getUserClient } from '@/lib/supabaseServer'
 import { fetchProfile, hasAssessmentResult, supabaseSignIn } from '@/lib/persist'
 import { checkRateLimit } from '@/lib/rateLimit'
 
@@ -33,8 +33,10 @@ export async function POST(req: Request) {
     if (sb) {
       try {
         const auth = await supabaseSignIn(sb, { email, password })
-        const hasAssessment = await hasAssessmentResult(sb, auth.user.id)
-        const profile = await fetchProfile(sb, auth.user.id)
+        // Read the student's own rows as the student (RLS), not with the anon key.
+        const own = (auth.access_token && getUserClient(auth.access_token)) || sb
+        const hasAssessment = await hasAssessmentResult(own, auth.user.id)
+        const profile = await fetchProfile(own, auth.user.id)
         return NextResponse.json({
           access_token: auth.access_token,
           refresh_token: auth.refresh_token,

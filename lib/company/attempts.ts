@@ -149,10 +149,25 @@ function defaultScoreDeps(deps: AttemptDeps): ScoreDeps {
   }
 }
 
+/**
+ * Raised when an attempt could not be written to Supabase. The route turns it into
+ * a 503 — the candidate is told the step did not land, instead of being shown a
+ * success that exists only on this server.
+ */
+export class CompanyStorageError extends Error {
+  constructor(message = 'Your company assessment could not be saved right now — please retry.') {
+    super(message)
+    this.name = 'CompanyStorageError'
+  }
+}
+
 async function persist(attempt: CompanyAttempt, deps: AttemptDeps, opts: { createOnly?: boolean; durable?: boolean } = {}) {
   saveCompanyAttempt(attempt)
   if (opts.durable) await flushDB()
-  if (deps.sb) await persistCompanyAttempt(deps.sb, attempt, { createOnly: opts.createOnly })
+  if (deps.sb) {
+    const stored = await persistCompanyAttempt(deps.sb, attempt, { createOnly: opts.createOnly })
+    if (!stored) throw new CompanyStorageError()
+  }
 }
 
 /** The student's attempt for a company (Supabase first when configured). */

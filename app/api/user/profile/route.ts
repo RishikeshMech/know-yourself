@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { findProfileByPrn, getProfileById, saveProfile } from '@/lib/db'
-import { getServerClient } from '@/lib/supabaseServer'
-import { persistProfile, fetchProfile, PROFILE_SELECT } from '@/lib/persist'
+import { isSupabaseConfigured } from '@/lib/supabase'
+import { resolveStudentAccess } from '@/lib/studentAuth'
+import { persistProfileOutcome, readProfile } from '@/lib/persist'
 import {
   GENDER_OPTIONS,
   PHONE_DIGITS,
@@ -21,29 +22,16 @@ const PARTIAL_FIELDS = [
 ] as const
 
 const PRN_ERROR = `PRN must be ${PRN_MIN_LENGTH}–${PRN_MAX_LENGTH} letters/numbers, or left blank.`
+const PRN_TAKEN = 'That PRN is already registered to another account.'
 
-/**
- * A PRN identifies one student inside a college, so two accounts may not claim
- * the same one. Blank is always allowed (the field is optional) and a student
- * re-saving their own PRN is allowed.
- */
-async function prnAlreadyTaken(prn: string, userId: string): Promise<boolean> {
-  if (!prn) return false
-  const sb = getServerClient()
-  if (sb) {
-    try {
-      const { data } = await sb
-        .from('profiles')
-        .select('id')
-        .eq('prn', prn)
-        .neq('id', userId)
-        .limit(1)
-      if (data && data.length > 0) return true
-    } catch {
-      /* fall through to the local check below */
-    }
-  }
-  return Boolean(findProfileByPrn(prn, userId))
+/** Maps a failed Supabase write to the status and message the candidate can act on. */
+function writeFailure(outcome: { code?: string; message?: string }) {
+  if (outcome.code === '23505') return NextResponse.json({ error: PRN_TAKEN }, { status: 409 })
+  if (outcome.code === '42501') return NextResponse.json({ error: 'Your session has expired — please sign in again.' }, { status: 401 })
+  return NextResponse.json(
+    { error: 'We could not save your profile right now. Your details are unchanged — please try again.' },
+    { status: 503 },
+  )
 }
 
 export async function GET(req: Request) {
@@ -51,13 +39,14 @@ export async function GET(req: Request) {
     const url = new URL(req.url)
     const userId = url.searchParams.get('user_id') || ''
     if (!userId) return NextResponse.json({ error: 'Missing user_id' }, { status: 400 })
-    const sb = getServerClient()
-    if (sb) {
-      const { data } = await sb.from('profiles').select(PROFILE_SELECT).eq('id', userId).maybeSingle()
-      if (data) return NextResponse.json({ profile: data, supabase: true })
+    const who = await resolveStudentAccess(req, userId)
+    if (!who.ok) return NextResponse.json({ error: who.error }, { status: who.status })
+    if (who.mode === 'supabase') {
+      const { profile, error } = await readProfile(who.client, who.studentId)
+      if (error) return NextResponse.json({ error: 'Could not load your profile right now — please retry.' }, { status: 503 })
+      return NextResponse.json({ profile, supabase: true })
     }
-    const profile = getProfileById(userId)
-    return NextResponse.json({ profile })
+    return NextResponse.json({ profile: getProfileById(who.studentId) })
   } catch (e: any) {
     return NextResponse.json({ error: e.message || 'Failed to fetch profile' }, { status: 500 })
   }
@@ -66,19 +55,25 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const userId = body.user_id || body.id
+    const who = await resolveStudentAccess(req, body.user_id || body.id)
+    if (!who.ok) return NextResponse.json({ error: who.error }, { status: who.status })
+    const userId = who.studentId
+    // The verified account owns the email the profile is stored under.
+    const email = (who.mode === 'supabase' ? who.email : null) || String(body.email || '').trim()
 
-    // Partial update (inline name edit, avatar save): merge the provided
-    // fields into the existing row instead of requiring the full form again.
+    // Partial update (inline name edit, avatar save): merge into the existing row.
     if (body.partial === true) {
-      if (!userId) return NextResponse.json({ error: 'Missing user_id' }, { status: 400 })
-      const sb = getServerClient()
-      const base: any = sb ? await fetchProfile(sb, userId) : null
-      const local = getProfileById(userId)
-      const existing = base || local
+      let existing: any = null
+      if (who.mode === 'supabase') {
+        const read = await readProfile(who.client, userId)
+        if (read.error) return NextResponse.json({ error: 'Could not load your profile right now — please retry.' }, { status: 503 })
+        existing = read.profile
+      } else {
+        existing = getProfileById(userId)
+      }
       if (!existing) return NextResponse.json({ error: 'Profile not found.' }, { status: 404 })
 
-      const merged: any = { ...existing, email: existing.email || body.email || '', id: userId }
+      const merged: any = { ...existing, email: existing.email || email, id: userId }
       for (const f of PARTIAL_FIELDS) {
         if (body[f] !== undefined) merged[f] = body[f]
       }
@@ -88,57 +83,43 @@ export async function POST(req: Request) {
       if (merged.ai_avatar !== undefined && !(merged.ai_avatar && typeof merged.ai_avatar === 'object')) {
         merged.ai_avatar = null
       }
-      // PRN is optional; when present it must be a plausible registration number
-      // that no other student already claims.
+      // PRN is optional; when present it must be plausible. Uniqueness is enforced
+      // by the database (profiles_prn_unique_idx) — it is never a client-side guess.
       merged.prn = normalizePrn(merged.prn)
-      if (!isValidPrn(merged.prn)) {
-        return NextResponse.json({ error: PRN_ERROR }, { status: 400 })
-      }
-      if (await prnAlreadyTaken(merged.prn, userId)) {
-        return NextResponse.json(
-          { error: 'That PRN is already registered to another account.' },
-          { status: 409 },
-        )
+      if (!isValidPrn(merged.prn)) return NextResponse.json({ error: PRN_ERROR }, { status: 400 })
+      if (who.mode === 'local' && merged.prn && findProfileByPrn(merged.prn, userId)) {
+        return NextResponse.json({ error: PRN_TAKEN }, { status: 409 })
       }
       merged.updated_at = new Date().toISOString()
 
-      saveProfile(merged)
-      let supabase = false
-      if (sb) supabase = await persistProfile(sb, merged)
-      return NextResponse.json({ profile: merged, saved: true, supabase })
+      if (who.mode === 'local') {
+        saveProfile(merged)
+        return NextResponse.json({ profile: merged, saved: true, supabase: false, stored: 'local' })
+      }
+      const outcome = await persistProfileOutcome(who.client, merged)
+      if (!outcome.ok) return writeFailure(outcome)
+      return NextResponse.json({ profile: merged, saved: true, supabase: true, stored: 'supabase' })
     }
 
-    // Full onboarding / edit-form save: strict validation as before.
-    // Phone: exactly 10 digits (country code / trunk prefix are stripped).
+    // Full onboarding / edit-form save: strict validation.
     const phone = normalizePhone(body.phone)
     if (!isValidPhone(phone)) {
-      return NextResponse.json(
-        { error: `Mobile number must be exactly ${PHONE_DIGITS} digits.` },
-        { status: 400 },
-      )
+      return NextResponse.json({ error: `Mobile number must be exactly ${PHONE_DIGITS} digits.` }, { status: 400 })
     }
-    // Gender: fixed dropdown — Male / Female / Other only.
     const gender = (body.gender || '').toString()
     if (!isGender(gender)) {
-      return NextResponse.json(
-        { error: `Gender must be one of: ${GENDER_OPTIONS.join(', ')}.` },
-        { status: 400 },
-      )
+      return NextResponse.json({ error: `Gender must be one of: ${GENDER_OPTIONS.join(', ')}.` }, { status: 400 })
     }
-    // PRN: optional, but validated and unique when supplied.
     const prn = normalizePrn(body.prn)
-    if (!isValidPrn(prn)) {
-      return NextResponse.json({ error: PRN_ERROR }, { status: 400 })
+    if (!isValidPrn(prn)) return NextResponse.json({ error: PRN_ERROR }, { status: 400 })
+    if (who.mode === 'local' && prn && findProfileByPrn(prn, userId)) {
+      return NextResponse.json({ error: PRN_TAKEN }, { status: 409 })
     }
-    if (userId && await prnAlreadyTaken(prn, String(userId))) {
-      return NextResponse.json(
-        { error: 'That PRN is already registered to another account.' },
-        { status: 409 },
-      )
-    }
+    if (!email) return NextResponse.json({ error: 'Your account has no email address.' }, { status: 400 })
+
     const profile = {
       id: userId,
-      email: body.email || '',
+      email,
       full_name: body.full_name || '',
       prn,
       phone,
@@ -154,12 +135,13 @@ export async function POST(req: Request) {
       ai_avatar: body.ai_avatar && typeof body.ai_avatar === 'object' ? body.ai_avatar : null,
       updated_at: new Date().toISOString(),
     }
-    saveProfile(profile)
-    // Mirror everything (mobile, gender, degree, …) into Supabase when configured.
-    const sb = getServerClient()
-    let supabase = false
-    if (sb) supabase = await persistProfile(sb, profile)
-    return NextResponse.json({ profile, saved: true, supabase })
+    if (who.mode === 'local') {
+      saveProfile(profile)
+      return NextResponse.json({ profile, saved: true, supabase: false, stored: 'local' })
+    }
+    const outcome = await persistProfileOutcome(who.client, profile)
+    if (!outcome.ok) return writeFailure(outcome)
+    return NextResponse.json({ profile, saved: true, supabase: isSupabaseConfigured(), stored: 'supabase' })
   } catch (e: any) {
     return NextResponse.json({ error: e.message || 'Failed to save profile' }, { status: 500 })
   }

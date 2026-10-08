@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { isAdminRequest } from '@/lib/adminAuth'
 import { fetchStudentsFingerprint, fetchStudentsPage } from '@/lib/adminStudents'
 import { parsePageParams } from '@/lib/adminPage'
+import { adminStoreUnavailable } from '@/lib/adminDataGuard'
 
 // Short server-side cache for page payloads. The dashboard polls frequently
 // and several admins/tabs may be open at once — without this every poll is a
@@ -37,6 +38,8 @@ export async function GET(req: Request) {
   if (!isAdminRequest(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  const storeDown = adminStoreUnavailable()
+  if (storeDown) return storeDown
   let requestKey: string | null = null
   try {
     const url = new URL(req.url)

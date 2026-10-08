@@ -1,6 +1,7 @@
 'use client'
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { flattenAssessmentResult } from './resultShape'
+import { authFetch } from './authFetch'
 
 type User = { id: string, email: string, role: string, institution_id: string, name?: string }
 type Store = {
@@ -177,9 +178,9 @@ function StoreProviderRoot({ children }: { children: React.ReactNode }) {
     let fetched = false
     try {
       const [pRes, sRes, s2Res] = await Promise.all([
-        fetch(`/api/user/profile?user_id=${encodeURIComponent(live.id)}`),
-        fetch(`/api/user/scores?student_id=${encodeURIComponent(live.id)}`),
-        fetch(`/api/user/scores?student_id=${encodeURIComponent(live.id)}&assessment=2`),
+        authFetch(`/api/user/profile?user_id=${encodeURIComponent(live.id)}`),
+        authFetch(`/api/user/scores?student_id=${encodeURIComponent(live.id)}`),
+        authFetch(`/api/user/scores?student_id=${encodeURIComponent(live.id)}&assessment=2`),
       ])
       const p = await pRes.json()
       const s = await sRes.json()

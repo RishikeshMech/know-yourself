@@ -33,6 +33,8 @@ import {
   WATERMARK_TILE_HEIGHT,
 } from '@/lib/proctoring'
 import type { ScreenFacts } from '@/lib/proctoring'
+import { authFetch } from '@/lib/authFetch'
+import { queueSubmission, sendUntilStored } from '@/lib/submissionOutbox'
 
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n))
 
@@ -321,6 +323,8 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
   const [autoSubmitReason, setAutoSubmitReason] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const submittingRef = useRef(false)
+  const [submitError, setSubmitError] = useState('')
+  const lastSubmitAutoRef = useRef(false)
 
   // The Grid Challenge only exists in assessment 1; a safe default keeps the
   // shared hooks below harmless when the bank has no cognitive section.
@@ -465,7 +469,7 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
       autosaveTimerRef.current = setTimeout(() => {
         autosaveTimerRef.current = null
         autosaveLastSentRef.current = Date.now()
-        fetch('/api/user/assessment', {
+        authFetch('/api/user/assessment', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ session_id: sid, student_id: user?.id || '', answers, status: 'in_progress', assessment_no: config.no }),
@@ -1119,11 +1123,20 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
   }, [])
 
   // Runs the real submission. `auto` = triggered by the timer running out or
-  // the 3rd focus warning (auto_submitted, status "expired"); manual confirms
-  // from the review page call it with auto=false (status "submitted").
+  // the 3rd focus warning (status "expired"); manual confirms from the review
+  // page call it with auto=false (status "submitted").
+  //
+  // The final answers are kept on this device BEFORE they are sent, and the
+  // student moves on only once the server has stored the result. The database
+  // writes the session and its result in ONE transaction (migration 0012), so the
+  // attempt is either fully submitted with its result or not submitted at all.
+  // If the result cannot be stored yet, the student stays here with a retry, and
+  // the dashboard resends it later.
   const doSubmit = async (auto = false) => {
     if (submittingRef.current) return
     submittingRef.current = true
+    lastSubmitAutoRef.current = auto
+    setSubmitError('')
     setSubmitting(true)
     setShowReview(false)
     clearInterval(intervalRef.current)
@@ -1146,27 +1159,40 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
     localStorage.setItem(KEYS.scores, JSON.stringify(payload))
     if (isA2) setScores2(payload)
     else setScores(payload)
-    // The server API is the single persistence boundary. The previous client
-    // implementation also called Supabase directly after these two API calls,
-    // which duplicated every final session/result write and bypassed the
-    // server's deterministic id mapping and retry/error handling. Apart from
-    // doubling database work, that race could leave the session and result out
-    // of sync. Keep browser code transport-only; the API owns Postgres writes.
+    // No more autosaves: the final answers travel with the submit below.
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current)
+      autosaveTimerRef.current = null
+    }
+    const submission = {
+      session_id: sid,
+      student_id: user?.id || '',
+      status: auto ? 'expired' : 'submitted',
+      answers,
+      tab_switches: strikes,
+      submitted_at: payload.submitted_at,
+      auto_submitted: !!auto,
+      scores: payload,
+      total: payload.total,
+      grade: payload.grade,
+      percentile: payload.percentile,
+      verifiable_hash: payload.verifiable_hash,
+      ai_feedback: aiResults,
+      assessment_no: config.no,
+    }
+    if (sid) queueSubmission(sid, submission)
+    const stored = sid ? await sendUntilStored(sid, submission) : false
+    if (!stored) {
+      submittingRef.current = false
+      setSubmitting(false)
+      setSubmitError('We could not save your results just now. Your answers are kept safely on this device.')
+      return
+    }
     try {
-      await fetch('/api/user/assessment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sid, student_id: user?.id || '', answers, status: auto ? 'expired' : 'submitted', tab_switches: strikes, submitted_at: new Date().toISOString(), assessment_no: config.no }),
-      })
-      await fetch('/api/user/assessment/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sid, student_id: user?.id || 'unknown', scores: payload, total: payload.total, grade: payload.grade, percentile: payload.percentile, verifiable_hash: payload.verifiable_hash, ai_feedback: aiResults, assessment_no: config.no }),
-      })
-    } catch (e) { /* demo mode */ }
-    const s = JSON.parse(localStorage.getItem(KEYS.session) || '{}')
-    s.status = 'submitted'
-    localStorage.setItem(KEYS.session, JSON.stringify(s))
+      const s = JSON.parse(localStorage.getItem(KEYS.session) || '{}')
+      s.status = 'submitted'
+      localStorage.setItem(KEYS.session, JSON.stringify(s))
+    } catch { /* storage unavailable — the server copy is authoritative */ }
     // Timestamped ticket: it expires, and a stale one is cleared by
     // FeedbackGate, so a failed feedback save can never strand the candidate.
     markFeedbackPending(sid || 'sess_demo')
@@ -2130,6 +2156,17 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
           onCancel={() => setShowReview(false)}
           onSubmit={() => doSubmit(reviewMode === 'auto')}
         />
+      )}
+
+      {/* Result not stored yet: stay here, explain, and let the student retry. */}
+      {submitError && !submitting && (
+        <div role="alert" className="fixed inset-0 z-[65] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="glass-card max-w-md px-6 py-5">
+            <div className="text-sm font-black text-rose-700">Your results are not saved yet</div>
+            <p className="mt-2 text-xs text-slate-600">{submitError} Nothing has been lost, and your dashboard will send them again automatically.</p>
+            <button onClick={() => doSubmit(lastSubmitAutoRef.current)} className="btn-primary mt-4 !py-2.5 text-xs">Try again</button>
+          </div>
+        </div>
       )}
 
       {/* Submitting overlay */}

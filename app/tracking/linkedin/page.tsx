@@ -3,19 +3,15 @@ import { useRouter } from 'next/navigation'
 import { Navbar } from '@/components/Navbar'
 import { useStore } from '@/lib/store'
 import { Stepper } from '@/components/Stepper'
+import { recordTrackingStep } from '@/lib/trackingSync'
 
 function Inner(){
   const router = useRouter()
   const {tracking,setTracking,user} = useStore()
   const complete = async ()=>{
     setTracking({...tracking, linkedin:true})
-    try {
-      await fetch('/api/user/tracking', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: user?.id, action: 'follow_linkedin', completed: true }),
-      })
-    } catch { /* demo mode */ }
+    // Retried here; the dashboard sends it again if it still has not reached the database.
+    if (user?.id) await recordTrackingStep(user.id, 'follow_linkedin')
     setTimeout(()=> router.replace('/confirmation'), 450)
   }
   return (

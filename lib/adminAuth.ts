@@ -1,35 +1,70 @@
 // Admin dashboard authentication — a tiny server-side session built on an
 // HMAC-signed HttpOnly cookie. It is intentionally independent of the student
-// auth (Supabase Auth / local JSON store) so the admin login works identically
-// in demo mode and in production, on any domain.
+// auth (Supabase Auth / local JSON store) so the admin login works the same way
+// in demo mode and in production.
 //
-// Credentials are fixed by the product owner: username `admin`, password
-// `CalibiAdmin@777`. The cookie token expires after ADMIN_SESSION_HOURS and is
-// re-verified on every /api/admin/* request — there is no client-side "trust
-// me" flag, so the data API stays closed to anyone who did not log in.
-import { createHmac, timingSafeEqual } from 'crypto'
+// Secrets and credentials come from the server environment, never from the
+// repository:
+//   ADMIN_SECRET     signs the session cookie. Required in production. Outside
+//                    production a random value is generated per process.
+//   ADMIN_PASSWORD   the admin password. Required in production. Outside
+//                    production the documented development value is used.
+// In production, sign-in is refused (503) until both are configured — the
+// previous build shipped a public fallback secret and password, which let anyone
+// who could read the repository sign in and download every student record.
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'crypto'
 
 export const ADMIN_USERNAME = 'admin'
-export const ADMIN_PASSWORD = 'CalibiAdmin@777'
 export const ADMIN_COOKIE = 'calibiai_admin_session'
 const ADMIN_SESSION_HOURS = 8
-/** Override in production via env ADMIN_SECRET (any long random string). */
-const SECRET = process.env.ADMIN_SECRET || 'calibiai-admin-local-secret-change-me'
+const DEV_PASSWORD = 'CalibiAdmin@777'
+const IS_PRODUCTION = process.env.NODE_ENV === 'production'
+const DEV_SECRET = randomBytes(32).toString('hex')
 
-function hmac(data: string): string {
-  return createHmac('sha256', SECRET).update(data).digest('hex')
+/** The cookie-signing secret, or null when sign-in must stay disabled. */
+function signingSecret(): string | null {
+  const configured = (process.env.ADMIN_SECRET || '').trim()
+  if (configured) return configured
+  return IS_PRODUCTION ? null : DEV_SECRET
 }
 
-/** Constant-time string comparison (used for the password check too). */
+/** The admin password, or null when sign-in must stay disabled. */
+export function adminPassword(): string | null {
+  const configured = (process.env.ADMIN_PASSWORD || '').trim()
+  if (configured) return configured
+  return IS_PRODUCTION ? null : DEV_PASSWORD
+}
+
+/** Why admin sign-in is unavailable on this server, or null when it is configured. */
+export function adminConfigProblem(): string | null {
+  if (!signingSecret()) return 'ADMIN_SECRET is not set on the server.'
+  if (!adminPassword()) return 'ADMIN_PASSWORD is not set on the server.'
+  return null
+}
+
+function hmac(data: string): string | null {
+  const secret = signingSecret()
+  if (!secret) return null
+  return createHmac('sha256', secret).update(data).digest('hex')
+}
+
+/** Constant-time string comparison (used for the username and password checks). */
 export function safeEqual(a: string, b: string): boolean {
-  const ah = createHmac('sha256', SECRET).update(a).digest()
-  const bh = createHmac('sha256', SECRET).update(b).digest()
+  const ah = createHash('sha256').update(String(a)).digest()
+  const bh = createHash('sha256').update(String(b)).digest()
   return timingSafeEqual(ah, bh)
 }
 
+/** A signed session that expires at `expiresAtMs` (epoch milliseconds). */
+export function signSessionUntil(expiresAtMs: number): string {
+  const payload = Buffer.from(JSON.stringify({ exp: expiresAtMs })).toString('base64url')
+  const signature = hmac(payload)
+  if (!signature) throw new Error('Admin sessions are disabled: ADMIN_SECRET is not set.')
+  return `v1.${payload}.${signature}`
+}
+
 export function signSession(): string {
-  const payload = Buffer.from(JSON.stringify({ exp: Date.now() + ADMIN_SESSION_HOURS * 3600_000 })).toString('base64url')
-  return `v1.${payload}.${hmac(payload)}`
+  return signSessionUntil(Date.now() + ADMIN_SESSION_HOURS * 3600_000)
 }
 
 export function verifySessionToken(token: string | undefined | null): boolean {
@@ -37,7 +72,9 @@ export function verifySessionToken(token: string | undefined | null): boolean {
   const parts = String(token).split('.')
   if (parts.length !== 3 || parts[0] !== 'v1') return false
   const [, payload, sig] = parts
-  const expectBuf = Buffer.from(hmac(payload), 'hex')
+  const expected = hmac(payload)
+  if (!expected) return false
+  const expectBuf = Buffer.from(expected, 'hex')
   let sigBuf: Buffer
   try {
     sigBuf = Buffer.from(sig, 'hex')

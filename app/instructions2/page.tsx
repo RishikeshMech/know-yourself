@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import { resolveInstructions2Redirect, safeRead } from '@/lib/attemptAccess2'
 import { AFTER_ASSESSMENT_ROUTE } from '@/lib/nextStep'
 import { ASSESSMENT_2 } from '@/lib/assessment2Config'
+import { authFetch } from '@/lib/authFetch'
 
 // The 5 stages of the Capgemini "Assessment Journey".
 const ALLOCATION = [
@@ -43,6 +44,7 @@ function Inner() {
   const { setSession, user, hydrated } = useStore()
   const [checked, setChecked] = useState(false)
   const [starting, setStarting] = useState(false)
+  const [startError, setStartError] = useState('')
   // Same one-time-attempt gate as assessment 1, plus the extra rule that the
   // first assessment must be finished before this one unlocks.
   const [gate, setGate] = useState<'checking' | 'show'>('checking')
@@ -69,7 +71,7 @@ function Inner() {
     const finish = () => { if (cancelled || settled) return; settled = true; setGate('show') }
     const timer = setTimeout(finish, SCORES_LOOKUP_TIMEOUT_MS)
 
-    fetch('/api/user/scores?student_id=' + user.id + '&assessment=2')
+    authFetch('/api/user/scores?student_id=' + user.id + '&assessment=2')
       .then(r => r.json())
       .then(d => { if (cancelled) return; clearTimeout(timer); if (d?.result) go(AFTER_ASSESSMENT_ROUTE); else finish() })
       .catch(() => { clearTimeout(timer); finish() })
@@ -78,48 +80,44 @@ function Inner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated, user?.id])
 
+  // The attempt is opened on the server for the SIGNED-IN student before the
+  // candidate proceeds (see instructions/page.tsx). A start that did not reach the
+  // database is not a start: the candidate is told, and nothing is started.
   const start = async () => {
     if (starting) return
     setStarting(true)
+    setStartError('')
     const now = Date.now()
     const durationSec = ASSESSMENT_2.durationSec
     const seed = Math.floor(Math.random() * 1_000_000_000)
+    if (!user?.id) {
+      setStartError('Please sign in again to start your assessment.')
+      setStarting(false)
+      return
+    }
     let session: any = null
+    let problem = ''
     try {
-      const studentId = user?.id || ''
-      if (studentId) {
-        const sessionRes = await fetch('/api/user/session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            student_id: studentId,
-            question_seed: seed,
-            assessment_no: 2,
-            duration_sec: durationSec,
-          }),
-        })
-        const sessionData = await sessionRes.json()
-        if (sessionData.session) session = sessionData.session
-      }
-    } catch (e) { /* fall through to a local session */ }
+      const res = await authFetch('/api/user/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          student_id: user.id,
+          question_seed: seed,
+          assessment_no: 2,
+          duration_sec: durationSec,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data?.session?.id) session = data.session
+      else problem = data?.error || 'We could not start your assessment. Please try again.'
+    } catch {
+      problem = 'We could not reach the server to start your assessment. Check your connection and try again.'
+    }
     if (!session) {
-      session = {
-        id: 'sess2_' + Math.random().toString(16).slice(2, 10),
-        student_id: user?.id || '',
-        started_at: new Date(now).toISOString(),
-        expires_at: new Date(now + durationSec * 1000).toISOString(),
-        duration_sec: durationSec,
-        status: 'in_progress',
-        question_seed: seed,
-        assessment_no: 2,
-      }
-      try {
-        await fetch('/api/user/session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...session, student_id: user?.id || session.student_id || 'unknown' }),
-        })
-      } catch { /* demo mode */ }
+      setStartError(problem)
+      setStarting(false)
+      return
     }
     session.assessment_no = 2
     try {
@@ -221,6 +219,7 @@ function Inner() {
               className={`mt-4 w-full sm:w-auto px-8 py-3.5 rounded-full font-black text-sm transition ${checked && !starting ? 'btn-primary !py-3.5' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
               {starting ? 'Creating your session…' : 'START 120-MIN TIMER →'}
             </button>
+            {startError && <p role="alert" className="mt-3 text-sm font-bold text-rose-700">{startError}</p>}
           </div>
 
           <div className="space-y-4">

@@ -40,6 +40,9 @@ export async function POST(req: Request) {
       result: res.attempt.result ? toPublicResult(res.attempt.result) : null,
     })
   } catch (e: any) {
+    if (e?.name === 'CompanyStorageError') {
+      return jsonError(503, 'Your submission could not be saved to the database yet — nothing has been marked submitted. Please retry.', { retryable: true })
+    }
     return jsonError(500, 'Submission failed — your answers are still saved. Please retry.', { detail: String(e?.message || e) })
   }
 }

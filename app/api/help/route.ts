@@ -4,6 +4,8 @@ import { getAllHelpRequests } from '@/lib/db'
 import { flushQueuedHelpRequests, saveHelpSubmission } from '@/lib/helpStore'
 import { fetchAllHelpRequests } from '@/lib/persist'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
+import { isSupabaseConfigured } from '@/lib/supabase'
+import { optionalStudent } from '@/lib/studentAuth'
 import { getServerClient } from '@/lib/supabaseServer'
 
 export const runtime = 'nodejs'
@@ -37,7 +39,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Expected a JSON body.' }, { status: 400 })
   }
 
-  const client = getServerClient()
+  let client = getServerClient()
+  if (isSupabaseConfigured()) {
+    // The student id comes from the verified token only, never from the body: a
+    // request that is not signed in is stored without a student, so it can never
+    // be filed under someone else. The contact email the person typed is kept
+    // (it is how we reply); a signed-in request uses the verified address.
+    const who = await optionalStudent(req)
+    body = { ...body, student_id: who.studentId || '', email: who.email || body.email }
+    client = who.client || client
+  }
   const result = await saveHelpSubmission(body, client)
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: result.status })

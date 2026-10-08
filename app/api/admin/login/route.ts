@@ -1,12 +1,17 @@
 import { NextResponse } from 'next/server'
-import { ADMIN_COOKIE, ADMIN_PASSWORD, ADMIN_USERNAME, safeEqual, signSession } from '@/lib/adminAuth'
+import { ADMIN_COOKIE, ADMIN_USERNAME, adminConfigProblem, adminPassword, safeEqual, signSession } from '@/lib/adminAuth'
 
 export async function POST(req: Request) {
   try {
+    // Fail closed: a production server without its admin secrets cannot sign anyone in.
+    if (adminConfigProblem()) {
+      return NextResponse.json({ error: 'Admin sign-in is not configured on this server.' }, { status: 503 })
+    }
     const body = await req.json().catch(() => ({}))
     const username = String(body.username || '').trim()
     const password = String(body.password || '')
-    if (!safeEqual(username, ADMIN_USERNAME) || !safeEqual(password, ADMIN_PASSWORD)) {
+    const expected = adminPassword() || ''
+    if (!safeEqual(username, ADMIN_USERNAME) || !safeEqual(password, expected)) {
       return NextResponse.json({ error: 'Invalid username or password.' }, { status: 401 })
     }
     const res = NextResponse.json({ ok: true, message: 'Signed in.' })

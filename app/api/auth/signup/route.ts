@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getUserByEmail, createUser } from '@/lib/db'
 import { hashPassword } from '@/lib/auth'
-import { getServerClient } from '@/lib/supabaseServer'
+import { getServerClient, getUserClient } from '@/lib/supabaseServer'
 import { persistProfile, supabaseSignUp } from '@/lib/persist'
 import { checkRateLimit } from '@/lib/rateLimit'
 
@@ -33,7 +33,9 @@ export async function POST(req: Request) {
     if (sb) {
       try {
         const auth = await supabaseSignUp(sb, { email, password, full_name: fullName, role })
-        await persistProfile(sb, { id: auth.user.id, email, full_name: fullName })
+        // The signup trigger already creates the profile row; complete it as the student.
+        const own = (auth.access_token && getUserClient(auth.access_token)) || null
+        if (own) await persistProfile(own, { id: auth.user.id, email, full_name: fullName })
         return NextResponse.json({
           user: {
             id: auth.user.id,

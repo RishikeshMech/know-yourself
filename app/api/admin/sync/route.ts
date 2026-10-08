@@ -3,6 +3,7 @@ import { isAdminRequest } from '@/lib/adminAuth'
 import { getDB } from '@/lib/db'
 import { getServerClient } from '@/lib/supabaseServer'
 import { applySeedPlan, buildSeedPlan, describePlan } from '@/lib/supabaseSeed'
+import { adminStoreUnavailable } from '@/lib/adminDataGuard'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -24,6 +25,8 @@ export async function GET(req: Request) {
   if (!isAdminRequest(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  const storeDown = adminStoreUnavailable()
+  if (storeDown) return storeDown
   try {
     const sb = getServerClient()
     const plan = buildSeedPlan(getDB())
@@ -48,6 +51,8 @@ export async function POST(req: Request) {
   if (!isAdminRequest(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  const storeDown = adminStoreUnavailable()
+  if (storeDown) return storeDown
   const sb = getServerClient()
   if (!sb) {
     return NextResponse.json({ error: 'Supabase is not configured on this host.' }, { status: 400 })

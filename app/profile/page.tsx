@@ -16,6 +16,7 @@ import { companyApi } from '@/lib/company/client'
 import { platformAssessmentSkills, rollupAssessmentSkills } from '@/lib/assessmentSkills'
 import { AssessmentSkillList } from '@/components/AssessmentSkillList'
 import type { AttemptSummary } from '@/lib/company/types'
+import { authFetch } from '@/lib/authFetch'
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
@@ -150,10 +151,10 @@ function ProfileInner() {
     if (!user?.id) return
     const load = async () => {
       const [p, s, r, s2, co] = await Promise.all([
-        fetch('/api/user/profile?user_id=' + user.id).then(x => x.json()).catch(() => ({})),
-        fetch('/api/user/scores?student_id=' + user.id).then(x => x.json()).catch(() => ({})),
-        fetch('/api/user/resume?student_id=' + user.id).then(x => x.json()).catch(() => ({})),
-        fetch('/api/user/scores?student_id=' + user.id + '&assessment=2').then(x => x.json()).catch(() => ({})),
+        authFetch('/api/user/profile?user_id=' + user.id).then(x => x.json()).catch(() => ({})),
+        authFetch('/api/user/scores?student_id=' + user.id).then(x => x.json()).catch(() => ({})),
+        authFetch('/api/user/resume?student_id=' + user.id).then(x => x.json()).catch(() => ({})),
+        authFetch('/api/user/scores?student_id=' + user.id + '&assessment=2').then(x => x.json()).catch(() => ({})),
         companyApi.list(user.id).catch(() => null),
       ])
       setScores2Local(flattenAssessmentResult(s2?.result))
@@ -202,7 +203,7 @@ function ProfileInner() {
     if (name === displayName) { setEditingName(false); return }
     setSaving(true)
     try {
-      const res = await fetch('/api/user/profile', {
+      const res = await authFetch('/api/user/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ partial: true, user_id: user?.id, email: user?.email, full_name: name }),
@@ -223,7 +224,7 @@ function ProfileInner() {
   const saveAvatar = async (cfg: AvatarConfig) => {
     setAvatar(cfg)
     try {
-      const res = await fetch('/api/user/profile', {
+      const res = await authFetch('/api/user/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ partial: true, user_id: user?.id, email: user?.email, ai_avatar: cfg }),

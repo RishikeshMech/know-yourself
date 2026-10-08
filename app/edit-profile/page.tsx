@@ -40,6 +40,7 @@ import {
   normalizePhone,
   normalizePrn,
 } from '@/lib/validate'
+import { authFetch } from '@/lib/authFetch'
 
 function Field({
   label, hint, error, children, htmlFor, className = '',
@@ -82,7 +83,7 @@ export default function EditProfilePage() {
       setLoaded(true)
       return
     }
-    fetch('/api/user/profile?user_id=' + user.id)
+    authFetch('/api/user/profile?user_id=' + user.id)
       .then((r) => r.json())
       .then((d) => {
         if (d.profile) {
@@ -145,20 +146,27 @@ export default function EditProfilePage() {
       graduation_year: Number(form.graduation_year),
       cgpa: Number(form.cgpa),
     }
+    let problem = ''
+    let saved: any = null
     try {
-      const res = await fetch('/api/user/profile', {
+      const res = await authFetch('/api/user/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || 'Could not save your profile.')
-      setProfile(data.profile || payload)
-    } catch (err: any) {
-      // Offline / demo mode — still keep the local store so the change sticks.
-      console.warn('profile save fell back to local store:', err?.message)
-      setProfile(payload)
+      if (res.ok) saved = data.profile || payload
+      else problem = data.error || 'Could not save your profile. Please try again.'
+    } catch {
+      problem = 'We could not reach the server to save your profile. Check your connection and try again.'
     }
+    if (problem) {
+      // Not saved: stay on the form with the reason, so the change is not lost silently.
+      setFormError(problem)
+      setBusy(false)
+      return
+    }
+    setProfile(saved)
     setBusy(false)
     setSaved(true)
     setTimeout(() => router.replace('/dashboard/student'), 700)

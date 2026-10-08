@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { saveResumeAnalysis } from '@/lib/db'
-import { getServerClient } from '@/lib/supabaseServer'
-import { persistResumeAnalysis } from '@/lib/persist'
+import { persistResumeOutcome } from '@/lib/persist'
+import { resolveStudentAccess } from '@/lib/studentAuth'
 import { createLimiter } from '@/lib/concurrency'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 import {
@@ -22,8 +22,8 @@ const RATE_WINDOW_MS = 60_000
 /**
  * POST multipart { file, user_id, full_name, email, degree, skills }
  * Extracts the document text server-side, then runs the CalibiAI resume grader
- * (or the rule-based engine) to produce a professional, industry-style analysis —
- * including name-mismatch and professionalism flags.
+ * (or the rule-based engine). The analysis is stored for the VERIFIED student
+ * (the bearer token), never for an id typed into the form.
  */
 export async function POST(req: Request) {
   const rl = checkRateLimit(`resume:${getClientIp(req)}`, RATE_LIMIT, RATE_WINDOW_MS)
@@ -42,6 +42,9 @@ export async function POST(req: Request) {
   }
   try {
     const form = await req.formData()
+    const who = await resolveStudentAccess(req, form.get('user_id')?.toString())
+    if (!who.ok) return NextResponse.json({ error: who.error }, { status: who.status })
+
     const file = form.get('file')
     if (!(file instanceof File) || file.size === 0) {
       return NextResponse.json({ error: 'Please attach a resume file.' }, { status: 400 })
@@ -73,17 +76,25 @@ export async function POST(req: Request) {
     const analysis = await analyzeResumeText(text, ctx)
     const record = {
       id: 'res_' + Date.now(),
-      student_id: form.get('user_id')?.toString() || 'unknown',
+      student_id: who.studentId,
       storage_key: form.get('storage_key')?.toString() || '',
       file_name: file.name,
       created_at: new Date().toISOString(),
       ...analysis,
     }
+    if (who.mode === 'supabase') {
+      const outcome = await persistResumeOutcome(who.client, record)
+      if (!outcome.ok) {
+        // Do not show an analysis as saved when it is not in the database.
+        return NextResponse.json(
+          { error: 'We analysed your resume but could not save it. Please upload it again.' },
+          { status: 503 },
+        )
+      }
+      return NextResponse.json({ analysis: record, supabase: true, stored: 'supabase' })
+    }
     saveResumeAnalysis(record as any)
-    const sb = getServerClient()
-    let supabase = false
-    if (sb) supabase = await persistResumeAnalysis(sb, record)
-    return NextResponse.json({ analysis: record, supabase })
+    return NextResponse.json({ analysis: record, supabase: false, stored: 'local' })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'Resume analysis failed.' }, { status: 500 })
   } finally {
