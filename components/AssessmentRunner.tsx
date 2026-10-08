@@ -19,10 +19,18 @@ import { shouldCountListeningPlay, LISTENING_MAX_PLAYS } from '@/lib/listeningPl
 import type { TestRunResult } from '@/lib/runTests'
 import {
   MAX_FOCUS_STRIKES,
+  STRIKE_COOLDOWN_MS,
+  PROMPT_GUARD_TRAILING_MS,
+  FOCUS_STRIKE_GRACE_MS,
   classifyDisplayEvent,
+  classifyFocusSignal,
   evaluateStartGate,
   safeRequestFullscreen,
   resolveScreenFacts,
+  resolveDeferredFocus,
+  resolveFullscreenExit,
+  restoredStrikes,
+  shouldTerminateOnRestore,
   rightClickShouldBlock,
   FULLSCREEN_EXIT_MSG,
   DISPLAY_CONNECT_MSG,
@@ -56,10 +64,11 @@ const WRITING_AUTONEXT_WORDS = 50
 const AUTONEXT_DELAY_MS = 2800
 
 // A single real violation fires several overlapping signals (window blur +
-// visibilitychange + a fullscreen exit detected by the 1.5s monitor, e.g. when
-// a native dialog steals focus). Within this window those are coalesced into
-// ONE warning instead of cascading straight to the 3-warning auto-submit.
-const STRIKE_COOLDOWN_MS = 2500
+// visibilitychange + a fullscreen exit). Within this window those are
+// coalesced into ONE warning instead of cascading straight to the
+// max-warnings auto-submit. Native browser alerts (Allow fullscreen /
+// microphone / camera, cookie banners) never warn at all — see the prompt
+// guard and the deferred focus/fullscreen decisions in lib/proctoring.ts.
 
 const wordCount = (t: string) => (t || '').trim().split(/\s+/).filter(Boolean).length
 
@@ -315,7 +324,7 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
   const [testResults, setTestResults] = useState<Record<string, TestRunResult | undefined>>({})
   // Pre-submit review page. `reviewMode`:
   //   'manual' — candidate-initiated submit; can jump back to any question.
-  //   'auto'   — time-up / 3 warnings; read-only, no returning to the exam.
+  //   'auto'   — time-up / max warnings; read-only, no returning to the exam.
   const [showReview, setShowReview] = useState(false)
   const [reviewMode, setReviewMode] = useState<'manual' | 'auto' | null>(null)
   const [autoSubmitReason, setAutoSubmitReason] = useState('')
@@ -358,7 +367,7 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
   // blur/visibility/fullscreen events a single action produces.
   const lastStrikeAtRef = useRef(0)
   const submitRef = useRef<(auto?: boolean) => void>(() => {})
-  // Auto-submit (time-up / 3 warnings) opens the read-only review page. These
+  // Auto-submit (time-up / max warnings) ends the attempt immediately: the
   // refs keep the latest closure + a once-only guard reachable from the
   // mount-time timer interval declared further down.
   const autoSubmitRef = useRef<(reason: string) => void>(() => {})
@@ -421,6 +430,16 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
         const a = localStorage.getItem(KEYS.answers(s.id)); if (a) setAnswers(JSON.parse(a))
         const ai = localStorage.getItem(KEYS.ai(s.id)); if (ai) setAiResults(JSON.parse(ai))
       } catch { }
+      // The warning budget is STICKY per attempt: restore it from the session
+      // row so a reload, crash or back-button re-entry can never hand the
+      // candidate a fresh set of warnings. If the budget is already exhausted
+      // (e.g. the tab died between the final warning and the auto-submit
+      // landing), the attempt ends immediately on load.
+      const priorStrikes = restoredStrikes((s as any).strikes)
+      if (priorStrikes > 0) {
+        strikesRef.current = priorStrikes
+        setStrikes(priorStrikes)
+      }
       const expires = new Date(s.expires_at).getTime()
       const tick = () => {
         const rem = Math.max(0, Math.floor((expires - Date.now()) / 1000))
@@ -431,6 +450,12 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
       intervalId = setInterval(tick, 1000)
       pollId = setInterval(tick, 5000)
       intervalRef.current = intervalId
+      if (shouldTerminateOnRestore(priorStrikes)) {
+        // Deferred one tick so the submit/terminate refs are wired up first.
+        setTimeout(() => {
+          if (!cancelled) autoSubmitRef.current(`You reached ${MAX_FOCUS_STRIKES} focus warnings — your assessment was submitted automatically.`)
+        }, 0)
+      }
     }
 
     const tryLoad = () => {
@@ -498,12 +523,14 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
     try {
       return await fn()
     } finally {
-      // Absorb the trailing blur/visibility/fullscreenchange burst that
-      // follows the user answering the prompt, then re-arm the monitors.
+      // The prompt itself is covered for as long as `fn` is pending (the
+      // browser only resolves it once the user answers Allow/Block). Absorb
+      // the trailing blur/visibility/fullscreenchange burst that follows the
+      // answer, then re-arm the monitors.
       fsSuppressTimerRef.current = setTimeout(() => {
         suppressRef.current = false
         fsSuppressTimerRef.current = null
-      }, 1500)
+      }, PROMPT_GUARD_TRAILING_MS)
     }
   }
 
@@ -574,30 +601,107 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
     }
   }, [mediaReady, videoOn])
 
+  /* Record one proctoring warning. The strike counter is persisted inside the
+     session row so a reload, crash or back-button re-entry can NEVER hand the
+     candidate a fresh warning budget — the attempt resumes at the same count,
+     and a restored attempt that already hit the limit ends immediately. */
+  const recordStrike = (msg: string) => {
+    if (terminated || submittingRef.current || suppressRef.current) return false
+    // Coalesce the burst of events a single action produces (e.g. a native
+    // dialog firing blur + visibilitychange together) into one warning.
+    if (Date.now() - lastStrikeAtRef.current < STRIKE_COOLDOWN_MS) return false
+    lastStrikeAtRef.current = Date.now()
+    awayRef.current = true
+    const n = strikesRef.current + 1
+    strikesRef.current = n
+    setStrikes(n)
+    setViolationMsg(msg)
+    try {
+      const raw = localStorage.getItem(KEYS.session)
+      if (raw) {
+        const s = JSON.parse(raw)
+        s.strikes = n
+        localStorage.setItem(KEYS.session, JSON.stringify(s))
+      }
+    } catch { /* localStorage is a recovery layer, not the source of truth */ }
+    if (n >= MAX_FOCUS_STRIKES) {
+      setShowViolation(false)
+      autoSubmitRef.current(`You reached ${MAX_FOCUS_STRIKES} focus warnings — your assessment ended automatically.`)
+    } else {
+      setShowViolation(true)
+    }
+    return true
+  }
+
+  /* Focus / visibility monitoring. Native browser alerts — "Allow fullscreen",
+     "Allow microphone", "Allow camera", cookie banners, print & save dialogs —
+     steal focus and must NEVER produce a warning:
+       · signals raised while the prompt guard is armed are absorbed;
+       · a hidden tab switch counts immediately (no dialog can hide the page);
+       · blur-only signals are deferred and cancelled when the dialog closes
+         and focus returns to the window. */
+  const focusPendingRef = useRef<{ timer: any; checks: number } | null>(null)
+  const clearFocusPending = () => {
+    if (focusPendingRef.current?.timer) clearTimeout(focusPendingRef.current.timer)
+    focusPendingRef.current = null
+  }
+  const scheduleFocusRecheck = (checks: number) => {
+    if (focusPendingRef.current?.timer) clearTimeout(focusPendingRef.current.timer)
+    const timer = setTimeout(() => {
+      const pending = focusPendingRef.current
+      if (!pending) return
+      const verdict = resolveDeferredFocus({
+        suppress: suppressRef.current,
+        hidden: document.hidden,
+        focused: document.hasFocus(),
+        checks: pending.checks,
+      })
+      if (verdict === 'cancel') { clearFocusPending(); return }
+      if (verdict === 'recheck') {
+        pending.checks += 1
+        scheduleFocusRecheck(pending.checks)
+        return
+      }
+      clearFocusPending()
+      recordStrike('You left the assessment window. Switching away is recorded as a proctoring violation.')
+    }, FOCUS_STRIKE_GRACE_MS)
+    focusPendingRef.current = { timer, checks }
+  }
+
   useEffect(() => {
     const onLeave = () => {
-      if (!mediaReadyRef.current || suppressRef.current || terminated) return
-      if (document.hidden || !document.hasFocus()) {
-        if (awayRef.current) return
-        // Coalesce the burst of events a single action produces (e.g. a native
-        // dialog firing blur + visibilitychange together) into one warning.
-        if (Date.now() - lastStrikeAtRef.current < STRIKE_COOLDOWN_MS) return
-        lastStrikeAtRef.current = Date.now()
-        awayRef.current = true
-        const n = strikesRef.current + 1
-        strikesRef.current = n
-        setStrikes(n)
-        setViolationMsg('You left the assessment window. Switching away is recorded as a proctoring violation.')
-        if (n >= 3) { setShowViolation(false); autoSubmitRef.current('You reached 3 focus warnings — your assessment ended automatically.') }
-        else setShowViolation(true)
+      const verdict = classifyFocusSignal({
+        active: mediaReadyRef.current,
+        terminated,
+        suppress: suppressRef.current,
+        away: awayRef.current || !!focusPendingRef.current,
+        hidden: document.hidden,
+        focused: document.hasFocus(),
+      })
+      if (verdict === 'ignore') return
+      if (verdict === 'strike_now') {
+        recordStrike('You left the assessment window. Switching away is recorded as a proctoring violation.')
+        return
       }
+      // Blur-only: almost certainly a browser dialog. Defer and re-check.
+      scheduleFocusRecheck(0)
+    }
+    const onFocus = () => {
+      // The dialog was dismissed and focus came straight back — not a violation.
+      if (focusPendingRef.current && !document.hidden && document.hasFocus()) clearFocusPending()
     }
     document.addEventListener('visibilitychange', onLeave)
     window.addEventListener('blur', onLeave)
+    window.addEventListener('focus', onFocus)
+    window.addEventListener('focusin', onFocus)
     return () => {
       document.removeEventListener('visibilitychange', onLeave)
       window.removeEventListener('blur', onLeave)
+      window.removeEventListener('focus', onFocus)
+      window.removeEventListener('focusin', onFocus)
+      clearFocusPending()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [terminated])
 
   useEffect(() => () => {
@@ -633,24 +737,6 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
     if (envState !== 'cleared' || terminated) return
     let running = false
 
-    const bumpStrike = (msg: string) => {
-      if (terminated || submittingRef.current || suppressRef.current) return
-      // Same coalescing as onLeave — a fullscreen exit that follows a blur from
-      // the same user action must not count as a second, separate strike.
-      if (Date.now() - lastStrikeAtRef.current < STRIKE_COOLDOWN_MS) return
-      lastStrikeAtRef.current = Date.now()
-      const n = strikesRef.current + 1
-      strikesRef.current = n
-      setStrikes(n)
-      setViolationMsg(msg)
-      if (n >= MAX_FOCUS_STRIKES) {
-        setShowViolation(false)
-        autoSubmitRef.current('You reached 3 focus warnings — your assessment ended automatically.')
-      } else {
-        setShowViolation(true)
-      }
-    }
-
     // Cheating signal (an extra display appeared mid-test) → immediate end.
     const hardTerminate = (msg: string) => {
       if (terminated || submittingRef.current) return
@@ -665,16 +751,14 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
       if (running || submittingRef.current) return
       running = true
       try {
-        const now = await resolveScreenFacts(window)
+        // `allowPrompt: false` — the periodic check must never pop a native
+        // Window-Management permission prompt (and its focus theft) mid-test.
+        const now = await resolveScreenFacts(window, { allowPrompt: false })
         const last = envLastFactsRef.current
         if (!last) { envLastFactsRef.current = now; return }
-        // Leaving fullscreen is only meaningful if we actually entered it.
-        if (envFsEngagedRef.current && last.fullscreen && !now.fullscreen) {
-          bumpStrike(FULLSCREEN_EXIT_MSG)
-        }
         const ev = classifyDisplayEvent(last, now)
         if (ev === 'display_connect') { hardTerminate(DISPLAY_CONNECT_MSG); envLastFactsRef.current = now; return }
-        if (ev === 'display_layout_change') bumpStrike(DISPLAY_CHANGE_MSG)
+        if (ev === 'display_layout_change') recordStrike(DISPLAY_CHANGE_MSG)
         envLastFactsRef.current = now
       } finally {
         running = false
@@ -686,13 +770,65 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [envState, terminated])
 
-  // Keep the header button in sync with the real fullscreen state.
+  // Fullscreen handling: keep the header button in sync with the real
+  // fullscreen state AND classify every exit before it can warn.
+  //
+  // Fullscreen exits are a side effect of some native browser alerts
+  // ("Allow camera/microphone", cookie banners, print dialogs) — those dip
+  // fullscreen while the dialog holds focus and heal when it is answered, and
+  // must NEVER produce a warning. A focused exit (Esc etc.) is a real
+  // violation; an exit that sticks after the dialog is dismissed is one too.
+  const fsPendingRef = useRef<{ timer: any; checks: number } | null>(null)
+  const clearFsPending = () => {
+    if (fsPendingRef.current?.timer) clearTimeout(fsPendingRef.current.timer)
+    fsPendingRef.current = null
+  }
+  const scheduleFsRecheck = (checks: number) => {
+    if (fsPendingRef.current?.timer) clearTimeout(fsPendingRef.current.timer)
+    const timer = setTimeout(() => {
+      const pending = fsPendingRef.current
+      if (!pending) return
+      const verdict = resolveFullscreenExit({
+        suppress: suppressRef.current,
+        fullscreen: !!document.fullscreenElement,
+        focused: document.hasFocus(),
+        hidden: document.hidden,
+        checks: pending.checks,
+      })
+      if (verdict === 'cancel') { clearFsPending(); return }
+      if (verdict === 'recheck') {
+        pending.checks += 1
+        scheduleFsRecheck(pending.checks)
+        return
+      }
+      clearFsPending()
+      recordStrike(FULLSCREEN_EXIT_MSG)
+    }, FOCUS_STRIKE_GRACE_MS)
+    fsPendingRef.current = { timer, checks }
+  }
+
   useEffect(() => {
-    const sync = () => setIsFullscreen(!!document.fullscreenElement)
-    sync()
-    document.addEventListener('fullscreenchange', sync)
-    return () => document.removeEventListener('fullscreenchange', sync)
-  }, [])
+    const onFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement)
+      if (document.fullscreenElement) { clearFsPending(); return }
+      if (envState !== 'cleared' || !envFsEngagedRef.current || terminated || submittingRef.current) return
+      if (suppressRef.current) return // system alert in flight — absorb
+      if (!document.hasFocus() && !document.hidden) {
+        // A native dialog dropped fullscreen while it holds focus. Only warn
+        // if the exit is still there once the dialog has been dismissed.
+        scheduleFsRecheck(0)
+        return
+      }
+      recordStrike(FULLSCREEN_EXIT_MSG)
+    }
+    onFsChange()
+    document.addEventListener('fullscreenchange', onFsChange)
+    return () => {
+      document.removeEventListener('fullscreenchange', onFsChange)
+      clearFsPending()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [envState, terminated])
 
   // Lock the candidate in fullscreen for the whole live test. Pressing Esc (or
   // any other fullscreen exit) re-enters fullscreen automatically. Browsers
@@ -709,22 +845,27 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
       // Skip while a native permission prompt (camera/mic/fullscreen) is up —
       // requesting fullscreen then would just re-prompt and could blur-flicker.
       if (suppressRef.current || document.fullscreenElement || submittingRef.current) return
-      const attempt = async () => {
-        if (suppressRef.current || document.fullscreenElement || submittingRef.current) return
-        const ok = await safeRequestFullscreen(document)
+      const attempt = async (isRetry = false) => {
+        // Scheduled retries must pass through even while the guard's trailing
+        // window is still armed — the guard would otherwise kill its own retry
+        // chain. Each attempt runs INSIDE the guard, so if the browser asks
+        // "Allow fullscreen?" that alert can never become a warning.
+        if (document.fullscreenElement || submittingRef.current) return
+        if (!isRetry && suppressRef.current) return
+        const ok = await withPromptGuard(() => safeRequestFullscreen(document))
         if (ok) {
           showToast('Fullscreen restored — it must stay on for the whole test.')
         } else {
           attempts += 1
           if (attempts < 6) {
             clearTimeout(timer)
-            timer = setTimeout(attempt, 500)
+            timer = setTimeout(() => { void attempt(true) }, 500)
           } else {
             showToast('⚠ Fullscreen was exited — click the ⛶ button in the header to go back.')
           }
         }
       }
-      attempt()
+      void attempt()
     }
 
     const onFsChange = () => {
@@ -765,7 +906,10 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
         return
       }
 
-      const facts = await resolveScreenFacts(window)
+      // The Window-Management API may pop its own "Allow screen information?"
+      // permission prompt here — run it under the prompt guard like every
+      // other native alert, so it can never become a proctoring warning.
+      const facts = await withPromptGuard(() => resolveScreenFacts(window))
       const verdict = evaluateStartGate(facts)
       if (!verdict.allow) {
         setEnvBlockReason(verdict.reason)
@@ -958,7 +1102,9 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
           // Chrome ends recognition after a pause; keep listening while recording.
           recog.onend = () => { if (speechRef.current === recog && mediaRef.current?.state === 'recording') { try { recog.start() } catch { /* already started */ } } }
           speechRef.current = recog
-          recog.start()
+          // Speech recognition can raise its own native permission prompt —
+          // run it under the prompt guard so that alert never warns.
+          void withPromptGuard(async () => { try { recog.start() } catch { /* already started */ } })
         } catch { speechRef.current = null }
       }
       rec.onstop = async () => {
@@ -1119,8 +1265,8 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
   }, [])
 
   // Runs the real submission. `auto` = triggered by the timer running out or
-  // the 3rd focus warning (auto_submitted, status "expired"); manual confirms
-  // from the review page call it with auto=false (status "submitted").
+  // reaching the warning limit (status "submitted", `auto_submitted: true`);
+  // manual confirms from the review page call it with auto=false.
   const doSubmit = async (auto = false) => {
     if (submittingRef.current) return
     submittingRef.current = true
@@ -1130,6 +1276,16 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
     // The assessment is over — release the camera/mic stream automatically so
     // the device stops recording the moment submission begins.
     releaseMedia()
+    // Close the attempt in localStorage BEFORE any network work: from this
+    // moment the session is final, so a reload, the back button or a second
+    // tab can never re-enter the exam with a reset warning budget — every
+    // entry point (the boot guard, the /instructions redirects) sends the
+    // candidate to their results instead of back into the test.
+    try {
+      const s = JSON.parse(localStorage.getItem(KEYS.session) || '{}')
+      s.status = 'submitted'
+      localStorage.setItem(KEYS.session, JSON.stringify(s))
+    } catch { /* localStorage is a recovery layer, not the source of truth */ }
     const scores = config.computeScores(answers, aiResults, {
       gridAcc: answers['GRID'],
       speakingCount,
@@ -1139,7 +1295,7 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
       session_id: sid || 'sess_demo',
       ...scores,
       assessment_no: config.no,
-      tab_switches: strikes,
+      tab_switches: strikesRef.current,
       auto_submitted: !!auto,
       submitted_at: new Date().toISOString(),
     }
@@ -1156,7 +1312,7 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
       await fetch('/api/user/assessment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sid, student_id: user?.id || '', answers, status: auto ? 'expired' : 'submitted', tab_switches: strikes, submitted_at: new Date().toISOString(), assessment_no: config.no }),
+        body: JSON.stringify({ session_id: sid, student_id: user?.id || '', answers, status: auto ? 'expired' : 'submitted', tab_switches: strikesRef.current, submitted_at: new Date().toISOString(), assessment_no: config.no }),
       })
       await fetch('/api/user/assessment/submit', {
         method: 'POST',
@@ -1164,34 +1320,70 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
         body: JSON.stringify({ session_id: sid, student_id: user?.id || 'unknown', scores: payload, total: payload.total, grade: payload.grade, percentile: payload.percentile, verifiable_hash: payload.verifiable_hash, ai_feedback: aiResults, assessment_no: config.no }),
       })
     } catch (e) { /* demo mode */ }
-    const s = JSON.parse(localStorage.getItem(KEYS.session) || '{}')
-    s.status = 'submitted'
-    localStorage.setItem(KEYS.session, JSON.stringify(s))
-    // Timestamped ticket: it expires, and a stale one is cleared by
-    // FeedbackGate, so a failed feedback save can never strand the candidate.
-    markFeedbackPending(sid || 'sess_demo')
     markJustSubmitted()
-    router.replace('/feedback')
+    if (auto) {
+      // Terminated attempts (time up / max warnings / display violation) go
+      // STRAIGHT to the results — there is no "back" into a restartable test.
+      router.replace(AFTER_ASSESSMENT_ROUTE)
+    } else {
+      // Timestamped ticket: it expires, and a stale one is cleared by
+      // FeedbackGate, so a failed feedback save can never strand the candidate.
+      markFeedbackPending(sid || 'sess_demo')
+      router.replace('/feedback')
+    }
   }
   useEffect(() => { submitRef.current = doSubmit })
 
-  // Automatic submission (timer expiry or the 3rd focus warning) opens the same
-  // review page in READ-ONLY mode: the candidate can see exactly what was
-  // submitted, but cannot return to the exam. The actual network submission
-  // runs when they tap "Continue to results" (→ doSubmit(true)).
+  // Automatic submission (timer expiry or the final focus warning) submits the
+  // assessment IMMEDIATELY and takes the candidate to their results. There is
+  // no return to the exam and no back-navigation to a restartable state — the
+  // session was finalised synchronously at the top of doSubmit.
   const beginAutoSubmit = (reason: string) => {
     if (autoReviewRef.current || submittingRef.current) return
     autoReviewRef.current = true
     setAutoSubmitReason(reason)
     setShowViolation(false)
     setTerminated(true)
-    setReviewMode('auto')
-    setShowReview(true)
-    // Assessment is over (time-up / 3rd warning) — turn the camera & mic off
-    // now rather than keeping them live through the read-only review page.
+    // Assessment is over (time-up / final warning) — turn the camera & mic off
+    // now rather than keeping them live through submission.
     releaseMedia()
+    void doSubmit(true)
   }
   useEffect(() => { autoSubmitRef.current = beginAutoSubmit })
+
+  // The exam is a one-way door. The browser Back button must never drop the
+  // candidate back on the dashboard/instructions where a still-open session
+  // could be re-entered with a fresh warning budget: while this page is
+  // mounted the history stack is trapped on the exam, and once the attempt
+  // has ended (auto-submit) Back forwards to the results instead.
+  useEffect(() => {
+    if (!session) return
+    const anchor = () => { try { window.history.pushState({ calibiaiExam: true }, '') } catch { /* ignore */ } }
+    anchor()
+    const onPopState = () => {
+      anchor()
+      if (submittingRef.current || autoReviewRef.current) {
+        router.replace(AFTER_ASSESSMENT_ROUTE)
+      } else {
+        showToast('Back is disabled during the assessment — the timer is running. Finish and submit to leave.')
+      }
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session])
+
+  // Refresh / tab-close warning while the attempt is live. Answers autosave,
+  // but the timer keeps running and the warning budget is sticky per attempt.
+  useEffect(() => {
+    if (!session || submitting || terminated) return
+    const onUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', onUnload)
+    return () => window.removeEventListener('beforeunload', onUnload)
+  }, [session, submitting, terminated])
 
   const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
   const critical = remaining < 600
@@ -1896,7 +2088,7 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
                   : <div className="absolute inset-0 flex items-center justify-center text-center text-[10px] text-slate-400 p-2">Camera preview off<br />focus monitoring still active</div>}
                 <div className="absolute bottom-1 left-1 flex items-center gap-1 bg-black/50 rounded-full px-2 py-0.5 text-[9px] text-white">🎤 mic on</div>
               </div>
-              <div className="mt-1.5 text-[10px] text-slate-400 leading-snug">Live recording is on — please be present in camera, otherwise you will get a warning. <b className="text-slate-600">3 warnings will close the assessment.</b></div>
+              <div className="mt-1.5 text-[10px] text-slate-400 leading-snug">Live recording is on — please be present in camera, otherwise you will get a warning. <b className="text-slate-600">{MAX_FOCUS_STRIKES} warnings will close the assessment.</b></div>
             </div>
 
             <div className="text-sm font-black text-slate-800 pt-1 border-t border-slate-200/70">Sections</div>
@@ -2013,7 +2205,7 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
           </div>
 
           <div className="mt-4 rounded-2xl bg-amber-50 border border-amber-200 p-3.5 text-xs text-amber-800">
-            Keep this tab focused — the {Math.round(config.durationSec / 60)}-minute timer keeps running. Leaving the window shows a warning; after <b>3 warnings the assessment is closed automatically</b> with the answers you've completed.
+            Keep this tab focused — the {Math.round(config.durationSec / 60)}-minute timer keeps running. Leaving the window shows a warning; after <b>{MAX_FOCUS_STRIKES} warnings the assessment is closed automatically</b> with the answers you've completed.
           </div>
         </div>
       </div>
@@ -2107,7 +2299,7 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
           <div className="glass-card max-w-md w-full text-center !p-8 animate-pop">
             <div className="text-5xl">🎥</div>
             <h3 className="mt-4 text-xl font-black text-slate-900">Enable camera & microphone</h3>
-            <p className="mt-2 text-sm text-slate-500">A live proctoring preview appears on the left while you take the assessment. Live recording is on — please be present in camera, otherwise you will get a warning. <b className="text-slate-700">3 warnings will close the assessment.</b> Your screen focus is also monitored.</p>
+            <p className="mt-2 text-sm text-slate-500">A live proctoring preview appears on the left while you take the assessment. Live recording is on — please be present in camera, otherwise you will get a warning. <b className="text-slate-700">{MAX_FOCUS_STRIKES} warnings will close the assessment.</b> Your screen focus is also monitored.</p>
             <button onClick={enableMedia} className="btn-primary mt-6 w-full">Turn on camera & mic →</button>
             {mediaError && <div className="mt-3 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl p-2">{mediaError}</div>}
             <button onClick={() => { setMediaReady(true); mediaReadyRef.current = true }} className="mt-3 text-xs text-indigo-600 font-semibold">Continue without camera (focus monitoring still active)</button>
@@ -2225,7 +2417,8 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
             <p className="mt-2 text-sm text-slate-600">
               {cheatReason
                 ? cheatReason
-                : `You reached ${MAX_FOCUS_STRIKES} focus warnings.`} Your answers up to this point have been submitted for evaluation and review.
+                : autoSubmitReason || `You reached ${MAX_FOCUS_STRIKES} focus warnings.`}{' '}
+              Your answers up to this point have been submitted for evaluation and review.
             </p>
             <div className="mt-4 inline-block text-xs px-3 py-1.5 rounded-full bg-slate-100 text-slate-500">Redirecting to your results…</div>
           </div>

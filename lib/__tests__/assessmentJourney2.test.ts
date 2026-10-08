@@ -274,8 +274,8 @@ test('plugging in a display mid-test is classified as a violation', () => {
   )
 })
 
-test('three focus violations end the assessment', () => {
-  assert.equal(MAX_FOCUS_STRIKES, 3)
+test('five focus violations end the assessment', () => {
+  assert.equal(MAX_FOCUS_STRIKES, 5)
 })
 
 test('the leak-prevention watermark identifies the candidate and session', () => {

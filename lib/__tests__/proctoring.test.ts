@@ -110,8 +110,8 @@ test('right-click lock only blocks while a test is active', () => {
   assert.equal(rightClickShouldBlock(false).block, false)
 })
 
-test('focus-violation ceiling is exactly three warnings', () => {
-  assert.equal(MAX_FOCUS_STRIKES, 3)
+test('focus-violation ceiling is exactly five warnings', () => {
+  assert.equal(MAX_FOCUS_STRIKES, 5)
 })
 
 /* ---------------- Leak-prevention watermark ---------------- */

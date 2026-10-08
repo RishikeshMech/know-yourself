@@ -26,6 +26,7 @@ import {
 import {
   fetchCompanyAttempt, fetchCompanyAttemptSummaries, persistCompanyAttempt, toUuid,
 } from '../persist.ts'
+import { restoredStrikes } from '../proctoring.ts'
 import { getCompany } from './catalog.ts'
 import { blueprintMinutes, getBlueprint } from './blueprints.ts'
 import { loadBank, type LoadedBank } from './bank.ts'
@@ -372,15 +373,23 @@ export function clientView(attempt: CompanyAttempt, deps: AttemptDeps = {}): {
   attempt: AttemptSummary & { id: string; duration_sec: number }
   paper: ClientPaper
   answers: Record<string, unknown>
+  /** Sticky proctoring counters so a resume can never reset the warning budget. */
+  proctoring: { strikes: number; camera: boolean | null; fullscreen: boolean | null }
   server_now: string
 } {
   const company = getCompany(attempt.company)
   if (!company) throw new Error(`Unknown company: ${attempt.company}`)
   const bank = deps.bank || loadBank()
+  const proctoring = attempt.proctoring || emptyProctoring()
   return {
     attempt: { ...toSummary(attempt), id: attempt.id, duration_sec: attempt.duration_sec },
     paper: toClientPaper(company, attempt.paper, bank),
     answers: attempt.answers || {},
+    proctoring: {
+      strikes: restoredStrikes(proctoring.strikes),
+      camera: typeof proctoring.camera === 'boolean' ? proctoring.camera : null,
+      fullscreen: typeof proctoring.fullscreen === 'boolean' ? proctoring.fullscreen : null,
+    },
     server_now: nowOf(deps).toISOString(),
   }
 }

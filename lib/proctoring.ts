@@ -27,7 +27,30 @@
 /* ------------------------------------------------------------------ */
 
 /** How many focus/display/fullscreen violations before auto-submit. */
-export const MAX_FOCUS_STRIKES = 3
+export const MAX_FOCUS_STRIKES = 5
+
+/**
+ * A single real violation fires several overlapping DOM signals (window blur +
+ * visibilitychange + a fullscreen exit). Within this window they are coalesced
+ * into ONE warning instead of cascading into instant termination.
+ */
+export const STRIKE_COOLDOWN_MS = 2500
+
+/**
+ * How long the proctoring monitors stay disarmed AFTER a native browser prompt
+ * (Allow fullscreen / camera / microphone / clipboard / cookie banners) has
+ * been answered. The prompt resolution itself fires a trailing
+ * blur/visibility/fullscreenchange burst — never a real violation.
+ */
+export const PROMPT_GUARD_TRAILING_MS = 4000
+
+/**
+ * How long a focus-loss signal waits before it becomes a warning. Native
+ * browser dialogs (permission prompts, cookie banners, print dialogs) take
+ * focus away and hand it straight back when dismissed — if the focus returns
+ * within this window (and no prompt guard is active) nothing happened.
+ */
+export const FOCUS_STRIKE_GRACE_MS = 3000
 
 export const FULLSCREEN_EXIT_MSG =
   'You exited fullscreen mode. Fullscreen must stay on for the whole test — going out of fullscreen is recorded as a proctoring violation.'
@@ -209,6 +232,110 @@ export function rightClickShouldBlock(active: boolean): ContextMenuVerdict {
 }
 
 /* ------------------------------------------------------------------ */
+/* Strike decisions (pure)                                             */
+/*                                                                     */
+/* Native browser alerts — “Allow fullscreen”, “Allow microphone”,     */
+/* “Allow camera”, cookie/storage banners, print & save dialogs —     */
+/* steal window focus and can briefly drop fullscreen. None of that is */
+/* a real violation, so every focus/fullscreen signal runs through     */
+/* these decision functions first: signals raised while a prompt guard */
+/* is armed are absorbed, and blur-only signals are deferred and       */
+/* cancelled when the dialog is dismissed and focus returns.           */
+/* ------------------------------------------------------------------ */
+
+export type FocusSignalAction = 'ignore' | 'strike_now' | 'defer'
+
+/**
+ * Decide what a blur/visibilitychange signal means.
+ *
+ *   ignore     — not actually away, already flagged, or a system alert in flight
+ *   strike_now — the document is hidden (real tab switch / minimised window);
+ *                no browser dialog can hide the page, so this is unambiguous
+ *   defer      — window blurred but the page is still visible: exactly what a
+ *                native permission/cookie/print dialog produces. Wait for the
+ *                grace window and re-check instead of warning immediately.
+ */
+export function classifyFocusSignal(input: {
+  active: boolean
+  terminated: boolean
+  suppress: boolean
+  away: boolean
+  hidden: boolean
+  focused: boolean
+}): FocusSignalAction {
+  const { active, terminated, suppress, away, hidden, focused } = input
+  if (!active || terminated || suppress) return 'ignore'
+  if (away) return 'ignore'
+  if (!hidden && focused) return 'ignore'
+  if (hidden) return 'strike_now'
+  return 'defer'
+}
+
+/**
+ * Re-check a deferred blur signal when its grace window expires (or focus
+ * returns early). System alerts must never produce warnings:
+ *
+ *   cancel  — prompt guard active (system alert), or focus came straight back
+ *   recheck — the window is still blurred but the page is visible: a dialog is
+ *             probably still open, give it another grace window
+ *   strike  — genuinely away (page hidden) or stayed away beyond the budget
+ */
+export function resolveDeferredFocus(input: {
+  suppress: boolean
+  hidden: boolean
+  focused: boolean
+  checks: number
+  maxChecks?: number
+}): 'strike' | 'cancel' | 'recheck' {
+  const { suppress, hidden, focused, checks, maxChecks = 2 } = input
+  if (suppress) return 'cancel'
+  if (!hidden && focused) return 'cancel'
+  if (!hidden && !focused) return checks < maxChecks ? 'recheck' : 'strike'
+  return 'strike'
+}
+
+/**
+ * Re-check a fullscreen exit before it becomes a warning. Fullscreen drops are
+ * a side effect of some native permission prompts — those heal as soon as the
+ * prompt is answered and must never warn. A real exit (Esc, F11-style loss)
+ * that stays out while the page is focused does warn.
+ *
+ *   cancel  — prompt guard active, or fullscreen is back (transient dip)
+ *   recheck — a dialog still holds focus; look again after another grace window
+ *   strike  — the exit stuck (or the page was hidden away with it)
+ */
+export function resolveFullscreenExit(input: {
+  suppress: boolean
+  fullscreen: boolean
+  focused: boolean
+  hidden: boolean
+  checks: number
+  maxChecks?: number
+}): 'strike' | 'cancel' | 'recheck' {
+  const { suppress, fullscreen, focused, hidden, checks, maxChecks = 2 } = input
+  if (suppress) return 'cancel'
+  if (fullscreen) return 'cancel'
+  if (hidden) return 'strike'
+  if (!focused) return checks < maxChecks ? 'recheck' : 'strike'
+  return 'strike'
+}
+
+/**
+ * Strike counters are sticky per attempt: a reload, a crash or a back-button
+ * re-entry must never reset the warning budget. Reads a persisted counter
+ * (localStorage JSON, server snapshot) defensively.
+ */
+export function restoredStrikes(raw: unknown): number {
+  const n = Math.floor(Number(raw))
+  return Number.isFinite(n) && n > 0 ? Math.min(n, 100) : 0
+}
+
+/** A restored attempt that already hit the limit must end immediately. */
+export function shouldTerminateOnRestore(strikes: number, max: number = MAX_FOCUS_STRIKES): boolean {
+  return restoredStrikes(strikes) >= max
+}
+
+/* ------------------------------------------------------------------ */
 /* Browser adapters (used by /assessment)                              */
 /* ------------------------------------------------------------------ */
 
@@ -217,14 +344,27 @@ export function rightClickShouldBlock(active: boolean): ContextMenuVerdict {
  * the user has (or grants) permission. Never throws; returns plain facts.
  *
  * `getScreenDetails` may prompt for permission the first time — that prompt is
- * part of the pre-test gate and is fine to surface.
+ * part of the pre-test gate and is fine to surface there. Once the exam is
+ * running pass `{ allowPrompt: false }`: only the already-granted cached
+ * `window.screenDetails` is consulted, so the periodic monitor can NEVER pop a
+ * native “Allow screen information?” prompt (and its focus theft) mid-test.
  */
-export async function resolveScreenFacts(win: any): Promise<ScreenFacts> {
+export async function resolveScreenFacts(
+  win: any,
+  opts: { allowPrompt?: boolean } = {},
+): Promise<ScreenFacts> {
+  const allowPrompt = opts.allowPrompt !== false
   const base = readScreenFacts({
     screen: win?.screen,
     document: win?.document,
   })
-  const gsd = win?.getScreenDetails || (win?.screenDetails ? () => Promise.resolve(win.screenDetails) : null)
+  // Prefer the cached details object (no prompt) before the prompting call.
+  const cached = win?.screenDetails
+  const gsd = cached
+    ? () => Promise.resolve(cached)
+    : allowPrompt && typeof win?.getScreenDetails === 'function'
+      ? win.getScreenDetails.bind(win)
+      : null
   if (typeof gsd !== 'function') return base
   try {
     const details = await gsd.call(win)

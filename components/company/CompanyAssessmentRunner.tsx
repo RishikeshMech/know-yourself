@@ -9,7 +9,7 @@ import { getCompany } from '@/lib/company/catalog'
 import { SECTION_BY_ID } from '@/lib/company/sections'
 import { companyApi, type AttemptView } from '@/lib/company/client'
 import { buildCompanyReview, itemAnswered } from '@/lib/company/review'
-import { MAX_FOCUS_STRIKES } from '@/lib/proctoring'
+import { MAX_FOCUS_STRIKES, restoredStrikes, shouldTerminateOnRestore } from '@/lib/proctoring'
 import type { ClientItem } from '@/lib/company/types'
 import { CODE_LANGUAGES, codeLanguageLabel, type CodeLang } from '@/lib/company/languages'
 import type { TestRunResult } from '@/lib/runTests'
@@ -88,6 +88,8 @@ export function CompanyAssessmentRunner({ slug }: { slug: string }) {
 
   /* ------------------------------ submission ------------------------------ */
   const proctorRef = useRef<ReturnType<typeof useProctoring> | null>(null)
+  const doSubmitRef = useRef<(auto: boolean, reason?: string) => Promise<void>>(async () => {})
+  const autoRetryRef = useRef<any>(null)
 
   const doSubmit = useCallback(async (auto: boolean, reason?: string) => {
     if (!user?.id || submittingRef.current) return
@@ -95,6 +97,7 @@ export function CompanyAssessmentRunner({ slug }: { slug: string }) {
     setSubmitting(true)
     setSubmitError('')
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    if (autoRetryRef.current) { clearTimeout(autoRetryRef.current); autoRetryRef.current = null }
     proctorRef.current?.releaseMedia()
     const res = await companyApi.submit(user.id, slug, answersRef.current, proctorRef.current?.report(), auto, reason)
     if (res.ok || res.status === 409) {
@@ -104,12 +107,20 @@ export function CompanyAssessmentRunner({ slug }: { slug: string }) {
       if (attemptId) {
         for (const k of ['answers', 'flags', 'drafts']) { try { localStorage.removeItem(storageKey(attemptId, k)) } catch { /* ignore */ } }
       }
-      if (!auto) router.replace(`/company-assessments/${slug}/result?just=1`)
+      // ALWAYS show the results once the attempt is final — the candidate
+      // cannot linger on (or navigate back into) a restartable test page.
+      router.replace(`/company-assessments/${slug}/result?just=1`)
       return
     }
     submittingRef.current = false
     setSubmitting(false)
     setSubmitError(res.data?.error || 'Submission failed — your answers are saved. Please retry.')
+    if (auto) {
+      // The attempt is over either way — keep trying to land the auto-submit
+      // so a transient network failure can never leave it resumable. (A page
+      // refresh also re-terminates from the persisted strike budget.)
+      autoRetryRef.current = setTimeout(() => { void doSubmitRef.current(true, reason) }, 4000)
+    }
   }, [user?.id, slug, router, attemptId])
 
   const beginAutoSubmit = useCallback((reason: string) => {
@@ -119,9 +130,16 @@ export function CompanyAssessmentRunner({ slug }: { slug: string }) {
     setReviewMode('auto')
     void doSubmit(true, reason)
   }, [doSubmit])
+  const beginAutoSubmitRef = useRef(beginAutoSubmit)
+  beginAutoSubmitRef.current = beginAutoSubmit
 
-  const proctoring = useProctoring({ active: live, onTerminate: beginAutoSubmit })
+  const persistStrikes = useCallback((n: number) => {
+    if (attemptId) writeLocal(storageKey(attemptId, 'proctor'), { strikes: n, at: Date.now() })
+  }, [attemptId])
+
+  const proctoring = useProctoring({ active: live, onTerminate: beginAutoSubmit, onStrikesChange: persistStrikes })
   proctorRef.current = proctoring
+  doSubmitRef.current = doSubmit
 
   /* -------------------------- coding runtimes ----------------------------- */
   useEffect(() => {
@@ -170,6 +188,24 @@ export function CompanyAssessmentRunner({ slug }: { slug: string }) {
       setDrafts(readLocal(storageKey(v.attempt.id, 'drafts'), {}))
       setView(v)
       setPhase('ready')
+      // The warning budget is STICKY per attempt: restore it from the local
+      // snapshot and the server proctoring log (whichever is higher) so a
+      // reload or back-navigation can never reset it. An attempt that already
+      // hit the limit (e.g. the tab died before the auto-submit landed) ends
+      // immediately — there is no restarting with fresh warnings.
+      const localProctor = readLocal<{ strikes?: number }>(storageKey(v.attempt.id, 'proctor'), {})
+      const priorStrikes = Math.max(
+        restoredStrikes(localProctor.strikes),
+        restoredStrikes(v.proctoring?.strikes),
+      )
+      if (priorStrikes > 0) proctorRef.current?.restoreStrikes(priorStrikes)
+      if (shouldTerminateOnRestore(priorStrikes)) {
+        // Deferred one tick so the page is fully mounted first (and the ref
+        // points at the latest submit closure).
+        setTimeout(() => {
+          if (!cancelled) beginAutoSubmitRef.current(`You reached ${MAX_FOCUS_STRIKES} proctoring warnings — your assessment was submitted automatically.`)
+        }, 0)
+      }
     })()
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -243,7 +279,32 @@ export function CompanyAssessmentRunner({ slug }: { slug: string }) {
     return () => window.removeEventListener('beforeunload', onUnload)
   }, [live, saveNow])
 
-  useEffect(() => () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current) }, [])
+  // The test page is a one-way door: the browser Back button is trapped here
+  // while the page is mounted. A terminated/auto-submitted attempt forwards to
+  // the result page instead of the dashboard — pressing back can never drop
+  // the candidate somewhere they could restart with a fresh warning budget.
+  useEffect(() => {
+    if (phase !== 'ready') return
+    const anchor = () => { try { window.history.pushState({ calibiaiCompanyTest: true }, '') } catch { /* ignore */ } }
+    anchor()
+    const onPopState = () => {
+      anchor()
+      if (autoRef.current || submittingRef.current || submitted) {
+        router.replace(`/company-assessments/${slug}/result`)
+      } else {
+        proctorRef.current?.logEvent('back_blocked')
+        proctorRef.current?.notify('Back is disabled during the assessment — the timer is running. Review & submit to finish.')
+      }
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, submitted, slug])
+
+  useEffect(() => () => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    if (autoRetryRef.current) clearTimeout(autoRetryRef.current)
+  }, [])
 
   /* ------------------------------- answers -------------------------------- */
   const setAnswer = useCallback((id: string, value: unknown) => {

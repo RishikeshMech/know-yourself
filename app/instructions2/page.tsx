@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import { resolveInstructions2Redirect, safeRead } from '@/lib/attemptAccess2'
 import { AFTER_ASSESSMENT_ROUTE } from '@/lib/nextStep'
 import { ASSESSMENT_2 } from '@/lib/assessment2Config'
+import { MAX_FOCUS_STRIKES } from '@/lib/proctoring'
 
 // The 5 stages of the Capgemini "Assessment Journey".
 const ALLOCATION = [
@@ -203,7 +204,7 @@ function Inner() {
             <div className="mt-6 rounded-2xl bg-amber-50 border border-amber-200 p-4 text-xs leading-relaxed text-slate-600">
               <div className="font-bold text-amber-700 mb-1">Please note</div>
               <ul className="list-disc ml-4 space-y-1">
-                <li><b>No tab switching:</b> Keep this tab/window focused — switching windows/tabs 3 times terminates and submits your test automatically.</li>
+                <li><b>No tab switching:</b> Keep this tab/window focused — switching windows/tabs {MAX_FOCUS_STRIKES} times terminates and submits your test automatically.</li>
                 <li><b>Close other tabs before starting:</b> When you start, the app will ask you to close every other tab/window and confirm.</li>
                 <li><b>Fullscreen is required:</b> The test locks you into fullscreen with right-click disabled. If you press Esc, fullscreen re-enters automatically, and leaving fullscreen mid-test is recorded as a violation. Disconnect any external or second display — if one is detected the test won't start, and connecting one mid-test terminates the assessment as cheating.</li>
                 <li><b>In-built compiler:</b> In the Debugging Lab and AI-assisted Coding stages you write the corrected code and press <b>Run hidden tests</b> — your code is executed against the real test cases, exactly like the first assessment.</li>

@@ -7,28 +7,37 @@
  *     mirrored display check (Window-Management API where available).
  *   • Camera & microphone gate with a live preview (continuing without a
  *     camera is allowed, as in the original assessments, but recorded).
- *   • Focus monitoring: leaving the tab/window is a warning; 3 warnings end
+ *   • Focus monitoring: leaving the tab/window is a warning; 5 warnings end
  *     the attempt automatically. Bursts of blur/visibility/fullscreen events
  *     from ONE action are coalesced into a single warning.
- *   • Fullscreen lock with automatic re-entry; exiting is a warning.
+ *   • Native system alerts (Allow fullscreen / microphone / camera, cookie
+ *     banners, print & save dialogs) NEVER count as warnings: every
+ *     permission request runs under a prompt guard, blur-only signals are
+ *     deferred and cancelled when the dialog hands focus back, and transient
+ *     fullscreen dips around prompts self-heal without a strike.
+ *   • Fullscreen lock with automatic re-entry; a real fullscreen exit is a
+ *     warning.
  *   • A display connected mid-test terminates the attempt; moving the window
  *     to another screen / changing resolution is a warning.
  *   • Right-click, copying question text, printing and dev-tools shortcuts are
  *     blocked; pastes and screenshot keys are logged for reviewers.
- *   • Native permission prompts never count as violations (prompt guard).
+ *   • The strike counter is sticky: it is persisted per attempt and restored
+ *     on reload/back-navigation, so a terminated attempt can never resume
+ *     with a fresh warning budget.
  *
  * Every signal is appended to an event log that the runner autosaves to the
  * server, so reviewers can see exactly what happened during an attempt.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  MAX_FOCUS_STRIKES, classifyDisplayEvent, evaluateStartGate, safeRequestFullscreen, resolveScreenFacts,
+  MAX_FOCUS_STRIKES, STRIKE_COOLDOWN_MS, PROMPT_GUARD_TRAILING_MS, FOCUS_STRIKE_GRACE_MS,
+  classifyDisplayEvent, classifyFocusSignal, evaluateStartGate, safeRequestFullscreen,
+  resolveScreenFacts, resolveDeferredFocus, resolveFullscreenExit, restoredStrikes,
   rightClickShouldBlock, FULLSCREEN_EXIT_MSG, DISPLAY_CONNECT_MSG, DISPLAY_CHANGE_MSG,
   type ScreenFacts,
 } from '@/lib/proctoring'
 import type { ProctorEvent } from '@/lib/company/types'
 
-const STRIKE_COOLDOWN_MS = 2500
 const LEAVE_MSG = 'You left the assessment window. Switching away is recorded as a proctoring violation.'
 
 export interface ProctoringState {
@@ -54,6 +63,10 @@ export interface ProctoringState {
   continueWithoutCamera: () => void
   acknowledgeViolation: () => void
   releaseMedia: () => void
+  /** Re-apply a persisted strike count after a reload/resume (monotonic). */
+  restoreStrikes: (n: number) => void
+  /** Show a transient toast (e.g. “Back is disabled during the assessment”). */
+  notify: (msg: string) => void
   /** Snapshot for the server: strikes, camera/fullscreen state, event log. */
   report: () => { strikes: number; camera: boolean | null; fullscreen: boolean | null; events: ProctorEvent[] }
   logEvent: (type: string, detail?: string) => void
@@ -62,8 +75,15 @@ export interface ProctoringState {
 export function useProctoring(opts: {
   /** False while submitting / reviewing — monitors stand down. */
   active: boolean
-  /** Called once when the attempt must end (3 warnings, display connected). */
+  /** Called once when the attempt must end (max warnings, display connected). */
   onTerminate: (reason: string) => void
+  /**
+   * Sticky warning budget: strikes persisted from an earlier life of this
+   * attempt (reload / back-navigation). Never resets to zero.
+   */
+  initialStrikes?: number
+  /** Fired whenever the strike count grows, so the runner can persist it. */
+  onStrikesChange?: (n: number) => void
 }): ProctoringState {
   const [envState, setEnvState] = useState<'gate' | 'blocked' | 'cleared'>('gate')
   const [envConsent, setEnvConsent] = useState(false)
@@ -75,7 +95,7 @@ export function useProctoring(opts: {
   const [mediaReady, setMediaReady] = useState(false)
   const [mediaError, setMediaError] = useState('')
   const [videoOn, setVideoOn] = useState(false)
-  const [strikes, setStrikes] = useState(0)
+  const [strikes, setStrikes] = useState(() => restoredStrikes(opts.initialStrikes))
   const [showViolation, setShowViolation] = useState(false)
   const [violationMsg, setViolationMsg] = useState('')
   const [toast, setToast] = useState<string | null>(null)
@@ -86,7 +106,7 @@ export function useProctoring(opts: {
   const suppressTimerRef = useRef<any>(null)
   const mediaReadyRef = useRef(false)
   const awayRef = useRef(false)
-  const strikesRef = useRef(0)
+  const strikesRef = useRef(restoredStrikes(opts.initialStrikes))
   const lastStrikeAtRef = useRef(0)
   const envFactsRef = useRef<ScreenFacts | null>(null)
   const envFsEngagedRef = useRef(false)
@@ -95,8 +115,10 @@ export function useProctoring(opts: {
   const terminatedRef = useRef(false)
   const activeRef = useRef(opts.active)
   const onTerminateRef = useRef(opts.onTerminate)
+  const onStrikesChangeRef = useRef(opts.onStrikesChange)
   activeRef.current = opts.active
   onTerminateRef.current = opts.onTerminate
+  onStrikesChangeRef.current = opts.onStrikesChange
 
   const showToast = useCallback((msg: string) => {
     setToast(msg)
@@ -123,6 +145,7 @@ export function useProctoring(opts: {
     const n = strikesRef.current + 1
     strikesRef.current = n
     setStrikes(n)
+    onStrikesChangeRef.current?.(n)
     setViolationMsg(msg)
     logEvent(type, `warning ${n}/${MAX_FOCUS_STRIKES}`)
     if (n >= MAX_FOCUS_STRIKES) terminate(`You reached ${MAX_FOCUS_STRIKES} proctoring warnings — your assessment was submitted automatically.`)
@@ -137,7 +160,10 @@ export function useProctoring(opts: {
     try {
       return await fn()
     } finally {
-      suppressTimerRef.current = setTimeout(() => { suppressRef.current = false }, 1500)
+      // The prompt stays open until `fn` resolves (the user answers it), so the
+      // guard covers the whole alert. The trailing window absorbs the
+      // blur/visibility/fullscreenchange burst that follows the answer.
+      suppressTimerRef.current = setTimeout(() => { suppressRef.current = false }, PROMPT_GUARD_TRAILING_MS)
     }
   }, [])
 
@@ -235,24 +261,88 @@ export function useProctoring(opts: {
     }
   }, [mediaReady, videoOn])
 
-  /* Focus / visibility monitoring (starts once the camera gate is passed). */
+  /* Focus / visibility monitoring (starts once the camera gate is passed).     */
+  /*                                                                            */
+  /* System alerts (Allow fullscreen / camera / microphone, cookie banners,     */
+  /* print & save dialogs) steal focus and must NEVER warn: signals raised      */
+  /* while the prompt guard is armed are absorbed, hidden-tab switches count    */
+  /* immediately (no dialog can hide the page), and blur-only signals are       */
+  /* deferred — cancelled when the dialog is dismissed and focus returns.       */
+  const focusPendingRef = useRef<{ timer: any; checks: number; hidden: boolean } | null>(null)
+
+  const clearFocusPending = useCallback(() => {
+    if (focusPendingRef.current?.timer) clearTimeout(focusPendingRef.current.timer)
+    focusPendingRef.current = null
+  }, [])
+
+  const scheduleFocusRecheck = useCallback((hidden: boolean, checks: number) => {
+    if (focusPendingRef.current?.timer) clearTimeout(focusPendingRef.current.timer)
+    const timer = setTimeout(() => {
+      const pending = focusPendingRef.current
+      if (!pending) return
+      const verdict = resolveDeferredFocus({
+        suppress: suppressRef.current,
+        hidden: document.hidden,
+        focused: document.hasFocus(),
+        checks: pending.checks,
+      })
+      if (verdict === 'cancel') {
+        logEvent('system_alert_ignored', 'focus returned — no warning')
+        clearFocusPending()
+        return
+      }
+      if (verdict === 'recheck') {
+        pending.checks += 1
+        scheduleFocusRecheck(document.hidden, pending.checks)
+        return
+      }
+      clearFocusPending()
+      if (bumpStrike(document.hidden ? 'tab_hidden' : 'window_blur', LEAVE_MSG)) awayRef.current = true
+    }, FOCUS_STRIKE_GRACE_MS)
+    focusPendingRef.current = { timer, checks, hidden }
+  }, [bumpStrike, clearFocusPending, logEvent])
+
   useEffect(() => {
     const onLeave = () => {
-      if (!mediaReadyRef.current || suppressRef.current || !activeRef.current || terminatedRef.current) return
-      if (document.hidden || !document.hasFocus()) {
-        if (awayRef.current) return
+      const verdict = classifyFocusSignal({
+        active: mediaReadyRef.current && activeRef.current,
+        terminated: terminatedRef.current,
+        suppress: suppressRef.current,
+        away: awayRef.current || !!focusPendingRef.current,
+        hidden: document.hidden,
+        focused: document.hasFocus(),
+      })
+      if (verdict === 'ignore') return
+      if (verdict === 'strike_now') {
         if (bumpStrike(document.hidden ? 'tab_hidden' : 'window_blur', LEAVE_MSG)) awayRef.current = true
+        return
+      }
+      // Blur-only: likely a browser dialog. Defer — cancelled if focus returns.
+      scheduleFocusRecheck(document.hidden, 0)
+    }
+    const onFocus = () => {
+      // Dialog dismissed / window refocused before the grace window ended.
+      if (focusPendingRef.current && !document.hidden && document.hasFocus()) {
+        logEvent('system_alert_ignored', 'focus returned — no warning')
+        clearFocusPending()
       }
     }
     document.addEventListener('visibilitychange', onLeave)
     window.addEventListener('blur', onLeave)
+    window.addEventListener('focus', onFocus)
+    window.addEventListener('focusin', onFocus)
     return () => {
       document.removeEventListener('visibilitychange', onLeave)
       window.removeEventListener('blur', onLeave)
+      window.removeEventListener('focus', onFocus)
+      window.removeEventListener('focusin', onFocus)
+      clearFocusPending()
     }
-  }, [bumpStrike])
+  }, [bumpStrike, scheduleFocusRecheck, clearFocusPending, logEvent])
 
-  /* Display + fullscreen monitor (after the environment gate). */
+  /* Display monitor (after the environment gate). Samples screen facts with
+     `allowPrompt: false` so the periodic check can never pop a native
+     Window-Management permission prompt mid-test. */
   useEffect(() => {
     if (envState !== 'cleared') return
     let running = false
@@ -260,10 +350,9 @@ export function useProctoring(opts: {
       if (running || !activeRef.current || terminatedRef.current) return
       running = true
       try {
-        const now = await resolveScreenFacts(window)
+        const now = await resolveScreenFacts(window, { allowPrompt: false })
         const last = envFactsRef.current
         if (!last) { envFactsRef.current = now; return }
-        if (envFsEngagedRef.current && last.fullscreen && !now.fullscreen) bumpStrike('fullscreen_exit', FULLSCREEN_EXIT_MSG)
         const ev = classifyDisplayEvent(last, now)
         if (ev === 'display_connect') {
           logEvent('display_connected', `${last.accessibleDisplays} → ${now.accessibleDisplays}`)
@@ -279,6 +368,73 @@ export function useProctoring(opts: {
     return () => window.clearInterval(id)
   }, [envState, bumpStrike, logEvent, terminate])
 
+  /* Fullscreen-exit monitor. Uses the `fullscreenchange` event (instant) so
+     the exit is classified with the focus state AT THE MOMENT it happened:
+       · prompt guard armed            → absorbed (system alert side effect)
+       · window blurred (dialog open)  → deferred; cancelled when fullscreen
+                                         comes back after the dialog is answered
+       · focused exit (Esc / browser)  → a real violation                     */
+  const fsPendingRef = useRef<{ timer: any; checks: number } | null>(null)
+
+  const clearFsPending = useCallback(() => {
+    if (fsPendingRef.current?.timer) clearTimeout(fsPendingRef.current.timer)
+    fsPendingRef.current = null
+  }, [])
+
+  const scheduleFsRecheck = useCallback((checks: number) => {
+    if (fsPendingRef.current?.timer) clearTimeout(fsPendingRef.current.timer)
+    const timer = setTimeout(() => {
+      const pending = fsPendingRef.current
+      if (!pending) return
+      const verdict = resolveFullscreenExit({
+        suppress: suppressRef.current,
+        fullscreen: !!document.fullscreenElement,
+        focused: document.hasFocus(),
+        hidden: document.hidden,
+        checks: pending.checks,
+      })
+      if (verdict === 'cancel') {
+        logEvent('system_alert_ignored', 'fullscreen dip around a dialog — no warning')
+        clearFsPending()
+        return
+      }
+      if (verdict === 'recheck') {
+        pending.checks += 1
+        scheduleFsRecheck(pending.checks)
+        return
+      }
+      clearFsPending()
+      bumpStrike('fullscreen_exit', FULLSCREEN_EXIT_MSG)
+    }, FOCUS_STRIKE_GRACE_MS)
+    fsPendingRef.current = { timer, checks }
+  }, [bumpStrike, clearFsPending, logEvent])
+
+  useEffect(() => {
+    if (envState !== 'cleared') return
+    const onFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement)
+      if (document.fullscreenElement) { clearFsPending(); return }
+      if (!envFsEngagedRef.current || !activeRef.current || terminatedRef.current) return
+      if (suppressRef.current) {
+        logEvent('fullscreen_exit_ignored', 'system alert in flight')
+        return
+      }
+      if (!document.hasFocus() && !document.hidden) {
+        // A native dialog (permission prompt / cookie banner / print) dropped
+        // fullscreen while it holds focus — see whether the exit sticks once
+        // the dialog is dismissed before counting it.
+        scheduleFsRecheck(0)
+        return
+      }
+      bumpStrike('fullscreen_exit', FULLSCREEN_EXIT_MSG)
+    }
+    document.addEventListener('fullscreenchange', onFsChange)
+    return () => {
+      document.removeEventListener('fullscreenchange', onFsChange)
+      clearFsPending()
+    }
+  }, [envState, bumpStrike, clearFsPending, scheduleFsRecheck, logEvent])
+
   /* Keep the fullscreen indicator honest. */
   useEffect(() => {
     const sync = () => setIsFullscreen(!!document.fullscreenElement)
@@ -292,17 +448,22 @@ export function useProctoring(opts: {
     if (envState !== 'cleared' || !fsEngaged) return
     let attempts = 0
     let timer: any = null
-    const attempt = async () => {
-      if (suppressRef.current || document.fullscreenElement || !activeRef.current || terminatedRef.current) return
-      const ok = await safeRequestFullscreen(document)
+    const attempt = async (isRetry = false) => {
+      // Scheduled retries must pass through even while the guard's trailing
+      // window is still armed — the guard would otherwise kill its own retry
+      // chain. Each attempt runs INSIDE the prompt guard, so a “Allow
+      // fullscreen?” alert can never become a warning.
+      if (document.fullscreenElement || !activeRef.current || terminatedRef.current) return
+      if (!isRetry && suppressRef.current) return
+      const ok = await withPromptGuard(() => safeRequestFullscreen(document))
       if (ok) showToast('Fullscreen restored — it must stay on for the whole test.')
-      else if (++attempts < 6) { clearTimeout(timer); timer = setTimeout(attempt, 500) }
+      else if (++attempts < 6) { clearTimeout(timer); timer = setTimeout(() => { void attempt(true) }, 500) }
       else showToast('⚠ Fullscreen was exited — use the Fullscreen button in the header to go back.')
     }
-    const onChange = () => { if (!suppressRef.current && !document.fullscreenElement) { attempts = 0; attempt() } }
+    const onChange = () => { if (!suppressRef.current && !document.fullscreenElement) { attempts = 0; void attempt() } }
     document.addEventListener('fullscreenchange', onChange)
     return () => { document.removeEventListener('fullscreenchange', onChange); clearTimeout(timer) }
-  }, [envState, fsEngaged, showToast])
+  }, [envState, fsEngaged, showToast, withPromptGuard])
 
   /* Page-level locks: right-click, copying questions, printing, dev tools. */
   useEffect(() => {
@@ -342,7 +503,9 @@ export function useProctoring(opts: {
       if (activeRef.current && e.key === 'PrintScreen') {
         logEvent('screenshot_key')
         showToast('Screenshots are not allowed — this has been recorded.')
-        try { navigator.clipboard?.writeText?.('') } catch { /* ignore */ }
+        // Some browsers prompt for clipboard access here — run it under the
+        // prompt guard so that alert can never become a warning.
+        void withPromptGuard(async () => { try { await navigator.clipboard?.writeText?.('') } catch { /* ignore */ } })
       }
     }
     document.addEventListener('contextmenu', onCtx)
@@ -359,13 +522,20 @@ export function useProctoring(opts: {
       window.removeEventListener('keydown', onKey, true)
       window.removeEventListener('keyup', onKeyUp, true)
     }
-  }, [envState, logEvent, showToast])
+  }, [envState, logEvent, showToast, withPromptGuard])
 
   /* Release the camera/mic when the exam page unmounts. */
   useEffect(() => () => {
     stopTracks()
     if (suppressTimerRef.current) clearTimeout(suppressTimerRef.current)
   }, [stopTracks])
+
+  const restoreStrikes = useCallback((n: number) => {
+    const v = restoredStrikes(n)
+    if (v <= strikesRef.current) return
+    strikesRef.current = v
+    setStrikes(v)
+  }, [])
 
   const report = useCallback(() => ({
     strikes: strikesRef.current,
@@ -378,6 +548,6 @@ export function useProctoring(opts: {
     envState, envConsent, setEnvConsent, envBusy, envBlockReason, fsBlocked, fsEngaged, isFullscreen,
     mediaReady, mediaError, videoOn, videoRef, strikes, showViolation, violationMsg, toast,
     runEnvCheck, enterFullscreen, enableMedia, continueWithoutCamera, acknowledgeViolation, releaseMedia,
-    report, logEvent,
+    restoreStrikes, notify: showToast, report, logEvent,
   }
 }
