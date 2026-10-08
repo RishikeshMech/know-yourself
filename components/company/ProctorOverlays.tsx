@@ -36,7 +36,7 @@ export function ProctorOverlays({ p, companyName, live }: { p: ProctoringState; 
               <li className="flex gap-2.5"><span className="shrink-0">🔒</span><span>The browser is <b>locked in fullscreen</b>. Pressing Esc re-enters automatically — leaving fullscreen is a warning.</span></li>
               <li className="flex gap-2.5"><span className="shrink-0">🖥️</span><span><b>External or mirrored displays</b> are not allowed. Connecting one mid-test ends the assessment.</span></li>
               <li className="flex gap-2.5"><span className="shrink-0">🚫</span><span><b>Right-click, copying questions, printing</b> and developer tools are disabled; pastes and screenshot keys are recorded.</span></li>
-              <li className="flex gap-2.5"><span className="shrink-0">🗂️</span><span>Close every other tab and window — <b>switching away 3 times submits your test</b>.</span></li>
+              <li className="flex gap-2.5"><span className="shrink-0">🗂️</span><span>Close every other tab and window — <b>switching away {MAX_FOCUS_STRIKES} times submits your test</b>.</span></li>
             </ul>
             <label className="mt-5 flex gap-2 text-sm text-slate-700 cursor-pointer">
               <input type="checkbox" checked={p.envConsent} onChange={(e) => p.setEnvConsent(e.target.checked)} className="accent-indigo-600 mt-0.5 w-4 h-4" />
@@ -75,7 +75,7 @@ export function ProctorOverlays({ p, companyName, live }: { p: ProctoringState; 
           <div className="glass-card max-w-md w-full text-center !p-8 animate-pop">
             <div className="text-5xl">🎥</div>
             <h3 className="mt-4 text-xl font-black text-slate-900">Enable camera & microphone</h3>
-            <p className="mt-2 text-sm text-slate-500">A live proctoring preview stays on screen for the whole test. Please remain visible to the camera. <b className="text-slate-700">3 warnings close the assessment.</b></p>
+            <p className="mt-2 text-sm text-slate-500">A live proctoring preview stays on screen for the whole test. Please remain visible to the camera. <b className="text-slate-700">{MAX_FOCUS_STRIKES} warnings close the assessment.</b></p>
             <button onClick={p.enableMedia} className="btn-primary mt-6 w-full">Turn on camera & mic →</button>
             {p.mediaError && <div className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-2">{p.mediaError}</div>}
             <button onClick={p.continueWithoutCamera} className="mt-3 text-xs text-indigo-600 font-semibold">Continue without camera (recorded — focus monitoring stays active)</button>

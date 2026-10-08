@@ -60,6 +60,8 @@ export interface AttemptView {
   attempt: AttemptSummary & { id: string; duration_sec: number }
   paper: ClientPaper
   answers: Record<string, unknown>
+  /** Sticky proctoring counters — a resume restores the warning budget. */
+  proctoring?: { strikes: number; camera: boolean | null; fullscreen: boolean | null }
   server_now: string
 }
 

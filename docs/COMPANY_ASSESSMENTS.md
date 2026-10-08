@@ -116,7 +116,7 @@ Enforced on the server, never trusted to the browser:
 - camera & microphone gate with live preview (continuing without a camera is
   allowed, as in the original assessments, but recorded);
 - leaving the tab/window, exiting fullscreen or changing displays = warning;
-  **3 warnings auto-submit**; connecting a display mid-test terminates;
+  **5 warnings auto-submit**; connecting a display mid-test terminates;
 - fullscreen lock with automatic re-entry; native permission prompts never count;
 - identity **watermark** (name · CALIBIAI · attempt tag · company) over the test;
 - right-click, copying question text, printing and dev-tools shortcuts blocked;

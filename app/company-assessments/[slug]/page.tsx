@@ -11,6 +11,7 @@ import { getBlueprint } from '@/lib/company/blueprints'
 import { SECTION_BY_ID } from '@/lib/company/sections'
 import { companyApi } from '@/lib/company/client'
 import { CompanyBadge } from '@/components/company/CompanyBadge'
+import { MAX_FOCUS_STRIKES } from '@/lib/proctoring'
 import type { SectionId } from '@/lib/company/types'
 
 function Spinner({ label }: { label: string }) {
@@ -182,7 +183,7 @@ export default function Page({ params }: { params: { slug: string } }) {
                   <li><b>One attempt only.</b> Once you start, the {facts.minutes}-minute timer runs on our server — closing the tab does not pause it.</li>
                   <li>Fullscreen is mandatory and locked; external or mirrored displays are not allowed.</li>
                   <li>Camera & microphone preview stays on; your identity is watermarked on screen.</li>
-                  <li>Leaving the window, exiting fullscreen or changing displays is a warning — <b>3 warnings submit automatically</b>.</li>
+                  <li>Leaving the window, exiting fullscreen or changing displays is a warning — <b>{MAX_FOCUS_STRIKES} warnings submit automatically</b>.</li>
                   <li>Right-click, copying questions and printing are disabled; pastes and screenshot keys are recorded.</li>
                   <li>Coding questions run in Python 3 or JavaScript against hidden tests; written answers are graded against a rubric.</li>
                   <li>Answers autosave. Unanswered questions score 0; there is no negative marking.</li>

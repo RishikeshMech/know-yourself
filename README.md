@@ -141,7 +141,7 @@ company tag** (IT Services, Big Tech, Startups, SaaS, BFSI, Engineering) and at
 - **One attempt per student per company**, enforced server-side (deterministic
   attempt id, `UNIQUE (student_id, company_slug)` in Postgres, 409 on re-start).
 - **Same proctoring as the main assessments:** mandatory fullscreen lock,
-  external-display check, camera/mic preview, focus warnings (3 → auto-submit),
+  external-display check, camera/mic preview, focus warnings (5 → auto-submit),
   identity watermark, right-click/copy/print blocking, event log.
 - **Server-side scoring only** — answer keys and hidden tests never reach the
   browser; written answers are rubric/LLM graded; coding runs hidden tests.

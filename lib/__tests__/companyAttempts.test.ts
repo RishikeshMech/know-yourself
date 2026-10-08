@@ -219,6 +219,20 @@ test('attempts: the client view hides keys and tests', async () => {
   assert.doesNotMatch(json, /"answer"|"tests"|"rubric"|"question_seed"/)
   assert.equal(view.attempt.id, attempt.id)
   assert.equal(view.server_now, c.now().toISOString())
+  // The sticky proctoring counters ride along so a resume restores the
+  // warning budget instead of resetting it.
+  assert.deepEqual(view.proctoring, { strikes: 0, camera: null, fullscreen: null })
+})
+
+test('attempts: a resume restores the sticky warning budget from the server log', async () => {
+  freshStore()
+  const c = clock()
+  await startAttempt('u_ana', 'infosys', { now: c.now, bank, score })
+  const saved = await saveProgress('u_ana', 'infosys', {}, { strikes: 4, camera: true }, { now: c.now, bank, score })
+  assert.ok(saved.ok)
+  const view = clientView(saved.ok ? saved.attempt : ({} as any), { now: c.now, bank })
+  assert.equal(view.proctoring.strikes, 4, 'a reload / back-navigation must never reset the warning budget')
+  assert.equal(view.proctoring.camera, true)
 })
 
 test('sanitizeAnswers keeps only well-formed answers for paper items', async () => {
