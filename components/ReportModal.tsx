@@ -170,6 +170,7 @@ export function ReportModal({ scores, onClose }: Props) {
                     <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${pctTone(s.pct)}`}>{s.pct}%</span>
                     {s.pct < 75 && <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600"><AlertCircle className="h-3 w-3" /> Focus area</span>}
                   </div>
+                  {s.note && <p className="mt-2 text-[11px] leading-relaxed text-slate-500">{s.note}</p>}
                 </div>
               ))}
             </div>

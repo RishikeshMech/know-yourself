@@ -148,6 +148,15 @@ company tag** (IT Services, Big Tech, Startups, SaaS, BFSI, Engineering) and at
   file exists, is a transparent RGBA PNG, and still matches the size declared in
   `logos.ts`, so a stale asset fails CI instead of stretching in the UI.
 
+- **Student score and reports:** `/dashboard/student#calibi-score` averages graded
+  assessments on the 1000-point scale and now keeps all completed results in
+  one charted report gallery. Its View report actions open the detailed platform
+  report (with section scores, focus areas, skill evidence and PDF download) or
+  the company's full result page. The standalone first-result card appears only
+  between the first and second platform assessments; after the second result,
+  completed cards are consolidated into the score gallery. The resume summary
+  and evidence-based next steps sit beside the skill map. WhatsApp is linked in
+  the student navbar, away from proctored exam pages.
 - **One attempt per student per company**, enforced server-side (deterministic
   attempt id, `UNIQUE (student_id, company_slug)` in Postgres, 409 on re-start).
 - **Same proctoring as the main assessments:** mandatory fullscreen lock,

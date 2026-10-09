@@ -12,6 +12,7 @@ import { ReportModal } from '@/components/ReportModal'
 import { SkillChips } from '@/components/SkillChips'
 import { flattenAssessmentResult } from '@/lib/resultShape'
 import { CALIBI_RULE, calibiFromSources } from '@/lib/calibiScore'
+import { assessmentVisibility } from '@/lib/assessmentVisibility'
 import { companyApi } from '@/lib/company/client'
 import { platformAssessmentSkills, rollupAssessmentSkills } from '@/lib/assessmentSkills'
 import { AssessmentSkillList } from '@/components/AssessmentSkillList'
@@ -402,6 +403,7 @@ function ProfileInner() {
                 <div className="mt-2 h-2.5 rounded-full bg-white/10 overflow-hidden">
                   <div className="h-full rounded-full bg-gradient-to-r from-indigo-400 via-violet-400 to-fuchsia-400 transition-all duration-700" style={{ width: `${Math.min(100, total / 10)}%` }} />
                 </div>
+                {calibi.count > 0 && <Link href="/dashboard/student#assessment-reports" className="mt-3 inline-flex text-xs font-bold text-indigo-200 hover:text-white">See all {calibi.count} assessment report{calibi.count === 1 ? '' : 's'} →</Link>}
                 {showWhy && (
                   <div className="animate-fade-in mt-2.5 rounded-xl bg-white/10 border border-white/15 p-3 text-[11px] leading-relaxed text-slate-300">
                     {CALIBI_RULE} {calibi.entries.length > 0 && <>So far: {calibi.entries.map((e) => `${e.label} ${e.scaled}`).join(' · ')}.</>} The CalibiAI Assessment itself is the sum of six sections — English (200), Problem Solving (200), AI Debugging (150), AI Feature Development (150), Prompt Engineering (100) and Cognitive (200). Tiers: Bronze &lt; 300 · Silver 300–599 · Gold 600–799 · Platinum 800+.
@@ -434,8 +436,9 @@ function ProfileInner() {
         <div className="grid gap-6 lg:grid-cols-12">
           {/* -------- Left column -------- */}
           <div className="lg:col-span-7 space-y-6">
-            {/* Assessment score */}
-            <div className="glass-card animate-fade-up hover-lift">
+            {/* A standalone first-result card is only useful until assessment 2.
+                Afterwards all completed assessments live together in the dashboard. */}
+            {!assessmentVisibility(activeScores, scores2Local).secondDone && <div className="glass-card animate-fade-up hover-lift">
               <PanelHead
                 tag="Assessment proof"
                 title="CalibiAI Assessment"
@@ -484,7 +487,7 @@ function ProfileInner() {
                   </Link>
                 </div>
               )}
-            </div>
+            </div>}
 
             {/* Resume */}
             <div className="glass-card animate-fade-up hover-lift" style={{ animationDelay: '.05s' }}>
