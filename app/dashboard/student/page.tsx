@@ -12,12 +12,13 @@ import { readFeedbackDraft } from '@/lib/feedback'
 import { flattenAssessmentResult } from '@/lib/resultShape'
 import { getLiveUser } from '@/lib/session'
 import { ReportModal } from '@/components/ReportModal'
-import { SkillChips } from '@/components/SkillChips'
 import { ReadinessSidebar } from '@/components/ReadinessSidebar'
 import { assessmentVisibility } from '@/lib/assessmentVisibility'
 import { CompanyCatalog } from '@/components/company/CompanyCatalog'
 import { CalibiScoreCard } from '@/components/CalibiScoreCard'
-import { AssessmentSkillList } from '@/components/AssessmentSkillList'
+import { SkillCategoryChart } from '@/components/SkillCategoryChart'
+import { SkillCoverageChart } from '@/components/SkillCoverageChart'
+import { ResumeSkillRadar } from '@/components/ResumeSkillRadar'
 import { platformAssessmentSkills, rollupAssessmentSkills } from '@/lib/assessmentSkills'
 import type { AttemptSummary } from '@/lib/company/types'
 import { authenticatedFetch } from '@/lib/clientAuth'
@@ -185,8 +186,13 @@ function Inner(){
   const startHref = onboarded ? '/instructions' : '/onboarding'
   // Assessment 2 (the Capgemini 2027 mock) is unlocked only once the first
   // assessment has produced a result — a first-time user must take that one
-  // first. Once unlocked it is, like the first, a single attempt.
-  const { firstDone: assessment1Done, showFirstResultCard, showSecondLaunchCard } = assessmentVisibility(scores, scores2)
+  // first. Once unlocked it is, like the first, a single attempt. All
+  // completed reports (assessment 1, 2 and every company mock) live together
+  // in the "Your assessment reports" section inside the CalibiAI Score card
+  // — there is intentionally no separate 120-minute core assessment card on
+  // the dashboard any more, so the student has exactly one place to view and
+  // download every report.
+  const { firstDone: assessment1Done, showSecondLaunchCard } = assessmentVisibility(scores, scores2)
 
   return (
     <div>
@@ -245,73 +251,52 @@ function Inner(){
         <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)] lg:items-start">
         <div className="glass-card !p-5 sm:!p-6 animate-fade-up">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div><div className="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-500">Your readiness</div><h2 className="mt-1 text-lg font-black text-slate-900">Your profile &amp; skill map</h2></div>
+            <div><div className="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-500">Your readiness</div><h2 className="mt-1 text-lg font-black text-slate-900">Your skill map</h2></div>
             <div className="flex gap-3">
               <Link href="/profile" className="text-xs font-semibold text-indigo-600">See my profile →</Link>
               <Link href="/edit-profile" className="text-xs font-semibold text-indigo-600">Edit profile →</Link>
             </div>
           </div>
-          <div className="mt-3 grid gap-4 lg:grid-cols-3">
-            <div className="space-y-2 text-sm text-slate-600">
-              <div>👤 {profile?.full_name || '—'}</div>
-              <div>🎓 {profile?.college || '—'}</div>
-            </div>
-            <div className="min-w-0">
-              <div className="mb-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-slate-500">Self-reported skills</div>
-              <SkillChips skills={profile?.skills} icon="🛠️" />
-            </div>
-            <div className="min-w-0">
-              <div className="mb-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-slate-500">Resume-detected skills</div>
-              <SkillChips skills={Array.isArray(resume?.parsed?.skills) ? resume.parsed.skills.join(', ') : ''} icon="📄" />
-            </div>
-          </div>
-          <div className="mt-4 border-t border-slate-100 pt-4">
+          {/* Scored-skill section: the long chip list is replaced by a 6-slice
+              donut/pie that rolls every assessed skill up into a category. */}
+          <div className="mt-4">
             <div className="mb-2 text-[10px] font-black uppercase tracking-[0.15em] text-indigo-600">Skills mapped from completed assessments</div>
-            {assessmentSkillRollups.length ? (
-              <AssessmentSkillList skills={assessmentSkillRollups} />
-            ) : (
-              <p className="text-xs text-slate-500">Complete an assessment and its scored skills will appear here automatically.</p>
-            )}
+            <SkillCategoryChart skills={assessmentSkillRollups} />
+          </div>
+          {/* The two claim-based sources — what the student wrote on their
+              profile and what was extracted from their resume — are
+              visualised as small charts so the section is glanceable and
+              clearly differentiated from the scored-skill pie above. */}
+          <div className="mt-5 grid gap-4 lg:grid-cols-2">
+            <div className="rounded-2xl border border-slate-200/70 bg-white/70 p-4">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-indigo-600">
+                  <span aria-hidden>🛠️</span> Self-reported skills
+                </div>
+                <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-600 border border-indigo-200/70">Claimed</span>
+              </div>
+              <SkillCoverageChart skills={profile?.skills} palette="indigo" />
+            </div>
+            <div className="rounded-2xl border border-slate-200/70 bg-white/70 p-4">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-rose-600">
+                  <span aria-hidden>📄</span> Resume-detected skills
+                </div>
+                <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-600 border border-rose-200/70">Parsed</span>
+              </div>
+              <ResumeSkillRadar skills={Array.isArray(resume?.parsed?.skills) ? resume.parsed.skills.join(', ') : ''} />
+            </div>
           </div>
         </div>
 
         <ReadinessSidebar resume={resume} skills={assessmentSkillRollups} hasAssessment={!!(scores || scores2 || companyAttempts.some(a => a.status === 'submitted' || a.status === 'expired'))} />
         </div>
 
-        {/* Show the first result here until assessment 2 is done. After that,
-            all completed reports live exclusively in the CalibiAI Score above. */}
-        {showFirstResultCard && scores && (
-        <div className="mt-6">
-          {/* Assessment 1 */}
-          <div className="glass-card animate-fade-up" style={{animationDelay:'.05s'}}>
-            <div className="text-sm font-bold text-slate-700">CalibiAI Assessment <span className="font-medium text-slate-400">· 120-minute core assessment</span></div>
-            <div className="mt-4">
-                <div className="flex items-baseline gap-3 flex-wrap">
-                  <span className="text-5xl font-black text-gradient">{scores.total}</span>
-                  <span className="text-slate-400 font-bold">/1000</span>
-                  <span className="chip text-indigo-700 border-indigo-200 bg-indigo-50/70">Grade {scores.grade} · {scores.percentile}th percentile</span>
-                </div>
-                <div className="mt-5 grid sm:grid-cols-2 gap-2.5">
-                  {[
-                    ['English', scores.english?.total ?? 0, 200],['Problem Solving', scores.problem_solving ?? 0, 200],
-                    ['AI Debugging', scores.ai_debugging ?? 0, 150],['AI Feature Dev', scores.ai_feature ?? 0, 150],
-                    ['Prompt Eng', scores.prompt_engineering ?? 0, 100],['Cognitive', scores.cognitive?.total ?? 0, 200],
-                  ].map(([k,v,m])=>(
-                    <div key={k as string} className="panel p-3">
-                      <div className="flex justify-between text-xs mb-1"><span className="text-slate-600 font-medium">{k}</span><span className="font-mono font-bold text-slate-700">{v}/{m}</span></div>
-                      <div className="h-2 rounded-full bg-slate-100 overflow-hidden"><div className="h-full calibiai-gradient rounded-full" style={{width:`${(Number(v))/(Number(m))*100}%`}}/></div>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-5 flex flex-wrap gap-3">
-                  <button onClick={() => { setReportFor(1); setShowReport(true) }} className="btn-primary !py-2.5 text-xs">View report</button>
-                </div>
-              </div>
-
-          </div>
-
-        </div>
-        )}
+        {/* The CalibiAI Score card above already hosts every completed
+            assessment's report (with view + download). The 120-minute core
+            assessment card used to live here, but it duplicated the same
+            data and split the student's attention between two places — now
+            they have one canonical home for every report. */}
 
         {/* ---------------- Assessment 2 — Capgemini 2027 mock ---------------- */}
         {showSecondLaunchCard && <div className="mt-6 glass-card animate-fade-up" style={{animationDelay:'.18s'}}>
