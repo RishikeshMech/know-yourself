@@ -51,9 +51,15 @@ export async function postJsonWithRetry<T = Record<string, unknown>>(
       try { data = raw ? JSON.parse(raw) : null } catch { /* include a useful HTTP error below */ }
 
       if (!response.ok) {
-        const message = String(data?.error || data?.detail || `Request failed (${response.status})`)
+        // 444 is not an application status: it is commonly emitted by a
+        // reverse proxy/WAF when it closes a request without forwarding a
+        // normal response. Treat it as transient once, and give the user an
+        // actionable message if the gateway continues to reject the request.
+        const message = response.status === 444
+          ? 'The hosting gateway closed this request (HTTP 444). Please retry; if it continues, the site administrator should check the reverse-proxy/WAF logs.'
+          : String(data?.error || data?.detail || `Request failed (${response.status})`)
         const error = new JsonApiError(message, response.status, data)
-        retryable = response.status >= 500
+        retryable = response.status >= 500 || response.status === 444
         if (!retryable || attempt === retries) throw error
         lastError = error
       } else if (!data || typeof data !== 'object') {

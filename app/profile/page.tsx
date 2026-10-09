@@ -381,9 +381,9 @@ function ProfileInner() {
         </div>
 
         {/* ================= BODY GRID ================= */}
-        <div className="grid gap-6 lg:grid-cols-12">
+        <div className="grid min-w-0 gap-6 lg:grid-cols-12">
           {/* -------- Left column -------- */}
-          <div className="lg:col-span-7 space-y-6">
+          <div className="min-w-0 space-y-6 lg:col-span-7">
             {/* Your CalibiAI Score — the candidate's single headline number, drawn
                 as an animated counter + progress ring so it lands on first scroll.
                 The old "Assessment proof · CalibiAI Assessment" card used to live
@@ -397,34 +397,35 @@ function ProfileInner() {
               <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-[#1a1638] to-[#2a1654] px-5 py-6 sm:px-7 sm:py-7">
                 <div aria-hidden className="pointer-events-none absolute -top-16 -right-16 h-56 w-56 rounded-full bg-fuchsia-400/20 blur-3xl" />
                 <div aria-hidden className="pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-indigo-400/25 blur-3xl" />
-                <div className="relative flex flex-wrap items-center gap-6">
+                <div className="relative flex min-w-0 flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-5">
                   <div className="shrink-0">
                     <AnimatedScore
                       score={calibi.score}
                       tier={calibi.grade ? `Grade ${calibi.grade}` : (total >= 800 ? 'Platinum' : total >= 600 ? 'Gold' : total >= 300 ? 'Silver' : 'Bronze')}
-                      sublabel={calibi.count > 0 ? `avg of ${calibi.count} assessment${calibi.count === 1 ? '' : 's'}` : undefined}
+                      gradient={['#a5b4fc', '#f0abfc']}
+                      sublabel={calibi.count > 0 ? `Average of ${calibi.count} assessment${calibi.count === 1 ? '' : 's'}` : undefined}
                     />
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[10px] font-black uppercase tracking-[0.22em] text-indigo-300">Your CalibiAI Score</div>
+                  <div className="min-w-0 w-full flex-1 sm:w-auto">
+                    <div className="text-[11px] font-black uppercase tracking-[0.16em] text-indigo-200">Assessment overview</div>
                     <h2 className="mt-1 text-2xl font-black tracking-tight text-white sm:text-3xl">Your CalibiAI Score</h2>
-                    <p className="mt-1.5 max-w-md text-xs leading-relaxed text-slate-300">
+                    <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-slate-200">
                       {CALIBI_RULE}
                     </p>
                     {calibi.entries.length > 0 && (
                       <div className="mt-4">
-                        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">Every assessment, scaled to 1000</div>
+                        <div className="text-[11px] font-black uppercase tracking-[0.14em] text-indigo-200">Every assessment, scaled to 1000</div>
                         <ul className="mt-2.5 space-y-2">
                           {calibi.entries.map((e, i) => (
-                            <li key={e.key} className="list-slide flex items-center gap-3 text-xs text-slate-200" style={{ animationDelay: `${200 + i * 90}ms` }}>
-                              <span className="w-32 shrink-0 truncate font-semibold" title={e.label}>{e.label}</span>
-                              <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
+                            <li key={e.key} className="list-slide flex min-w-0 items-center gap-2 text-xs text-slate-100 sm:gap-3" style={{ animationDelay: `${200 + i * 90}ms` }}>
+                              <span className="w-24 shrink-0 truncate font-semibold sm:w-32" title={e.label}>{e.label}</span>
+                              <div className="relative h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-white/15">
                                 <div
                                   className="h-full rounded-full bg-gradient-to-r from-indigo-300 via-violet-300 to-fuchsia-300 bar-grow"
                                   style={{ width: `${Math.max(2, Math.min(100, e.percent))}%`, animationDelay: `${300 + i * 90}ms` }}
                                 />
                               </div>
-                              <span className="w-20 shrink-0 text-right font-mono text-[11px] font-black tabular-nums text-white">{e.scaled}/1000</span>
+                              <span className="w-16 shrink-0 text-right font-mono text-[11px] font-black tabular-nums text-white sm:w-20">{e.scaled}/1000</span>
                             </li>
                           ))}
                         </ul>
@@ -435,7 +436,7 @@ function ProfileInner() {
               </div>
               {/* Actions strip — clearly aligned with the rest of the page. */}
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-white/60 px-5 py-4 sm:px-7">
-                <div className="text-[11px] text-slate-500">
+                <div className="text-xs text-slate-600">
                   {calibi.count > 0
                     ? <>Based on <span className="font-bold text-slate-700">{calibi.count} completed assessment{calibi.count === 1 ? '' : 's'}</span>. Grades are computed from your final CalibiAI score.</>
                     : <>Take your first assessment to see your score here.</>}
@@ -571,7 +572,7 @@ function ProfileInner() {
           </div>
 
           {/* -------- Right column -------- */}
-          <div className="lg:col-span-5 space-y-6">
+          <div className="min-w-0 space-y-6 lg:col-span-5">
             {/* Assessment-backed skills, self-reported skills and resume-detected
                 skills — each rendered with its own chart so the panel is
                 glanceable, animated, and live-updates the moment a new
@@ -582,10 +583,10 @@ function ProfileInner() {
                 title="Your skills"
                 right={<span className="text-lg" aria-hidden>🎯</span>}
               />
-              <p className="mt-2 text-xs leading-relaxed text-slate-500">
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">
                 Assessment scores update these skill signals automatically. Skills you list yourself or on your resume stay separate.
               </p>
-              <div className="mt-4">
+              <div className="mt-4 min-w-0">
                 <ProfileSkillSection
                   assessmentSkills={assessmentSkillRollups}
                   selfReportedSkills={profile?.skills}

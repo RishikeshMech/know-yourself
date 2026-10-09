@@ -25,7 +25,7 @@ interface Props {
   sublabel?: string
 }
 
-export function AnimatedScore({ score, tier, gradient = ['#6366f1', '#a855f7'], ringColor, size = 168, sublabel }: Props) {
+export function AnimatedScore({ score, tier, gradient = ['#a5b4fc', '#f0abfc'], ringColor, size = 168, sublabel }: Props) {
   const numeric = Number.isFinite(Number(score)) ? Math.max(0, Math.min(1000, Number(score))) : 0
   const share = numeric / 10 // 0..100, matches `pathLength="100"`
   const stroke = ringColor || gradient[0]
@@ -75,9 +75,9 @@ export function AnimatedScore({ score, tier, gradient = ['#6366f1', '#a855f7'], 
         <div className="score-in text-[44px] font-black leading-none tabular-nums" style={{ background: `linear-gradient(135deg, ${gradient[0]}, ${gradient[1]})`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>
           {Number.isFinite(numeric) ? display : '—'}
         </div>
-        <div className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">/ 1000</div>
-        {tier && <div className="mt-1 text-[10px] font-black uppercase tracking-wider text-indigo-600">{tier}</div>}
-        {sublabel && <div className="mt-0.5 text-[10px] font-semibold text-slate-500">{sublabel}</div>}
+        <div className="mt-0.5 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-300">/ 1000</div>
+        {tier && <div className="mt-1 text-[11px] font-black uppercase tracking-wider text-indigo-200">{tier}</div>}
+        {sublabel && <div className="mt-0.5 text-[11px] font-semibold text-slate-300">{sublabel}</div>}
       </div>
     </div>
   )

@@ -1,14 +1,10 @@
 'use client'
 
 /**
- * ResumeSkillRadar — a small SVG radar/spider chart that visualises the
- * breadth of the candidate's resume-detected skills across the six skill
- * families that matter most for a software role. Each axis is the count of
- * skills in that family; the resulting polygon shows the candidate's
- * coverage shape at a glance.
- *
- * Re-mounts (via React `key`) on every input change so the line-draw
- * animation replays when the resume is re-parsed.
+ * ResumeSkillRadar — a compact radar chart and readable legend for the six
+ * skill families extracted from a resume. The family names live in the
+ * adjacent legend (rather than tiny SVG labels) so they remain readable at
+ * the narrow widths used by the profile sidebar.
  */
 import { useMemo } from 'react'
 
@@ -48,7 +44,7 @@ export function ResumeSkillRadar({ skills }: { skills: string }) {
     const a = angleAt(i)
     return { x: cx + radius * Math.cos(a), y: cy + radius * Math.sin(a) }
   }
-  // Axis tick lines + labels
+  // Concentric radar guide rings
   const ticks = [0.25, 0.5, 0.75, 1]
   // The filled polygon path
   const polyPoints = counts.map((c, i) => {
@@ -56,11 +52,11 @@ export function ResumeSkillRadar({ skills }: { skills: string }) {
     return `${p.x},${p.y}`
   }).join(' ')
 
-  if (total === 0) return <p className="text-xs text-slate-400">—</p>
+  if (total === 0) return <p className="text-sm text-slate-500">—</p>
 
   return (
-    <div key={skills} className="flex items-center gap-3">
-      <svg viewBox="0 0 200 180" className="w-32 shrink-0" role="img" aria-label="Resume skill coverage radar">
+    <div key={skills} className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,8rem)_minmax(0,1fr)] sm:items-center">
+      <svg viewBox="0 0 200 180" className="mx-auto w-full max-w-[144px] sm:w-32" role="img" aria-label="Resume skill coverage radar">
         {/* Concentric guide rings */}
         {ticks.map((t) => (
           <polygon
@@ -72,18 +68,19 @@ export function ResumeSkillRadar({ skills }: { skills: string }) {
             strokeDasharray={t === 1 ? '0' : '2 3'}
           />
         ))}
-        {/* Axis lines + family labels */}
-        {FAMILIES.map((f, i) => {
-          const p = point(i, r + 14)
-          return (
-            <g key={f}>
-              <line x1={cx} y1={cy} x2={point(i, r).x} y2={point(i, r).y} stroke="#cbd5e1" strokeWidth={0.8} />
-              <text x={p.x} y={p.y} textAnchor="middle" dominantBaseline="middle" fontSize={8.5} fontWeight={700} fill="#475569">
-                {f}
-              </text>
-            </g>
-          )
-        })}
+        {/* Colored spokes correspond to the family dots in the legend. */}
+        {FAMILIES.map((f, i) => (
+          <line
+            key={f}
+            x1={cx}
+            y1={cy}
+            x2={point(i, r).x}
+            y2={point(i, r).y}
+            stroke={COLORS[i]}
+            strokeOpacity={0.35}
+            strokeWidth={1}
+          />
+        ))}
         {/* The actual coverage polygon */}
         <polygon
           points={polyPoints}
@@ -102,7 +99,7 @@ export function ResumeSkillRadar({ skills }: { skills: string }) {
               cx={p.x}
               cy={p.y}
               r={3}
-              fill="#f43f5e"
+              fill={COLORS[i]}
               stroke="white"
               strokeWidth={1.5}
               className="dot-pop"
@@ -111,12 +108,12 @@ export function ResumeSkillRadar({ skills }: { skills: string }) {
           )
         })}
       </svg>
-      <ul className="min-w-0 flex-1 space-y-1.5 text-[11px]">
+      <ul className="grid min-w-0 gap-1.5 text-xs">
         {FAMILIES.map((f, i) => (
-          <li key={f} className="flex items-center gap-2">
-            <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: COLORS[i % COLORS.length] }} />
-            <span className="truncate font-semibold text-slate-700">{f}</span>
-            <span className="ml-auto shrink-0 font-mono text-[10px] font-bold text-slate-500">{counts[i]}</span>
+          <li key={f} className="flex min-w-0 items-center gap-2">
+            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: COLORS[i % COLORS.length] }} />
+            <span className="min-w-0 flex-1 truncate font-semibold text-slate-700">{f}</span>
+            <span className="shrink-0 font-mono text-[11px] font-bold tabular-nums text-slate-600">{counts[i]}</span>
           </li>
         ))}
       </ul>

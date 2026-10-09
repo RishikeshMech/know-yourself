@@ -212,33 +212,33 @@ export function SkillCategoryChart({ skills }: { skills: AssessmentSkillRollup[]
     // changes (e.g. after a new company mock is graded), which replays the
     // pie-draw + fade-up animations.
     <div key={skills.map((s) => `${s.key}:${s.score}`).join('|')}>
-      <div className="grid gap-5 sm:grid-cols-[200px_minmax(0,1fr)] sm:items-center">
-        <div className="animate-fade-up">
+      <div className="grid min-w-0 gap-4 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] sm:items-center">
+        <div className="min-w-0 animate-fade-up">
           <Pie stats={stats} total={total} />
-          <p className="mt-2 text-center text-[10px] font-semibold uppercase tracking-wider text-slate-400">Category distribution</p>
+          <p className="mt-2 text-center text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Category distribution</p>
         </div>
-        <ul className="grid gap-2">
+        <ul className="grid min-w-0 gap-2">
           {stats.map((c, i) => (
             <li
               key={c.id}
-              className={`animate-fade-up flex items-center justify-between gap-3 rounded-xl border px-3 py-2 ${c.bg}`}
+              className={`animate-fade-up flex min-w-0 flex-col gap-1.5 rounded-xl border px-3 py-2.5 ${c.bg}`}
               style={{ animationDelay: `${120 + i * 80}ms` }}
             >
               <div className="flex min-w-0 items-center gap-2">
-                <span aria-hidden className="text-base leading-none">{c.emoji}</span>
-                <div className="min-w-0">
-                  <div className="truncate text-xs font-black">{c.label}</div>
-                  <div className="text-[10px] font-semibold opacity-80">{c.count} skill{c.count === 1 ? '' : 's'} assessed{c.unassessed ? ` · ${c.unassessed} not yet` : ''}</div>
-                </div>
+                <span aria-hidden className="shrink-0 text-base leading-none">{c.emoji}</span>
+                <span className="min-w-0 flex-1 break-words text-xs font-black leading-tight">{c.label}</span>
+                <span className="shrink-0 font-mono text-xs font-black tabular-nums">{c.percent}%</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="h-1.5 w-16 overflow-hidden rounded-full bg-white/70">
+              <div className="ml-6 flex min-w-0 items-center gap-2">
+                <span className="min-w-0 flex-1 break-words text-[11px] font-semibold leading-snug opacity-80">
+                  {c.count} skill{c.count === 1 ? '' : 's'} assessed{c.unassessed ? ` · ${c.unassessed} not yet` : ''}
+                </span>
+                <div className="h-1.5 w-10 shrink-0 overflow-hidden rounded-full bg-white/70">
                   <div
                     className="h-full rounded-full"
                     style={{ width: `${Math.max(2, Math.min(100, c.percent))}%`, background: c.color, transformOrigin: 'left center', animation: 'bar-grow .9s cubic-bezier(.22,.8,.32,1) both', animationDelay: `${200 + i * 90}ms` }}
                   />
                 </div>
-                <span className="font-mono text-xs font-black tabular-nums">{c.percent}%</span>
               </div>
             </li>
           ))}

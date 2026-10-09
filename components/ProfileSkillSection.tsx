@@ -3,16 +3,11 @@
 /**
  * ProfileSkillSection — the "Your skills" panel on the student profile page.
  *
- * Three coordinated charts that auto-update from the same source data:
- *   1. Assessment-derived skills, rolled up into a 6-category animated
- *      donut (SkillCategoryChart).
- *   2. Self-reported skills from the profile form, drawn as an animated
- *      horizontal bar chart of family coverage (SkillCoverageChart).
- *   3. Resume-detected skills, drawn as an animated hexagonal radar
- *      (ResumeSkillRadar).
- *
- * The panel re-mounts (via React `key`) whenever the input strings change so
- * every entrance animation replays.
+ * Keep assessment evidence distinct from skills supplied by the candidate or
+ * parsed from their resume. The secondary panels stack vertically because
+ * this section sits in a relatively narrow profile sidebar; keeping each
+ * chart full-width prevents labels and cards from colliding at desktop and
+ * tablet breakpoints.
  */
 import type { AssessmentSkillRollup } from '@/lib/assessmentSkills'
 import { SkillCategoryChart } from '@/components/SkillCategoryChart'
@@ -30,33 +25,33 @@ export function ProfileSkillSection({
 }) {
   const remountKey = `${assessmentSkills.length}|${selfReportedSkills || ''}|${resumeSkills || ''}`
   return (
-    <div key={remountKey} className="space-y-5">
+    <div key={remountKey} className="min-w-0 space-y-5">
       {/* Scored-skill donut + legend */}
-      <div>
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-600">Assessment-mapped skills</div>
-          <span className="rounded-full border border-indigo-100 bg-indigo-50/70 px-2 py-0.5 text-[10px] font-bold text-indigo-600">Scored</span>
+      <div className="min-w-0">
+        <div className="mb-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
+          <div className="text-[11px] font-black uppercase tracking-[0.14em] text-indigo-700">Assessment-mapped skills</div>
+          <span className="shrink-0 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-bold text-indigo-700">Scored</span>
         </div>
         <SkillCategoryChart skills={assessmentSkills} />
       </div>
 
-      {/* Two claim-based mini-charts side-by-side on md+. */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200/70 bg-white/70 p-4">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-indigo-600">
-              <span aria-hidden>🛠️</span> Self-reported
+      {/* Separate source panels remain full-width in the profile sidebar. */}
+      <div className="grid min-w-0 gap-3">
+        <div className="min-w-0 rounded-2xl border border-slate-200/80 bg-white/75 p-4">
+          <div className="mb-3 flex min-w-0 flex-wrap items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2 text-[11px] font-black uppercase tracking-[0.12em] text-indigo-700">
+              <span aria-hidden>🛠️</span> <span>Self-reported</span>
             </div>
-            <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-600 border border-indigo-200/70">Claimed</span>
+            <span className="shrink-0 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-bold text-indigo-700">Claimed</span>
           </div>
           <SkillCoverageChart skills={selfReportedSkills} palette="indigo" />
         </div>
-        <div className="rounded-2xl border border-slate-200/70 bg-white/70 p-4">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-rose-600">
-              <span aria-hidden>📄</span> Resume-detected
+        <div className="min-w-0 rounded-2xl border border-slate-200/80 bg-white/75 p-4">
+          <div className="mb-3 flex min-w-0 flex-wrap items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2 text-[11px] font-black uppercase tracking-[0.12em] text-rose-700">
+              <span aria-hidden>📄</span> <span>Resume-detected</span>
             </div>
-            <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-600 border border-rose-200/70">Parsed</span>
+            <span className="shrink-0 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-700">Parsed</span>
           </div>
           <ResumeSkillRadar skills={resumeSkills} />
         </div>
