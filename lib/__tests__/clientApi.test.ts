@@ -43,6 +43,24 @@ test('postJsonWithRetry retries a 5xx response but not a client error', async ()
   assert.equal(calls, 1, 'rate limits should not be retried')
 })
 
+test('postJsonWithRetry retries a transient HTTP 444 and explains a persistent gateway close', async () => {
+  let calls = 0
+  const result = await postJsonWithRetry<{ ok: boolean }>('/api/ai/assistant', {}, {
+    retries: 1,
+    fetchImpl: (async () => {
+      calls++
+      return calls === 1 ? jsonResponse(444, { error: 'connection closed' }) : jsonResponse(200, { ok: true })
+    }) as typeof fetch,
+  })
+  assert.equal(result.data.ok, true)
+  assert.equal(calls, 2)
+
+  await assert.rejects(() => postJsonWithRetry('/api/ai/assistant', {}, {
+    retries: 0,
+    fetchImpl: (async () => jsonResponse(444, { error: 'connection closed' })) as typeof fetch,
+  }), (error: unknown) => error instanceof JsonApiError && error.status === 444 && /reverse-proxy\/WAF logs/i.test(error.message))
+})
+
 test('postJsonWithRetry reports malformed successful responses clearly', async () => {
   await assert.rejects(() => postJsonWithRetry('/api/test', {}, {
     retries: 0,

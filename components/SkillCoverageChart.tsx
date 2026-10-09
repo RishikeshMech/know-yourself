@@ -74,7 +74,7 @@ export function SkillCoverageChart({ skills, palette }: { skills: string; palett
   }, [skills])
 
   if (!bars.length) {
-    return <p className="text-xs text-slate-400">—</p>
+    return <p className="text-sm text-slate-500">—</p>
   }
 
   const max = Math.max(1, ...bars.map((b) => b.count))
@@ -83,11 +83,11 @@ export function SkillCoverageChart({ skills, palette }: { skills: string; palett
     : 'text-rose-600'
 
   return (
-    <div key={skills} className="space-y-2">
+    <div key={skills} className="min-w-0 space-y-2.5">
       {bars.map((b, i) => (
-        <div key={b.family} className="flex items-center gap-2 text-[11px]">
-          <div className={`w-20 shrink-0 truncate font-bold ${headerTint}`} title={b.family}>{b.family}</div>
-          <div className="relative h-2.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+        <div key={b.family} className="grid min-w-0 grid-cols-[minmax(4rem,5rem)_minmax(2rem,1fr)_auto] items-center gap-2 text-[11px]">
+          <div className={`min-w-0 truncate font-bold ${headerTint}`} title={b.family}>{b.family}</div>
+          <div className="relative h-2.5 min-w-0 overflow-hidden rounded-full bg-slate-100">
             <div
               className="bar-grow h-full rounded-full"
               style={{
@@ -97,7 +97,7 @@ export function SkillCoverageChart({ skills, palette }: { skills: string; palett
               }}
             />
           </div>
-          <div className="w-12 shrink-0 text-right font-mono text-[10px] font-bold text-slate-500">{b.count} skill{b.count === 1 ? '' : 's'}</div>
+          <div className="shrink-0 whitespace-nowrap text-right font-mono text-[10px] font-bold text-slate-600">{b.count} skill{b.count === 1 ? '' : 's'}</div>
         </div>
       ))}
     </div>
