@@ -13,7 +13,8 @@ import { flattenAssessmentResult } from '@/lib/resultShape'
 import { getLiveUser } from '@/lib/session'
 import { ReportModal } from '@/components/ReportModal'
 import { SkillChips } from '@/components/SkillChips'
-import { WhatsAppCommunityCard } from '@/components/WhatsAppCommunity'
+import { ReadinessSidebar } from '@/components/ReadinessSidebar'
+import { assessmentVisibility } from '@/lib/assessmentVisibility'
 import { CompanyCatalog } from '@/components/company/CompanyCatalog'
 import { CalibiScoreCard } from '@/components/CalibiScoreCard'
 import { AssessmentSkillList } from '@/components/AssessmentSkillList'
@@ -30,7 +31,6 @@ function Inner(){
   const onCompanyAttempts = useCallback((list: AttemptSummary[] | null) => { if (list) setCompanyAttempts(list); setCompanyLoaded(true) }, [])
   // Which assessment the report pop-up is showing (1 = CalibiAI, 2 = Capgemini mock).
   const [reportFor, setReportFor] = useState<1 | 2>(1)
-  const [downloading, setDownloading] = useState(false)
   // True only on the landing right after the assessment was submitted.
   const [justCompleted, setJustCompleted] = useState(false)
   // True when the candidate left the feedback step unfinished ("Skip for now"),
@@ -146,6 +146,13 @@ function Inner(){
     return () => window.removeEventListener('focus', onFocus)
   },[refresh])
 
+  // The dashboard initially renders a hydration skeleton, so the browser's
+  // first hash scroll can happen before the report list exists in the DOM.
+  useEffect(() => {
+    if (!hydrated || !validated || !companyLoaded || window.location.hash !== '#assessment-reports') return
+    requestAnimationFrame(() => document.getElementById('assessment-reports')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+  }, [hydrated, validated, companyLoaded, scores, scores2])
+
   if (!hydrated) {
     return (
       <div>
@@ -179,8 +186,7 @@ function Inner(){
   // Assessment 2 (the Capgemini 2027 mock) is unlocked only once the first
   // assessment has produced a result — a first-time user must take that one
   // first. Once unlocked it is, like the first, a single attempt.
-  const assessment1Done = !!scores
-  const assessment2Done = !!scores2
+  const { firstDone: assessment1Done, showFirstResultCard, showSecondLaunchCard } = assessmentVisibility(scores, scores2)
 
   return (
     <div>
@@ -204,8 +210,8 @@ function Inner(){
                   </p>
                 </div>
               </div>
-              {scores && (
-                <button onClick={() => { setReportFor(1); setShowReport(true) }} className="btn-primary !py-2.5 text-xs">
+              {(scores2 || scores) && (
+                <button onClick={() => { setReportFor(scores2 ? 2 : 1); setShowReport(true) }} className="btn-primary !py-2.5 text-xs">
                   View my full report →
                 </button>
               )}
@@ -233,12 +239,13 @@ function Inner(){
         )}
 
         {/* Headline: the average of every completed assessment. */}
-        <CalibiScoreCard a1={scores} a2={scores2} company={companyAttempts} companyLoaded={companyLoaded || !user?.id} startHref={startHref} />
+        <CalibiScoreCard a1={scores} a2={scores2} company={companyAttempts} companyLoaded={companyLoaded || !user?.id} startHref={startHref} onOpenReport={(no) => { setReportFor(no); setShowReport(true) }} />
 
-        {/* Keep claimed/resume skills separate from the assessment-derived skill map. */}
-        <div className="glass-card !p-5 mt-6 animate-fade-up">
+        {/* Claimed skills stay separate from scored skills; resume and actions live beside the map. */}
+        <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)] lg:items-start">
+        <div className="glass-card !p-5 sm:!p-6 animate-fade-up">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="text-sm font-bold text-slate-700">Your profile & skill map</div>
+            <div><div className="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-500">Your readiness</div><h2 className="mt-1 text-lg font-black text-slate-900">Your profile &amp; skill map</h2></div>
             <div className="flex gap-3">
               <Link href="/profile" className="text-xs font-semibold text-indigo-600">See my profile →</Link>
               <Link href="/edit-profile" className="text-xs font-semibold text-indigo-600">Edit profile →</Link>
@@ -268,12 +275,17 @@ function Inner(){
           </div>
         </div>
 
-        <div className="mt-6 grid lg:grid-cols-3 gap-6">
+        <ReadinessSidebar resume={resume} skills={assessmentSkillRollups} hasAssessment={!!(scores || scores2 || companyAttempts.some(a => a.status === 'submitted' || a.status === 'expired'))} />
+        </div>
+
+        {/* Show the first result here until assessment 2 is done. After that,
+            all completed reports live exclusively in the CalibiAI Score above. */}
+        {showFirstResultCard && scores && (
+        <div className="mt-6">
           {/* Assessment 1 */}
-          <div className="lg:col-span-2 glass-card animate-fade-up" style={{animationDelay:'.05s'}}>
+          <div className="glass-card animate-fade-up" style={{animationDelay:'.05s'}}>
             <div className="text-sm font-bold text-slate-700">CalibiAI Assessment <span className="font-medium text-slate-400">· 120-minute core assessment</span></div>
-            {scores ? (
-              <div className="mt-4">
+            <div className="mt-4">
                 <div className="flex items-baseline gap-3 flex-wrap">
                   <span className="text-5xl font-black text-gradient">{scores.total}</span>
                   <span className="text-slate-400 font-bold">/1000</span>
@@ -293,73 +305,21 @@ function Inner(){
                 </div>
                 <div className="mt-5 flex flex-wrap gap-3">
                   <button onClick={() => { setReportFor(1); setShowReport(true) }} className="btn-primary !py-2.5 text-xs">View report</button>
-                  <button
-                    onClick={async () => {
-                      setDownloading(true)
-                      try {
-                        const { generateReportPdf } = await import('@/lib/reportPdf')
-                        const doc = await generateReportPdf({ scores, profile, user })
-                        doc.save(`CalibiAI_Report_${scores?.session_id || 'scorecard'}.pdf`)
-                      } catch (e) { console.warn('PDF generation failed:', e) }
-                      finally { setDownloading(false) }
-                    }}
-                    disabled={downloading}
-                    className="btn-soft !py-2.5 text-xs"
-                  >
-                    {downloading ? 'Preparing PDF…' : '⬇ Download PDF'}
-                  </button>
                 </div>
               </div>
-            ) : (
-              <div className="mt-6 rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/40 p-8 text-center">
-                <div className="text-4xl">🎯</div>
-                <p className="mt-2 text-sm text-slate-500">You haven't taken the assessment yet.</p>
-                <Link href={startHref} className="btn-primary mt-4 inline-flex">Start your assessment →</Link>
-              </div>
-            )}
+
           </div>
 
-          {/* Side */}
-          <div className="space-y-5">
-            <div className="glass-card !p-5 animate-fade-up" style={{animationDelay:'.1s'}}>
-              <div className="text-sm font-bold text-slate-700">Resume score</div>
-              {resume ? (
-                <div className="mt-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-14 h-14 rounded-full border-4 border-indigo-500 flex items-center justify-center font-black text-indigo-600">{resume.resume_score}</div>
-                    <div className="text-xs text-slate-500">out of 100</div>
-                  </div>
-                  <div className="mt-3 text-xs font-bold text-emerald-600">Strengths</div>
-                  <ul className="list-disc ml-4 text-xs text-slate-600">{(resume.feedback?.strengths || []).slice(0,2).map((s:string)=><li key={s}>{s}</li>)}</ul>
-                  <Link href="/resume?edit=1" className="mt-3 inline-block text-xs font-semibold text-indigo-600">Update resume →</Link>
-                </div>
-              ) : <p className="text-xs text-slate-400 mt-2">No resume uploaded yet. <Link href="/resume?edit=1" className="text-indigo-600 font-semibold">Upload →</Link></p>}
-            </div>
-
-            <div className="rounded-3xl calibiai-gradient p-5 text-white shadow-xl shadow-indigo-200 animate-fade-up" style={{animationDelay:'.15s'}}>
-              <div className="text-sm font-bold">Recommended next steps</div>
-              <ul className="mt-2 text-xs space-y-1.5 opacity-95 list-disc ml-4">
-                {scores?.cognitive?.behavioral ? <li>Strengthen your lower-scoring behavioural traits with team exercises</li> : <li>Take the 120-minute assessment to unlock your score</li>}
-                <li>Practice prompt engineering with 3 daily drills</li>
-                <li>Add quantified impact to your resume projects</li>
-              </ul>
-            </div>
-
-            <div className="animate-fade-up" style={{animationDelay:'.2s'}}>
-              <WhatsAppCommunityCard />
-            </div>
-          </div>
         </div>
+        )}
 
         {/* ---------------- Assessment 2 — Capgemini 2027 mock ---------------- */}
-        <div className="mt-6 glass-card animate-fade-up" style={{animationDelay:'.18s'}}>
+        {showSecondLaunchCard && <div className="mt-6 glass-card animate-fade-up" style={{animationDelay:'.18s'}}>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-bold text-slate-700">Assessment 2 · Capgemini 2027 mock</span>
-                {assessment2Done ? (
-                  <span className="chip text-emerald-700 border-emerald-200 bg-emerald-50/70">Completed</span>
-                ) : assessment1Done ? (
+                {assessment1Done ? (
                   <span className="chip text-violet-700 border-violet-200 bg-violet-50/70">Unlocked</span>
                 ) : (
                   <span className="chip text-slate-500 border-slate-200 bg-slate-50">🔒 Locked</span>
@@ -372,34 +332,7 @@ function Inner(){
             </div>
           </div>
 
-          {assessment2Done ? (
-            <div className="mt-4">
-              <div className="flex items-baseline gap-3 flex-wrap">
-                <span className="text-4xl font-black text-gradient">{scores2.total}</span>
-                <span className="text-slate-400 font-bold">/1000</span>
-                <span className="chip text-violet-700 border-violet-200 bg-violet-50/70">Grade {scores2.grade} · {scores2.percentile}th percentile</span>
-              </div>
-              <div className="mt-4 grid sm:grid-cols-2 gap-2.5">
-                {[
-                  ['English Communication', scores2.english?.total ?? 0, 200],
-                  ['Technical Module', scores2.ai_literacy ?? 0, 250],
-                  ['Debugging Assessment', scores2.debugging_total ?? ((scores2.debug_mcq ?? 0) + (scores2.debug_lab ?? 0)), 200],
-                  ['AI-assisted Coding', scores2.ai_coding ?? 0, 200],
-                  ['Cognitive Assessment', scores2.cognitive?.total ?? 0, 150],
-                ].map(([k,v,m])=>(
-                  <div key={k as string} className="panel p-3">
-                    <div className="flex justify-between text-xs mb-1"><span className="text-slate-600 font-medium">{k}</span><span className="font-mono font-bold text-slate-700">{v}/{m}</span></div>
-                    <div className="h-2 rounded-full bg-slate-100 overflow-hidden"><div className="h-full calibiai-gradient rounded-full" style={{width:`${(Number(v))/(Number(m))*100}%`}}/></div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4">
-                <button onClick={() => { setReportFor(2); setShowReport(true) }} className="btn-primary !py-2.5 text-xs">
-                  View assessment 2 report
-                </button>
-              </div>
-            </div>
-          ) : assessment1Done ? (
+          {assessment1Done ? (
             <div className="mt-4 rounded-2xl border-2 border-dashed border-violet-200 bg-violet-50/40 p-6 text-center">
               <div className="text-3xl">🚀</div>
               <p className="mt-2 text-sm text-slate-600">Your second assessment is ready — 5 stages, 1000 points, one attempt.</p>
@@ -414,7 +347,7 @@ function Inner(){
               <Link href={startHref} className="btn-soft mt-4 inline-flex !py-2.5 text-xs">Start your first assessment →</Link>
             </div>
           )}
-        </div>
+        </div>}
 
         {/* ---------------- Company assessments — every company, grouped by tag ---------------- */}
         <div id="company-assessments" className="mt-6 glass-card animate-fade-up scroll-mt-24" style={{animationDelay:'.2s'}}>

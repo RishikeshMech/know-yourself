@@ -1,10 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 import { COMPANIES, COMPANY_TAGS, companiesByTag, companyMockFacts, getCompany } from '../company/catalog.ts'
 import { BLUEPRINTS } from '../company/blueprints.ts'
 import { RESEARCH_STEPS, RESEARCH_TARGETS } from '../company/generated/researchSteps.ts'
-import { COMPANY_LOGO_DOMAINS, companyLogoUrl } from '../company/logos.ts'
+import { COMPANY_LOCAL_LOGOS, COMPANY_LOGO_DOMAINS, companyLogo, companyLogoUrl } from '../company/logos.ts'
 import { SECTION_BY_ID } from '../company/sections.ts'
 
 test('catalog: every research target and every documented company is present (60 total)', () => {
@@ -27,15 +29,49 @@ test('catalog: slugs are unique, url-safe and resolvable', () => {
   assert.equal(getCompany('not-a-company'), undefined)
 })
 
-test('catalog: every company has an official-domain logo URL with initials available as fallback', () => {
+test('catalog: every company has a logo (bundled brand mark or favicon) with initials as fallback', () => {
   assert.deepEqual(Object.keys(COMPANY_LOGO_DOMAINS).sort(), COMPANIES.map((company) => company.slug).sort())
   for (const company of COMPANIES) {
     assert.ok(company.initials, `${company.name} needs initials for logo fallback`)
-    const url = new URL(companyLogoUrl(company.slug)!)
+    const logo = companyLogo(company.slug)
+    assert.ok(logo, `${company.name} has no logo at all`)
+    assert.ok(logo!.width > 0 && logo!.height > 0, `${company.name} has a zero-size logo`)
+    assert.equal(companyLogoUrl(company.slug), logo!.src)
+
+    if (COMPANY_LOCAL_LOGOS[company.slug]) {
+      // Bundled marks are served from our own origin so they can never break.
+      assert.equal(logo!.src, `/company-logos/${company.slug}.png`, company.name)
+      continue
+    }
+
+    const url = new URL(logo!.src)
     assert.equal(url.hostname, 'www.google.com', company.name)
     assert.equal(url.pathname, '/s2/favicons', company.name)
     assert.equal(url.searchParams.get('domain'), COMPANY_LOGO_DOMAINS[company.slug], company.name)
     assert.equal(url.searchParams.get('sz'), '128', company.name)
+    // Favicons are square.
+    assert.equal(logo!.width, logo!.height, company.name)
+  }
+})
+
+test('logos: every bundled brand mark exists on disk at the declared size', () => {
+  // These are the marks Google's favicon service does not return, so they are
+  // shipped with the app instead — a missing/stale file is what made them
+  // render as initials, so fail loudly if one disappears.
+  for (const slug of Object.keys(COMPANY_LOCAL_LOGOS)) {
+    assert.ok(COMPANIES.some((c) => c.slug === slug), `${slug} is not a company in the catalog`)
+    const logo = COMPANY_LOCAL_LOGOS[slug]
+    const file = join(process.cwd(), 'public', 'company-logos', `${slug}.png`)
+    assert.ok(existsSync(file), `missing logo file for ${slug}: ${file}`)
+
+    const bytes = readFileSync(file)
+    // PNG signature + IHDR chunk: width and height are big-endian uint32s at offset 16/20.
+    assert.deepEqual([...bytes.subarray(1, 4)], [0x50, 0x4e, 0x47], `${slug}.png is not a PNG`)
+    assert.equal(bytes.readUInt32BE(16), logo.width, `${slug}.png width drifted from logos.ts`)
+    assert.equal(bytes.readUInt32BE(20), logo.height, `${slug}.png height drifted from logos.ts`)
+    assert.equal(bytes.readUInt8(24), 8, `${slug}.png must be 8-bit`)
+    // Colour type 6 = RGBA — the mark needs a transparent background to sit on the plate.
+    assert.equal(bytes.readUInt8(25), 6, `${slug}.png must be RGBA (transparent background)`)
   }
 })
 

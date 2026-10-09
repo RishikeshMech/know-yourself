@@ -69,7 +69,7 @@ function CompanyCard({ company, attempt }: { company: Company; attempt?: Attempt
             <span className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${VERDICT_STYLE[attempt?.verdict || 'not-yet'] || VERDICT_STYLE['not-yet']}`}>
               {attempt?.score != null ? `${Math.round(Number(attempt.score))}/100` : 'Completed'}
             </span>
-            <span className="text-xs font-bold text-indigo-600 transition group-hover:translate-x-0.5">View result →</span>
+            <span className="text-xs font-bold text-indigo-600 transition group-hover:translate-x-0.5">View report →</span>
           </>
         ) : open ? (
           <>

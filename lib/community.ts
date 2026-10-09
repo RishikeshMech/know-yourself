@@ -16,3 +16,6 @@ export const COMMUNITY_APP_URL = 'https://app.calibiai.com'
  * trying to exclude the ones that are not.
  */
 export const COMMUNITY_NAV_ROUTES = ['/', '/dashboard/student', '/profile']
+
+/** WhatsApp shortcut: available on student destinations, never during an exam. */
+export const WHATSAPP_NAV_ROUTES = ['/dashboard/student', '/profile', '/result']

@@ -7,7 +7,8 @@ import { HelpButton } from '@/components/HelpButton'
 import { Logo } from '@/components/Logo'
 import { AiAvatar } from '@/components/AiAvatar'
 import { User, LogOut, ChevronDown, Users, Building2 } from 'lucide-react'
-import { COMMUNITY_APP_URL, COMMUNITY_NAV_ROUTES } from '@/lib/community'
+import { WhatsAppGlyph } from '@/components/WhatsAppCommunity'
+import { COMMUNITY_APP_URL, COMMUNITY_NAV_ROUTES, WHATSAPP_COMMUNITY_URL, WHATSAPP_NAV_ROUTES } from '@/lib/community'
 
 /** The name the user chose on their profile page wins over the account /
  *  email-derived username (e.g. "Prajwal" over "prajwalgulhane85"). */
@@ -53,10 +54,16 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         <Link href={homeHref} className="flex items-center gap-2.5">
           <Logo className="drop-shadow-lg" />
-          <span className="font-extrabold tracking-tight text-slate-900 text-lg">CALIBIAI<span className="text-indigo-600"> SCORE</span></span>
+          <span className="font-extrabold tracking-tight text-slate-900 text-sm sm:text-lg">CALIBIAI<span className="hidden text-indigo-600 sm:inline"> SCORE</span></span>
         </Link>
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-1 sm:gap-2 text-sm">
           <HelpButton />
+          {WHATSAPP_NAV_ROUTES.includes(pathname ?? '') && hydrated && user?.role === 'student' && (
+            <a href={WHATSAPP_COMMUNITY_URL} target="_blank" rel="noopener noreferrer" aria-label="Join CalibiAI Students on WhatsApp in a new tab"
+              className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-2 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100 sm:px-3">
+              <WhatsAppGlyph className="h-4 w-4" /><span className="hidden sm:inline">Join WhatsApp</span>
+            </a>
+          )}
           {showCommunity && (
             <a
               href={COMMUNITY_APP_URL}
