@@ -7,37 +7,20 @@ import { useStore } from '@/lib/store'
 import { Navbar } from '@/components/Navbar'
 import { isProfileComplete } from '@/lib/validate'
 import { AiAvatar, AVATAR_STYLES, makeAvatarConfig, type AvatarConfig, type AvatarStyle } from '@/components/AiAvatar'
-import { SkillGraph, type SkillDatum } from '@/components/SkillGraph'
 import { ReportModal } from '@/components/ReportModal'
 import { SkillChips } from '@/components/SkillChips'
 import { flattenAssessmentResult } from '@/lib/resultShape'
 import { CALIBI_RULE, calibiFromSources } from '@/lib/calibiScore'
-import { assessmentVisibility } from '@/lib/assessmentVisibility'
 import { companyApi } from '@/lib/company/client'
 import { platformAssessmentSkills, rollupAssessmentSkills } from '@/lib/assessmentSkills'
-import { AssessmentSkillList } from '@/components/AssessmentSkillList'
+import { AnimatedScore } from '@/components/AnimatedScore'
+import { ProfileSkillSection } from '@/components/ProfileSkillSection'
 import { authenticatedFetch } from '@/lib/clientAuth'
 import type { AttemptSummary } from '@/lib/company/types'
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
-
-const SECTIONS: [string, string, number][] = [
-  ['English', 'english', 200],
-  ['Problem Solving', 'problem_solving', 200],
-  ['AI Debugging', 'ai_debugging', 150],
-  ['AI Feature Dev', 'ai_feature', 150],
-  ['Prompt Eng', 'prompt_engineering', 100],
-  ['Cognitive', 'cognitive_total', 200],
-]
-
-function sectionValue(scores: any, key: string): number {
-  if (!scores) return 0
-  if (key === 'english') return Number(scores.english?.total ?? 0)
-  if (key === 'cognitive_total') return Number(scores.cognitive?.total ?? 0)
-  return Number(scores[key] ?? 0)
-}
 
 function tierFor(total: number): { label: string; cls: string } {
   const t = Number(total) || 0
@@ -79,21 +62,6 @@ function roleTag(profile: any): string {
 /* ------------------------------------------------------------------ */
 /* Small presentational pieces                                         */
 /* ------------------------------------------------------------------ */
-
-function SectionBar({ label, value, max }: { label: string; value: number; max: number }) {
-  const pct = Math.max(0, Math.min(100, (Number(value) / max) * 100))
-  return (
-    <div className="panel p-3">
-      <div className="flex justify-between text-xs mb-1.5">
-        <span className="text-slate-600 font-medium">{label}</span>
-        <span className="font-mono font-bold text-slate-700">{Number(value)}/{max}</span>
-      </div>
-      <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-        <div className="h-full calibiai-gradient rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  )
-}
 
 function PanelHead({ tag, title, right }: { tag: string; title: string; right?: React.ReactNode }) {
   return (
@@ -247,26 +215,6 @@ function ProfileInner() {
     ...companyList.flatMap(attempt => attempt.skillEvidence || []),
   ], [activeScores, scores2Local, companyList])
   const assessmentSkillRollups = useMemo(() => rollupAssessmentSkills(assessmentSkillEvidence), [assessmentSkillEvidence])
-  const skillGraph: SkillDatum[] = useMemo(() => assessmentSkillRollups.slice(0, 6).map(skill => ({
-    label: skill.name,
-    value: skill.score,
-    sources: skill.sources,
-  })), [assessmentSkillRollups])
-
-  const skillChips: { name: string; sources: string[] }[] = useMemo(() => {
-    const map = new Map<string, { name: string; sources: Set<string> }>()
-    const add = (raw: string, source: string) => {
-      const name = raw.trim()
-      if (!name) return
-      const key = name.toLowerCase()
-      const cur = map.get(key) || { name, sources: new Set<string>() }
-      cur.sources.add(source)
-      map.set(key, cur)
-    }
-    String(profile?.skills || '').split(',').forEach(s => add(s, 'profile'))
-    ;(activeResume?.parsed?.skills || []).forEach((s: string) => add(s, 'resume'))
-    return Array.from(map.values()).map(v => ({ name: v.name, sources: Array.from(v.sources) }))
-  }, [profile?.skills, activeResume])
 
   const feedback: { text: string; from: string }[] = useMemo(() => {
     const out: { text: string; from: string }[] = []
@@ -436,31 +384,72 @@ function ProfileInner() {
         <div className="grid gap-6 lg:grid-cols-12">
           {/* -------- Left column -------- */}
           <div className="lg:col-span-7 space-y-6">
-            {/* A standalone first-result card is only useful until assessment 2.
-                Afterwards all completed assessments live together in the dashboard. */}
-            {!assessmentVisibility(activeScores, scores2Local).secondDone && <div className="glass-card animate-fade-up hover-lift">
-              <PanelHead
-                tag="Assessment proof"
-                title="CalibiAI Assessment"
-                right={activeScores ? (
-                  <span className="rounded-full border border-indigo-100 bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-600">Grade {activeScores.grade} · {activeScores.percentile}th %ile</span>
-                ) : (
-                  <span className="rounded-full border border-slate-200 bg-white/70 px-2.5 py-1 text-xs font-bold text-slate-400">Not taken yet</span>
-                )}
-              />
-              {activeScores ? (
-                <>
-                  <div className="mt-4 flex items-baseline gap-2">
-                    <span className="text-4xl font-black text-gradient">{activeScores.total}</span>
-                    <span className="text-slate-400 font-bold">/1000</span>
+            {/* Your CalibiAI Score — the candidate's single headline number, drawn
+                as an animated counter + progress ring so it lands on first scroll.
+                The old "Assessment proof · CalibiAI Assessment" card used to live
+                here; it duplicated the same data and forced the student to choose
+                between two places — this card now consolidates the headline with
+                the rule, the per-assessment contribution bars, and the report/PDF
+                actions so the page is both beautiful and self-explanatory. */}
+            <div className="glass-card animate-fade-up overflow-hidden !p-0">
+              {/* Gradient hero strip — same brand colours as the CalibiAI Score
+                  card on the dashboard so the two pages feel like one product. */}
+              <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-[#1a1638] to-[#2a1654] px-5 py-6 sm:px-7 sm:py-7">
+                <div aria-hidden className="pointer-events-none absolute -top-16 -right-16 h-56 w-56 rounded-full bg-fuchsia-400/20 blur-3xl" />
+                <div aria-hidden className="pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-indigo-400/25 blur-3xl" />
+                <div className="relative flex flex-wrap items-center gap-6">
+                  <div className="shrink-0">
+                    <AnimatedScore
+                      score={calibi.score}
+                      tier={calibi.grade ? `Grade ${calibi.grade}` : (total >= 800 ? 'Platinum' : total >= 600 ? 'Gold' : total >= 300 ? 'Silver' : 'Bronze')}
+                      sublabel={calibi.count > 0 ? `avg of ${calibi.count} assessment${calibi.count === 1 ? '' : 's'}` : undefined}
+                    />
                   </div>
-                  <div className="mt-4 grid sm:grid-cols-2 gap-2.5">
-                    {SECTIONS.map(([label, key, max]) => (
-                      <SectionBar key={key} label={label} value={sectionValue(activeScores, key)} max={max} />
-                    ))}
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[10px] font-black uppercase tracking-[0.22em] text-indigo-300">Your CalibiAI Score</div>
+                    <h2 className="mt-1 text-2xl font-black tracking-tight text-white sm:text-3xl">Your CalibiAI Score</h2>
+                    <p className="mt-1.5 max-w-md text-xs leading-relaxed text-slate-300">
+                      {CALIBI_RULE}
+                    </p>
+                    {calibi.entries.length > 0 && (
+                      <div className="mt-4">
+                        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">Every assessment, scaled to 1000</div>
+                        <ul className="mt-2.5 space-y-2">
+                          {calibi.entries.map((e, i) => (
+                            <li key={e.key} className="list-slide flex items-center gap-3 text-xs text-slate-200" style={{ animationDelay: `${200 + i * 90}ms` }}>
+                              <span className="w-32 shrink-0 truncate font-semibold" title={e.label}>{e.label}</span>
+                              <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
+                                <div
+                                  className="h-full rounded-full bg-gradient-to-r from-indigo-300 via-violet-300 to-fuchsia-300 bar-grow"
+                                  style={{ width: `${Math.max(2, Math.min(100, e.percent))}%`, animationDelay: `${300 + i * 90}ms` }}
+                                />
+                              </div>
+                              <span className="w-20 shrink-0 text-right font-mono text-[11px] font-black tabular-nums text-white">{e.scaled}/1000</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
-                  <div className="mt-5 flex flex-wrap gap-3">
-                    <button onClick={() => setShowReport(true)} className="btn-primary !py-2.5 text-xs">View report</button>
+                </div>
+              </div>
+              {/* Actions strip — clearly aligned with the rest of the page. */}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-white/60 px-5 py-4 sm:px-7">
+                <div className="text-[11px] text-slate-500">
+                  {calibi.count > 0
+                    ? <>Based on <span className="font-bold text-slate-700">{calibi.count} completed assessment{calibi.count === 1 ? '' : 's'}</span>. Grades are computed from your final CalibiAI score.</>
+                    : <>Take your first assessment to see your score here.</>}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {calibi.entries.length > 0 && activeScores && (
+                    <button
+                      onClick={() => setShowReport(true)}
+                      className="btn-primary !py-2.5 text-xs"
+                    >
+                      View report →
+                    </button>
+                  )}
+                  {calibi.score !== null && (
                     <button
                       onClick={async () => {
                         setDownloading(true)
@@ -471,23 +460,15 @@ function ProfileInner() {
                         } catch (e) { console.warn('PDF generation failed:', e) }
                         finally { setDownloading(false) }
                       }}
-                      disabled={downloading}
+                      disabled={downloading || !activeScores}
                       className="btn-soft !py-2.5 text-xs"
                     >
                       {downloading ? 'Preparing PDF…' : '⬇ Download PDF'}
                     </button>
-                  </div>
-                </>
-              ) : (
-                <div className="mt-5 rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/40 p-8 text-center">
-                  <div className="text-4xl">🎯</div>
-                  <p className="mt-2 text-sm text-slate-500">You haven't taken Assessment 1 yet. Completed Assessment 2 and company assessments also populate your skill map below.</p>
-                  <Link href={onboarded ? '/instructions' : '/onboarding'} className="btn-primary mt-4 inline-flex">
-                    {onboarded ? 'Start your assessment →' : 'Complete profile, then start →'}
-                  </Link>
+                  )}
                 </div>
-              )}
-            </div>}
+              </div>
+            </div>
 
             {/* Resume */}
             <div className="glass-card animate-fade-up hover-lift" style={{ animationDelay: '.05s' }}>
@@ -543,18 +524,43 @@ function ProfileInner() {
               )}
             </div>
 
-            {/* AI feedback */}
+            {/* AI feedback — numbered, severity-tinted, and stagger-animated so it
+                reads as a clear "next steps" list rather than a wall of bullets.
+                The colour ladder (rose → amber → indigo) maps to how urgent the
+                improvement feels, which lines up with how recruiters prioritise
+                the same signals. */}
             <div className="glass-card animate-fade-up hover-lift" style={{ animationDelay: '.1s' }}>
               <PanelHead tag="AI feedback" title="How you can improve" right={<span className="text-lg" aria-hidden>💡</span>} />
               {feedback.length > 0 ? (
-                <ul className="mt-4 space-y-2.5">
-                  {feedback.map((f, i) => (
-                    <li key={i} className="flex items-start gap-2.5 rounded-xl border border-slate-200/70 bg-white/60 p-3 text-xs text-slate-700">
-                      <span className="mt-0.5 shrink-0 rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-600">{f.from}</span>
-                      <span className="leading-relaxed">{f.text}</span>
-                    </li>
-                  ))}
-                </ul>
+                <ol className="mt-4 space-y-2">
+                  {feedback.map((f, i) => {
+                    // Cycle the tint by position so the list never looks monochrome.
+                    // The first few items are the most eye-catching because they
+                    // are the highest-leverage actions.
+                    const tone = i % 3 === 0
+                      ? { bar: 'bg-rose-400',   chip: 'bg-rose-50 text-rose-700 border-rose-200',    num: 'bg-rose-500' }
+                      : i % 3 === 1
+                      ? { bar: 'bg-amber-400',  chip: 'bg-amber-50 text-amber-700 border-amber-200', num: 'bg-amber-500' }
+                      : { bar: 'bg-indigo-400', chip: 'bg-indigo-50 text-indigo-700 border-indigo-200', num: 'bg-indigo-500' }
+                    return (
+                      <li
+                        key={`${f.from}-${i}`}
+                        className="list-slide group relative flex items-start gap-3 overflow-hidden rounded-xl border border-slate-200/70 bg-white/70 p-3 pl-4 text-xs text-slate-700 shadow-sm transition hover:border-slate-300 hover:shadow"
+                        style={{ animationDelay: `${i * 70}ms` }}
+                      >
+                        <span className={`absolute inset-y-0 left-0 w-1 ${tone.bar}`} aria-hidden />
+                        <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${tone.num} text-[10px] font-black text-white shadow-sm`}>{i + 1}</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${tone.chip}`}>{f.from}</span>
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">action item</span>
+                          </div>
+                          <p className="mt-1 leading-relaxed text-slate-700">{f.text}</p>
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ol>
               ) : (
                 <div className="mt-5 rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/40 p-8 text-center">
                   <div className="text-4xl">🤖</div>
@@ -566,40 +572,26 @@ function ProfileInner() {
 
           {/* -------- Right column -------- */}
           <div className="lg:col-span-5 space-y-6">
-            {/* Assessment-backed skills and separately labelled profile/resume skills */}
+            {/* Assessment-backed skills, self-reported skills and resume-detected
+                skills — each rendered with its own chart so the panel is
+                glanceable, animated, and live-updates the moment a new
+                assessment or resume is graded. */}
             <div className="glass-card animate-fade-up hover-lift" style={{ animationDelay: '.08s' }}>
-              <PanelHead tag="Skill evidence" title="Your skills" right={skillGraph.length >= 3 ? <span className="text-lg" aria-hidden>🎯</span> : undefined} />
+              <PanelHead
+                tag="Skill evidence"
+                title="Your skills"
+                right={<span className="text-lg" aria-hidden>🎯</span>}
+              />
               <p className="mt-2 text-xs leading-relaxed text-slate-500">
                 Assessment scores update these skill signals automatically. Skills you list yourself or on your resume stay separate.
               </p>
-              {assessmentSkillRollups.length > 0 ? (
-                <>
-                  <div className="mt-2">
-                    <SkillGraph skills={skillGraph.length >= 3 ? skillGraph : []} />
-                  </div>
-                  <div className="mt-3">
-                    <div className="mb-2 text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">Skills mapped from completed assessments</div>
-                    <AssessmentSkillList skills={assessmentSkillRollups} />
-                  </div>
-                </>
-              ) : (
-                <div className="mt-4 rounded-xl border border-dashed border-indigo-200 bg-indigo-50/50 p-4 text-xs text-slate-600">
-                  Complete Assessment 1, Assessment 2, or a company assessment to start building your assessment skill map.
-                </div>
-              )}
-              {skillChips.length > 0 && (
-                <div className="mt-5 border-t border-slate-100 pt-4">
-                  <div className="mb-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Profile and resume skills</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {skillChips.map(s => (
-                      <span key={s.name} className="chip !py-1">
-                        {s.name}
-                        <span className="text-[9px] font-bold uppercase tracking-wide text-indigo-400">{s.sources.join(' + ')}</span>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <div className="mt-4">
+                <ProfileSkillSection
+                  assessmentSkills={assessmentSkillRollups}
+                  selfReportedSkills={profile?.skills}
+                  resumeSkills={Array.isArray(activeResume?.parsed?.skills) ? activeResume.parsed.skills.join(', ') : ''}
+                />
+              </div>
             </div>
 
             {/* Profile details */}
