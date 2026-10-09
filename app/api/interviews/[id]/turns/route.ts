@@ -2,7 +2,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 import { NextResponse } from 'next/server'
-import { getInterviewSessionFull, saveInterviewSession, getCustomOrBankQuestion } from '@/lib/interview/store.ts'
+import { saveInterviewSession, getCustomOrBankQuestion } from '@/lib/interview/store.ts'
 import { evaluateAnswer } from '@/lib/interview/evaluator.ts'
 import { gatewayCallLlm, estimateCostInr } from '@/lib/interview/llmGateway.ts'
 import { buildInterviewerSystemPrompt } from '@/lib/interview/prompts.ts'
@@ -10,7 +10,7 @@ import { scanAndSanitizeStudentInput, checkContentSafety, wrapStudentAnswerDelim
 import { advanceBlueprint, adaptDifficulty } from '@/lib/interview/blueprint.ts'
 import { randomUUID } from 'crypto'
 import type { InterviewTurn } from '@/lib/interview/types.ts'
-import { getServerClient } from '@/lib/supabaseServer.ts'
+import { requireOwnedInterview } from '@/lib/interview/apiAuth.ts'
 
 /**
  * POST /api/interviews/{id}/turns
@@ -19,11 +19,10 @@ import { getServerClient } from '@/lib/supabaseServer.ts'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
-    const sb = getServerClient()
-    const url = new URL(req.url)
-
-    const session = await getInterviewSessionFull(params.id, sb)
-    if (!session) return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+    const owned = await requireOwnedInterview(req, params.id)
+    if (!owned.ok) return owned.response
+    const { session, auth } = owned
+    const sb = auth.db
 
     if (['REPORT_READY', 'EVALUATING', 'ABANDONED', 'TERMINATED'].includes(session.state)) {
       return NextResponse.json({ error: `Interview already ended in state ${session.state}` }, { status: 409 })
@@ -262,7 +261,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       },
       token_usage: session.token_usage,
       latency_ms: llmLatency,
-    })
+    }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (e: any) {
     console.error('[api/interviews/turns] failed', e)
     return NextResponse.json({ error: 'Failed to process turn', detail: String(e?.message || e) }, { status: 500 })

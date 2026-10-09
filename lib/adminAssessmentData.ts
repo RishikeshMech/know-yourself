@@ -276,7 +276,10 @@ export async function loadStudentRecord(sb: any | null, row: AdminStudentRow): P
     ? {
         profile: db.profiles.find((p) => localIds.has(idKey(p.id))) || null,
         assessment_results: db.assessment_results.filter((r) => localIds.has(idKey(r.student_id))),
-        assessment_sessions: db.assessment_sessions.filter((s) => localIds.has(idKey(s.student_id))).map(({ answers, ...rest }: any) => ({ ...rest, answered: answers ? Object.keys(answers).length : 0 })),
+        // This export is only served by the cookie-protected admin API. Keep
+        // the candidate's submitted answer map here so the download is truly
+        // end-to-end; the general dashboard list still receives no answers.
+        assessment_sessions: db.assessment_sessions.filter((s) => localIds.has(idKey(s.student_id))),
         resume_analyses: db.resume_analyses.filter((r) => localIds.has(idKey(r.student_id))),
         company_attempts: db.company_attempts.filter((a) => localIds.has(idKey(a.student_id))),
       }
@@ -284,19 +287,16 @@ export async function loadStudentRecord(sb: any | null, row: AdminStudentRow): P
   record.local = local
   if (sb && UUID_RE.test(id)) {
     const q = async (table: string, columns = '*') => {
-      try {
-        const { data, error } = await sb.from(table).select(columns).eq(table === 'profiles' ? 'id' : 'student_id', id)
-        return error ? { error: error.message } : data
-      } catch (e: any) {
-        return { error: String(e?.message || e) }
-      }
+      const { data, error } = await sb.from(table).select(columns).eq(table === 'profiles' ? 'id' : 'student_id', id)
+      if (error) throw new Error(`Could not read ${table}: ${error.message}`)
+      return data
     }
     record.supabase = {
       profile: await q('profiles'),
       assessment_results: await q('assessment_results'),
-      assessment_sessions: await q('assessment_sessions', 'id,student_id,status,started_at,submitted_at,created_at,assessment_no'),
+      assessment_sessions: await q('assessment_sessions', 'id,student_id,status,started_at,expires_at,duration_sec,submitted_at,tab_switches,question_seed,answers,created_at'),
       resume_analyses: await q('resume_analyses'),
-      company_attempts: await q('company_assessment_attempts', 'id,student_id,company_slug,status,started_at,expires_at,duration_sec,submitted_at,auto_submitted,submit_reason,score,verdict,proctoring,result,created_at,updated_at'),
+      company_attempts: await q('company_assessment_attempts', 'id,student_id,company_slug,status,started_at,expires_at,duration_sec,submitted_at,auto_submitted,submit_reason,score,verdict,answers,proctoring,result,created_at,updated_at'),
     }
   }
   return record

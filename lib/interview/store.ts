@@ -1,14 +1,12 @@
 /**
- * AI Mock Interview — Session Store Helpers with Supabase (no data loss)
+ * AI Mock Interview — Session Store Helpers
  *
- * Dual-write strategy (mirrors company attempts):
- *   - Local JSON (calibiai_db.runtime.json) is ALWAYS written — demo mode source of truth
- *   - When Supabase service_role is configured, every write is ALSO mirrored to Postgres
- *   - Reads prefer Supabase when available, fallback to local
- *   - Every turn, code submission, evaluation, integrity event, consent, report is stored immediately
- *
- * Ensures zero data loss: even if Supabase is temporarily unreachable, local still has full data
- * and will repair Supabase on next successful write.
+ * Storage modes are intentionally separate:
+ *   - Local JSON is used only when Supabase is not configured (demo mode).
+ *   - In Supabase mode, Postgres is authoritative and trusted writes use the
+ *     service-role client after the route verifies the student's identity.
+ *   - Reads and writes fail closed on Supabase errors; stale local data is
+ *     never accepted as a successful remote read or write.
  */
 
 import { randomUUID } from 'crypto'
@@ -113,17 +111,11 @@ export async function createInterviewSession(input: {
   scheduled_for?: string | null
   supabase?: SupabaseClient | null
 }): Promise<{ session: InterviewSession; quota: { used: number; remaining: number } } | { error: string; quota: { used: number; remaining: number } }> {
-  // Try Supabase first for quota when available
-  let existingSessions: InterviewSession[] = []
-  if (input.supabase) {
-    try {
-      existingSessions = await fetchSessionsSupabase(input.supabase, input.student_id)
-    } catch {
-      existingSessions = listSessionsForStudentLocal(input.student_id)
-    }
-  } else {
-    existingSessions = listSessionsForStudentLocal(input.student_id)
-  }
+  // Supabase is authoritative in configured mode. Never calculate quota from
+  // a stale local snapshot after a remote read failure.
+  const existingSessions = input.supabase
+    ? await fetchSessionsSupabase(input.supabase, input.student_id)
+    : listSessionsForStudentLocal(input.student_id)
 
   const activeAttempts = existingSessions.filter(s => s.state !== 'ABANDONED')
   if (activeAttempts.length >= MAX_INTERVIEW_ATTEMPTS) {
@@ -193,22 +185,18 @@ export async function createInterviewSession(input: {
     created_at: now,
   }
 
-  // Always write local first — no data loss even if Supabase fails
-  saveInterviewSessionRow({
-    id: session.id,
-    student_id: session.student_id,
-    data: session,
-    created_at: now,
-    updated_at: now,
-  })
-  await flushDB()
-
-  // Mirror to Supabase when configured
   if (input.supabase) {
     const ok = await persistSessionSupabase(input.supabase, session)
-    if (!ok) {
-      console.warn('[interview] Supabase session persist failed, local copy preserved — will retry on next write')
-    }
+    if (!ok) throw new Error('Interview session was not saved to Supabase')
+  } else {
+    saveInterviewSessionRow({
+      id: session.id,
+      student_id: session.student_id,
+      data: session,
+      created_at: now,
+      updated_at: now,
+    })
+    await flushDB()
   }
 
   return {
@@ -225,79 +213,85 @@ export async function getInterviewSessionFull(
   id: string,
   supabase?: SupabaseClient | null,
 ): Promise<InterviewSession | null> {
-  let base: InterviewSession | null = null
+  if (!supabase) return getInterviewSessionLocal(id)
 
-  if (supabase) {
-    try {
-      base = await fetchSessionSupabase(supabase, id)
-      if (base) {
-        // Enrich with turns, code submissions, evaluations from normalized tables
-        const [turns, codeSubs, evals] = await Promise.all([
-          fetchInterviewTurns(supabase, id),
-          fetchInterviewCodeSubmissions(supabase, id),
-          fetchInterviewEvaluations(supabase, id),
-        ])
-        if (turns.length) base.turns = turns
-        if (codeSubs.length) base.code_submissions = codeSubs
-        if (evals.length) base.evaluations = evals
-        return base
-      }
-    } catch (e) {
-      console.warn('[interview] Supabase fetch failed, falling back to local:', e)
-    }
-  }
+  // In Supabase mode, a missing row stays missing and a query error bubbles up.
+  // Falling back to the server's JSON store could return stale or another
+  // account's copy, and can hide a broken live database connection.
+  const base = await fetchSessionSupabase(supabase, id)
+  if (!base) return null
 
-  return getInterviewSessionLocal(id)
+  const [turns, codeSubs, evals] = await Promise.all([
+    fetchInterviewTurns(supabase, id),
+    fetchInterviewCodeSubmissions(supabase, id),
+    fetchInterviewEvaluations(supabase, id),
+  ])
+  base.turns = turns
+  base.code_submissions = codeSubs
+  base.evaluations = evals
+  return base
 }
 
 export async function saveInterviewSession(
   session: InterviewSession,
   supabase?: SupabaseClient | null,
-  opts: { persistTurns?: boolean; persistEvals?: boolean; persistCode?: boolean; persistIntegrity?: boolean } = {},
+  opts: { persistTurns?: boolean; persistEvals?: boolean; persistCode?: boolean; persistIntegrity?: boolean; persistConsent?: boolean } = {},
 ): Promise<void> {
   const now = new Date().toISOString()
   const toSave = { ...session, last_active_at: now }
 
-  // Local always
-  saveInterviewSessionRow({
-    id: toSave.id,
-    student_id: toSave.student_id,
-    data: toSave,
-    created_at: toSave.created_at,
-    updated_at: now,
-  })
-  await flushDB()
+  if (!supabase) {
+    saveInterviewSessionRow({
+      id: toSave.id,
+      student_id: toSave.student_id,
+      data: toSave,
+      created_at: toSave.created_at,
+      updated_at: now,
+    })
+    await flushDB()
+    return
+  }
 
-  if (!supabase) return
+  if (!(await persistSessionSupabase(supabase, toSave))) {
+    throw new Error('Interview session was not saved to Supabase')
+  }
 
-  // Supabase mirror — session row
-  await persistSessionSupabase(supabase, toSave)
-
-  // Optionally persist normalized children for no-loss granular storage
-  try {
-    if (opts.persistTurns && toSave.turns?.length) {
-      // Persist only the latest turn to avoid re-writing all
-      const latest = toSave.turns[toSave.turns.length - 1]
-      if (latest) await persistInterviewTurn(supabase, latest, toSave.student_id)
+  // Persist normalized records and fail the API response if any component did
+  // not reach Supabase. This avoids reporting a saved answer when only the
+  // server-local fallback received it.
+  if (opts.persistTurns && toSave.turns?.length) {
+    // One answer exchange appends both the student response and the generated
+    // interviewer reply; persist both rows, not just the last reply.
+    const latestTurns = toSave.turns.slice(-2)
+    for (const turn of latestTurns) {
+      if (!(await persistInterviewTurn(supabase, turn, toSave.student_id))) {
+        throw new Error('Interview turn was not saved to Supabase')
+      }
     }
-    if (opts.persistCode && toSave.code_submissions?.length) {
-      const latest = toSave.code_submissions[toSave.code_submissions.length - 1]
-      if (latest) await persistInterviewCodeSubmission(supabase, latest, toSave.student_id)
+  }
+  if (opts.persistCode && toSave.code_submissions?.length) {
+    const latest = toSave.code_submissions[toSave.code_submissions.length - 1]
+    if (latest && !(await persistInterviewCodeSubmission(supabase, latest, toSave.student_id))) {
+      throw new Error('Interview code submission was not saved to Supabase')
     }
-    if (opts.persistEvals && toSave.evaluations?.length) {
-      const latest = toSave.evaluations[toSave.evaluations.length - 1]
-      if (latest) await persistInterviewEvaluation(supabase, latest, toSave.id, toSave.student_id)
+  }
+  if (opts.persistEvals && toSave.evaluations?.length) {
+    const latest = toSave.evaluations[toSave.evaluations.length - 1]
+    if (latest && !(await persistInterviewEvaluation(supabase, latest, toSave.id, toSave.student_id))) {
+      throw new Error('Interview evaluation was not saved to Supabase')
     }
-    if (opts.persistIntegrity && toSave.integrity_events?.length) {
-      const latest = toSave.integrity_events[toSave.integrity_events.length - 1]
-      if (latest) await persistInterviewIntegrityEvent(supabase, latest, toSave.student_id)
+  }
+  if (opts.persistIntegrity && toSave.integrity_events?.length) {
+    // A request can record more than one integrity signal (e.g. a tab event
+    // plus prompt-injection detection). Upserts are idempotent by event id.
+    for (const event of toSave.integrity_events) {
+      if (!(await persistInterviewIntegrityEvent(supabase, event, toSave.student_id))) {
+        throw new Error('Interview integrity event was not saved to Supabase')
+      }
     }
-    // Consents are persisted once on consent step
-    if (toSave.consent) {
-      await persistInterviewConsents(supabase, toSave)
-    }
-  } catch (e) {
-    console.warn('[interview] Supabase child persist failed, local preserved:', e)
+  }
+  if (opts.persistConsent && toSave.consent && !(await persistInterviewConsents(supabase, toSave))) {
+    throw new Error('Interview consent was not saved to Supabase')
   }
 }
 
@@ -309,13 +303,9 @@ export async function listSessionsForStudentFull(
   studentId: string,
   supabase?: SupabaseClient | null,
 ): Promise<InterviewSession[]> {
-  if (supabase) {
-    try {
-      const remote = await fetchSessionsSupabase(supabase, studentId)
-      if (remote.length) return remote
-    } catch {}
-  }
-  return listSessionsForStudentLocal(studentId)
+  return supabase
+    ? fetchSessionsSupabase(supabase, studentId)
+    : listSessionsForStudentLocal(studentId)
 }
 
 export function getQuotaForStudent(studentId: string): { used: number; remaining: number; max: number; sessions: InterviewSession[] } {
@@ -326,39 +316,20 @@ export async function getQuotaForStudentFull(
   studentId: string,
   supabase?: SupabaseClient | null,
 ): Promise<{ used: number; remaining: number; max: number; sessions: InterviewSession[]; reports: InterviewReport[] }> {
-  let sessions: InterviewSession[] = []
-  let reports: InterviewReport[] = []
-
-  if (supabase) {
-    try {
-      const [s, r] = await Promise.all([
+  const [sessions, reports] = supabase
+    ? await Promise.all([
         fetchSessionsSupabase(supabase, studentId),
         fetchReportsSupabase(supabase, studentId),
       ])
-      sessions = s
-      reports = r
-      if (sessions.length || reports.length) {
-        const active = sessions.filter(ss => ss.state !== 'ABANDONED')
-        return {
-          used: active.length,
-          remaining: Math.max(0, MAX_INTERVIEW_ATTEMPTS - active.length),
-          max: MAX_INTERVIEW_ATTEMPTS,
-          sessions,
-          reports,
-        }
-      }
-    } catch {}
-  }
+    : [listSessionsForStudentLocal(studentId), listReportsForStudent(studentId)]
 
-  const localSessions = listSessionsForStudentLocal(studentId)
-  const localReports = listReportsForStudent(studentId)
-  const active = localSessions.filter(ss => ss.state !== 'ABANDONED')
+  const active = sessions.filter((session) => session.state !== 'ABANDONED')
   return {
     used: active.length,
     remaining: Math.max(0, MAX_INTERVIEW_ATTEMPTS - active.length),
     max: MAX_INTERVIEW_ATTEMPTS,
-    sessions: localSessions,
-    reports: localReports,
+    sessions,
+    reports,
   }
 }
 
@@ -366,6 +337,13 @@ export async function saveReport(
   report: InterviewReport,
   supabase?: SupabaseClient | null,
 ): Promise<void> {
+  if (supabase) {
+    if (!(await persistReportSupabase(supabase, report))) {
+      throw new Error('Interview report was not saved to Supabase')
+    }
+    return
+  }
+
   saveInterviewReportRow({
     id: report.id,
     session_id: report.session_id,
@@ -374,11 +352,6 @@ export async function saveReport(
     created_at: report.created_at,
   })
   await flushDB()
-
-  if (supabase) {
-    const ok = await persistReportSupabase(supabase, report)
-    if (!ok) console.warn('[interview] Supabase report persist failed, local preserved')
-  }
 }
 
 export function getReportBySession(sessionId: string): InterviewReport | null {
@@ -390,13 +363,9 @@ export async function getReportBySessionFull(
   sessionId: string,
   supabase?: SupabaseClient | null,
 ): Promise<InterviewReport | null> {
-  if (supabase) {
-    try {
-      const remote = await fetchReportSupabase(supabase, sessionId)
-      if (remote) return remote
-    } catch {}
-  }
-  return getReportBySession(sessionId)
+  return supabase
+    ? fetchReportSupabase(supabase, sessionId)
+    : getReportBySession(sessionId)
 }
 
 export function getReportById(id: string): InterviewReport | null {
@@ -413,19 +382,22 @@ export async function listReportsForStudentFull(
   studentId: string,
   supabase?: SupabaseClient | null,
 ): Promise<InterviewReport[]> {
-  if (supabase) {
-    try {
-      const remote = await fetchReportsSupabase(supabase, studentId)
-      if (remote.length) return remote
-    } catch {}
-  }
-  return listReportsForStudent(studentId)
+  return supabase
+    ? fetchReportsSupabase(supabase, studentId)
+    : listReportsForStudent(studentId)
 }
 
 export async function saveFeedbackFlag(
   flag: FeedbackFlag,
   supabase?: SupabaseClient | null,
 ): Promise<void> {
+  if (supabase) {
+    if (!(await persistInterviewFeedbackFlag(supabase, flag))) {
+      throw new Error('Interview feedback was not saved to Supabase')
+    }
+    return
+  }
+
   saveInterviewFeedbackFlagRow({
     id: flag.id,
     session_id: flag.session_id,
@@ -434,11 +406,6 @@ export async function saveFeedbackFlag(
     created_at: flag.created_at,
   })
   await flushDB()
-
-  if (supabase) {
-    const ok = await persistInterviewFeedbackFlag(supabase, flag)
-    if (!ok) console.warn('[interview] Supabase feedback flag persist failed, local preserved')
-  }
 }
 
 export function getCustomOrBankQuestion(session: InterviewSession, questionId: string): InterviewQuestion | undefined {

@@ -11,7 +11,7 @@ import {
 import { hashPassword } from '@/lib/auth'
 import { isProfileComplete } from '@/lib/validate'
 import { afterSignInRoute, ONBOARDING_ROUTE } from '@/lib/nextStep'
-import { getServerClient } from '@/lib/supabaseServer'
+import { getServerClient, isSupabaseEnvironmentConfigured } from '@/lib/supabaseServer'
 import { fetchProfile, hasAssessmentResult, persistProfile } from '@/lib/persist'
 
 export async function POST(req: Request) {
@@ -28,6 +28,9 @@ export async function POST(req: Request) {
 
     // Check if Supabase backend is configured
     const sb = getServerClient()
+    if (!sb && isSupabaseEnvironmentConfigured()) {
+      return NextResponse.json({ error: 'Supabase is configured but its server connection is incomplete.' }, { status: 503 })
+    }
     if (sb) {
       try {
         let profile = await fetchProfile(sb, email).catch(() => null)
@@ -59,7 +62,8 @@ export async function POST(req: Request) {
           supabase: true,
         })
       } catch (e: any) {
-        console.warn('Supabase Google auth fallback to local DB:', e?.message)
+        console.error('[auth/google] Supabase lookup failed; refusing local fallback:', e?.message || e)
+        return NextResponse.json({ error: 'Google sign-in could not be verified in Supabase. Please retry.' }, { status: 503 })
       }
     }
 

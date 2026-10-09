@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getUserByEmail, createUser } from '@/lib/db'
 import { hashPassword } from '@/lib/auth'
-import { getServerClient } from '@/lib/supabaseServer'
+import { getServerClient, isSupabaseEnvironmentConfigured } from '@/lib/supabaseServer'
 import { persistProfile, supabaseSignUp } from '@/lib/persist'
 import { checkRateLimit } from '@/lib/rateLimit'
 
@@ -30,6 +30,9 @@ export async function POST(req: Request) {
 
     // Supabase mode: email + password live in Supabase Auth, profile row mirrors onboarding.
     const sb = getServerClient()
+    if (!sb && isSupabaseEnvironmentConfigured()) {
+      return NextResponse.json({ error: 'Supabase is configured but its server connection is incomplete.' }, { status: 503 })
+    }
     if (sb) {
       try {
         const auth = await supabaseSignUp(sb, { email, password, full_name: fullName, role })

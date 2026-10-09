@@ -15,6 +15,7 @@ import { AssessmentReview } from '@/components/AssessmentReview'
 import { type ReviewTarget } from '@/lib/reviewModel'
 import type { AssessmentConfig, StageDef } from '@/lib/assessmentConfig'
 import { postJsonWithRetry } from '@/lib/clientApi'
+import { authenticatedFetch } from '@/lib/clientAuth'
 import { shouldCountListeningPlay, LISTENING_MAX_PLAYS } from '@/lib/listeningPlay'
 import type { TestRunResult } from '@/lib/runTests'
 import {
@@ -47,6 +48,7 @@ const clamp01 = (n: number) => Math.max(0, Math.min(1, n))
 // Minimum length a prompt submission must reach before the AI will even grade
 // it — anything shorter scores 0. Mirrors MIN_PROMPT_CHARS on the server.
 const MIN_PROMPT_CHARS = 100
+const PENDING_SUBMISSION_PREFIX = 'calibiai_pending_assessment_submission_'
 
 /* ------------------------------------------------------------------ */
 /* Subsection auto-advance — when a candidate finishes one subsection   */
@@ -266,7 +268,7 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
   const bank = config.bank
   const KEYS = config.keys
   const isA2 = config.no === 2
-  const { setSession, setScores, setScores2, user } = useStore()
+  const { setSession, setScores, setScores2, user, hydrated } = useStore()
   // The live session is held locally and read from THIS assessment's storage
   // key, so starting assessment 2 can never clobber an assessment-1 session
   // (and vice versa). Assessment 1 additionally mirrors it into the shared
@@ -329,6 +331,7 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
   const [reviewMode, setReviewMode] = useState<'manual' | 'auto' | null>(null)
   const [autoSubmitReason, setAutoSubmitReason] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [submissionError, setSubmissionError] = useState('')
   const submittingRef = useRef(false)
 
   // The Grid Challenge only exists in assessment 1; a safe default keeps the
@@ -411,7 +414,9 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
   )
 
   useEffect(() => {
-    // Read session from localStorage.
+    if (!hydrated) return
+    if (!user?.id) { router.replace('/login'); return }
+    // Read session from localStorage only after the signed-in account is known.
     let cancelled = false
     let intervalId: any = null
     let pollId: any = null
@@ -421,7 +426,75 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
       if (cancelled) return
       let s: any = null
       try { s = JSON.parse(raw) } catch { s = null }
-      if (s?.status === 'submitted' || s?.status === 'expired') { router.replace(AFTER_ASSESSMENT_ROUTE); return }
+      if (s?.student_id && s.student_id !== user.id) {
+        // Never render a previous account's locally cached answers in another
+        // account's session, even before any remote request is made.
+        router.replace('/dashboard/student')
+        return
+      }
+      if (s?.status === 'submitted' || s?.status === 'expired') {
+        // A local "final" marker is not proof of a database commit. Restore the
+        // exact outbox (or rebuild it from the same-session recovery copies),
+        // and never leave this screen until Supabase/API confirms `saved:true`.
+        setSessionLocal(s)
+        if (!isA2) setSession(s)
+        let recoveredAnswers: Record<string, any> = s.answers && typeof s.answers === 'object' ? s.answers : {}
+        let recoveredAi: Record<string, any> = {}
+        let request: any = null
+        try {
+          const answersRaw = localStorage.getItem(KEYS.answers(s.id))
+          if (answersRaw) recoveredAnswers = JSON.parse(answersRaw)
+          const aiRaw = localStorage.getItem(KEYS.ai(s.id))
+          if (aiRaw) recoveredAi = JSON.parse(aiRaw)
+          const pending = localStorage.getItem(PENDING_SUBMISSION_PREFIX + s.id)
+          if (pending) request = JSON.parse(pending)
+          if (!request) {
+            const savedScores = JSON.parse(localStorage.getItem(KEYS.scores) || 'null')
+            if (savedScores && typeof savedScores === 'object') {
+              request = {
+                session_id: s.id,
+                student_id: s.student_id || user?.id || '',
+                status: s.status,
+                auto_submitted: s.status === 'expired',
+                submitted_at: s.submitted_at || new Date().toISOString(),
+                answers: recoveredAnswers,
+                tab_switches: Number(s.tab_switches) || 0,
+                scores: savedScores,
+                total: savedScores.total,
+                grade: savedScores.grade,
+                percentile: savedScores.percentile,
+                verifiable_hash: savedScores.verifiable_hash,
+                ai_feedback: recoveredAi,
+                assessment_no: config.no,
+              }
+            }
+          }
+          setAnswers(recoveredAnswers)
+          setAiResults(recoveredAi)
+        } catch {
+          request = null
+        }
+        const owner = String(request?.student_id || '')
+        if (!request || !s.id || !user?.id || owner !== user.id || String(request.session_id || '') !== s.id) {
+          setSubmissionError('This completed test has no valid, owner-matched save record. Sign in to the account that started it and retry; the saved answer copy remains on this device.')
+          return
+        }
+        setSubmitting(true)
+        void postJsonWithRetry<any>('/api/user/assessment/submit', request, { timeoutMs: 60_000, retries: 2 })
+          .then(({ data }) => {
+            if (!data?.saved) throw new Error('The server did not confirm a durable save.')
+            localStorage.removeItem(PENDING_SUBMISSION_PREFIX + s.id)
+            markJustSubmitted()
+            const auto = request.auto_submitted === true || request.status === 'expired'
+            if (auto) router.replace(AFTER_ASSESSMENT_ROUTE)
+            else { markFeedbackPending(s.id); router.replace('/feedback') }
+          })
+          .catch((error: any) => {
+            setSubmissionError(error?.message || 'The database has not confirmed this test yet. Retry the secure save before leaving.')
+            setSubmitting(false)
+          })
+        return
+      }
       if (localStorage.getItem(KEYS.scores)) { router.replace(AFTER_ASSESSMENT_ROUTE); return }
       if (!s?.id || !s?.expires_at) { router.replace(config.fallbackRoute()); return }
       setSessionLocal(s)
@@ -475,7 +548,7 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
       clearInterval(intervalRef.current)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [hydrated, user?.id])
 
   useEffect(() => {
     if (sid) {
@@ -490,10 +563,12 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
       autosaveTimerRef.current = setTimeout(() => {
         autosaveTimerRef.current = null
         autosaveLastSentRef.current = Date.now()
-        fetch('/api/user/assessment', {
+        void authenticatedFetch('/api/user/assessment', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_id: sid, student_id: user?.id || '', answers, status: 'in_progress', assessment_no: config.no }),
+          body: JSON.stringify({ session_id: sid, student_id: user?.id || '', answers, status: 'in_progress', tab_switches: strikesRef.current, assessment_no: config.no }),
+        }).then((response) => {
+          if (!response.ok) console.warn('[assessment] server checkpoint was not saved; browser recovery copy retained')
         }).catch(() => { /* localStorage remains the recovery layer */ })
       }, wait)
     }
@@ -1271,8 +1346,10 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
     if (submittingRef.current) return
     submittingRef.current = true
     setSubmitting(true)
+    setSubmissionError('')
     setShowReview(false)
     clearInterval(intervalRef.current)
+    if (autosaveTimerRef.current) { clearTimeout(autosaveTimerRef.current); autosaveTimerRef.current = null }
     // The assessment is over — release the camera/mic stream automatically so
     // the device stops recording the moment submission begins.
     releaseMedia()
@@ -1283,7 +1360,8 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
     // candidate to their results instead of back into the test.
     try {
       const s = JSON.parse(localStorage.getItem(KEYS.session) || '{}')
-      s.status = 'submitted'
+      s.status = auto ? 'expired' : 'submitted'
+      s.submitted_at = new Date().toISOString()
       localStorage.setItem(KEYS.session, JSON.stringify(s))
     } catch { /* localStorage is a recovery layer, not the source of truth */ }
     const scores = config.computeScores(answers, aiResults, {
@@ -1291,35 +1369,54 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
       speakingCount,
       testResults,
     })
+    const submittedAt = new Date().toISOString()
     const payload = {
-      session_id: sid || 'sess_demo',
+      session_id: sid || '',
       ...scores,
       assessment_no: config.no,
       tab_switches: strikesRef.current,
       auto_submitted: !!auto,
-      submitted_at: new Date().toISOString(),
+      submitted_at: submittedAt,
+    }
+    const submission = {
+      session_id: sid || '',
+      student_id: user?.id || '',
+      status: auto ? 'expired' : 'submitted',
+      auto_submitted: !!auto,
+      submitted_at: submittedAt,
+      answers,
+      tab_switches: strikesRef.current,
+      scores: payload,
+      total: payload.total,
+      grade: payload.grade,
+      percentile: payload.percentile,
+      verifiable_hash: payload.verifiable_hash,
+      ai_feedback: aiResults,
+      assessment_no: config.no,
     }
     localStorage.setItem(KEYS.scores, JSON.stringify(payload))
     if (isA2) setScores2(payload)
     else setScores(payload)
-    // The server API is the single persistence boundary. The previous client
-    // implementation also called Supabase directly after these two API calls,
-    // which duplicated every final session/result write and bypassed the
-    // server's deterministic id mapping and retry/error handling. Apart from
-    // doubling database work, that race could leave the session and result out
-    // of sync. Keep browser code transport-only; the API owns Postgres writes.
+
+    // Persist an idempotent browser outbox entry before the request. Supabase
+    // commits the session + score in one transaction; retries reuse this exact
+    // session id and payload so a lost response cannot create duplicate data.
+    const pendingKey = PENDING_SUBMISSION_PREFIX + (sid || '')
+    try { localStorage.setItem(pendingKey, JSON.stringify(submission)) } catch { /* answers also remain under the per-session key */ }
     try {
-      await fetch('/api/user/assessment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sid, student_id: user?.id || '', answers, status: auto ? 'expired' : 'submitted', tab_switches: strikesRef.current, submitted_at: new Date().toISOString(), assessment_no: config.no }),
+      const { data } = await postJsonWithRetry<any>('/api/user/assessment/submit', submission, {
+        timeoutMs: 60_000,
+        retries: 2,
       })
-      await fetch('/api/user/assessment/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sid, student_id: user?.id || 'unknown', scores: payload, total: payload.total, grade: payload.grade, percentile: payload.percentile, verifiable_hash: payload.verifiable_hash, ai_feedback: aiResults, assessment_no: config.no }),
-      })
-    } catch (e) { /* demo mode */ }
+      if (!data?.saved) throw new Error('The server did not confirm a durable save.')
+      try { localStorage.removeItem(pendingKey) } catch { /* ignore storage cleanup failure */ }
+    } catch (error: any) {
+      console.error('[assessment] final persistence failed:', error?.message || error)
+      setSubmissionError('We could not confirm that your test reached the database. Your answers are kept on this device. Please retry the secure save before leaving.')
+      setSubmitting(false)
+      submittingRef.current = false
+      return
+    }
     markJustSubmitted()
     if (auto) {
       // Terminated attempts (time up / max warnings / display violation) go
@@ -2330,6 +2427,24 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
           <div className="glass-card flex items-center gap-3 px-6 py-5 animate-pop">
             <span className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
             <span className="text-sm font-bold text-slate-700">Submitting your assessment…</span>
+          </div>
+        </div>
+      )}
+
+      {submissionError && !submitting && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/70 p-4 backdrop-blur-sm" role="alertdialog" aria-modal="true" aria-live="assertive">
+          <div className="glass-card w-full max-w-md !p-7 text-center shadow-2xl">
+            <div className="text-4xl">⚠️</div>
+            <h3 className="mt-3 text-lg font-black text-slate-900">Save not confirmed</h3>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">{submissionError}</p>
+            <p className="mt-3 text-xs text-slate-500">Do not close this page until the save is confirmed. Repeated retries are safe.</p>
+            <button
+              type="button"
+              onClick={() => { void doSubmit(terminated || !!autoSubmitReason) }}
+              className="btn-primary mt-5 w-full !py-3"
+            >
+              Retry secure save →
+            </button>
           </div>
         </div>
       )}

@@ -12,6 +12,7 @@ import { SECTION_BY_ID } from '@/lib/company/sections'
 import { companyApi } from '@/lib/company/client'
 import { CompanyBadge } from '@/components/company/CompanyBadge'
 import { MAX_FOCUS_STRIKES } from '@/lib/proctoring'
+import { authenticatedFetch } from '@/lib/clientAuth'
 import type { SectionId } from '@/lib/company/types'
 
 function Spinner({ label }: { label: string }) {
@@ -33,7 +34,7 @@ export default function Page({ params }: { params: { slug: string } }) {
     if (!hydrated || !user?.id) return
     if (isProfileComplete(profile)) { setProfileChecked(true); return }
     let cancelled = false
-    fetch('/api/user/profile?user_id=' + encodeURIComponent(user.id), { cache: 'no-store' })
+    authenticatedFetch('/api/user/profile?user_id=' + encodeURIComponent(user.id), { cache: 'no-store' })
       .then((r) => r.json())
       .then((d) => { if (!cancelled && d?.profile) setProfile(d.profile) })
       .catch(() => { /* keep whatever the store has */ })

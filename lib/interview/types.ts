@@ -5,7 +5,7 @@
  *   - Two tracks at launch: Software Engineer ('swe') & AI/ML Engineer ('ai_ml')
  *   - Two difficulty profiles: 2nd Year (2) & 3rd Year (3)
  *   - Three session lengths: Quick (15m), Standard (35m, default), Full Simulation (45m)
- *   - Strict 3-attempt quota per student on the Student Dashboard
+ *   - Strict 3-attempt quota per student, enforced server-side
  *   - State machine (Section 11.2):
  *       SCHEDULED -> CREATED -> CONSENTED -> SETUP_CHECK -> WARMUP -> FUNDAMENTALS
  *       -> PROBLEM_SOLVING -> PROJECT_OR_DESIGN -> BEHAVIOURAL -> WRAP_UP

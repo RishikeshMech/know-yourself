@@ -18,8 +18,8 @@ import { CompanyCatalog } from '@/components/company/CompanyCatalog'
 import { CalibiScoreCard } from '@/components/CalibiScoreCard'
 import { AssessmentSkillList } from '@/components/AssessmentSkillList'
 import { platformAssessmentSkills, rollupAssessmentSkills } from '@/lib/assessmentSkills'
-import { ScheduleInterviewTab } from '@/components/interview/ScheduleInterviewTab.tsx'
 import type { AttemptSummary } from '@/lib/company/types'
+import { authenticatedFetch } from '@/lib/clientAuth'
 
 function Inner(){
   const router = useRouter()
@@ -113,19 +113,19 @@ function Inner(){
     const now = Date.now()
     if(!force && now - lastRefreshRef.current < 60000) return
     lastRefreshRef.current = now
-    fetch('/api/user/profile?user_id='+user.id).then(r=>r.json()).then(data=>{
+    authenticatedFetch('/api/user/profile?user_id='+encodeURIComponent(user.id), { cache: 'no-store' }).then(r=>r.json()).then(data=>{
       if(data.profile) setProfile(data.profile)
     }).catch(()=>{})
-    fetch('/api/user/resume?student_id='+user.id).then(r=>r.json()).then(data=>{
+    authenticatedFetch('/api/user/resume?student_id='+encodeURIComponent(user.id), { cache: 'no-store' }).then(r=>r.json()).then(data=>{
       if(data.analysis) setResume(data.analysis)
     }).catch(()=>{})
-    fetch('/api/user/scores?student_id='+user.id).then(r=>r.json()).then(data=>{
+    authenticatedFetch('/api/user/scores?student_id='+encodeURIComponent(user.id), { cache: 'no-store' }).then(r=>r.json()).then(data=>{
       // Always write through — including `null` when there is no result, so a
       // stale cached score from a deleted/previous account never lingers on
       // screen or in the downloaded PDF.
       setScores(flattenAssessmentResult(data.result))
     }).catch(()=>{})
-    fetch('/api/user/scores?student_id='+user.id+'&assessment=2').then(r=>r.json()).then(data=>{
+    authenticatedFetch('/api/user/scores?student_id='+encodeURIComponent(user.id)+'&assessment=2', { cache: 'no-store' }).then(r=>r.json()).then(data=>{
       setScores2(flattenAssessmentResult(data.result))
     }).catch(()=>{})
   // The setters are intentionally omitted: they are context wrappers whose
@@ -414,16 +414,6 @@ function Inner(){
               <Link href={startHref} className="btn-soft mt-4 inline-flex !py-2.5 text-xs">Start your first assessment →</Link>
             </div>
           )}
-        </div>
-
-        {/* ---------------- AI Mock Interview — 3 attempts, real-time with Sam ---------------- */}
-        <div id="ai-mock-interview" className="mt-6 glass-card animate-fade-up scroll-mt-24" style={{animationDelay:'.19s'}}>
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-xl">🎙️</span>
-            <h2 className="text-sm font-black text-slate-800">AI Mock Interview — Schedule & Attempts</h2>
-            <span className="chip bg-violet-50 text-violet-700 border-violet-200 text-[10px]">NEW · DeepSeek + Voice + Camera · 30-45 min</span>
-          </div>
-          <ScheduleInterviewTab />
         </div>
 
         {/* ---------------- Company assessments — every company, grouped by tag ---------------- */}

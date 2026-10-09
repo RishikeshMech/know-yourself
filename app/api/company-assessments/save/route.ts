@@ -4,8 +4,7 @@
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-import { getServerClient } from '@/lib/supabaseServer'
-import { resolveStudent } from '@/lib/company/auth'
+import { requireStudentApi } from '@/lib/studentApi'
 import { getCompany } from '@/lib/company/catalog'
 import { saveProgress, toSummary } from '@/lib/company/attempts'
 import { jsonError, limited, ok, readJson } from '@/lib/company/http'
@@ -21,11 +20,12 @@ export async function POST(req: Request) {
   if (!body) return jsonError(400, 'Invalid JSON body')
   const company = getCompany(body.company)
   if (!company) return jsonError(404, 'Unknown company assessment')
-  const sb = getServerClient()
-  const who = await resolveStudent(req, body.student_id, sb)
-  if (!who.ok) return jsonError(who.status, who.error)
+  const ctx = await requireStudentApi(req, body.student_id)
+  if (!ctx.ok) return ctx.response
+  const sb = ctx.supabase ? ctx.db : null
+  const studentId = ctx.studentId
   try {
-    const res = await saveProgress(who.studentId, company.slug, body.answers, body.proctoring, { sb })
+    const res = await saveProgress(studentId, company.slug, body.answers, body.proctoring, { sb })
     if (!res.ok) {
       const status = res.reason === 'not-found' ? 404 : 409
       return jsonError(status, res.reason === 'not-found' ? 'No attempt in progress' : 'This attempt is closed', {
@@ -35,6 +35,6 @@ export async function POST(req: Request) {
     }
     return ok({ saved: true, saved_at: res.attempt.updated_at })
   } catch (e: any) {
-    return jsonError(500, 'Autosave failed', { detail: String(e?.message || e) })
+    return jsonError(ctx.supabase ? 503 : 500, ctx.supabase ? 'The answer checkpoint was not confirmed in Supabase. Please retry.' : 'Autosave failed', { detail: String(e?.message || e) })
   }
 }

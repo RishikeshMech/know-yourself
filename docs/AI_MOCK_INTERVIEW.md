@@ -4,7 +4,7 @@
 
 ## Overview
 
-Real-time AI mock interview with **Sam**, a friendly but professional interviewer powered by **DeepSeek API** (`deepseek-chat` / `deepseek-v4-flash` via OpenAI-compatible gateway). The feature is embedded in the student dashboard as a tab **“AI Mock Interview — Schedule & Attempts”** with a strict **3-attempt limit** per student (server-enforced).
+Real-time AI mock interview with **Sam**, a friendly but professional interviewer powered by **DeepSeek API** (`deepseek-chat` / `deepseek-v4-flash` via OpenAI-compatible gateway). The feature is available on the dedicated `/interviews` pages, with a strict **3-attempt limit** per student (server-enforced).
 
 End-to-end simulation: 15 min (Quick), 35 min (Standard, default), 45 min (Full). Includes:
 - Camera preview (getUserMedia, preview only — not stored per G9)
@@ -42,10 +42,9 @@ Implemented in `lib/interview/types.ts` and enforced in API routes.
 
 ## Core Data Model (Section 11.3)
 
-Extended `lib/db.ts` with concurrency-safe collections:
-- `interview_sessions`: full `InterviewSession` (blueprint, turns, evaluations, code submissions, integrity events, token usage, consent, device check)
-- `interview_reports`: `InterviewReport`
-- `interview_feedback_flags`: unfair score flags (FR-46) for golden set
+The local demo store keeps `interview_sessions`, `interview_reports`, and `interview_feedback_flags`. In a configured Supabase deployment, Postgres is authoritative: sessions and normalized child records are written through the service-role client, and a database error is returned to the student instead of being acknowledged as a local-only save. Supabase reads do not fall back to stale JSON data.
+
+Supabase tables are created by `supabase/migrations/0011_ai_mock_interviews.sql` and mirrored in `supabase/schema.sql`. The API requires the server-only `SUPABASE_SERVICE_ROLE_KEY` for trusted writes and admin reads.
 
 `InterviewSession` fields:
 - `attempt_number` 1..3, `track`, `year`, `mode`, `language_style` (`en` / `hinglish`)
@@ -140,11 +139,11 @@ Report: `lib/interview/reportGenerator.ts`
 | GET /api/interviews/{id}/report | Final report (poll) |
 | POST /api/interviews/{id}/feedback | Flag unfair score (golden set) or star rating |
 
-All routes: `runtime=nodejs`, `dynamic=force-dynamic`, no-store cache, concurrency-safe via `lib/db.ts` atomic writes + lockfile.
+All student routes: `runtime=nodejs`, `dynamic=force-dynamic`, `Cache-Control: no-store` for sensitive reads, and a verified student identity. In Supabase mode the bearer token is verified server-side, the session owner is checked on every id-scoped route, and the id alone never authorizes access. The `x-student-id` header is only a local-demo identity claim; Supabase requests still require a valid token whose user id matches the claim. Remote read/write failures fail closed and do not fall back to JSON.
 
 ## UI Components
 
-- `components/interview/ScheduleInterviewTab.tsx`: Student dashboard tab — shows quota (used/remaining/max), trend, past sessions table, schedule form (track, year, mode, language style, optional project context with PII redaction note), enforces 3 attempts client + server
+- `components/interview/ScheduleInterviewTab.tsx`: Scheduling and attempts UI used by the dedicated interview pages — shows quota (used/remaining/max), trend, past sessions table, schedule form (track, year, mode, language style, optional project context with PII redaction note), enforces 3 attempts client + server
 - `components/interview/ConsentAndDeviceCheck.tsx`: Transparency notice (G3), consent checkboxes (AI notice, record, share with faculty, camera/mic), device checks (network, camera via `CameraPreview`, mic/speaker via getUserMedia), voice mode toggle
 - `components/interview/CameraPreview.tsx`: getUserMedia video preview, status, “preview only (not stored)”
 - `components/interview/VoiceControls.tsx`: STT via `webkitSpeechRecognition` (`en-IN`, continuous, interim), TTS via `speechSynthesis` for Sam’s replies, push-to-talk + hands-free, live captions, transcript edit before submit
@@ -154,11 +153,11 @@ All routes: `runtime=nodejs`, `dynamic=force-dynamic`, no-store cache, concurren
 
 Pages:
 - `/interviews` — list all attempts, quota, reports table
-- `/interviews/schedule` — schedule form (also embedded in student dashboard)
+- `/interviews/schedule` — schedule form
 - `/interviews/[id]` — consent + device check -> live interview
 - `/interviews/[id]/report` — report view
 
-Integration in `app/dashboard/student/page.tsx`: new section `id="ai-mock-interview"` before company assessments, with `ScheduleInterviewTab`.
+Students access interview history and scheduling through the dedicated `/interviews` pages; the student dashboard does not embed the interview section.
 
 ## Non-Functional Requirements (Section 12)
 
@@ -166,7 +165,7 @@ Integration in `app/dashboard/student/page.tsx`: new section `id="ai-mock-interv
 - Scale: stateless API, queue-based evaluation, horizontally scalable, target 500 concurrent (to be confirmed)
 - Availability: retries, fallback model, autosave every turn, resume after disconnect 30m
 - Low bandwidth: text mode <100 kbps, resumable
-- Security: TLS, PII redaction before LLM, per-tenant isolation, sandbox hardening for code execution (reuse `company/codeRunner` with `runStdin` timeout, marked JSON)
+- Security: TLS, PII redaction before LLM, student-id/session owner checks on every student API route, no session-id-only access, Supabase service-role writes kept server-side, and fail-closed storage; sandbox hardening for code execution (reuse `company/codeRunner` with `runStdin` timeout, marked JSON)
 - Privacy: consent logs, 12m retention default, delete on request, no training on student data without opt-in
 - Accessibility: keyboard nav, captions, adjustable pace (voice rate 0.95)
 - Observability: token usage + cost tracking per session, latency_ms per turn, evaluation confidence distribution
@@ -224,11 +223,11 @@ When no key: heuristic fallback — interview still works end-to-end, scores via
 - `app/interviews/*` (3 pages)
 - `docs/AI_MOCK_INTERVIEW.md`
 - Extended `lib/db.ts` with `interview_sessions`, `interview_reports`, `interview_feedback_flags`
-- Integrated into `app/dashboard/student/page.tsx` + `components/admin/AdminPanels.tsx`
+- Integrated into the dedicated `app/interviews/*` pages and `components/admin/AdminPanels.tsx`
 
 ## How to Use
 
-1. Student logs in → Dashboard → AI Mock Interview tab
+1. Student opens `/interviews` and selects **Schedule new**.
 2. Choose track (SWE/AI/ML), year (2/3), mode (Quick/Standard/Full), language style, optional project context
 3. Schedule — server checks quota (3 max), builds blueprint avoiding last 3 sessions’ questions
 4. Consent & device check — camera/mic/speaker/network, voice mode toggle

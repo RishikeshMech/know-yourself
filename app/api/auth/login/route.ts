@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getUserByEmail, updateUserLogin, getLatestAssessmentResultForStudent, getProfileById } from '@/lib/db'
 import { verifyPassword } from '@/lib/auth'
 import { isProfileComplete } from '@/lib/validate'
-import { getServerClient } from '@/lib/supabaseServer'
+import { getServerClient, isSupabaseEnvironmentConfigured } from '@/lib/supabaseServer'
 import { fetchProfile, hasAssessmentResult, supabaseSignIn } from '@/lib/persist'
 import { checkRateLimit } from '@/lib/rateLimit'
 
@@ -30,6 +30,9 @@ export async function POST(req: Request) {
 
     // Supabase mode: verify credentials against Supabase Auth.
     const sb = getServerClient()
+    if (!sb && isSupabaseEnvironmentConfigured()) {
+      return NextResponse.json({ error: 'Supabase is configured but its server connection is incomplete.' }, { status: 503 })
+    }
     if (sb) {
       try {
         const auth = await supabaseSignIn(sb, { email, password })

@@ -2,15 +2,16 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 import { NextResponse } from 'next/server'
-import { getInterviewSessionFull, saveInterviewSession, getCustomOrBankQuestion } from '@/lib/interview/store.ts'
+import { saveInterviewSession, getCustomOrBankQuestion } from '@/lib/interview/store.ts'
 import { gatewayCallLlm } from '@/lib/interview/llmGateway.ts'
-import { getServerClient } from '@/lib/supabaseServer.ts'
+import { requireOwnedInterview } from '@/lib/interview/apiAuth.ts'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
-    const sb = getServerClient()
-    const session = await getInterviewSessionFull(params.id, sb)
-    if (!session) return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+    const owned = await requireOwnedInterview(req, params.id)
+    if (!owned.ok) return owned.response
+    const { session, auth } = owned
+    const sb = auth.db
 
     if (['REPORT_READY', 'EVALUATING', 'ABANDONED', 'TERMINATED'].includes(session.state)) {
       return NextResponse.json({ error: 'Interview already ended' }, { status: 409 })
@@ -56,7 +57,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       interviewer_reply: interviewerHint,
       penalty: nextLevel === 1 ? -0.25 : nextLevel === 2 ? -0.5 : -1.0,
       message: `Hint ${nextLevel}/3 used. Penalty: ${nextLevel === 1 ? '-0.25' : nextLevel === 2 ? '-0.5' : '-1.0'} on this question (min score 1).`,
-    })
+    }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (e: any) {
     console.error('[api/interviews/hint] failed', e)
     return NextResponse.json({ error: 'Failed to get hint', detail: String(e?.message || e) }, { status: 500 })

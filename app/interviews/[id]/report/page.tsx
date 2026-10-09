@@ -1,4 +1,5 @@
 'use client'
+import { authenticatedFetch } from '@/lib/clientAuth'
 export const dynamic = 'force-dynamic'
 import { useEffect, useState } from 'react'
 import { Navbar } from '@/components/Navbar'
@@ -14,7 +15,7 @@ export default function ReportPage({ params }: { params: { id: string } }) {
   useEffect(() => {
     ;(async () => {
       try {
-        const res = await fetch(`/api/interviews/${params.id}/report`)
+        const res = await authenticatedFetch(`/api/interviews/${params.id}/report`)
         const data = await res.json()
         if (!res.ok) throw new Error(data.error || 'Failed to load report')
         setReport(data.report)

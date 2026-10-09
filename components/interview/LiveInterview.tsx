@@ -1,4 +1,5 @@
 'use client'
+import { authenticatedFetch } from '@/lib/clientAuth'
 import { useEffect, useRef, useState } from 'react'
 import { CameraPreview } from './CameraPreview.tsx'
 import { VoiceControls } from './VoiceControls.tsx'
@@ -67,7 +68,7 @@ export function LiveInterview({ sessionId, initialSession, initialQuestion }: Pr
     setInput('')
 
     try {
-      const res = await fetch(`/api/interviews/${sessionId}/turns`, {
+      const res = await authenticatedFetch(`/api/interviews/${sessionId}/turns`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -90,7 +91,7 @@ export function LiveInterview({ sessionId, initialSession, initialQuestion }: Pr
 
       // If next question, fetch fresh session to get new question prompt
       if (data.next_question_id) {
-        const sessRes = await fetch(`/api/interviews/${sessionId}`)
+        const sessRes = await authenticatedFetch(`/api/interviews/${sessionId}`)
         const sessData = await sessRes.json()
         if (sessData.current_question) setCurrentQuestion(sessData.current_question)
         setSession(sessData.session)
@@ -112,7 +113,7 @@ export function LiveInterview({ sessionId, initialSession, initialQuestion }: Pr
   const handleHint = async () => {
     setHintLoading(true)
     try {
-      const res = await fetch(`/api/interviews/${sessionId}/hint`, { method: 'POST' })
+      const res = await authenticatedFetch(`/api/interviews/${sessionId}/hint`, { method: 'POST' })
       const data = await res.json()
       if (!res.ok) {
         alert(data.error)
@@ -130,7 +131,7 @@ export function LiveInterview({ sessionId, initialSession, initialQuestion }: Pr
   const handleCodeRun = async (code: string, lang: CodeLang) => {
     setCodeRunning(true)
     try {
-      const res = await fetch(`/api/interviews/${sessionId}/code/run`, {
+      const res = await authenticatedFetch(`/api/interviews/${sessionId}/code/run`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code, language: lang, question_id: currentQuestion?.id }),
@@ -152,7 +153,7 @@ export function LiveInterview({ sessionId, initialSession, initialQuestion }: Pr
 
   const handlePause = async () => {
     try {
-      const res = await fetch(`/api/interviews/${sessionId}/pause`, { method: 'POST' })
+      const res = await authenticatedFetch(`/api/interviews/${sessionId}/pause`, { method: 'POST' })
       const data = await res.json()
       if (!res.ok) { alert(data.error); return }
       setSession((s: any) => ({ ...s, state: 'PAUSED' }))
@@ -161,7 +162,7 @@ export function LiveInterview({ sessionId, initialSession, initialQuestion }: Pr
 
   const handleResume = async () => {
     try {
-      const res = await fetch(`/api/interviews/${sessionId}/resume`, { method: 'POST' })
+      const res = await authenticatedFetch(`/api/interviews/${sessionId}/resume`, { method: 'POST' })
       const data = await res.json()
       if (!res.ok) { alert(data.error); return }
       setSession((s: any) => ({ ...s, state: data.state }))
@@ -170,7 +171,7 @@ export function LiveInterview({ sessionId, initialSession, initialQuestion }: Pr
 
   const handleEnd = async () => {
     try {
-      const res = await fetch(`/api/interviews/${sessionId}/end`, { method: 'POST' })
+      const res = await authenticatedFetch(`/api/interviews/${sessionId}/end`, { method: 'POST' })
       const data = await res.json()
       if (!res.ok) { alert(data.error); return }
       window.location.href = `/interviews/${sessionId}/report`

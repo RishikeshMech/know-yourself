@@ -2,16 +2,21 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 import { NextResponse } from 'next/server'
-import { getInterviewSessionFull, saveFeedbackFlag, saveReport, getReportBySessionFull } from '@/lib/interview/store.ts'
+import { saveFeedbackFlag, saveReport, getReportBySessionFull } from '@/lib/interview/store.ts'
 import { randomUUID } from 'crypto'
 import type { FeedbackFlag } from '@/lib/interview/types.ts'
-import { getServerClient } from '@/lib/supabaseServer.ts'
+import { requireOwnedInterview } from '@/lib/interview/apiAuth.ts'
+
+function json(data: any, status = 200) {
+  return NextResponse.json(data, { status, headers: { 'Cache-Control': 'no-store' } })
+}
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
-    const sb = getServerClient()
-    const session = await getInterviewSessionFull(params.id, sb)
-    if (!session) return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+    const owned = await requireOwnedInterview(req, params.id)
+    if (!owned.ok) return owned.response
+    const { session, auth } = owned
+    const sb = auth.db
 
     const body = await req.json()
     const { question_id, reason, rating, comment } = body
@@ -27,12 +32,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         created_at: new Date().toISOString(),
       }
       await saveFeedbackFlag(flag, sb)
-      return NextResponse.json({ flag, message: 'Flag submitted for review. Thank you!' })
+      return json({ flag, message: 'Flag submitted for review. Thank you!' })
     }
 
     if (rating) {
       const report = await getReportBySessionFull(session.id, sb)
-      if (!report) return NextResponse.json({ error: 'Report not found' }, { status: 404 })
+      if (!report) return json({ error: 'Report not found' }, 404)
 
       const stars = Math.max(1, Math.min(5, Number(rating)))
       report.student_rating = {
@@ -41,12 +46,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         rated_at: new Date().toISOString(),
       }
       await saveReport(report, sb)
-      return NextResponse.json({ rating: report.student_rating })
+      return json({ rating: report.student_rating })
     }
 
-    return NextResponse.json({ error: 'Provide question_id+reason or rating' }, { status: 400 })
+    return json({ error: 'Provide question_id+reason or rating' }, 400)
   } catch (e: any) {
     console.error('[api/interviews/feedback] failed', e)
-    return NextResponse.json({ error: 'Feedback failed', detail: String(e?.message || e) }, { status: 500 })
+    return json({ error: 'Feedback could not be saved. Please retry.' }, 500)
   }
 }

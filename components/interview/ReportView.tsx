@@ -1,4 +1,5 @@
 'use client'
+import { authenticatedFetch } from '@/lib/clientAuth'
 import Link from 'next/link'
 import { useState } from 'react'
 
@@ -11,7 +12,7 @@ export function ReportView({ report, trend }: { report: any; trend?: any[] }) {
     setRating(stars)
     setSubmitting(true)
     try {
-      await fetch(`/api/interviews/${report.session_id}/feedback`, {
+      await authenticatedFetch(`/api/interviews/${report.session_id}/feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rating: stars, comment: feedbackText }),
@@ -22,7 +23,7 @@ export function ReportView({ report, trend }: { report: any; trend?: any[] }) {
   const handleFlag = async (qId: string) => {
     const reason = prompt('Why do you think this score is unfair? (This will be reviewed and may improve the golden set)')
     if (!reason) return
-    await fetch(`/api/interviews/${report.session_id}/feedback`, {
+    await authenticatedFetch(`/api/interviews/${report.session_id}/feedback`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ question_id: qId, reason }),

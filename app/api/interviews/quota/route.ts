@@ -3,17 +3,28 @@ export const dynamic = 'force-dynamic'
 
 import { NextResponse } from 'next/server'
 import { getQuotaForStudentFull } from '@/lib/interview/store.ts'
-import { getServerClient } from '@/lib/supabaseServer.ts'
+import { requireStudentApi } from '@/lib/studentApi.ts'
+
+function json(data: any, status = 200) {
+  return NextResponse.json(data, { status, headers: { 'Cache-Control': 'no-store' } })
+}
 
 export async function GET(req: Request) {
   const url = new URL(req.url)
-  const studentId = url.searchParams.get('student_id')
-  if (!studentId) {
-    return NextResponse.json({ error: 'student_id required' }, { status: 400 })
+  const auth = await requireStudentApi(req, url.searchParams.get('student_id'))
+  if (!auth.ok) return auth.response
+
+  let quota
+  try {
+    quota = await getQuotaForStudentFull(auth.studentId, auth.db)
+  } catch (error) {
+    console.error('[api/interviews/quota] failed', error)
+    return NextResponse.json(
+      { error: 'Interview storage is temporarily unavailable. Please retry.' },
+      { status: 503, headers: { 'Cache-Control': 'no-store', 'Retry-After': '30' } },
+    )
   }
-  const sb = getServerClient()
-  const quota = await getQuotaForStudentFull(studentId, sb)
-  return NextResponse.json({
+  return json({
     used: quota.used,
     remaining: quota.remaining,
     max: quota.max,

@@ -324,18 +324,10 @@ export function InterviewResultsPanel() {
   const [loading, setLoading] = useState(false)
 
   const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      // Reuse quota endpoint but for admin we list all via local store? For now fetch via /api/interviews?student_id=all not supported.
-      // We'll fetch from local DB via a simple admin endpoint we create later. For MVP show placeholder.
-      const res = await fetch('/api/interviews/quota?student_id=admin')
-      const d = await res.json()
-      setData(d)
-    } catch {
-      setData(null)
-    } finally {
-      setLoading(false)
-    }
+    // Do not call a student-scoped endpoint with a fabricated admin student
+    // id. Cross-student analytics require their own cookie-guarded endpoint.
+    setLoading(false)
+    setData({ placeholder: true })
   }, [])
 
   return (
@@ -347,9 +339,9 @@ export function InterviewResultsPanel() {
       {open && (
         <div className="border-t border-slate-100 px-5 py-4 text-xs text-slate-500">
           {loading ? 'Loading…' : data ? (
-            <div>Interview quota system active — 3 attempts per student enforced server-side. Full admin analytics coming soon. Check calibiai_db.runtime.json for interview_sessions & interview_reports collections.</div>
+            <div>Student interview records are private. Cross-student interview analytics are not yet available in this admin panel.</div>
           ) : (
-            <div>No data yet — students need to schedule interviews from Student Dashboard → AI Mock Interview tab.</div>
+            <div>No data yet — students can schedule AI mock interviews at <code>/interviews</code>.</div>
           )}
         </div>
       )}

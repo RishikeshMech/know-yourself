@@ -2,17 +2,18 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 import { NextResponse } from 'next/server'
-import { getInterviewSessionFull, saveInterviewSession, getCustomOrBankQuestion } from '@/lib/interview/store.ts'
+import { saveInterviewSession, getCustomOrBankQuestion } from '@/lib/interview/store.ts'
 import { runCodingTests } from '@/lib/company/codeRunner.ts'
 import { randomUUID } from 'crypto'
 import type { CodeLang } from '@/lib/company/languages.ts'
-import { getServerClient } from '@/lib/supabaseServer.ts'
+import { requireOwnedInterview } from '@/lib/interview/apiAuth.ts'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
-    const sb = getServerClient()
-    const session = await getInterviewSessionFull(params.id, sb)
-    if (!session) return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+    const owned = await requireOwnedInterview(req, params.id)
+    if (!owned.ok) return owned.response
+    const { session, auth } = owned
+    const sb = auth.db
 
     const body = await req.json()
     const { code, language, question_id } = body
@@ -68,7 +69,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       submission,
       summary: `${result.passed}/${result.total} tests passed`,
       results: result.results,
-    })
+    }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (e: any) {
     console.error('[api/interviews/code/run] failed', e)
     return NextResponse.json({ error: 'Code run failed', detail: String(e?.message || e) }, { status: 500 })

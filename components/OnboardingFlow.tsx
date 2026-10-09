@@ -8,6 +8,7 @@ import { Stepper } from '@/components/Stepper'
 import { CollegeCombobox } from '@/components/CollegeCombobox'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { SkillPicker } from '@/components/SkillPicker'
+import { authenticatedFetch } from '@/lib/clientAuth'
 import { useStore } from '@/lib/store'
 import { normalizeOnboardingForm, type OnboardingForm as Form } from '@/lib/onboardingForm'
 import {
@@ -395,20 +396,21 @@ export function OnboardingFlow({ variant = 'onboarding' }: { variant?: 'onboardi
       graduation_year: Number(form.graduation_year),
       cgpa: Number(form.cgpa),
     }
-    setProfile(payload)
     try {
-      const res = await fetch('/api/user/profile', {
+      const res = await authenticatedFetch('/api/user/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...payload, user_id: user?.id, email: user?.email }),
       })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || 'Could not save your profile.')
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || data.saved !== true) {
+        throw new Error(data.error || 'Your profile was not confirmed as saved. Please retry.')
       }
+      setProfile(data.profile || payload)
     } catch (err: any) {
-      // Offline / demo mode: the profile is still kept in the local store.
-      console.warn('profile save fell back to local store:', err?.message)
+      setFormError(err?.message || 'Could not save your profile. Please retry.')
+      setBusy(false)
+      return
     }
     setSaved(true)
     // First-time onboarding continues to resume upload; the edit form returns

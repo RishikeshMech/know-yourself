@@ -2,15 +2,16 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 import { NextResponse } from 'next/server'
-import { getInterviewSessionFull, saveInterviewSession, listReportsForStudentFull, saveReport } from '@/lib/interview/store.ts'
+import { saveInterviewSession, listReportsForStudentFull, saveReport } from '@/lib/interview/store.ts'
 import { generateInterviewReport } from '@/lib/interview/reportGenerator.ts'
-import { getServerClient } from '@/lib/supabaseServer.ts'
+import { requireOwnedInterview } from '@/lib/interview/apiAuth.ts'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
-    const sb = getServerClient()
-    const session = await getInterviewSessionFull(params.id, sb)
-    if (!session) return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+    const owned = await requireOwnedInterview(req, params.id)
+    if (!owned.ok) return owned.response
+    const { session, auth } = owned
+    const sb = auth.db
 
     if (['REPORT_READY', 'ABANDONED', 'TERMINATED'].includes(session.state)) {
       return NextResponse.json({ error: `Already ended in state ${session.state}` }, { status: 409 })
@@ -34,17 +35,15 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     session.report_id = report.id
     await saveInterviewSession(session, sb)
 
-    return NextResponse.json({ report, session_state: session.state })
+    return NextResponse.json(
+      { report, session_state: session.state },
+      { headers: { 'Cache-Control': 'no-store' } },
+    )
   } catch (e: any) {
     console.error('[api/interviews/end] failed', e)
-    try {
-      const sb = getServerClient()
-      const session = await getInterviewSessionFull(params.id, sb)
-      if (session) {
-        session.state = 'EVALUATING'
-        await saveInterviewSession(session, sb)
-      }
-    } catch {}
-    return NextResponse.json({ error: 'Failed to end interview and generate report', detail: String(e?.message || e) }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Failed to end interview and persist the report. Please retry.' },
+      { status: 500, headers: { 'Cache-Control': 'no-store' } },
+    )
   }
 }

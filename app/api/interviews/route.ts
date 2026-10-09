@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { createInterviewSession, getQuotaForStudentFull } from '@/lib/interview/store.ts'
 import { redactPii } from '@/lib/interview/redaction.ts'
-import { getServerClient } from '@/lib/supabaseServer.ts'
+import { requireStudentApi } from '@/lib/studentApi.ts'
 
 function json(data: any, status = 200) {
   return NextResponse.json(data, { status, headers: { 'Cache-Control': 'no-store' } })
@@ -16,11 +16,16 @@ function json(data: any, status = 200) {
  */
 export async function GET(req: Request) {
   const url = new URL(req.url)
-  const studentId = url.searchParams.get('student_id')
-  if (!studentId) return json({ error: 'student_id required' }, 400)
+  const auth = await requireStudentApi(req, url.searchParams.get('student_id'))
+  if (!auth.ok) return auth.response
 
-  const sb = getServerClient()
-  const quota = await getQuotaForStudentFull(studentId, sb)
+  let quota
+  try {
+    quota = await getQuotaForStudentFull(auth.studentId, auth.db)
+  } catch (error) {
+    console.error('[api/interviews] GET failed', error)
+    return json({ error: 'Interview storage is temporarily unavailable. Please retry.' }, 503)
+  }
   return json({
     sessions: quota.sessions.map(s => ({
       id: s.id,
@@ -49,7 +54,8 @@ export async function POST(req: Request) {
     const body = await req.json()
     const { student_id, student_name, institution_id, track, year, mode, language_style, project_title, project_summary, tech_stack, scheduled_for } = body
 
-    if (!student_id) return json({ error: 'student_id required' }, 400)
+    const auth = await requireStudentApi(req, student_id)
+    if (!auth.ok) return auth.response
     if (!['swe', 'ai_ml'].includes(track)) return json({ error: 'Invalid track. Use swe or ai_ml' }, 400)
     if (![2, 3].includes(Number(year))) return json({ error: 'Invalid year. Use 2 or 3' }, 400)
     if (!['quick', 'standard', 'full'].includes(mode)) return json({ error: 'Invalid mode' }, 400)
@@ -66,9 +72,8 @@ export async function POST(req: Request) {
       }
     }
 
-    const sb = getServerClient()
     const result = await createInterviewSession({
-      student_id,
+      student_id: auth.studentId,
       student_name: student_name ? String(student_name).slice(0, 100) : undefined,
       institution_id: institution_id ? String(institution_id).slice(0, 100) : undefined,
       track,
@@ -77,7 +82,7 @@ export async function POST(req: Request) {
       language_style: language_style === 'hinglish' ? 'hinglish' : 'en',
       project_context,
       scheduled_for: scheduled_for ? String(scheduled_for) : null,
-      supabase: sb,
+      supabase: auth.db,
     })
 
     if ('error' in result) {
@@ -87,6 +92,6 @@ export async function POST(req: Request) {
     return json({ session: result.session, quota: result.quota }, 201)
   } catch (e: any) {
     console.error('[api/interviews] POST failed', e)
-    return json({ error: 'Could not create interview session', detail: String(e?.message || e) }, 500)
+    return json({ error: 'Could not create interview session. No successful save was confirmed; please retry.' }, 503)
   }
 }

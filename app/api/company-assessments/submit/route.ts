@@ -4,8 +4,7 @@
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-import { getServerClient } from '@/lib/supabaseServer'
-import { resolveStudent } from '@/lib/company/auth'
+import { requireStudentApi } from '@/lib/studentApi'
 import { getCompany } from '@/lib/company/catalog'
 import { submitAttempt, toSummary } from '@/lib/company/attempts'
 import { toPublicResult } from '@/lib/company/scoring'
@@ -22,11 +21,12 @@ export async function POST(req: Request) {
   if (!body) return jsonError(400, 'Invalid JSON body')
   const company = getCompany(body.company)
   if (!company) return jsonError(404, 'Unknown company assessment')
-  const sb = getServerClient()
-  const who = await resolveStudent(req, body.student_id, sb)
-  if (!who.ok) return jsonError(who.status, who.error)
+  const ctx = await requireStudentApi(req, body.student_id)
+  if (!ctx.ok) return ctx.response
+  const sb = ctx.supabase ? ctx.db : null
+  const studentId = ctx.studentId
   try {
-    const res = await submitAttempt(who.studentId, company.slug, {
+    const res = await submitAttempt(studentId, company.slug, {
       answers: body.answers,
       proctoring: body.proctoring,
       auto: !!body.auto,
@@ -40,6 +40,6 @@ export async function POST(req: Request) {
       result: res.attempt.result ? toPublicResult(res.attempt.result) : null,
     })
   } catch (e: any) {
-    return jsonError(500, 'Submission failed — your answers are still saved. Please retry.', { detail: String(e?.message || e) })
+    return jsonError(ctx.supabase ? 503 : 500, ctx.supabase ? 'The final attempt was not confirmed in Supabase. Please retry.' : 'Submission failed — your answers are still saved. Please retry.', { detail: String(e?.message || e) })
   }
 }
