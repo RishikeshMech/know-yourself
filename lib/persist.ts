@@ -186,8 +186,11 @@ export async function fetchProfile(client: SupabaseClient, userId: string): Prom
 }
 
 export async function persistResumeAnalysis(client: SupabaseClient, rec: any): Promise<boolean> {
+  const studentId = toUuid(rec.student_id, 'profile')
+  if (!studentId) return false
   const { error } = await client.from('resume_analyses').insert({
-    student_id: rec.student_id,
+    id: toUuid(rec.id || `resume:${studentId}:${rec.created_at || Date.now()}`, 'resume-analysis') || randomUUID(),
+    student_id: studentId,
     storage_key: rec.storage_key || null,
     resume_score: rec.resume_score ?? 0,
     parsed: {
@@ -205,12 +208,27 @@ export async function persistResumeAnalysis(client: SupabaseClient, rec: any): P
       file_name: rec.file_name,
     },
     feedback: rec.feedback || {},
+    created_at: rec.created_at ? new Date(rec.created_at).toISOString() : undefined,
   })
   if (error) {
-    console.warn('[supabase] resume persist failed:', error.message)
+    console.error('[supabase] resume persist failed:', error.code, error.message)
     return false
   }
   return true
+}
+
+export async function fetchLatestResumeAnalysis(client: SupabaseClient, studentId: string): Promise<any | null> {
+  const sid = toUuid(studentId, 'profile')
+  if (!sid) return null
+  const { data, error } = await client
+    .from('resume_analyses')
+    .select('id,student_id,storage_key,resume_score,parsed,feedback,created_at')
+    .eq('student_id', sid)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  return data || null
 }
 
 /** What happened when a row was written to Postgres (or why it was not). */
@@ -493,104 +511,143 @@ export async function expireActiveAssessmentSessions(
   }
 }
 
-/**
- * Mirrors an assessment session (start / progress save / submit status).
- * The local demo ids ("sess_…") are mapped to a real uuid up front, and the
- * partial unique index (one active session per student) is handled by expiring
- * any older active session before retrying.
- */
-export async function persistAssessmentSession(client: SupabaseClient, s: any): Promise<boolean> {
+/** Database outcome for a persisted assessment checkpoint or atomic submission. */
+export interface AssessmentWriteOutcome {
+  ok: boolean
+  session?: any
+  result?: any
+  code?: string
+  message?: string
+}
+
+function assessmentSessionDbRow(s: any): Record<string, any> | null {
   const studentId = toUuid(s.student_id, 'profile')
-  if (!studentId) {
-    console.warn('[supabase] session persist skipped: invalid student_id')
-    return false
-  }
+  const sessionId = toUuid(s.id || s.session_id, 'session')
+  if (!studentId || !sessionId) return null
   const assessmentNo = assessmentNoOf(s)
-  // The marker also rides inside the answers JSONB so the assessment can be
-  // identified even when migration 0008 (the real column) has not been run.
   const answers = { ...(s.answers || {}), __assessment_no: assessmentNo }
-  const row: Record<string, any> = {
-    id: toUuid(s.id, 'session') || randomUUID(),
+  return {
+    id: sessionId,
     student_id: studentId,
     started_at: s.started_at ? new Date(s.started_at).toISOString() : new Date().toISOString(),
     expires_at: s.expires_at ? new Date(s.expires_at).toISOString() : new Date(Date.now() + 7200 * 1000).toISOString(),
     duration_sec: Number(s.duration_sec) || 7200,
-    status: s.status || 'in_progress',
-    question_seed: s.question_seed ? Number(s.question_seed) : undefined,
-    tab_switches: Number(s.tab_switches) || 0,
+    status: 'in_progress',
+    question_seed: s.question_seed == null ? undefined : Number(s.question_seed),
+    tab_switches: Math.max(0, Number(s.tab_switches) || 0),
     answers,
-    submitted_at: s.submitted_at ? new Date(s.submitted_at).toISOString() : null,
+    submitted_at: null,
+    created_at: s.created_at ? new Date(s.created_at).toISOString() : new Date().toISOString(),
     assessment_no: assessmentNo,
   }
-  const write = (r: Record<string, any>) => client.from('assessment_sessions').upsert(r, { onConflict: 'id' })
-  let { error } = await write(row)
-  if (error && String((error as any).code) === UNDEFINED_COLUMN) {
-    // Migration 0008 not applied — retry without the dedicated column. The
-    // JSONB marker above still identifies the assessment.
-    const { assessment_no, ...legacy } = row
-    ;({ error } = await write(legacy))
-  }
-  if (error) {
-    if ((error as any).code === '23505') {
-      await expireActiveAssessmentSessions(client, studentId, row.id, assessmentNo)
-      const retry = await write(row)
-      if (!retry.error) return true
-    }
-    console.warn('[supabase] session persist failed:', error.message)
-    return false
-  }
-  return true
 }
 
-/** Mirrors the final evaluation result (scores) into public.assessment_results. */
-export async function persistAssessmentResult(client: SupabaseClient, r: any): Promise<boolean> {
+function assessmentResultDbRow(r: any): Record<string, any> | null {
   const studentId = toUuid(r.student_id, 'profile')
   const sessionId = toUuid(r.session_id, 'session')
-  if (!studentId || !sessionId) {
-    console.warn('[supabase] result persist skipped: invalid student_id/session_id')
-    return false
-  }
+  if (!studentId || !sessionId) return null
   const assessmentNo = assessmentNoOf(r)
-  const row: Record<string, any> = {
+  return {
+    id: toUuid(r.id, 'result') || randomUUID(),
     session_id: sessionId,
     student_id: studentId,
-    // Stamp the marker inside the JSONB too, so the assessment is identifiable
-    // even when migration 0008 (the dedicated column) has not been applied.
     scores: { ...(r.scores || {}), assessment_no: assessmentNo },
     total: Number(r.total) || 0,
-    grade: clean(r.grade) || undefined,
-    percentile: r.percentile != null ? Number(r.percentile) : undefined,
-    verifiable_hash: clean(r.verifiable_hash) || undefined,
+    grade: clean(r.grade) || 'D',
+    percentile: r.percentile == null ? 0 : Number(r.percentile),
+    verifiable_hash: clean(r.verifiable_hash) || '',
     ai_feedback: r.ai_feedback || {},
-    created_at: r.created_at ? new Date(r.created_at).toISOString() : undefined,
+    created_at: r.created_at ? new Date(r.created_at).toISOString() : new Date().toISOString(),
     assessment_no: assessmentNo,
   }
-  const write = (x: Record<string, any>) =>
-    client.from('assessment_results').upsert(x, { onConflict: 'session_id' })
-  let { error } = await write(row)
-  if (error && String((error as any).code) === UNDEFINED_COLUMN) {
-    const { assessment_no, ...legacy } = row
-    ;({ error } = await write(legacy))
+}
+
+/**
+ * Persist a start or progress checkpoint using one database-side transaction.
+ * `start: true` resumes an existing active attempt instead of overwriting or
+ * creating a second one. Checkpoints cannot change ownership or reopen a final
+ * session; the database RPC enforces both rules under row locks.
+ */
+export async function persistAssessmentSession(
+  client: SupabaseClient,
+  s: any,
+  opts: { start?: boolean } = {},
+): Promise<AssessmentWriteOutcome> {
+  const row = assessmentSessionDbRow(s)
+  if (!row) return { ok: false, code: 'INVALID_ASSESSMENT_SESSION', message: 'Missing student/session id' }
+  try {
+    const { data, error } = await client.rpc('persist_assessment_session', {
+      p_session: row,
+      p_start: !!opts.start,
+    })
+    if (error) {
+      console.error('[supabase] assessment session transaction failed:', error.code, error.message)
+      return { ok: false, code: String(error.code || ''), message: String(error.message || 'Database write failed') }
+    }
+    const saved = Array.isArray(data) ? data[0] : data
+    if (!saved?.id || !saved?.student_id) {
+      return { ok: false, code: 'EMPTY_ASSESSMENT_SESSION', message: 'Database returned no session row' }
+    }
+    return { ok: true, session: saved }
+  } catch (error: any) {
+    console.error('[supabase] assessment session transaction threw:', error?.message || error)
+    return { ok: false, message: String(error?.message || 'Database write failed') }
   }
-  if (error) {
-    console.warn('[supabase] result persist failed:', error.message)
-    return false
+}
+
+/**
+ * Commit the final session state and its result in a single PostgreSQL RPC
+ * transaction. If either insert/update fails, both changes roll back. Retrying
+ * the same session is idempotent and cannot overwrite another student's row.
+ */
+export async function persistAssessmentSubmission(
+  client: SupabaseClient,
+  session: any,
+  result: any,
+): Promise<AssessmentWriteOutcome> {
+  const sessionRow = assessmentSessionDbRow(session)
+  const resultRow = assessmentResultDbRow(result)
+  if (!sessionRow || !resultRow) {
+    return { ok: false, code: 'INVALID_ASSESSMENT_SUBMISSION', message: 'Missing student/session id' }
   }
-  return true
+  if (sessionRow.id !== resultRow.session_id || sessionRow.student_id !== resultRow.student_id || sessionRow.assessment_no !== resultRow.assessment_no) {
+    return { ok: false, code: 'ASSESSMENT_SUBMISSION_MISMATCH', message: 'Session/result ownership mismatch' }
+  }
+  const finalStatus = session.status === 'expired' || session.auto_submitted ? 'expired' : 'submitted'
+  const pSession = {
+    ...sessionRow,
+    status: finalStatus,
+    submitted_at: session.submitted_at ? new Date(session.submitted_at).toISOString() : new Date().toISOString(),
+  }
+  try {
+    const { data, error } = await client.rpc('submit_assessment_attempt', {
+      p_session: pSession,
+      p_result: resultRow,
+    })
+    if (error) {
+      console.error('[supabase] atomic assessment submission failed:', error.code, error.message)
+      return { ok: false, code: String(error.code || ''), message: String(error.message || 'Database write failed') }
+    }
+    const saved = Array.isArray(data) ? data[0] : data
+    if (!saved?.session?.id || !saved?.result?.session_id) {
+      return { ok: false, code: 'EMPTY_ASSESSMENT_SUBMISSION', message: 'Database returned an incomplete submission' }
+    }
+    return { ok: true, session: saved.session, result: saved.result }
+  } catch (error: any) {
+    console.error('[supabase] atomic assessment submission threw:', error?.message || error)
+    return { ok: false, message: String(error?.message || 'Database write failed') }
+  }
 }
 
 /** Loads an assessment session by id from Supabase (service-role read). */
 export async function fetchAssessmentSession(client: SupabaseClient, sessionId: string): Promise<any | null> {
-  try {
-    const { data } = await client
-      .from('assessment_sessions')
-      .select('*')
-      .eq('id', sessionId)
-      .maybeSingle()
-    return data || null
-  } catch {
-    return null
-  }
+  const { data, error } = await client
+    .from('assessment_sessions')
+    .select('*')
+    .eq('id', sessionId)
+    .maybeSingle()
+  if (error) throw error
+  return data || null
 }
 
 /** Loads the student's active (in-progress) session from Supabase. */
@@ -599,23 +656,18 @@ export async function fetchActiveAssessmentSession(
   studentId: string,
   assessmentNo = 1,
 ): Promise<any | null> {
-  try {
-    // Fetch the recent active sessions and pick the one for this assessment.
-    // Filtering in Node (rather than `.eq('assessment_no', …)`) keeps this
-    // working before migration 0008 is applied, where the marker only exists
-    // inside the answers JSONB.
-    const { data } = await client
-      .from('assessment_sessions')
-      .select('*')
-      .eq('student_id', studentId)
-      .eq('status', 'in_progress')
-      .order('started_at', { ascending: false })
-      .limit(5)
-    const rows = Array.isArray(data) ? data : []
-    return rows.find(row => assessmentNoOf(row) === assessmentNo) || null
-  } catch {
-    return null
-  }
+  // Filtering in Node (rather than `.eq('assessment_no', …)`) keeps this
+  // compatible with JSON markers on legacy rows.
+  const { data, error } = await client
+    .from('assessment_sessions')
+    .select('*')
+    .eq('student_id', studentId)
+    .eq('status', 'in_progress')
+    .order('started_at', { ascending: false })
+    .limit(10)
+  if (error) throw error
+  const rows = Array.isArray(data) ? data : []
+  return rows.find(row => assessmentNoOf(row) === assessmentNo) || null
 }
 
 /** Latest assessment result for a student from Supabase. */
@@ -624,21 +676,17 @@ export async function fetchLatestAssessmentResult(
   studentId: string,
   assessmentNo = 1,
 ): Promise<any | null> {
-  try {
-    // A student now has at most one result per assessment, so a small window is
-    // enough. Filtering in Node keeps this correct before migration 0008 adds
-    // the dedicated column (the marker then lives in the scores JSONB).
-    const { data } = await client
-      .from('assessment_results')
-      .select(ASSESSMENT_RESULT_SELECT)
-      .eq('student_id', studentId)
-      .order('created_at', { ascending: false })
-      .limit(5)
-    const rows = Array.isArray(data) ? data : []
-    return rows.find(row => assessmentNoOf(row) === assessmentNo) || null
-  } catch {
-    return null
-  }
+  // A student has at most one result per assessment; filtering in Node keeps
+  // this compatible with legacy JSON markers before the dedicated column.
+  const { data, error } = await client
+    .from('assessment_results')
+    .select(ASSESSMENT_RESULT_SELECT)
+    .eq('student_id', studentId)
+    .order('created_at', { ascending: false })
+    .limit(10)
+  if (error) throw error
+  const rows = Array.isArray(data) ? data : []
+  return rows.find(row => assessmentNoOf(row) === assessmentNo) || null
 }
 
 export async function hasAssessmentResult(client: SupabaseClient, userId: string): Promise<boolean> {
@@ -746,32 +794,25 @@ export async function persistCompanyAttempt(
 export async function fetchCompanyAttempt(client: SupabaseClient, studentId: string, company: string): Promise<any | null> {
   const sid = toUuid(studentId, 'profile')
   if (!sid) return null
-  try {
-    const { data, error } = await client
-      .from('company_assessment_attempts')
-      .select('*')
-      .eq('student_id', sid)
-      .eq('company_slug', company)
-      .maybeSingle()
-    if (error) return null
-    return rowToCompanyAttempt(data)
-  } catch {
-    return null
-  }
+  const { data, error } = await client
+    .from('company_assessment_attempts')
+    .select('*')
+    .eq('student_id', sid)
+    .eq('company_slug', company)
+    .maybeSingle()
+  if (error) throw error
+  return rowToCompanyAttempt(data)
 }
 
 /** Status + graded item projections for server-side skill mapping (no paper / candidate answers). */
 export async function fetchCompanyAttemptSummaries(client: SupabaseClient, studentId: string): Promise<any[] | null> {
   const sid = toUuid(studentId, 'profile')
   if (!sid) return null
-  try {
-    const { data, error } = await client
-      .from('company_assessment_attempts')
-      .select(COMPANY_ATTEMPT_SUMMARY_SELECT)
-      .eq('student_id', sid)
-    if (error || !Array.isArray(data)) return null
-    return data
-  } catch {
-    return null
-  }
+  const { data, error } = await client
+    .from('company_assessment_attempts')
+    .select(COMPANY_ATTEMPT_SUMMARY_SELECT)
+    .eq('student_id', sid)
+  if (error) throw error
+  if (!Array.isArray(data)) throw new Error('Supabase returned an invalid company attempts response.')
+  return data
 }

@@ -2,14 +2,15 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 import { NextResponse } from 'next/server'
-import { getInterviewSessionFull, saveInterviewSession } from '@/lib/interview/store.ts'
-import { getServerClient } from '@/lib/supabaseServer.ts'
+import { saveInterviewSession } from '@/lib/interview/store.ts'
+import { requireOwnedInterview } from '@/lib/interview/apiAuth.ts'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
-    const sb = getServerClient()
-    const session = await getInterviewSessionFull(params.id, sb)
-    if (!session) return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+    const owned = await requireOwnedInterview(req, params.id)
+    if (!owned.ok) return owned.response
+    const { session, auth } = owned
+    const sb = auth.db
 
     if (!['SCHEDULED', 'CREATED'].includes(session.state)) {
       return NextResponse.json({ error: `Cannot consent in state ${session.state}` }, { status: 409 })
@@ -51,9 +52,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       session.state = firstSection.state as any
     }
 
-    await saveInterviewSession(session, sb)
+    await saveInterviewSession(session, sb, { persistConsent: true })
 
-    return NextResponse.json({ session, next_state: session.state })
+    return NextResponse.json({ session, next_state: session.state }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (e: any) {
     console.error('[api/interviews/consent] failed', e)
     return NextResponse.json({ error: 'Consent failed', detail: String(e?.message || e) }, { status: 500 })

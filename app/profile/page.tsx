@@ -15,6 +15,7 @@ import { CALIBI_RULE, calibiFromSources } from '@/lib/calibiScore'
 import { companyApi } from '@/lib/company/client'
 import { platformAssessmentSkills, rollupAssessmentSkills } from '@/lib/assessmentSkills'
 import { AssessmentSkillList } from '@/components/AssessmentSkillList'
+import { authenticatedFetch } from '@/lib/clientAuth'
 import type { AttemptSummary } from '@/lib/company/types'
 
 /* ------------------------------------------------------------------ */
@@ -149,11 +150,11 @@ function ProfileInner() {
   useEffect(() => {
     if (!user?.id) return
     const load = async () => {
-      const [p, s, r, s2, co] = await Promise.all([
-        fetch('/api/user/profile?user_id=' + user.id).then(x => x.json()).catch(() => ({})),
-        fetch('/api/user/scores?student_id=' + user.id).then(x => x.json()).catch(() => ({})),
-        fetch('/api/user/resume?student_id=' + user.id).then(x => x.json()).catch(() => ({})),
-        fetch('/api/user/scores?student_id=' + user.id + '&assessment=2').then(x => x.json()).catch(() => ({})),
+      const [p, s, r, s2, co]: [any, any, any, any, any] = await Promise.all([
+        authenticatedFetch('/api/user/profile?user_id=' + encodeURIComponent(user.id), { cache: 'no-store' }).then(x => x.ok ? x.json() : {}).catch(() => ({})),
+        authenticatedFetch('/api/user/scores?student_id=' + encodeURIComponent(user.id), { cache: 'no-store' }).then(x => x.ok ? x.json() : {}).catch(() => ({})),
+        authenticatedFetch('/api/user/resume?student_id=' + encodeURIComponent(user.id), { cache: 'no-store' }).then(x => x.ok ? x.json() : {}).catch(() => ({})),
+        authenticatedFetch('/api/user/scores?student_id=' + encodeURIComponent(user.id) + '&assessment=2', { cache: 'no-store' }).then(x => x.ok ? x.json() : {}).catch(() => ({})),
         companyApi.list(user.id).catch(() => null),
       ])
       setScores2Local(flattenAssessmentResult(s2?.result))
@@ -202,13 +203,13 @@ function ProfileInner() {
     if (name === displayName) { setEditingName(false); return }
     setSaving(true)
     try {
-      const res = await fetch('/api/user/profile', {
+      const res = await authenticatedFetch('/api/user/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ partial: true, user_id: user?.id, email: user?.email, full_name: name }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || 'Could not save your name.')
+      if (!res.ok || data.saved !== true) throw new Error(data.error || 'Your name was not confirmed as saved. Please retry.')
       const merged = { ...(profile || {}), id: user?.id, email: user?.email, full_name: name, updated_at: new Date().toISOString() }
       setProfile(merged)
       if (user) setUser({ ...user, name })
@@ -221,17 +222,17 @@ function ProfileInner() {
 
   /* ------------------------- avatar ------------------------- */
   const saveAvatar = async (cfg: AvatarConfig) => {
-    setAvatar(cfg)
     try {
-      const res = await fetch('/api/user/profile', {
+      const res = await authenticatedFetch('/api/user/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ partial: true, user_id: user?.id, email: user?.email, ai_avatar: cfg }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || 'Could not save your avatar.')
+      if (!res.ok || data.saved !== true) throw new Error(data.error || 'Your avatar was not confirmed as saved. Please retry.')
       const merged = { ...(profile || {}), id: user?.id, email: user?.email, ai_avatar: cfg, updated_at: new Date().toISOString() }
       setProfile(merged)
+      setAvatar(cfg)
       showToast('New AI avatar generated & saved ✓')
     } catch (e: any) {
       showToast(e?.message || 'Could not save your avatar.')

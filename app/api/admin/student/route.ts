@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { isAdminRequest } from '@/lib/adminAuth'
 import { fetchAllStudents } from '@/lib/adminStudents'
 import { loadStudentRecord } from '@/lib/adminAssessmentData'
-import { getServerClient } from '@/lib/supabaseServer'
+import { getServiceRoleClient, isSupabaseEnvironmentConfigured } from '@/lib/supabaseServer'
 import { rowsToCsv, tableToCsv } from '@/lib/csv'
 import { ATTEMPT_COLUMNS, attemptRows } from '@/lib/adminAssessments'
 
@@ -27,6 +27,14 @@ export async function GET(req: Request) {
   const id = String(url.searchParams.get('id') || '').trim()
   const format = url.searchParams.get('format') === 'csv' ? 'csv' : 'json'
   if (!id || id.length > 100) return NextResponse.json({ error: 'Missing student id' }, { status: 400 })
+  const sb = getServiceRoleClient()
+  if (isSupabaseEnvironmentConfigured() && !sb) {
+    return NextResponse.json(
+      { error: 'Supabase is configured but server-side admin reads are not available. Set SUPABASE_SERVICE_ROLE_KEY and retry.' },
+      { status: 503, headers: { 'Cache-Control': 'no-store', 'Retry-After': '30' } },
+    )
+  }
+
   try {
     const { students } = await fetchAllStudents()
     const row = students.find((s) => s.student_id === id)
@@ -44,7 +52,7 @@ export async function GET(req: Request) {
         },
       })
     }
-    const record = await loadStudentRecord(getServerClient(), row)
+    const record = await loadStudentRecord(sb, row)
     return new NextResponse(JSON.stringify(record, null, 1), {
       headers: {
         'Content-Type': 'application/json; charset=utf-8',

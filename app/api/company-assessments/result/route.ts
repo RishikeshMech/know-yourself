@@ -3,8 +3,7 @@
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-import { getServerClient } from '@/lib/supabaseServer'
-import { resolveStudent } from '@/lib/company/auth'
+import { requireStudentApi } from '@/lib/studentApi'
 import { getCompany } from '@/lib/company/catalog'
 import {
   SUBMIT_GRACE_MS, finalizeExpired, isFinal, isPastDeadline, loadAttempt, toSummary,
@@ -18,11 +17,12 @@ export async function GET(req: Request) {
   const url = new URL(req.url)
   const company = getCompany(url.searchParams.get('company') || '')
   if (!company) return jsonError(404, 'Unknown company assessment')
-  const sb = getServerClient()
-  const who = await resolveStudent(req, url.searchParams.get('student_id'), sb)
-  if (!who.ok) return jsonError(who.status, who.error)
+  const ctx = await requireStudentApi(req, url.searchParams.get('student_id'))
+  if (!ctx.ok) return ctx.response
+  const sb = ctx.supabase ? ctx.db : null
+  const studentId = ctx.studentId
   try {
-    let attempt = await loadAttempt(who.studentId, company.slug, { sb })
+    let attempt = await loadAttempt(studentId, company.slug, { sb })
     if (!attempt) return ok({ state: 'none' })
     if (!isFinal(attempt) && isPastDeadline(attempt, new Date(), SUBMIT_GRACE_MS)) {
       attempt = await finalizeExpired(attempt, { sb })
@@ -34,6 +34,6 @@ export async function GET(req: Request) {
       result: attempt.result ? toPublicResult(attempt.result) : null,
     })
   } catch (e: any) {
-    return jsonError(500, 'Could not load the result', { detail: String(e?.message || e) })
+    return jsonError(ctx.supabase ? 503 : 500, ctx.supabase ? 'Assessment result is temporarily unavailable; no local fallback was used.' : 'Could not load the result', { detail: String(e?.message || e) })
   }
 }

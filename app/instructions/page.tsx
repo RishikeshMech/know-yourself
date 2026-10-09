@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import { resolveInstructionsRedirect, safeRead } from '@/lib/attemptAccess'
 import { AFTER_ASSESSMENT_ROUTE } from '@/lib/nextStep'
 import { MAX_FOCUS_STRIKES } from '@/lib/proctoring'
+import { authenticatedFetch } from '@/lib/clientAuth'
 
 const ALLOCATION = [
   [1, 'English Communication', '15 min'],
@@ -45,6 +46,7 @@ function Inner(){
   const {setSession, user, hydrated} = useStore()
   const [checked,setChecked]=useState(false)
   const [starting,setStarting]=useState(false)
+  const [startError,setStartError]=useState('')
   // One-time assessment: users who already have a result (local or DB) are sent
   // to their student dashboard instead of being able to start another attempt, and a user
   // mid-attempt goes straight back to the in-progress assessment.
@@ -78,7 +80,7 @@ function Inner(){
     const finish = () => { if (cancelled || settled) return; settled = true; setGate('show') }
     const timer = setTimeout(finish, SCORES_LOOKUP_TIMEOUT_MS)
 
-    fetch('/api/user/scores?student_id=' + user.id)
+    authenticatedFetch('/api/user/scores?student_id=' + encodeURIComponent(user.id))
       .then(r => r.json())
       .then(d => { if (cancelled) return; clearTimeout(timer); if (d?.result) go(AFTER_ASSESSMENT_ROUTE); else finish() })
       .catch(() => { clearTimeout(timer); finish() })
@@ -90,45 +92,30 @@ function Inner(){
   const start = async ()=>{
     if(starting) return
     setStarting(true)
-    const now = Date.now()
+    setStartError('')
     const seed = Math.floor(Math.random()*1_000_000_000)
-    let session:any = null
     try {
-      const userRes = await fetch('/api/auth/login', {
+      if (!user?.id) throw new Error('Please sign in again before starting the assessment.')
+      const sessionRes = await authenticatedFetch('/api/user/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'demo@calibiai.local', password: 'demo' }),
+        body: JSON.stringify({ student_id: user.id, question_seed: seed, assessment_no: 1 }),
       })
-      const userData = await userRes.json()
-      const studentId = userData?.user?.id || (user?.id || '')
-      if (studentId) {
-        const sessionRes = await fetch('/api/user/session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ student_id: studentId, question_seed: seed }),
-        })
-        const sessionData = await sessionRes.json()
-        if (sessionData.session) session = sessionData.session
+      const sessionData = await sessionRes.json()
+      if (!sessionRes.ok || !sessionData?.session?.id || sessionData.saved !== true) {
+        throw new Error(sessionData?.error || 'The assessment session was not saved. Please retry.')
       }
-    } catch (e) { /* fall through */ }
-    if (!session) {
-      session = { id: 'sess_'+Math.random().toString(16).slice(2,10), student_id: user?.id || '', started_at: new Date(now).toISOString(), expires_at: new Date(now+7200*1000).toISOString(), duration_sec: 7200, status:'in_progress', question_seed: seed }
-      try {
-        await fetch('/api/user/session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...session, student_id: user?.id || session.student_id || 'unknown' }),
-        })
-      } catch { /* demo mode */ }
-    }
-    try{
+      const session = sessionData.session
+      const serverStart = Date.parse(session.started_at || '') || Date.now()
       localStorage.setItem('calibiai_session', JSON.stringify(session))
-      localStorage.setItem('calibiai_session_server_start', String(now))
-    }catch{ }
-    setSession(session)
-    // `replace` so the one-time instructions page doesn't linger in history —
-    // the Back button should never walk a finished candidate through the flow.
-    window.location.replace('/assessment')
+      localStorage.setItem('calibiai_session_server_start', String(serverStart))
+      setSession(session)
+      // `replace` so the one-time instructions page doesn't linger in history.
+      window.location.replace('/assessment')
+    } catch (error: any) {
+      setStartError(error?.message || 'Could not save your assessment session. Please retry.')
+      setStarting(false)
+    }
   }
 
   // Same chrome as the real page, so nothing jumps when the content arrives —
@@ -215,6 +202,7 @@ function Inner(){
               <input type="checkbox" checked={checked} onChange={e=>setChecked(e.target.checked)} className="accent-indigo-600 mt-0.5 w-4 h-4" />
               I have read and understood the instructions.
             </label>
+            {startError && <div role="alert" className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700">{startError}</div>}
             <button onClick={start} disabled={!checked || starting}
               className={`mt-4 w-full sm:w-auto px-8 py-3.5 rounded-full font-black text-sm transition ${checked && !starting ? 'btn-primary !py-3.5' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
               {starting ? 'Creating your session…' : 'START 120-MIN TIMER →'}

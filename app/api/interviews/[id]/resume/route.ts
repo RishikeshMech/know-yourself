@@ -2,14 +2,15 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 import { NextResponse } from 'next/server'
-import { getInterviewSessionFull, saveInterviewSession } from '@/lib/interview/store.ts'
+import { saveInterviewSession } from '@/lib/interview/store.ts'
 import { MAX_PAUSE_DURATION_SEC, RECONNECT_WINDOW_SEC } from '@/lib/interview/types.ts'
-import { getServerClient } from '@/lib/supabaseServer.ts'
+import { requireOwnedInterview } from '@/lib/interview/apiAuth.ts'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
-  const sb = getServerClient()
-  const session = await getInterviewSessionFull(params.id, sb)
-  if (!session) return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+  const owned = await requireOwnedInterview(req, params.id)
+  if (!owned.ok) return owned.response
+  const { session, auth } = owned
+  const sb = auth.db
 
   if (session.state !== 'PAUSED' && session.state !== 'DISCONNECTED') {
     return NextResponse.json({ error: `Cannot resume from state ${session.state}` }, { status: 409 })
@@ -43,5 +44,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   await saveInterviewSession(session, sb)
 
-  return NextResponse.json({ state: session.state, total_paused_sec: session.total_paused_sec })
+  return NextResponse.json(
+    { state: session.state, total_paused_sec: session.total_paused_sec },
+    { headers: { 'Cache-Control': 'no-store' } },
+  )
 }

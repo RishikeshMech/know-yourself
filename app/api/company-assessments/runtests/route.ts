@@ -5,8 +5,7 @@
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-import { getServerClient } from '@/lib/supabaseServer'
-import { resolveStudent } from '@/lib/company/auth'
+import { requireStudentApi } from '@/lib/studentApi'
 import { getCompany } from '@/lib/company/catalog'
 import { isFinal, loadAttempt } from '@/lib/company/attempts'
 import { loadBank } from '@/lib/company/bank'
@@ -34,26 +33,31 @@ export async function POST(req: Request) {
   if (!isCodeLang(requestedLang)) return jsonError(400, 'Unsupported coding language')
   const lang: CodeLang = requestedLang
   if (!availableCodeLanguages().includes(lang)) return jsonError(503, `The ${lang} runtime is not installed on this server`)
-  const sb = getServerClient()
-  const who = await resolveStudent(req, body.student_id, sb)
-  if (!who.ok) return jsonError(who.status, who.error)
+  const ctx = await requireStudentApi(req, body.student_id)
+  if (!ctx.ok) return ctx.response
+  const sb = ctx.supabase ? ctx.db : null
+  const studentId = ctx.studentId
 
-  const attempt = await loadAttempt(who.studentId, company.slug, { sb })
-  if (!attempt || isFinal(attempt)) return jsonError(409, 'No attempt in progress')
-  const itemId = String(body.item_id || '')
-  if (!paperItemIds(attempt.paper).has(itemId)) return jsonError(404, 'That question is not part of your paper')
-  const q = loadBank().byId.get(itemId)
-  if (!q || q.kind !== 'coding') return jsonError(400, 'Not a coding question')
-
-  if (!runLimiter.tryAcquire()) {
-    return NextResponse.json({ error: 'The test runner is busy — try again in a few seconds.' }, { status: 429, headers: { 'Retry-After': '3' } })
-  }
   try {
-    const result = await runCodingTests(q as CodingQuestion, code, lang)
-    return ok({ ok: true, ...result })
+    const attempt = await loadAttempt(studentId, company.slug, { sb })
+    if (!attempt || isFinal(attempt)) return jsonError(409, 'No attempt in progress')
+    const itemId = String(body.item_id || '')
+    if (!paperItemIds(attempt.paper).has(itemId)) return jsonError(404, 'That question is not part of your paper')
+    const q = loadBank().byId.get(itemId)
+    if (!q || q.kind !== 'coding') return jsonError(400, 'Not a coding question')
+
+    if (!runLimiter.tryAcquire()) {
+      return NextResponse.json({ error: 'The test runner is busy — try again in a few seconds.' }, { status: 429, headers: { 'Retry-After': '3' } })
+    }
+    try {
+      const result = await runCodingTests(q as CodingQuestion, code, lang)
+      return ok({ ok: true, ...result })
+    } catch (e: any) {
+      return jsonError(500, 'Test run failed', { detail: String(e?.message || e) })
+    } finally {
+      runLimiter.release()
+    }
   } catch (e: any) {
-    return jsonError(500, 'Test run failed', { detail: String(e?.message || e) })
-  } finally {
-    runLimiter.release()
+    return jsonError(ctx.supabase ? 503 : 500, ctx.supabase ? 'Assessment data is temporarily unavailable; no local fallback was used.' : 'Could not load the attempt.', { detail: String(e?.message || e) })
   }
 }

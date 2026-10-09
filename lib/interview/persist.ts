@@ -1,12 +1,10 @@
 /**
- * AI Mock Interview — Supabase Persistence (no data loss)
+ * AI Mock Interview — Supabase Persistence
  *
- * Mirrors lib/persist.ts pattern for company assessments:
- * - Local JSON store is always written (demo mode)
- * - When Supabase service_role is configured, every write is mirrored to Postgres
- * - Reads prefer Supabase when available, fallback to local
- * - All interview data: sessions, turns, code submissions, evaluations, reports,
- *   consents, integrity events, feedback flags stored with no loss
+ * This module maps interview records to Postgres. The store uses this path as
+ * the only source of truth when Supabase is configured; local JSON is reserved
+ * for unconfigured demo mode. Persistence failures must be surfaced to the API
+ * caller rather than silently converted into successful local-only writes.
  *
  * Tables (migration 0011):
  *   interview_sessions, interview_turns, interview_code_submissions,
@@ -102,7 +100,8 @@ export async function fetchInterviewSession(client: SupabaseClient, sessionId: s
   const id = ensureUuid(sessionId, 'interview-session')
   try {
     const { data, error } = await client.from('interview_sessions').select('*').eq('id', id).maybeSingle()
-    if (error || !data) return null
+    if (error) throw error
+    if (!data) return null
     // Reconstruct session from row
     return {
       id: data.id,
@@ -139,21 +138,22 @@ export async function fetchInterviewSession(client: SupabaseClient, sessionId: s
       report_id: data.report_id,
       created_at: data.created_at,
     } as InterviewSession
-  } catch {
-    return null
+  } catch (error) {
+    throw error
   }
 }
 
 export async function fetchInterviewSessionsForStudent(client: SupabaseClient, studentId: string): Promise<InterviewSession[]> {
   const sid = studentUuid(studentId)
-  if (!sid) return []
+  if (!sid) throw new Error('Invalid interview student id')
   try {
     const { data, error } = await client
       .from('interview_sessions')
       .select('*')
       .eq('student_id', sid)
       .order('created_at', { ascending: false })
-    if (error || !Array.isArray(data)) return []
+    if (error) throw error
+    if (!Array.isArray(data)) throw new Error('Supabase returned an invalid interview result')
     return data.map(row => ({
       id: row.id,
       student_id: row.student_id,
@@ -189,8 +189,8 @@ export async function fetchInterviewSessionsForStudent(client: SupabaseClient, s
       report_id: row.report_id,
       created_at: row.created_at,
     })) as InterviewSession[]
-  } catch {
-    return []
+  } catch (error) {
+    throw error
   }
 }
 
@@ -244,7 +244,8 @@ export async function fetchInterviewTurns(client: SupabaseClient, sessionId: str
       .select('*')
       .eq('session_id', sid)
       .order('created_at', { ascending: true })
-    if (error || !Array.isArray(data)) return []
+    if (error) throw error
+    if (!Array.isArray(data)) throw new Error('Supabase returned an invalid interview result')
     return data.map(r => ({
       id: r.id,
       session_id: r.session_id,
@@ -261,8 +262,8 @@ export async function fetchInterviewTurns(client: SupabaseClient, sessionId: str
       timestamp: r.timestamp,
       latency_ms: r.latency_ms ?? undefined,
     })) as InterviewTurn[]
-  } catch {
-    return []
+  } catch (error) {
+    throw error
   }
 }
 
@@ -316,7 +317,8 @@ export async function fetchInterviewCodeSubmissions(client: SupabaseClient, sess
       .select('*')
       .eq('session_id', sid)
       .order('submitted_at', { ascending: true })
-    if (error || !Array.isArray(data)) return []
+    if (error) throw error
+    if (!Array.isArray(data)) throw new Error('Supabase returned an invalid interview result')
     return data.map(r => ({
       id: r.id,
       session_id: r.session_id,
@@ -329,8 +331,8 @@ export async function fetchInterviewCodeSubmissions(client: SupabaseClient, sess
       runtime_ms: r.runtime_ms,
       submitted_at: r.submitted_at,
     })) as InterviewCodeSubmission[]
-  } catch {
-    return []
+  } catch (error) {
+    throw error
   }
 }
 
@@ -397,7 +399,8 @@ export async function fetchInterviewEvaluations(client: SupabaseClient, sessionI
       .select('*')
       .eq('session_id', sid)
       .order('evaluated_at', { ascending: true })
-    if (error || !Array.isArray(data)) return []
+    if (error) throw error
+    if (!Array.isArray(data)) throw new Error('Supabase returned an invalid interview result')
     return data.map(r => ({
       question_id: r.question_id,
       question_prompt: r.question_prompt,
@@ -420,8 +423,8 @@ export async function fetchInterviewEvaluations(client: SupabaseClient, sessionI
       evaluator_engine: r.evaluator_engine,
       evaluated_at: r.evaluated_at,
     })) as AnswerEvaluation[]
-  } catch {
-    return []
+  } catch (error) {
+    throw error
   }
 }
 
@@ -482,7 +485,8 @@ export async function fetchInterviewReportBySession(client: SupabaseClient, sess
   const sid = ensureUuid(sessionId, 'interview-session')
   try {
     const { data, error } = await client.from('interview_reports').select('*').eq('session_id', sid).maybeSingle()
-    if (error || !data) return null
+    if (error) throw error
+    if (!data) return null
     return {
       id: data.id,
       session_id: data.session_id,
@@ -512,21 +516,22 @@ export async function fetchInterviewReportBySession(client: SupabaseClient, sess
       student_rating: data.student_rating || undefined,
       created_at: data.created_at,
     } as InterviewReport
-  } catch {
-    return null
+  } catch (error) {
+    throw error
   }
 }
 
 export async function fetchInterviewReportsForStudent(client: SupabaseClient, studentId: string): Promise<InterviewReport[]> {
   const sid = studentUuid(studentId)
-  if (!sid) return []
+  if (!sid) throw new Error('Invalid interview student id')
   try {
     const { data, error } = await client
       .from('interview_reports')
       .select('*')
       .eq('student_id', sid)
       .order('created_at', { ascending: false })
-    if (error || !Array.isArray(data)) return []
+    if (error) throw error
+    if (!Array.isArray(data)) throw new Error('Supabase returned an invalid interview result')
     return data.map(r => ({
       id: r.id,
       session_id: r.session_id,
@@ -556,8 +561,8 @@ export async function fetchInterviewReportsForStudent(client: SupabaseClient, st
       student_rating: r.student_rating || undefined,
       created_at: r.created_at,
     })) as InterviewReport[]
-  } catch {
-    return []
+  } catch (error) {
+    throw error
   }
 }
 
@@ -625,8 +630,9 @@ export async function persistInterviewConsents(
         details: session.consent,
       }
       const { error } = await client.from('interview_consents').insert(row)
-      if (error && !String(error.message).includes('duplicate')) {
+      if (error && !String(error.message).toLowerCase().includes('duplicate')) {
         console.warn('[supabase] interview_consents persist failed:', error.message)
+        return false
       }
     }
     return true

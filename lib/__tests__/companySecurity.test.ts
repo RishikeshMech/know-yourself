@@ -63,9 +63,9 @@ test('security: the bank is read from disk, never imported (so it cannot be bund
 })
 
 test('security: every company API route verifies the caller before touching an attempt', () => {
-  for (const r of ['route.ts', 'start/route.ts', 'attempt/route.ts', 'save/route.ts', 'submit/route.ts', 'runtests/route.ts', 'result/route.ts']) {
+  for (const r of ['route.ts', 'start/route.ts', 'attempt/route.ts', 'save/route.ts', 'submit/route.ts', 'runtests/route.ts', 'result/route.ts', 'evaluate/route.ts']) {
     const src = fs.readFileSync(path.join('app/api/company-assessments', r), 'utf8')
-    assert.match(src, /resolveStudent\(req,/, r)
-    assert.match(src, /if \(!who\.ok\) return jsonError/, r)
+    assert.match(src, /requireStudentApi\(req,/, r)
+    assert.match(src, /if \(!ctx\.ok\) return ctx\.response/, r)
   }
 })

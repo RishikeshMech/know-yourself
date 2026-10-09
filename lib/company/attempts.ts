@@ -150,30 +150,44 @@ function defaultScoreDeps(deps: AttemptDeps): ScoreDeps {
   }
 }
 
-async function persist(attempt: CompanyAttempt, deps: AttemptDeps, opts: { createOnly?: boolean; durable?: boolean } = {}) {
-  saveCompanyAttempt(attempt)
-  if (opts.durable) await flushDB()
-  if (deps.sb) await persistCompanyAttempt(deps.sb, attempt, { createOnly: opts.createOnly })
+export class AttemptPersistenceError extends Error {
+  constructor(message = 'Supabase did not confirm the company assessment write.') {
+    super(message)
+    this.name = 'AttemptPersistenceError'
+  }
 }
 
-/** The student's attempt for a company (Supabase first when configured). */
+/**
+ * In Supabase mode, Postgres is the source of truth: do not acknowledge a local
+ * mirror as a saved attempt. A company attempt is one row, so each accepted
+ * checkpoint/final state is committed by one atomic Postgres upsert. The
+ * migration's immutable-final trigger and unique student/company constraint
+ * prevent reopening or duplicating a completed attempt.
+ */
+async function persist(attempt: CompanyAttempt, deps: AttemptDeps, opts: { createOnly?: boolean; durable?: boolean } = {}) {
+  if (deps.sb) {
+    const ok = await persistCompanyAttempt(deps.sb, attempt, { createOnly: opts.createOnly })
+    if (!ok) throw new AttemptPersistenceError()
+    if (opts.createOnly) {
+      const canonical = await fetchCompanyAttempt(deps.sb, attempt.student_id, attempt.company)
+      if (!canonical) throw new AttemptPersistenceError('The company attempt insert was not confirmed by Supabase.')
+    }
+    return
+  }
+
+  // Fully local demo mode only. Flush before an API response when the operation
+  // creates or finalizes an attempt; ordinary checkpoints remain coalesced.
+  saveCompanyAttempt(attempt)
+  if (opts.durable) await flushDB()
+}
+
+/** The student's attempt for a company (Supabase is authoritative when configured). */
 export async function loadAttempt(studentId: string, company: string, deps: AttemptDeps = {}): Promise<CompanyAttempt | null> {
-  const local = getCompanyAttempt(studentId, company) || null
   if (deps.sb) {
     const remote = await fetchCompanyAttempt(deps.sb, studentId, company)
-    if (remote) {
-      // Keep the local student id (it may be a non-uuid demo id locally).
-      const merged = { ...remote, student_id: studentId } as CompanyAttempt
-      // A local row that is further along (e.g. submitted while Supabase was
-      // briefly unreachable) wins over a stale remote copy — and repairs it.
-      if (local && isFinal(local) && !isFinal(merged)) {
-        await persistCompanyAttempt(deps.sb, local)
-        return local
-      }
-      return merged
-    }
+    return remote ? { ...remote, student_id: studentId } as CompanyAttempt : null
   }
-  return local
+  return getCompanyAttempt(studentId, company) || null
 }
 
 /** Finalise an attempt that ran past its deadline, using its saved answers. */
@@ -339,7 +353,9 @@ export function toSummary(a: CompanyAttempt): AttemptSummary {
 export async function listSummaries(studentId: string, deps: AttemptDeps = {}): Promise<AttemptSummary[]> {
   const now = nowOf(deps)
   const byCompany = new Map<string, AttemptSummary>()
-  for (const a of listCompanyAttempts(studentId)) byCompany.set(a.company, toSummary(a))
+  if (!deps.sb) {
+    for (const a of listCompanyAttempts(studentId)) byCompany.set(a.company, toSummary(a))
+  }
   if (deps.sb) {
     const rows = await fetchCompanyAttemptSummaries(deps.sb, studentId)
     for (const r of rows || []) {

@@ -1,4 +1,5 @@
 'use client'
+import { authenticatedFetch } from '@/lib/clientAuth'
 export const dynamic = 'force-dynamic'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -12,7 +13,7 @@ export default function InterviewsListPage() {
 
   useEffect(() => {
     if (!hydrated || !user?.id) return
-    fetch(`/api/interviews/quota?student_id=${encodeURIComponent(user.id)}`)
+    authenticatedFetch(`/api/interviews/quota?student_id=${encodeURIComponent(user.id)}`)
       .then(r => r.json())
       .then(setData)
       .finally(() => setLoading(false))

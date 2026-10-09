@@ -8,7 +8,7 @@ import { setDbDirectory, resetDbCache, flushDB, getCompanyAttempt } from '../db.
 import { loadBank } from '../company/bank.ts'
 import { heuristicGrade } from '../company/grading.ts'
 import {
-  SUBMIT_GRACE_MS, attemptIdFor, clientView, listSummaries, mergeProctoring, saveProgress,
+  AttemptPersistenceError, SUBMIT_GRACE_MS, attemptIdFor, clientView, listSummaries, loadAttempt, mergeProctoring, saveProgress,
   sanitizeAnswers, seedFor, startAttempt, submitAttempt,
 } from '../company/attempts.ts'
 import type { McqQuestion } from '../company/types.ts'
@@ -278,4 +278,29 @@ test('attempts: the local store holds exactly one row per student and company', 
   await flushDB()
   const rows = JSON.parse(fs.readFileSync(path.join(dir, 'calibiai_db.runtime.json'), 'utf8')).company_attempts
   assert.equal(rows.filter((r: any) => r.student_id === 'u_oz' && r.company === 'tcs').length, 1)
+})
+
+
+test('attempts: Supabase mode never treats a local mirror as a successful remote read or write', async () => {
+  freshStore()
+  const c = clock()
+  const studentId = '11111111-1111-4111-8111-111111111111'
+  const local = await startAttempt(studentId, 'tcs', { now: c.now, bank, score })
+  assert.equal(local.outcome, 'created')
+
+  const remoteMissing: any = {
+    from: () => ({
+      select() { return this },
+      eq() { return this },
+      maybeSingle: async () => ({ data: null, error: null }),
+      upsert: async () => ({ error: { message: 'service role is missing' } }),
+    }),
+  }
+  assert.equal(await loadAttempt(studentId, 'tcs', { sb: remoteMissing }), null, 'a Supabase miss is not replaced with stale local data')
+
+  await assert.rejects(
+    startAttempt(studentId, 'infosys', { now: c.now, bank, score, sb: remoteMissing }),
+    (error: unknown) => error instanceof AttemptPersistenceError,
+  )
+  assert.equal(getCompanyAttempt(studentId, 'infosys'), undefined, 'failed Supabase writes are not acknowledged or persisted as local-only attempts')
 })

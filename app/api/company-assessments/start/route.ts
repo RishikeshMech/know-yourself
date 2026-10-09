@@ -4,8 +4,7 @@
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-import { getServerClient } from '@/lib/supabaseServer'
-import { resolveStudent } from '@/lib/company/auth'
+import { requireStudentApi } from '@/lib/studentApi'
 import { getCompany } from '@/lib/company/catalog'
 import { clientView, startAttempt, toSummary } from '@/lib/company/attempts'
 import { jsonError, limited, ok, readJson } from '@/lib/company/http'
@@ -18,11 +17,12 @@ export async function POST(req: Request) {
   if (!body) return jsonError(400, 'Invalid JSON body')
   const company = getCompany(body.company)
   if (!company) return jsonError(404, 'Unknown company assessment')
-  const sb = getServerClient()
-  const who = await resolveStudent(req, body.student_id, sb)
-  if (!who.ok) return jsonError(who.status, who.error)
+  const ctx = await requireStudentApi(req, body.student_id)
+  if (!ctx.ok) return ctx.response
+  const sb = ctx.supabase ? ctx.db : null
+  const studentId = ctx.studentId
   try {
-    const res = await startAttempt(who.studentId, company.slug, { sb })
+    const res = await startAttempt(studentId, company.slug, { sb })
     if (res.outcome === 'completed') {
       return NextResponse.json(
         { outcome: 'completed', error: 'You have already taken this assessment — only one attempt is allowed.', attempt: toSummary(res.attempt) },
@@ -31,6 +31,6 @@ export async function POST(req: Request) {
     }
     return ok({ outcome: res.outcome, ...clientView(res.attempt, { sb }) })
   } catch (e: any) {
-    return jsonError(500, 'Could not start the assessment', { detail: String(e?.message || e) })
+    return jsonError(ctx.supabase ? 503 : 500, ctx.supabase ? 'The attempt was not confirmed in Supabase. Please retry.' : 'Could not start the assessment', { detail: String(e?.message || e) })
   }
 }

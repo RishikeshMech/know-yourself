@@ -1,22 +1,34 @@
 'use client'
 import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import { Navbar } from '@/components/Navbar'
 import { useStore } from '@/lib/store'
 import { Stepper } from '@/components/Stepper'
+import { authenticatedFetch } from '@/lib/clientAuth'
 
 function Inner(){
   const router = useRouter()
   const {tracking,setTracking,user} = useStore()
+  const [saveError, setSaveError] = useState('')
+  const [saving, setSaving] = useState(false)
   const complete = async ()=>{
-    setTracking({...tracking, linkedin:true})
+    if (saving) return
+    setSaving(true)
+    setSaveError('')
     try {
-      await fetch('/api/user/tracking', {
+      const response = await authenticatedFetch('/api/user/tracking', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: user?.id, action: 'follow_linkedin', completed: true }),
       })
-    } catch { /* demo mode */ }
-    setTimeout(()=> router.replace('/confirmation'), 450)
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok || data.saved !== true) throw new Error(data.error || 'Your progress was not confirmed as saved. Please retry.')
+      setTracking({...tracking, linkedin:true})
+      router.replace('/confirmation')
+    } catch (error: any) {
+      setSaveError(error?.message || 'Could not save your progress. Please retry.')
+      setSaving(false)
+    }
   }
   return (
     <div>
@@ -37,10 +49,11 @@ function Inner(){
           </div>
 
           <div className="mt-7 flex justify-center gap-3">
-            <a href="https://www.linkedin.com/company/calibiai-academy" target="_blank" rel="noreferrer" onClick={complete} className="btn-primary !bg-none bg-sky-600 !shadow-sky-300/50 hover:bg-sky-700">Follow on LinkedIn →</a>
-            <button onClick={complete} className="btn-soft">I followed ✓</button>
+            <a href="https://www.linkedin.com/company/calibiai-academy" target="_blank" rel="noreferrer" onClick={(event) => { event.preventDefault(); window.open('https://www.linkedin.com/company/calibiai-academy', '_blank', 'noopener,noreferrer'); void complete() }} className="btn-primary !bg-none bg-sky-600 !shadow-sky-300/50 hover:bg-sky-700">Follow on LinkedIn →</a>
+            <button onClick={complete} disabled={saving} className="btn-soft disabled:opacity-50">{saving ? 'Saving…' : 'I followed ✓'}</button>
           </div>
           <button onClick={()=>router.replace('/confirmation')} className="mt-4 text-xs font-semibold text-slate-400 hover:text-slate-600">Continue →</button>
+          {saveError && <div role="alert" className="mt-4 rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">⚠ {saveError}</div>}
           {tracking.linkedin && <div className="mt-4 text-xs text-emerald-600 font-semibold animate-pop">✓ Done</div>}
         </div>
       </main>

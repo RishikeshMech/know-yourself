@@ -22,6 +22,7 @@ import { CollegeCombobox } from '@/components/CollegeCombobox'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { SkillPicker } from '@/components/SkillPicker'
 import { useStore } from '@/lib/store'
+import { authenticatedFetch } from '@/lib/clientAuth'
 import { normalizeOnboardingForm, type OnboardingForm as Form } from '@/lib/onboardingForm'
 import {
   DEGREE_OPTIONS,
@@ -82,7 +83,7 @@ export default function EditProfilePage() {
       setLoaded(true)
       return
     }
-    fetch('/api/user/profile?user_id=' + user.id)
+    authenticatedFetch('/api/user/profile?user_id=' + encodeURIComponent(user.id), { cache: 'no-store' })
       .then((r) => r.json())
       .then((d) => {
         if (d.profile) {
@@ -146,18 +147,18 @@ export default function EditProfilePage() {
       cgpa: Number(form.cgpa),
     }
     try {
-      const res = await fetch('/api/user/profile', {
+      const res = await authenticatedFetch('/api/user/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || 'Could not save your profile.')
+      if (!res.ok || data.saved !== true) throw new Error(data.error || 'Your profile was not confirmed as saved. Please retry.')
       setProfile(data.profile || payload)
     } catch (err: any) {
-      // Offline / demo mode — still keep the local store so the change sticks.
-      console.warn('profile save fell back to local store:', err?.message)
-      setProfile(payload)
+      setFormError(err?.message || 'Could not save your profile. Please retry.')
+      setBusy(false)
+      return
     }
     setBusy(false)
     setSaved(true)

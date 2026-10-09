@@ -1,4 +1,5 @@
 'use client'
+import { authenticatedFetch } from '@/lib/clientAuth'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useStore } from '@/lib/store'
@@ -24,7 +25,7 @@ export function ScheduleInterviewTab() {
     if (!user?.id) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/interviews/quota?student_id=${encodeURIComponent(user.id)}`)
+      const res = await authenticatedFetch(`/api/interviews/quota?student_id=${encodeURIComponent(user.id)}`)
       const data = await res.json()
       setQuota(data)
     } catch {}
@@ -41,7 +42,7 @@ export function ScheduleInterviewTab() {
     }
     setCreating(true)
     try {
-      const res = await fetch('/api/interviews', {
+      const res = await authenticatedFetch('/api/interviews', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

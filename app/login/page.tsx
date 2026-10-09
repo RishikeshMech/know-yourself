@@ -9,6 +9,7 @@ import { Logo } from '@/components/Logo'
 import { afterSignInRoute, signedInLandingRoute } from '@/lib/nextStep'
 import { isProfileComplete } from '@/lib/validate'
 import { getLiveUser } from '@/lib/session'
+import { authenticatedFetch } from '@/lib/clientAuth'
 
 function GoogleIcon({ className = 'h-5 w-5' }: { className?: string }) {
   return (
@@ -136,6 +137,16 @@ export default function LoginPage() {
       const authUser = data.user
       let resolvedName = authUser.name || payload.full_name
 
+      // Install the Supabase token before the first protected student API call.
+      if (data.supabase) {
+        const sb = getSupabase()
+        if (!sb || !data.access_token || !data.refresh_token) {
+          throw new Error('Supabase sign-in did not return a usable session. Please retry.')
+        }
+        const { error } = await sb.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token })
+        if (error) throw error
+      }
+
       // If we signed into a *different* account than the one cached (e.g. the
       // previous account was deleted in Supabase and re-created), drop the old
       // account's cached profile/resume/scores so nothing leaks across.
@@ -147,7 +158,9 @@ export default function LoginPage() {
 
       if (authUser.id && data.has_onboarding) {
         try {
-          const pr = await fetch('/api/user/profile?user_id=' + authUser.id).then((r) => r.json())
+          const profileResponse = await authenticatedFetch('/api/user/profile?user_id=' + encodeURIComponent(authUser.id), { cache: 'no-store' })
+          if (!profileResponse.ok) throw new Error('Profile lookup failed')
+          const pr = await profileResponse.json()
           if (pr?.profile?.full_name?.trim()) {
             resolvedName = pr.profile.full_name.trim()
             setProfile(pr.profile)
@@ -172,15 +185,6 @@ export default function LoginPage() {
         institution_id: authUser.institution_id || 'inst_iitm',
         name: resolvedName,
       })
-
-      try {
-        const sb = getSupabase()
-        if (sb && data.access_token && data.refresh_token) {
-          await sb.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token })
-        }
-      } catch {
-        /* demo mode */
-      }
 
       router.replace(dest)
     } catch (e: any) {

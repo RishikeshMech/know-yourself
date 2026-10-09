@@ -1,4 +1,5 @@
 'use client'
+import { authenticatedFetch } from '@/lib/clientAuth'
 export const dynamic = 'force-dynamic'
 import { useEffect, useState } from 'react'
 import { Navbar } from '@/components/Navbar'
@@ -15,7 +16,7 @@ export default function InterviewLivePage({ params }: { params: { id: string } }
   const fetchSession = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/interviews/${params.id}`)
+      const res = await authenticatedFetch(`/api/interviews/${params.id}`)
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to load session')
       setSession(data.session)
@@ -79,7 +80,7 @@ export default function InterviewLivePage({ params }: { params: { id: string } }
           <ConsentAndDeviceCheck
             onComplete={async ({ consent, device }) => {
               try {
-                const res = await fetch(`/api/interviews/${session.id}/consent`, {
+                const res = await authenticatedFetch(`/api/interviews/${session.id}/consent`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ ...consent, device_check: device }),
@@ -88,7 +89,7 @@ export default function InterviewLivePage({ params }: { params: { id: string } }
                 if (!res.ok) throw new Error(data.error)
                 setSession(data.session)
                 // Fetch current question again
-                const sessRes = await fetch(`/api/interviews/${session.id}`)
+                const sessRes = await authenticatedFetch(`/api/interviews/${session.id}`)
                 const sessData = await sessRes.json()
                 setCurrentQuestion(sessData.current_question)
               } catch (e: any) {

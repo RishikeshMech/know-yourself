@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
-import { saveResumeAnalysis } from '@/lib/db'
-import { getServerClient } from '@/lib/supabaseServer'
+import { saveResumeAnalysis, flushDB } from '@/lib/db'
 import { persistResumeAnalysis } from '@/lib/persist'
+import { requireStudentApi } from '@/lib/studentApi'
 import { createLimiter } from '@/lib/concurrency'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 import {
@@ -42,6 +42,8 @@ export async function POST(req: Request) {
   }
   try {
     const form = await req.formData()
+    const auth = await requireStudentApi(req, form.get('user_id')?.toString())
+    if (!auth.ok) return auth.response
     const file = form.get('file')
     if (!(file instanceof File) || file.size === 0) {
       return NextResponse.json({ error: 'Please attach a resume file.' }, { status: 400 })
@@ -73,17 +75,21 @@ export async function POST(req: Request) {
     const analysis = await analyzeResumeText(text, ctx)
     const record = {
       id: 'res_' + Date.now(),
-      student_id: form.get('user_id')?.toString() || 'unknown',
+      student_id: auth.studentId,
       storage_key: form.get('storage_key')?.toString() || '',
       file_name: file.name,
       created_at: new Date().toISOString(),
       ...analysis,
     }
-    saveResumeAnalysis(record as any)
-    const sb = getServerClient()
-    let supabase = false
-    if (sb) supabase = await persistResumeAnalysis(sb, record)
-    return NextResponse.json({ analysis: record, supabase })
+    if (auth.supabase) {
+      if (!(await persistResumeAnalysis(auth.db!, record))) {
+        return NextResponse.json({ error: 'Resume analysis could not be saved to Supabase. Please retry.' }, { status: 503 })
+      }
+    } else {
+      saveResumeAnalysis(record as any)
+      await flushDB()
+    }
+    return NextResponse.json({ analysis: record, saved: true, supabase: auth.supabase })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'Resume analysis failed.' }, { status: 500 })
   } finally {

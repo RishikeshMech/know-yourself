@@ -4,8 +4,7 @@
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-import { getServerClient } from '@/lib/supabaseServer'
-import { resolveStudent } from '@/lib/company/auth'
+import { requireStudentApi } from '@/lib/studentApi'
 import { getCompany } from '@/lib/company/catalog'
 import { finalizeExpired, isFinal, isPastDeadline, loadAttempt, SUBMIT_GRACE_MS } from '@/lib/company/attempts'
 import { loadBank } from '@/lib/company/bank'
@@ -27,12 +26,13 @@ export async function POST(req: Request) {
   const company = getCompany(body.company)
   if (!company) return jsonError(404, 'Unknown company assessment')
 
-  const sb = getServerClient()
-  const who = await resolveStudent(req, body.student_id, sb)
-  if (!who.ok) return jsonError(who.status, who.error)
+  const ctx = await requireStudentApi(req, body.student_id)
+  if (!ctx.ok) return ctx.response
+  const sb = ctx.supabase ? ctx.db : null
+  const studentId = ctx.studentId
 
   try {
-    let attempt = await loadAttempt(who.studentId, company.slug, { sb })
+    let attempt = await loadAttempt(studentId, company.slug, { sb })
     if (!attempt) return jsonError(409, 'No assessment in progress')
     if (isFinal(attempt)) return jsonError(409, 'This assessment is closed')
     if (isPastDeadline(attempt, new Date(), SUBMIT_GRACE_MS)) {
@@ -70,6 +70,6 @@ export async function POST(req: Request) {
       reviewLimiter.release()
     }
   } catch (error: any) {
-    return jsonError(500, 'AI review failed', { detail: String(error?.message || error).slice(0, 300) })
+    return jsonError(ctx.supabase ? 503 : 500, ctx.supabase ? 'Assessment data or review service is temporarily unavailable.' : 'AI review failed', { detail: String(error?.message || error).slice(0, 300) })
   }
 }

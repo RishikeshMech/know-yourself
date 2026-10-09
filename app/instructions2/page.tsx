@@ -7,6 +7,7 @@ import { resolveInstructions2Redirect, safeRead } from '@/lib/attemptAccess2'
 import { AFTER_ASSESSMENT_ROUTE } from '@/lib/nextStep'
 import { ASSESSMENT_2 } from '@/lib/assessment2Config'
 import { MAX_FOCUS_STRIKES } from '@/lib/proctoring'
+import { authenticatedFetch } from '@/lib/clientAuth'
 
 // The 5 stages of the Capgemini "Assessment Journey".
 const ALLOCATION = [
@@ -44,6 +45,7 @@ function Inner() {
   const { setSession, user, hydrated } = useStore()
   const [checked, setChecked] = useState(false)
   const [starting, setStarting] = useState(false)
+  const [startError, setStartError] = useState('')
   // Same one-time-attempt gate as assessment 1, plus the extra rule that the
   // first assessment must be finished before this one unlocks.
   const [gate, setGate] = useState<'checking' | 'show'>('checking')
@@ -70,7 +72,7 @@ function Inner() {
     const finish = () => { if (cancelled || settled) return; settled = true; setGate('show') }
     const timer = setTimeout(finish, SCORES_LOOKUP_TIMEOUT_MS)
 
-    fetch('/api/user/scores?student_id=' + user.id + '&assessment=2')
+    authenticatedFetch('/api/user/scores?student_id=' + encodeURIComponent(user.id) + '&assessment=2')
       .then(r => r.json())
       .then(d => { if (cancelled) return; clearTimeout(timer); if (d?.result) go(AFTER_ASSESSMENT_ROUTE); else finish() })
       .catch(() => { clearTimeout(timer); finish() })
@@ -82,54 +84,35 @@ function Inner() {
   const start = async () => {
     if (starting) return
     setStarting(true)
-    const now = Date.now()
-    const durationSec = ASSESSMENT_2.durationSec
+    setStartError('')
     const seed = Math.floor(Math.random() * 1_000_000_000)
-    let session: any = null
     try {
-      const studentId = user?.id || ''
-      if (studentId) {
-        const sessionRes = await fetch('/api/user/session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            student_id: studentId,
-            question_seed: seed,
-            assessment_no: 2,
-            duration_sec: durationSec,
-          }),
-        })
-        const sessionData = await sessionRes.json()
-        if (sessionData.session) session = sessionData.session
+      if (!user?.id) throw new Error('Please sign in again before starting the assessment.')
+      const sessionRes = await authenticatedFetch('/api/user/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          student_id: user.id,
+          question_seed: seed,
+          assessment_no: 2,
+          duration_sec: ASSESSMENT_2.durationSec,
+        }),
+      })
+      const sessionData = await sessionRes.json()
+      if (!sessionRes.ok || !sessionData?.session?.id || sessionData.saved !== true) {
+        throw new Error(sessionData?.error || 'The assessment session was not saved. Please retry.')
       }
-    } catch (e) { /* fall through to a local session */ }
-    if (!session) {
-      session = {
-        id: 'sess2_' + Math.random().toString(16).slice(2, 10),
-        student_id: user?.id || '',
-        started_at: new Date(now).toISOString(),
-        expires_at: new Date(now + durationSec * 1000).toISOString(),
-        duration_sec: durationSec,
-        status: 'in_progress',
-        question_seed: seed,
-        assessment_no: 2,
-      }
-      try {
-        await fetch('/api/user/session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...session, student_id: user?.id || session.student_id || 'unknown' }),
-        })
-      } catch { /* demo mode */ }
-    }
-    session.assessment_no = 2
-    try {
+      const session = { ...sessionData.session, assessment_no: 2 }
+      const serverStart = Date.parse(session.started_at || '') || Date.now()
       localStorage.setItem(ASSESSMENT_2.keys.session, JSON.stringify(session))
-      localStorage.setItem('calibiai2_session_server_start', String(now))
-    } catch { }
-    // The runner reads its session from the assessment-2 storage key, so the
-    // shared store slice is left untouched for the first assessment.
-    window.location.replace('/assessment2')
+      localStorage.setItem('calibiai2_session_server_start', String(serverStart))
+      // The runner reads its session from the assessment-2 storage key, so the
+      // shared store slice is left untouched for the first assessment.
+      window.location.replace('/assessment2')
+    } catch (error: any) {
+      setStartError(error?.message || 'Could not save your assessment session. Please retry.')
+      setStarting(false)
+    }
   }
 
   if (gate !== 'show') {
@@ -218,6 +201,7 @@ function Inner() {
               <input type="checkbox" checked={checked} onChange={e => setChecked(e.target.checked)} className="accent-indigo-600 mt-0.5 w-4 h-4" />
               I have read and understood the instructions.
             </label>
+            {startError && <div role="alert" className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-700">{startError}</div>}
             <button onClick={start} disabled={!checked || starting}
               className={`mt-4 w-full sm:w-auto px-8 py-3.5 rounded-full font-black text-sm transition ${checked && !starting ? 'btn-primary !py-3.5' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}>
               {starting ? 'Creating your session…' : 'START 120-MIN TIMER →'}

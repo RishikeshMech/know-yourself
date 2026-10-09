@@ -1,3 +1,5 @@
+import { supabaseAuthHeaders } from './clientAuth.ts'
+
 export interface JsonPostOptions {
   timeoutMs?: number
   retries?: number
@@ -37,9 +39,10 @@ export async function postJsonWithRetry<T = Record<string, unknown>>(
     let retryable = false
 
     try {
+      const headers = await supabaseAuthHeaders({ 'Content-Type': 'application/json' })
       const response = await doFetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(body),
         signal: controller.signal,
       })

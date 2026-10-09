@@ -2,15 +2,13 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 import { NextResponse } from 'next/server'
-import { getInterviewSessionFull, getCustomOrBankQuestion } from '@/lib/interview/store.ts'
-import { getServerClient } from '@/lib/supabaseServer.ts'
+import { getCustomOrBankQuestion } from '@/lib/interview/store.ts'
+import { requireOwnedInterview } from '@/lib/interview/apiAuth.ts'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
-  const sb = getServerClient()
-  const session = await getInterviewSessionFull(params.id, sb)
-  if (!session) {
-    return NextResponse.json({ error: 'Interview session not found' }, { status: 404 })
-  }
+  const owned = await requireOwnedInterview(req, params.id)
+  if (!owned.ok) return owned.response
+  const { session } = owned
 
   const curId = session.blueprint?.current_question_id || ''
   const currentQ = curId ? getCustomOrBankQuestion(session, curId) : null
@@ -40,5 +38,5 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     },
     current_question: safeCurrent,
     blueprint: session.blueprint,
-  })
+  }, { headers: { 'Cache-Control': 'no-store' } })
 }

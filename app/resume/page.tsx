@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Navbar } from '@/components/Navbar'
 import { useStore } from '@/lib/store'
 import { Stepper } from '@/components/Stepper'
+import { authenticatedFetch } from '@/lib/clientAuth'
 
 function ScoreRing({ score }: { score: number }) {
   const tone = score >= 75 ? '#10b981' : score >= 50 ? '#f59e0b' : '#f43f5e'
@@ -65,9 +66,9 @@ function ResumeInner() {
       fd.append('full_name', profile?.full_name || user?.name || '')
       fd.append('degree', profile?.degree || '')
       fd.append('skills', profile?.skills || '')
-      const res = await fetch('/api/user/resume/analyze', { method: 'POST', body: fd })
+      const res = await authenticatedFetch('/api/user/resume/analyze', { method: 'POST', body: fd })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Analysis failed.')
+      if (!res.ok || data.saved !== true) throw new Error(data.error || 'Resume analysis was not confirmed as saved. Please retry.')
       setDone(data.analysis)
       setResume(data.analysis)
     } catch (e: any) {
