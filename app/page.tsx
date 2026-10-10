@@ -7,6 +7,7 @@ import { HeroMockup } from '@/components/HeroMockup'
 import { useStore } from '@/lib/store'
 import { Typewriter } from '@/components/Typewriter'
 import { WhatsAppLink } from '@/components/WhatsAppCommunity'
+import { StudentTestimonials } from '@/components/StudentTestimonials'
 import { signedInLandingRoute, afterSignInRoute } from '@/lib/nextStep'
 import { isProfileComplete } from '@/lib/validate'
 import { getLiveUser } from '@/lib/session'
@@ -121,6 +122,11 @@ function Landing() {
               </div>
             ))}
           </div>
+        </section>
+
+        {/* Student testimonials — auto-sliding carousel, 5s per story */}
+        <section className="py-10">
+          <StudentTestimonials />
         </section>
 
         {/* CTA band */}
