@@ -363,3 +363,21 @@ body {
 .ai-avatar-aurora { animation: ai-avatar-aurora-kf 9s ease-in-out infinite; }
 .ai-avatar-aurora-2 { animation: ai-avatar-aurora-kf2 11s ease-in-out infinite; }
 .ai-avatar-twinkle { animation: ai-avatar-twinkle-kf 2.6s ease-in-out infinite; }
+
+/* ------------------------------------------------------------------ */
+/* Student testimonial carousel (landing page)                        */
+/* ------------------------------------------------------------------ */
+@keyframes testimonial-progress-kf {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
+/* One full width per 5-second slide (matches SLIDE_MS in the component). */
+.testimonial-progress { animation: testimonial-progress-kf 5s linear forwards; }
+.testimonial-progress.is-paused { animation-play-state: paused; }
+.testimonial-track {
+  transition: transform .7s cubic-bezier(.22, .8, .32, 1);
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .testimonial-track { transition: none; }
+}
