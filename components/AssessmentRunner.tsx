@@ -154,6 +154,24 @@ function getSubProgress(
   return { answered: 0, total: 0, complete: false }
 }
 
+/* Whether a whole stage is complete — drives the green tracking ticks on the
+   header pills and the sidebar section list, so a candidate can see a section
+   (e.g. Problem Solving) turn green the moment its last question is answered.
+   Subsectioned stages (English, Cognitive, A2 Debugging) are complete only
+   when EVERY subsection is; flat stages use their single progress snapshot. */
+function isStageComplete(
+  s: StageDef,
+  bank: any,
+  answers: Record<string, any>,
+  gridInfo: { rounds: number; doneRounds: number },
+): boolean {
+  if (s.sub.length > 0) {
+    return s.sub.every((_, si) => getSubProgress(bank, s.id, si, answers, gridInfo, s.bankKey).complete)
+  }
+  const p = getSubProgress(bank, s.id, 0, answers, gridInfo, s.bankKey)
+  return p.total > 0 && p.complete
+}
+
 // Linear navigation across (stage, sub): next/prev subsection, spilling over
 // into the neighbouring stage when at a boundary.
 function nextLocation(STAGES: StageDef[], stage: number, sub: number): { stage: number; sub: number } | null {
@@ -2141,9 +2159,9 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
           </div>
           <div className="flex items-center gap-2.5 sm:gap-3">
             <HelpButton assessment disabled={terminated || submitting || showViolation || !!reviewMode} />
-            <span className="hidden sm:flex items-center gap-1.5 text-xs text-slate-500">
+            <span className="hidden sm:flex items-center gap-1.5 text-xs text-slate-500" title="Focus warnings — switching tabs or leaving the window counts toward this budget">
               Warnings
-              <span className={`px-2 py-0.5 rounded-full font-bold ${strikes >= 3 ? 'bg-rose-500 text-white' : strikes >= 1 ? 'bg-amber-400 text-slate-900' : 'bg-slate-100 text-slate-500'}`}>{strikes}/3</span>
+              <span className={`px-2 py-0.5 rounded-full font-bold ${strikes >= MAX_FOCUS_STRIKES ? 'bg-rose-500 text-white' : strikes >= MAX_FOCUS_STRIKES - 1 ? 'bg-orange-500 text-white' : strikes >= 1 ? 'bg-amber-400 text-slate-900' : 'bg-slate-100 text-slate-500'}`}>{strikes}/{MAX_FOCUS_STRIKES}</span>
             </span>
             {envState === 'cleared' && !terminated && !submitting && !isFullscreen && (
               <button
@@ -2161,12 +2179,19 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
         </div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-2.5">
           <div className="flex gap-1.5 overflow-x-auto py-1">
-            {STAGES.map((s, i) => (
-              <button key={s.id} onClick={() => navigateTo(i, 0, i > stage ? 'next' : i < stage ? 'prev' : null)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border transition-all duration-300 ${i === stage ? 'calibiai-gradient text-white border-transparent shadow-md shadow-indigo-200' : 'bg-white/70 text-slate-600 border-slate-200 hover:bg-white hover:shadow-sm'}`}>
-                {i + 1}. {s.label}
-              </button>
-            ))}
+            {STAGES.map((s, i) => {
+              const stageDone = isStageComplete(s, bank, answers, gridInfo)
+              return (
+                <button key={s.id} onClick={() => navigateTo(i, 0, i > stage ? 'next' : i < stage ? 'prev' : null)}
+                  title={stageDone ? `${s.label} — complete` : s.label}
+                  className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border transition-all duration-300 ${i === stage ? 'calibiai-gradient text-white border-transparent shadow-md shadow-indigo-200' : stageDone ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' : 'bg-white/70 text-slate-600 border-slate-200 hover:bg-white hover:shadow-sm'}`}>
+                  {i + 1}. {s.label}
+                  {stageDone && (
+                    <span aria-hidden className={`ml-1.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] leading-none ${i === stage ? 'bg-white/25 text-white' : 'bg-emerald-500 text-white'}`}>✓</span>
+                  )}
+                </button>
+              )
+            })}
           </div>
         </div>
       </div>
@@ -2195,23 +2220,32 @@ export function AssessmentRunner({ config }: { config: AssessmentConfig }) {
               const doneSubs = s.sub.length
                 ? s.sub.filter((_, si) => getSubProgress(bank, s.id, si, answers, gridInfo, s.bankKey).complete).length
                 : 0
+              // Whole-stage completion — the green tracking tick appears the
+              // moment the section is done (flat stages included, e.g. the
+              // Problem Solving paper once every question is answered).
+              const stageDone = isStageComplete(s, bank, answers, gridInfo)
               return (
                 <button key={s.id} onClick={() => navigateTo(i, 0, i > stage ? 'next' : i < stage ? 'prev' : null)}
-                  className={`w-full text-left px-3 py-2 rounded-xl text-xs border transition-all duration-300 ${i === stage ? 'bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-200' : 'bg-white/70 border-slate-200 text-slate-600 hover:bg-white hover:shadow-sm'}`}>
+                  title={stageDone ? `${s.label} — complete` : s.label}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs border transition-all duration-300 ${i === stage ? 'bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-200' : stageDone ? 'bg-emerald-50/80 border-emerald-200 text-emerald-800 hover:bg-emerald-50' : 'bg-white/70 border-slate-200 text-slate-600 hover:bg-white hover:shadow-sm'}`}>
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-bold">{i + 1}. {s.label}</span>
                     <span className="flex items-center gap-1.5 shrink-0">
-                      {s.sub.length > 0 && (
+                      {s.sub.length > 0 ? (
                         <span className={`font-mono font-bold ${i === stage ? 'text-indigo-100' : doneSubs === s.sub.length ? 'text-emerald-600' : 'text-slate-400'}`}>
                           {doneSubs === s.sub.length ? '✓' : `${doneSubs}/${s.sub.length}`}
                         </span>
-                      )}
+                      ) : stageDone ? (
+                        <span aria-hidden className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-[10px] leading-none text-white">✓</span>
+                      ) : null}
                       {(s.id === 'debugging' || s.id === 'feature') && (
                         <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded font-bold ${i === stage ? 'bg-white/20 text-white border border-white/30' : 'bg-indigo-50 text-indigo-600 border border-indigo-100'}`}>AI</span>
                       )}
                     </span>
                   </div>
-                  <div className={`text-[10px] ${i === stage ? 'text-indigo-100' : 'text-slate-400'}`}>Suggested {s.min} min</div>
+                  <div className={`text-[10px] ${i === stage ? 'text-indigo-100' : stageDone ? 'text-emerald-600' : 'text-slate-400'}`}>
+                    {stageDone ? 'Completed ✓' : `Suggested ${s.min} min`}
+                  </div>
                 </button>
               )
             })}
