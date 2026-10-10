@@ -124,13 +124,9 @@ function Landing() {
           </div>
         </section>
 
-        {/* Student testimonials — auto-sliding carousel, 5s per story */}
+        {/* Assessment CTA — deliberately placed before student stories so visitors see
+            the full assessment offering before hearing how it helped other students. */}
         <section className="py-10">
-          <StudentTestimonials />
-        </section>
-
-        {/* CTA band */}
-        <section className="pb-16">
           <div className="glass-card !p-8 sm:!p-10 text-center">
             <h2 className="text-2xl sm:text-3xl font-black text-slate-900">Ready when you are.</h2>
             <p className="mt-1.5 text-sm text-slate-500">120 minutes. Six modules. One score.</p>
@@ -141,12 +137,31 @@ function Landing() {
                 </span>
               ))}
             </div>
+
+            <div className="mx-auto mt-7 max-w-3xl rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50/90 via-white/80 to-violet-50/90 p-4 text-left shadow-sm sm:flex sm:items-center sm:justify-between sm:gap-6 sm:p-5">
+              <div className="flex items-start gap-3.5">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-600 text-lg shadow-md shadow-indigo-200" aria-hidden>🏢</span>
+                <div>
+                  <h3 className="font-black text-slate-900">50+ company assessments</h3>
+                  <p className="mt-0.5 text-sm leading-relaxed text-slate-500">Practice company-specific hiring rounds with realistic questions, timed papers and detailed feedback.</p>
+                </div>
+              </div>
+              <Link href="/company-assessments" className="mt-4 inline-flex shrink-0 items-center text-sm font-bold text-indigo-600 transition hover:text-violet-600 sm:mt-0">
+                Explore companies <span aria-hidden className="ml-1">→</span>
+              </Link>
+            </div>
+
             <Link href={startHref} className="btn-primary mt-7">Start your assessment →</Link>
             <div className="mt-4 text-sm">
               <WhatsAppLink className="text-sm" />
               <span className="ml-2 text-xs text-slate-400">· placement alerts & peer prep</span>
             </div>
           </div>
+        </section>
+
+        {/* Student testimonials — auto-sliding carousel, 5s per story */}
+        <section className="pt-10 pb-16">
+          <StudentTestimonials />
         </section>
       </main>
     </div>
