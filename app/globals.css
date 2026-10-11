@@ -171,10 +171,11 @@ body {
   stroke-width: 22;
   stroke-linecap: butt;
   stroke-dasharray: 0 100;
-  transition: stroke-width .25s ease;
+  transition: stroke-width .22s cubic-bezier(.2,.8,.2,1), opacity .22s ease, filter .22s ease;
 }
 .pie-slice.is-drawing { animation: pie-draw .9s cubic-bezier(.22,.8,.32,1) both; }
-.pie-slice:hover      { stroke-width: 26; cursor: pointer; }
+.pie-slice:hover      { cursor: pointer; }
+.pie-slice:focus-visible { outline: none; }
 @keyframes pie-draw {
   from { stroke-dasharray: 0 100; }
   to   { stroke-dasharray: var(--pie-len) 100; }
@@ -380,4 +381,24 @@ body {
 }
 @media (prefers-reduced-motion: reduce) {
   .testimonial-track { transition: none; }
+}
+
+/* ------------------------------------------------------------------ */
+/* Company Mocks Marquee (Landing page)                                */
+/* ------------------------------------------------------------------ */
+@keyframes marquee-slide {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+.animate-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee-slide 32s linear infinite;
+  will-change: transform;
+}
+.animate-marquee-track:hover {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee-track { animation: none; overflow-x: auto; }
 }

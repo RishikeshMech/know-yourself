@@ -103,6 +103,14 @@ export function CompanyCatalog({ heading = true, onAttempts }: {
   const onAttemptsRef = useRef(onAttempts)
   onAttemptsRef.current = onAttempts
 
+  // Pagination: initially 6 companies, +10 each time user clicks "View more"
+  const [visibleLimit, setVisibleLimit] = useState(6)
+
+  // Reset pagination when search query or filter changes
+  useEffect(() => {
+    setVisibleLimit(6)
+  }, [query, filter, groupBy, selectedPriorities])
+
   const refresh = useCallback(async (force = false) => {
     if (!user?.id) return
     if (!force && Date.now() - lastFetch.current < 30_000) return
@@ -124,38 +132,61 @@ export function CompanyCatalog({ heading = true, onAttempts }: {
     return () => window.removeEventListener('focus', onFocus)
   }, [refresh])
 
+  // Search matches every company by name only
   const matching = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return COMPANIES.filter((c) =>
-      (filter === 'all' || c.tag === filter) &&
-      (!q || c.name.toLowerCase().includes(q) || c.track.toLowerCase().includes(q) || TAG_BY_ID[c.tag].label.toLowerCase().includes(q)),
-    )
+    if (q) {
+      // Search across every company by name only
+      return COMPANIES.filter((c) => c.name.toLowerCase().includes(q))
+    }
+    return COMPANIES.filter((c) => filter === 'all' || c.tag === filter)
   }, [filter, query])
 
-  const visible = useMemo(() => groupBy === 'priority'
-    ? matching.filter((company) => selectedPriorities.includes(company.priority))
-    : matching,
-  [groupBy, matching, selectedPriorities])
+  const visible = useMemo(() => {
+    if (query.trim()) {
+      // When searching by name, show all matching companies
+      return matching
+    }
+    return groupBy === 'priority'
+      ? matching.filter((company) => selectedPriorities.includes(company.priority))
+      : matching
+  }, [groupBy, matching, query, selectedPriorities])
+
+  const paged = useMemo(() => visible.slice(0, visibleLimit), [visible, visibleLimit])
+  const hasMore = visibleLimit < visible.length
+  const remainingCount = visible.length - visibleLimit
+  const nextBatchCount = Math.min(10, remainingCount)
 
   const groups = useMemo(() => {
-    if (groupBy === 'priority') {
-      return PRIORITIES.map((p) => ({
-        key: `p${p}`,
-        title: PRIORITY_LABEL[p],
-        subtitle: p === 1 ? 'The highest-priority targets from the research plan.' : p === 2 ? 'High-priority product and engineering companies.' : 'Additional medium-priority companies to explore.',
-        icon: p === 1 ? '🥇' : p === 2 ? '🥈' : '🥉',
-        priority: p,
-        companies: visible.filter((c) => c.priority === p).sort((a, b) => COMPANY_ORDER[a.slug] - COMPANY_ORDER[b.slug]),
-      })).filter((g) => g.companies.length)
+    if (groupBy === 'priority' && !query.trim()) {
+      return PRIORITIES.map((p) => {
+        const inPriority = paged.filter((c) => c.priority === p).sort((a, b) => COMPANY_ORDER[a.slug] - COMPANY_ORDER[b.slug])
+        const allInPriority = visible.filter((c) => c.priority === p)
+        return {
+          key: `p${p}`,
+          title: PRIORITY_LABEL[p],
+          subtitle: p === 1 ? 'The highest-priority targets from the research plan.' : p === 2 ? 'High-priority product and engineering companies.' : 'Additional medium-priority companies to explore.',
+          icon: p === 1 ? '🥇' : p === 2 ? '🥈' : '🥉',
+          priority: p,
+          totalCount: allInPriority.length,
+          companies: inPriority,
+        }
+      }).filter((g) => g.companies.length)
     }
-    return COMPANY_TAGS.map((t) => ({
-      key: t.id,
-      title: t.label,
-      subtitle: t.description,
-      icon: t.icon,
-      companies: visible.filter((c) => c.tag === t.id).sort(byPlanOrder),
-    })).filter((g) => g.companies.length)
-  }, [visible, groupBy])
+
+    return COMPANY_TAGS.map((t) => {
+      const inTag = paged.filter((c) => c.tag === t.id).sort(byPlanOrder)
+      const allInTag = visible.filter((c) => c.tag === t.id)
+      return {
+        key: t.id,
+        title: t.label,
+        subtitle: t.description,
+        icon: t.icon,
+        totalCount: allInTag.length,
+        companies: inTag,
+      }
+    }).filter((g) => g.companies.length)
+  }, [paged, visible, groupBy, query])
 
   const togglePriority = (priority: Priority) => {
     setSelectedPriorities((current) => current.includes(priority)
@@ -195,12 +226,17 @@ export function CompanyCatalog({ heading = true, onAttempts }: {
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search companies, tracks or categories…"
-              aria-label="Search companies, tracks or categories"
+              placeholder="Search company by name (e.g. TCS, Google, Infosys)…"
+              aria-label="Search company by name"
               className="field !h-11 !rounded-2xl !border-slate-200 !bg-slate-50/70 !pl-10 !pr-10 !py-2.5 focus:!bg-white"
             />
             {query && (
-              <button type="button" onClick={() => setQuery('')} aria-label="Clear search" className="absolute right-2.5 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-slate-400 transition hover:bg-slate-200/70 hover:text-slate-700">
+              <button
+                type="button"
+                onClick={() => setQuery('')}
+                aria-label="Clear search"
+                className="absolute right-2.5 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-slate-400 transition hover:bg-slate-200/70 hover:text-slate-700"
+              >
                 <X className="h-3.5 w-3.5" aria-hidden />
               </button>
             )}
@@ -228,11 +264,11 @@ export function CompanyCatalog({ heading = true, onAttempts }: {
         <div role="group" aria-label="Filter companies by category" className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
           <button
             type="button"
-            onClick={() => setFilter('all')}
-            aria-pressed={filter === 'all'}
-            className={`rounded-xl border px-3 py-2 text-xs font-extrabold transition ${filter === 'all' ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm shadow-indigo-200' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/50'}`}
+            onClick={() => { setFilter('all'); setQuery('') }}
+            aria-pressed={filter === 'all' && !query}
+            className={`rounded-xl border px-3 py-2 text-xs font-extrabold transition ${filter === 'all' && !query ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm shadow-indigo-200' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/50'}`}
           >
-            All categories <span className={filter === 'all' ? 'ml-1 text-indigo-100' : 'ml-1 text-slate-400'}>{COMPANIES.length}</span>
+            All categories <span className={filter === 'all' && !query ? 'ml-1 text-indigo-100' : 'ml-1 text-slate-400'}>{COMPANIES.length}</span>
           </button>
           {COMPANY_TAGS.map((tag) => {
             const count = COMPANIES.filter((company) => company.tag === tag.id).length
@@ -240,17 +276,17 @@ export function CompanyCatalog({ heading = true, onAttempts }: {
               <button
                 key={tag.id}
                 type="button"
-                onClick={() => setFilter(tag.id)}
-                aria-pressed={filter === tag.id}
-                className={`rounded-xl border px-3 py-2 text-xs font-bold transition ${filter === tag.id ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm shadow-indigo-200' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/50'}`}
+                onClick={() => { setFilter(tag.id); setQuery('') }}
+                aria-pressed={filter === tag.id && !query}
+                className={`rounded-xl border px-3 py-2 text-xs font-bold transition ${filter === tag.id && !query ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm shadow-indigo-200' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/50'}`}
               >
-                <span aria-hidden>{tag.icon}</span> {tag.short} <span className={filter === tag.id ? 'ml-1 text-indigo-100' : 'ml-1 text-slate-400'}>{count}</span>
+                <span aria-hidden>{tag.icon}</span> {tag.short} <span className={filter === tag.id && !query ? 'ml-1 text-indigo-100' : 'ml-1 text-slate-400'}>{count}</span>
               </button>
             )
           })}
         </div>
 
-        {groupBy === 'priority' && (
+        {groupBy === 'priority' && !query && (
           <fieldset className="mt-3 rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50/90 to-white p-3 sm:p-4">
             <legend className="sr-only">Filter companies by priority</legend>
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
@@ -288,17 +324,50 @@ export function CompanyCatalog({ heading = true, onAttempts }: {
               </div>
             </div>
             <p className="mt-3 border-t border-slate-200/70 pt-2.5 text-[10px] font-semibold text-slate-400">
-              {selectedPriorities.length} of {PRIORITIES.length} priorities selected · Showing {visible.length} {visible.length === 1 ? 'company' : 'companies'}
+              {selectedPriorities.length} of {PRIORITIES.length} priorities selected · Showing {paged.length} of {visible.length} {visible.length === 1 ? 'company' : 'companies'}
             </p>
           </fieldset>
         )}
 
-        {groupBy !== 'priority' && (
-          <p className="mt-3 border-t border-slate-100 pt-3 text-[11px] font-semibold text-slate-400">
-            Showing {visible.length} of {COMPANIES.length} companies
-          </p>
-        )}
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 text-[11px] font-semibold text-slate-500">
+          <div>
+            Showing <strong className="font-black text-slate-800">{paged.length}</strong> of{' '}
+            <strong className="font-black text-slate-800">{visible.length}</strong>{' '}
+            {query.trim() ? 'matching companies' : 'companies'}
+            {visible.length < COMPANIES.length && !query.trim() && (
+              <span className="text-slate-400"> (filtered from {COMPANIES.length} total)</span>
+            )}
+          </div>
+          {visibleLimit > 6 && (
+            <button
+              type="button"
+              onClick={() => setVisibleLimit(6)}
+              className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 underline"
+            >
+              Reset to 6 companies
+            </button>
+          )}
+        </div>
       </div>
+
+      {query.trim() && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-indigo-100 bg-indigo-50/80 px-4 py-2.5 text-xs text-indigo-900">
+          <div className="flex items-center gap-2 min-w-0">
+            <Search className="h-4 w-4 text-indigo-600 shrink-0" aria-hidden />
+            <span className="truncate">
+              Searching every company by name: <strong className="font-black text-indigo-950">"{query.trim()}"</strong> —{' '}
+              <span className="font-bold">{visible.length} {visible.length === 1 ? 'company' : 'companies'} found</span>
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setQuery('')}
+            className="font-bold text-indigo-600 hover:text-indigo-800 underline shrink-0"
+          >
+            Clear search
+          </button>
+        </div>
+      )}
 
       <div className="mt-6 space-y-8">
         {groups.map((group) => (
@@ -311,31 +380,110 @@ export function CompanyCatalog({ heading = true, onAttempts }: {
                   <p className="mt-0.5 text-[11px] leading-4 text-slate-500">{group.subtitle}</p>
                 </div>
               </div>
-              <span className="shrink-0 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-extrabold text-slate-600">
-                {group.companies.length} {group.companies.length === 1 ? 'company' : 'companies'}
-              </span>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-extrabold text-slate-600">
+                  {group.companies.length} of {group.totalCount} {group.totalCount === 1 ? 'company' : 'companies'}
+                </span>
+              </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {group.companies.map((company) => <CompanyCard key={company.slug} company={company} attempt={attempts[company.slug]} />)}
             </div>
           </section>
         ))}
+
+        {hasMore ? (
+          <div className="mt-8 flex flex-col items-center justify-center gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setVisibleLimit((prev) => prev + 10)}
+              className="btn-primary inline-flex items-center gap-2 !px-8 !py-3.5 text-sm font-black shadow-lg shadow-indigo-200 transition hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <span>View more ({nextBatchCount} more companies)</span>
+              <span aria-hidden>↓</span>
+            </button>
+            <div className="flex items-center gap-3 text-xs text-slate-500">
+              <span>
+                Showing {paged.length} of {visible.length} companies
+              </span>
+              {remainingCount > 10 && (
+                <>
+                  <span>·</span>
+                  <button
+                    type="button"
+                    onClick={() => setVisibleLimit(visible.length)}
+                    className="font-bold text-indigo-600 hover:text-indigo-800 underline"
+                  >
+                    View all ({visible.length})
+                  </button>
+                </>
+              )}
+              {visibleLimit > 6 && (
+                <>
+                  <span>·</span>
+                  <button
+                    type="button"
+                    onClick={() => setVisibleLimit(6)}
+                    className="font-bold text-slate-500 hover:text-slate-800 underline"
+                  >
+                    Show less
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        ) : (
+          visible.length > 6 && (
+            <div className="mt-8 flex items-center justify-center gap-3 text-xs text-slate-400 pt-2">
+              <span>All {visible.length} companies shown</span>
+              <span>·</span>
+              <button
+                type="button"
+                onClick={() => setVisibleLimit(6)}
+                className="font-bold text-slate-500 hover:text-indigo-600 underline"
+              >
+                Show less (collapse to 6)
+              </button>
+            </div>
+          )
+        )}
+
         {groups.length === 0 && (
           <div className="rounded-3xl border-2 border-dashed border-slate-200 bg-white/60 px-5 py-12 text-center">
             <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-slate-100 text-slate-400">
               <Search className="h-5 w-5" aria-hidden />
             </div>
             <p className="mt-3 text-sm font-bold text-slate-700">
-              {groupBy === 'priority' && selectedPriorities.length === 0 ? 'Select a priority to see companies' : 'No companies match these filters'}
+              {query.trim()
+                ? `No company named "${query.trim()}" found`
+                : groupBy === 'priority' && selectedPriorities.length === 0
+                ? 'Select a priority to see companies'
+                : 'No companies match these filters'}
             </p>
             <p className="mt-1 text-xs text-slate-500">
-              {groupBy === 'priority' && selectedPriorities.length === 0 ? 'Turn on P1, P2 or P3 above to continue.' : 'Try another search, category or priority.'}
+              {query.trim()
+                ? 'Check the company name spelling or try another search.'
+                : groupBy === 'priority' && selectedPriorities.length === 0
+                ? 'Turn on P1, P2 or P3 above to continue.'
+                : 'Try another category or clear your search.'}
             </p>
-            {groupBy === 'priority' && selectedPriorities.length === 0 && (
-              <button type="button" onClick={() => setSelectedPriorities(PRIORITIES)} className="mt-4 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-indigo-700">
+            {query.trim() ? (
+              <button
+                type="button"
+                onClick={() => setQuery('')}
+                className="mt-4 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-indigo-700"
+              >
+                Clear search
+              </button>
+            ) : groupBy === 'priority' && selectedPriorities.length === 0 ? (
+              <button
+                type="button"
+                onClick={() => setSelectedPriorities(PRIORITIES)}
+                className="mt-4 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-indigo-700"
+              >
                 Show all priorities
               </button>
-            )}
+            ) : null}
           </div>
         )}
       </div>
