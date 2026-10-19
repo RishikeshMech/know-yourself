@@ -61,8 +61,12 @@ export async function resolveStudent(
         if (profile?.id) {
           return { ok: true, studentId: profile.id }
         }
-      } catch {
-        // Fall through to 401
+      } catch (e) {
+        // The lookup itself failed (unreachable project / invalid API key), as
+        // opposed to "no such profile". Report a retryable server error rather
+        // than blaming the candidate's session — a misconfigured Supabase used
+        // to surface here as a misleading "session expired" 401.
+        return { ok: false, status: 503, error: 'Could not verify your session — please retry in a moment.' }
       }
     }
     return { ok: false, status: 401, error: 'Your session has expired — please sign in again.' }
