@@ -15,7 +15,7 @@ export type StudentApiContext =
  * report an anon/RLS-blocked request as durable.
  */
 export async function requireStudentApi(req: Request, claimedId: unknown): Promise<StudentApiContext> {
-  const authClient = getServerClient() || getServiceRoleClient()
+  const authClient = getServiceRoleClient() || getServerClient()
   if (!authClient && isSupabaseEnvironmentConfigured()) {
     return {
       ok: false,

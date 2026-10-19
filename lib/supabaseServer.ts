@@ -55,7 +55,8 @@ export function getServerClient(): SupabaseClient | null {
   const key = (
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    ''
+    FALLBACK_SERVICE_ROLE_KEY ||
+    FALLBACK_SUPABASE_ANON_KEY
   ).trim()
   if (!supabaseUrl || !key) return null
   try {
