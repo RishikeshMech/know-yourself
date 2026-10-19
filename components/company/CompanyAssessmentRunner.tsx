@@ -167,25 +167,41 @@ export function CompanyAssessmentRunner({ slug }: { slug: string }) {
   /* --------------------------------- load --------------------------------- */
   useEffect(() => {
     if (!hydrated) return
-    if (!user?.id) { router.replace('/login'); return }
+    if (!user?.id) {
+      setLoadError('Your session has expired — please sign in again.')
+      setPhase('error')
+      return
+    }
     if (!company) { setLoadError('This company assessment does not exist.'); setPhase('error'); return }
     let cancelled = false
     ;(async () => {
-      const res = await companyApi.attempt(user.id, company.slug)
-      if (cancelled) return
-      if (!res.ok) {
-        if (res.status === 401) {
-          router.replace('/login')
+      // 1. Check if the start() action on the previous page passed a fresh cached attempt
+      let v: AttemptView | null = null
+      try {
+        const cachedRaw = typeof window !== 'undefined' ? sessionStorage.getItem(`calibiai_company_cached_${company.slug}`) : null
+        if (cachedRaw) {
+          sessionStorage.removeItem(`calibiai_company_cached_${company.slug}`)
+          const parsed = JSON.parse(cachedRaw)
+          if (parsed?.attempt && parsed?.paper) {
+            v = parsed as AttemptView
+          }
+        }
+      } catch { /* ignore */ }
+
+      if (!v) {
+        const res = await companyApi.attempt(user.id, company.slug)
+        if (cancelled) return
+        if (!res.ok) {
+          setLoadError(res.status === 401 ? 'Your session has expired — please sign in again.' : (res.data?.error || 'Could not load your assessment.'))
+          setPhase('error')
           return
         }
-        setLoadError(res.data?.error || 'Could not load your assessment.')
-        setPhase('error')
-        return
+        if (res.data.state === 'none') { router.replace(`/company-assessments/${company.slug}`); return }
+        if (res.data.state === 'completed') { router.replace(`/company-assessments/${company.slug}/result`); return }
+        v = res.data as AttemptView
       }
-      if (res.data.state === 'none') { router.replace(`/company-assessments/${company.slug}`); return }
-      if (res.data.state === 'completed') { router.replace(`/company-assessments/${company.slug}/result`); return }
-      const v = res.data as AttemptView
-      offsetRef.current = Date.parse(v.server_now) - Date.now()
+
+      offsetRef.current = Date.parse(v.server_now || new Date().toISOString()) - Date.now()
       const local = readLocal<Record<string, unknown>>(storageKey(v.attempt.id, 'answers'), {})
       setAnswers({ ...(v.answers || {}), ...local })
       setFlags(readLocal(storageKey(v.attempt.id, 'flags'), {}))

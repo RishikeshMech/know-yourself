@@ -48,8 +48,7 @@ export default function Page({ params }: { params: { slug: string } }) {
     companyApi.result(user.id, company.slug).then((res) => {
       if (cancelled) return
       if (!res.ok) {
-        if (res.status === 401) { router.replace('/login'); return }
-        setError(res.data?.error || 'Could not load your result.')
+        setError(res.status === 401 ? 'Your session has expired — please sign in again.' : (res.data?.error || 'Could not load your result.'))
         setLoading(false)
         return
       }

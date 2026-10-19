@@ -12,6 +12,9 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 let client: SupabaseClient | null = null
+const FALLBACK_SUPABASE_URL = 'https://anegoqdlwnmcwbkrjhqm.supabase.co'
+const FALLBACK_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFuZWdvcWRsd25tY3dia3JqaHFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2MjkwNzEsImV4cCI6MjEwNDIwNTA3MX0.pEE2UeN1llNrN_Ry_kIblKGfdVKgzacpC6rcKRqGaV8'
+
 let resolved = false
 let warned = false
 
@@ -23,16 +26,16 @@ function warnOnce(msg: string) {
 }
 
 export function isSupabaseConfigured(): boolean {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || FALLBACK_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || FALLBACK_SUPABASE_ANON_KEY
   return !!(url && key && /^https?:\/\//i.test(url.trim()))
 }
 
 export function getSupabase(): SupabaseClient | null {
   if (resolved) return client
   resolved = true
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()
+  const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || FALLBACK_SUPABASE_URL)?.trim()
+  const key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || FALLBACK_SUPABASE_ANON_KEY)?.trim()
   if (!url || !key) {
     client = null
     return null

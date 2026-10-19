@@ -58,8 +58,7 @@ export default function Page({ params }: { params: { slug: string } }) {
     companyApi.attempt(user.id, company.slug).then((res) => {
       if (cancelled) return
       if (!res.ok) {
-        if (res.status === 401) { router.replace('/login'); return }
-        setError(res.data?.error || 'Could not check your attempt status.')
+        setError(res.status === 401 ? 'Your session has expired — please sign in again.' : (res.data?.error || 'Could not check your attempt status.'))
         setState('error')
         return
       }
@@ -95,9 +94,18 @@ export default function Page({ params }: { params: { slug: string } }) {
     setStarting(true)
     setError('')
     const res = await companyApi.start(user.id, company.slug)
-    if (res.status === 401) { router.replace('/login'); return }
+    if (res.status === 401) {
+      setError('Your session has expired — please sign in again.')
+      setStarting(false)
+      return
+    }
     if (res.status === 409) { router.replace(`/company-assessments/${company.slug}/result`); return }
     if (!res.ok) { setError(res.data?.error || 'Could not start the assessment. Please retry.'); setStarting(false); return }
+    try {
+      if (typeof window !== 'undefined' && res.data) {
+        sessionStorage.setItem(`calibiai_company_cached_${company.slug}`, JSON.stringify(res.data))
+      }
+    } catch { /* quota / private mode */ }
     router.push(`/company-assessments/${company.slug}/test`)
   }
 
@@ -214,7 +222,16 @@ export default function Page({ params }: { params: { slug: string } }) {
                     </button>
                   </>
                 )}
-                {error && <div className="mt-3 text-xs font-semibold text-rose-600">{error}</div>}
+                {error && (
+                  <div className="mt-3 space-y-2">
+                    <div className="text-xs font-semibold text-rose-600">{error}</div>
+                    {error.toLowerCase().includes('sign in') && (
+                      <button onClick={() => router.push('/login')} className="btn-primary !py-2 !text-xs">
+                        Sign in again →
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
