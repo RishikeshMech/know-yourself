@@ -714,7 +714,7 @@ export async function hasAssessmentResult(client: SupabaseClient, userId: string
 
 export const COMPANY_ATTEMPT_SUMMARY_SELECT = [
   'id', 'student_id', 'company_slug', 'status', 'started_at', 'expires_at', 'duration_sec',
-  'submitted_at', 'auto_submitted', 'score', 'verdict', 'skill_items:result->items',
+  'submitted_at', 'auto_submitted', 'score', 'verdict', 'result',
 ].join(',')
 
 export function companyAttemptRow(a: any): Record<string, any> | null {
