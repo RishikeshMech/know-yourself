@@ -35,13 +35,32 @@ export function parseJwtRole(key: string): string {
   }
 }
 
+export function parseJwtRef(key: string): string {
+  try {
+    const payload = JSON.parse(Buffer.from(key.split('.')[1] || '', 'base64url').toString('utf8'))
+    return payload?.ref || 'unknown'
+  } catch {
+    return 'invalid'
+  }
+}
+
+export function projectRefFromUrl(u: string): string {
+  try {
+    const host = new URL(u).hostname
+    return host.split('.')[0] || ''
+  } catch {
+    return ''
+  }
+}
+
 /** Trusted server-side database client. Returns null unless service role is configured. */
 export function getServiceRoleClient(): SupabaseClient | null {
   if (serviceRoleClient !== undefined) return serviceRoleClient
   serviceRoleClient = null
   const supabaseUrl = url()
+  const expectedRef = projectRefFromUrl(supabaseUrl)
   let key = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim()
-  if (!key || parseJwtRole(key) !== 'service_role') {
+  if (!key || parseJwtRole(key) !== 'service_role' || (expectedRef && parseJwtRef(key) !== expectedRef)) {
     key = FALLBACK_SERVICE_ROLE_KEY
   }
   if (!supabaseUrl || !key) return null
@@ -64,12 +83,14 @@ export function getServerClient(): SupabaseClient | null {
   if (serverClient !== undefined) return serverClient
   serverClient = null
   const supabaseUrl = url()
-  const key = (
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    FALLBACK_SERVICE_ROLE_KEY ||
-    FALLBACK_SUPABASE_ANON_KEY
-  ).trim()
+  const expectedRef = projectRefFromUrl(supabaseUrl)
+  let key = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim()
+  if (!key || (expectedRef && parseJwtRef(key) !== expectedRef)) {
+    key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim()
+    if (!key || (expectedRef && parseJwtRef(key) !== expectedRef)) {
+      key = FALLBACK_SERVICE_ROLE_KEY
+    }
+  }
   if (!supabaseUrl || !key) return null
   try {
     serverClient = createClient(supabaseUrl, key, {
