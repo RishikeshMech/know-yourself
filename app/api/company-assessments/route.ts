@@ -16,9 +16,19 @@ export async function GET(req: Request) {
   if (!ctx.ok) return ctx.response
   const sb = ctx.supabase ? ctx.db : null
   const studentId = ctx.studentId
-  try {
+    let rawCount = -1
+    let rawError = ''
+    if (sb) {
+      try {
+        const { data, error } = await sb.from('company_assessment_attempts').select('id, company_slug, status').eq('student_id', studentId)
+        rawCount = data ? data.length : -2
+        if (error) rawError = error.message
+      } catch (err: any) {
+        rawError = err?.message || String(err)
+      }
+    }
     const attempts = await listSummaries(studentId, { sb })
-    return ok({ attempts, server_now: new Date().toISOString(), _debug: { studentId, supabase: ctx.supabase, hasDb: !!sb } })
+    return ok({ attempts, server_now: new Date().toISOString(), _debug: { studentId, supabase: ctx.supabase, hasDb: !!sb, rawCount, rawError } })
   } catch (e: any) {
     return jsonError(ctx.supabase ? 503 : 500, ctx.supabase ? 'Company assessment data is temporarily unavailable; no local fallback was used.' : 'Could not load company assessments', { detail: String(e?.message || e) })
   }
