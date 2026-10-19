@@ -7,6 +7,7 @@ import { HeroMockup } from '@/components/HeroMockup'
 import { useStore } from '@/lib/store'
 import { Typewriter } from '@/components/Typewriter'
 import { StudentTestimonials } from '@/components/StudentTestimonials'
+import { Footer } from '@/components/Footer'
 import { CompanyBadge } from '@/components/company/CompanyBadge'
 import { COMPANY_BY_SLUG, companyMockFacts } from '@/lib/company/catalog'
 import { signedInLandingRoute, afterSignInRoute } from '@/lib/nextStep'
@@ -76,18 +77,15 @@ function Landing() {
     })()
   }, [user, profile, hydrated, router, setUser, reconcileForUser])
 
-  if (!hydrated || user || redirecting) {
-    if (user || redirecting) {
-      return (
-        <div className="flex min-h-screen items-center justify-center">
-          <div className="glass-card animate-fade-up flex items-center gap-3 px-6 py-4">
-            <span className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
-            <span className="text-sm font-bold text-slate-700">Connecting to your dashboard…</span>
-          </div>
+  if (user || redirecting) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="glass-card animate-fade-up flex items-center gap-3 px-6 py-4">
+          <span className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600 dark:border-indigo-800 dark:border-t-indigo-400" />
+          <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Connecting to your dashboard…</span>
         </div>
-      )
-    }
-    return null
+      </div>
+    )
   }
 
   const startHref = '/login'
@@ -99,7 +97,7 @@ function Landing() {
         <section className="pt-12 sm:pt-20 pb-12 grid lg:grid-cols-2 gap-14 items-center">
           <div className="animate-fade-up">
             <span className="chip text-indigo-700 border-indigo-200 bg-indigo-50/70">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" /> Trusted employability assessment
+              <span className="w-2 h-2 rounded-full bg-emerald-500" /> Trusted by 10k+ students · 4.9★ rating
             </span>
             <h1 className="mt-5 text-4xl sm:text-5xl lg:text-[3.4rem] font-black leading-[1.05] tracking-tight text-slate-900">
               <Typewriter text="Your skills." delay={90} />
@@ -113,7 +111,48 @@ function Landing() {
               <Link href={startHref} className="btn-primary">Start your free assessment →</Link>
               <Link href="/sample-report" className="btn-soft">See a sample report</Link>
             </div>
-            <div className="mt-8 flex flex-wrap gap-5 text-sm text-slate-500">
+
+            {/* Social proof trust badge — 10k+ students, 4.9/5 rating */}
+            <div className="mt-6 flex items-center gap-3">
+              <div className="flex -space-x-2.5 overflow-hidden">
+                <img
+                  src="/testimonials/rohan-deshmukh.jpg"
+                  alt="Student"
+                  className="inline-block h-8 w-8 rounded-full ring-2 ring-white object-cover"
+                />
+                <img
+                  src="/testimonials/ananya-sharma.jpg"
+                  alt="Student"
+                  className="inline-block h-8 w-8 rounded-full ring-2 ring-white object-cover"
+                />
+                <img
+                  src="/testimonials/aditya-verma.jpg"
+                  alt="Student"
+                  className="inline-block h-8 w-8 rounded-full ring-2 ring-white object-cover"
+                />
+                <img
+                  src="/testimonials/sneha-kulkarni.jpg"
+                  alt="Student"
+                  className="inline-block h-8 w-8 rounded-full ring-2 ring-white object-cover"
+                />
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-tr from-indigo-600 to-violet-600 text-[10px] font-black text-white ring-2 ring-white shadow-xs">
+                  10k+
+                </span>
+              </div>
+              <div className="text-left">
+                <div className="flex items-center gap-1.5">
+                  <div className="flex text-amber-400 text-xs">
+                    {'★★★★★'}
+                  </div>
+                  <span className="text-xs font-black text-slate-900">4.9 / 5.0 Rating</span>
+                </div>
+                <p className="text-[11px] font-medium text-slate-500">
+                  Trusted by <span className="font-bold text-slate-700">10,000+ students</span> across campus drives
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-7 flex flex-wrap gap-5 text-sm text-slate-500">
               {['⏱ 120 minutes', '🧩 6 skill modules', '📄 PDF credential'].map(t => (
                 <span key={t} className="flex items-center gap-1.5">{t}</span>
               ))}
@@ -172,22 +211,22 @@ function Landing() {
             </div>
 
             {/* 50+ Companies sliding ticker */}
-            <div className="mt-9 overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-b from-slate-50/70 via-white to-indigo-50/30 p-4 sm:p-5 shadow-sm text-left">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/60 pb-3.5">
+            <div className="mt-9 overflow-hidden rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-gradient-to-b from-slate-50/70 via-white to-indigo-50/30 dark:from-slate-900/90 dark:via-slate-900/60 dark:to-indigo-950/30 p-4 sm:p-5 shadow-sm text-left">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/60 dark:border-slate-800/80 pb-3.5">
                 <div className="flex items-center gap-2.5">
                   <span className="grid h-8 w-8 place-items-center rounded-xl bg-indigo-600 text-base text-white shadow-xs" aria-hidden>🏢</span>
                   <div>
-                    <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900">
+                    <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
                       50+ Company-Specific Hiring Mocks
                     </h3>
-                    <p className="text-[11px] text-slate-500">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
                       Exact test blueprints for Capgemini, TCS, Cognizant, Meta, Google, Infosys &amp; more
                     </p>
                   </div>
                 </div>
                 <Link
                   href="/company-assessments"
-                  className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-violet-600 transition"
+                  className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-violet-600 dark:hover:text-violet-300 transition"
                 >
                   Explore all 50+ companies <span aria-hidden>→</span>
                 </Link>
@@ -196,8 +235,8 @@ function Landing() {
               {/* Infinite horizontal sliding marquee */}
               <div className="relative mt-4 overflow-hidden py-1">
                 {/* Gradient edge fades */}
-                <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-white via-white/80 to-transparent z-10" />
-                <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-white via-white/80 to-transparent z-10" />
+                <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-white via-white/80 to-transparent dark:from-slate-900 dark:via-slate-900/80 to-transparent z-10" />
+                <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-white via-white/80 to-transparent dark:from-slate-900 dark:via-slate-900/80 to-transparent z-10" />
 
                 <div className="animate-marquee-track gap-3.5">
                   {[...SHOWCASE_COMPANIES, ...SHOWCASE_COMPANIES].map((company, index) => {
@@ -206,23 +245,23 @@ function Landing() {
                       <Link
                         key={`${company.slug}-${index}`}
                         href={`/company-assessments/${company.slug}`}
-                        className="group flex shrink-0 items-center gap-3 rounded-2xl border border-slate-200/90 bg-white p-3 shadow-xs transition duration-200 hover:-translate-y-1 hover:border-indigo-300 hover:shadow-md"
+                        className="group flex shrink-0 items-center gap-3 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-800/90 p-3 shadow-xs transition duration-200 hover:-translate-y-1 hover:border-indigo-300 dark:hover:border-indigo-500/60 hover:shadow-md"
                         title={`Take ${company.name} Mock Assessment`}
                       >
                         <CompanyBadge company={company} size={36} />
                         <div className="text-left min-w-[130px]">
                           <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-black text-slate-900 group-hover:text-indigo-600 transition">
+                            <span className="text-xs font-black text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition">
                               {company.name}
                             </span>
-                            <span className="rounded bg-indigo-50 px-1.5 py-0.2 text-[9px] font-black text-indigo-700 border border-indigo-100">
+                            <span className="rounded bg-indigo-50 dark:bg-indigo-950/80 px-1.5 py-0.2 text-[9px] font-black text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800/60">
                               Pattern Mock
                             </span>
                           </div>
-                          <p className="mt-0.5 truncate text-[10px] font-medium text-slate-500 max-w-[155px]">
+                          <p className="mt-0.5 truncate text-[10px] font-medium text-slate-500 dark:text-slate-400 max-w-[155px]">
                             {company.track}
                           </p>
-                          <div className="mt-1 flex items-center gap-1.5 text-[9px] font-semibold text-slate-400">
+                          <div className="mt-1 flex items-center gap-1.5 text-[9px] font-semibold text-slate-400 dark:text-slate-400">
                             <span>⏱ {facts.minutes}m</span>
                             <span>·</span>
                             <span>{facts.rounds} rounds</span>
@@ -239,39 +278,39 @@ function Landing() {
 
             {/* Why candidates use this platform — 3 value cards */}
             <div className="mt-8 grid gap-4 text-left sm:grid-cols-3">
-              <div className="group rounded-2xl border border-indigo-100 bg-white/85 p-5 shadow-xs transition duration-200 hover:-translate-y-1 hover:border-indigo-300 hover:bg-white hover:shadow-md">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 shadow-xs border border-indigo-100/80 transition group-hover:scale-110">
+              <div className="group rounded-2xl border border-indigo-100 dark:border-slate-800 bg-white/85 dark:bg-slate-900/85 p-5 shadow-xs transition duration-200 hover:-translate-y-1 hover:border-indigo-300 dark:hover:border-indigo-500/60 hover:bg-white dark:hover:bg-slate-900 hover:shadow-md">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 shadow-xs border border-indigo-100/80 dark:border-indigo-800/60 transition group-hover:scale-110">
                   <span className="text-xl" aria-hidden>🎯</span>
                 </div>
-                <h4 className="mt-3.5 text-sm font-black text-slate-900 group-hover:text-indigo-600 transition">
+                <h4 className="mt-3.5 text-sm font-black text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition">
                   100% Pattern-Accurate Mocks
                 </h4>
-                <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
+                <p className="mt-1.5 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
                   Replicating the exact recruitment patterns of TCS NQT, Capgemini, Cognizant, Meta, and 50+ companies. Sectional cutoffs, negative markings, and authentic question difficulty.
                 </p>
               </div>
 
-              <div className="group rounded-2xl border border-indigo-100 bg-white/85 p-5 shadow-xs transition duration-200 hover:-translate-y-1 hover:border-indigo-300 hover:bg-white hover:shadow-md">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600 shadow-xs border border-violet-100/80 transition group-hover:scale-110">
+              <div className="group rounded-2xl border border-indigo-100 dark:border-slate-800 bg-white/85 dark:bg-slate-900/85 p-5 shadow-xs transition duration-200 hover:-translate-y-1 hover:border-indigo-300 dark:hover:border-indigo-500/60 hover:bg-white dark:hover:bg-slate-900 hover:shadow-md">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 dark:bg-violet-950/70 text-violet-600 dark:text-violet-400 shadow-xs border border-violet-100/80 dark:border-violet-800/60 transition group-hover:scale-110">
                   <span className="text-xl" aria-hidden>⏱️</span>
                 </div>
-                <h4 className="mt-3.5 text-sm font-black text-slate-900 group-hover:text-violet-600 transition">
+                <h4 className="mt-3.5 text-sm font-black text-slate-900 dark:text-slate-100 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition">
                   Real Proctored Simulation
                 </h4>
-                <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
+                <p className="mt-1.5 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
                   Timed environments with strict full-screen anti-cheat proctoring. Experience real hiring pressure beforehand so you walk into campus and off-campus drives fully prepared.
                 </p>
               </div>
 
-              <div className="group rounded-2xl border border-indigo-100 bg-white/85 p-5 shadow-xs transition duration-200 hover:-translate-y-1 hover:border-indigo-300 hover:bg-white hover:shadow-md">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 shadow-xs border border-emerald-100/80 transition group-hover:scale-110">
+              <div className="group rounded-2xl border border-indigo-100 dark:border-slate-800 bg-white/85 dark:bg-slate-900/85 p-5 shadow-xs transition duration-200 hover:-translate-y-1 hover:border-indigo-300 dark:hover:border-indigo-500/60 hover:bg-white dark:hover:bg-slate-900 hover:shadow-md">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 shadow-xs border border-emerald-100/80 dark:border-emerald-800/60 transition group-hover:scale-110">
                   <span className="text-xl" aria-hidden>📊</span>
                 </div>
-                <h4 className="mt-3.5 text-sm font-black text-slate-900 group-hover:text-emerald-600 transition">
+                <h4 className="mt-3.5 text-sm font-black text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition">
                   Instant AI Feedback &amp; Score
                 </h4>
-                <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
-                  Automatic code execution on hidden stress tests, section-wise score analytics, and a verified 1000-point CalibiAI Score credential you can attach directly to your resume.
+                <p className="mt-1.5 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                  Automatic code execution on hidden stress tests, section-wise score analytics, and a verified 1000-point Calibi Score credential you can attach directly to your resume.
                 </p>
               </div>
             </div>
@@ -302,6 +341,7 @@ function Landing() {
           <StudentTestimonials />
         </section>
       </main>
+      <Footer />
     </div>
   )
 }

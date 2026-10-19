@@ -220,7 +220,7 @@ const VIEW_COLUMNS = [
   'degree', 'college', 'graduation_year', 'cgpa', 'skills', 'linkedin_url',
   'github_url', 'profile_created_at', 'resume_score', 'resume_parsed',
   'assessment_session_id', 'talent_score', 'grade', 'percentile',
-  'assessment_scores', 'verifiable_hash', 'assessment_created_at',
+  'assessment_scores', 'verifiable_hash', 'assessment_created_at', 'assessment_attempted',
 ].join(',')
 
 // Migration 0003 added `prn`; migration 0002 already has every other field

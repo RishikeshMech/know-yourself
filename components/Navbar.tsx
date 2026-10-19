@@ -4,9 +4,10 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useStore } from '@/lib/store'
 import { HelpButton } from '@/components/HelpButton'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { Logo } from '@/components/Logo'
 import { AiAvatar } from '@/components/AiAvatar'
-import { User, LogOut, ChevronDown, Users, Building2 } from 'lucide-react'
+import { User, LogOut, ChevronDown, Users, Building2, ShieldCheck } from 'lucide-react'
 import { WhatsAppGlyph } from '@/components/WhatsAppCommunity'
 import { COMMUNITY_APP_URL, COMMUNITY_NAV_ROUTES, WHATSAPP_COMMUNITY_URL, WHATSAPP_NAV_ROUTES } from '@/lib/community'
 
@@ -50,17 +51,18 @@ export function Navbar() {
   const displayName = displayNameFor(profile, user)
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/50 bg-white/55 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-white/50 bg-white/55 backdrop-blur-xl dark:border-slate-800/80 dark:bg-slate-950/70 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         <Link href={homeHref} className="flex items-center gap-2.5">
           <Logo className="drop-shadow-lg" />
-          <span className="font-extrabold tracking-tight text-slate-900 text-sm sm:text-lg">CALIBIAI<span className="hidden text-indigo-600 sm:inline"> SCORE</span></span>
+          <span className="font-extrabold tracking-tight text-slate-900 dark:text-white text-sm sm:text-lg">CALIBI<span className="text-indigo-600 dark:text-indigo-400"> SCORE</span></span>
         </Link>
-        <div className="flex items-center gap-1 sm:gap-2 text-sm">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 text-sm">
+          <ThemeToggle />
           <HelpButton />
           {WHATSAPP_NAV_ROUTES.includes(pathname ?? '') && hydrated && user?.role === 'student' && (
             <a href={WHATSAPP_COMMUNITY_URL} target="_blank" rel="noopener noreferrer" aria-label="Join CalibiAI Students on WhatsApp in a new tab"
-              className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-2 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100 sm:px-3">
+              className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 dark:border-emerald-800/80 bg-emerald-50 dark:bg-emerald-950/70 px-2.5 py-2 text-xs font-bold text-emerald-700 dark:text-emerald-300 transition hover:bg-emerald-100 dark:hover:bg-emerald-900/60 sm:px-3">
               <WhatsAppGlyph className="h-4 w-4" /><span className="hidden sm:inline">Join WhatsApp</span>
             </a>
           )}
@@ -70,7 +72,7 @@ export function Navbar() {
               target="_blank"
               rel="noreferrer"
               aria-label="Open CalibiAI Community in a new tab"
-              className="flex items-center gap-1.5 rounded-full border border-indigo-100 bg-indigo-50/80 px-3 py-2 text-xs font-bold text-indigo-600 transition hover:bg-indigo-100 hover:text-indigo-700"
+              className="flex items-center gap-1.5 rounded-full border border-indigo-100 dark:border-indigo-800/80 bg-indigo-50/80 dark:bg-indigo-950/70 px-3 py-2 text-xs font-bold text-indigo-600 dark:text-indigo-300 transition hover:bg-indigo-100 dark:hover:bg-indigo-900/60 hover:text-indigo-700 dark:hover:text-indigo-200"
             >
               <Users className="h-4 w-4 shrink-0" />
               <span className="hidden sm:inline">CalibiAI Community</span>
@@ -84,7 +86,7 @@ export function Navbar() {
                flicker seen when arriving on /instructions. */
             <span
               aria-hidden
-              className="flex h-9 w-9 animate-pulse items-center justify-center rounded-full bg-slate-200/60"
+              className="flex h-9 w-9 animate-pulse items-center justify-center rounded-full bg-slate-200/60 dark:bg-slate-800/60"
             />
           ) : user ? (
             <div className="relative" ref={menuRef}>
@@ -93,27 +95,27 @@ export function Navbar() {
                 aria-haspopup="menu"
                 aria-expanded={open}
                 aria-label="Account menu"
-                className="group flex items-center gap-1.5 rounded-full border border-white/60 bg-white/70 py-1 pl-1 pr-2 shadow-sm backdrop-blur transition hover:bg-white hover:shadow-md"
+                className="group flex items-center gap-1.5 rounded-full border border-white/60 dark:border-slate-700/80 bg-white/70 dark:bg-slate-800/80 py-1 pl-1 pr-2 shadow-sm backdrop-blur transition hover:bg-white dark:hover:bg-slate-800 hover:shadow-md"
               >
                 {/* Circular AI avatar — the same generated avatar the user set up
                     on the profile page (falls back to a default face if none is
                     saved yet). */}
-                <span className="relative flex h-9 w-9 items-center justify-center rounded-full select-none shadow-inner ring-2 ring-white/70">
+                <span className="relative flex h-9 w-9 items-center justify-center rounded-full select-none shadow-inner ring-2 ring-white/70 dark:ring-slate-700/70">
                   <AiAvatar name={displayName} config={profile?.ai_avatar} size={36} className="block" />
                 </span>
-                <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`h-4 w-4 text-slate-500 dark:text-slate-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
               </button>
 
               {open && (
                 <div
                   role="menu"
-                  className="absolute right-0 mt-2 w-64 origin-top-right animate-pop overflow-hidden rounded-2xl border border-white/60 bg-white/95 shadow-xl shadow-slate-500/15 backdrop-blur-xl"
+                  className="absolute right-0 mt-2 w-64 origin-top-right animate-pop overflow-hidden rounded-2xl border border-white/60 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 shadow-xl shadow-slate-500/15 dark:shadow-slate-950/60 backdrop-blur-xl"
                 >
                   {/* Account header */}
-                  <div className="border-b border-slate-100 px-4 py-3">
-                    <div className="truncate text-sm font-bold text-slate-800">{displayName}</div>
-                    <div className="truncate text-xs text-slate-500">{user.email}</div>
-                    <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-indigo-100 bg-indigo-50 px-2 py-0.5 text-xs font-semibold capitalize text-indigo-600">
+                  <div className="border-b border-slate-100 dark:border-slate-800 px-4 py-3">
+                    <div className="truncate text-sm font-bold text-slate-800 dark:text-slate-100">{displayName}</div>
+                    <div className="truncate text-xs text-slate-500 dark:text-slate-400">{user.email}</div>
+                    <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-indigo-100 dark:border-indigo-800/60 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 text-xs font-semibold capitalize text-indigo-600 dark:text-indigo-400">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                       {user.role}
                     </span>
@@ -125,7 +127,7 @@ export function Navbar() {
                       href="/profile"
                       role="menuitem"
                       onClick={() => setOpen(false)}
-                      className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-700"
+                      className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-indigo-50 dark:hover:bg-slate-800 hover:text-indigo-700 dark:hover:text-indigo-300"
                     >
                       <User className="h-4 w-4 text-slate-400" />
                       See My Profile
@@ -134,15 +136,26 @@ export function Navbar() {
                       href="/company-assessments"
                       role="menuitem"
                       onClick={() => setOpen(false)}
-                      className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-700"
+                      className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-indigo-50 dark:hover:bg-slate-800 hover:text-indigo-700 dark:hover:text-indigo-300"
                     >
                       <Building2 className="h-4 w-4 text-slate-400" />
                       Company Assessments
                     </Link>
+                    {user.role === 'admin' && (
+                      <Link
+                        href="/admin"
+                        role="menuitem"
+                        onClick={() => setOpen(false)}
+                        className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50/70 dark:bg-indigo-950/70 transition hover:bg-indigo-100 dark:hover:bg-indigo-900/60"
+                      >
+                        <ShieldCheck className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                        Admin Console
+                      </Link>
+                    )}
                     <button
                       onClick={logout}
                       role="menuitem"
-                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-medium text-slate-700 transition hover:bg-rose-50 hover:text-rose-600"
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-medium text-slate-700 dark:text-slate-300 transition hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-600 dark:hover:text-rose-400"
                     >
                       <LogOut className="h-4 w-4 text-slate-400" />
                       Logout

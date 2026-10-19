@@ -72,8 +72,9 @@ export function dashboardRouteForRole(role?: string | null): string {
     case 'faculty':
       return '/dashboard/faculty'
     case 'institution':
-    case 'admin':
       return '/dashboard/institution'
+    case 'admin':
+      return '/admin'
     default:
       return DASHBOARD_ROUTE
   }

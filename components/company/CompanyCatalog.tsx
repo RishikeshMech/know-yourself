@@ -41,45 +41,45 @@ function CompanyCard({ company, attempt }: { company: Company; attempt?: Attempt
   return (
     <Link
       href={href}
-      className="group flex min-h-[190px] flex-col gap-4 rounded-2xl border border-slate-200/80 bg-white/85 p-4 shadow-sm transition duration-200 hover:-translate-y-1 hover:border-indigo-200 hover:bg-white hover:shadow-[0_18px_45px_-24px_rgba(79,70,229,.38)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+      className="group flex min-h-[190px] flex-col gap-4 rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white/85 dark:bg-slate-900/85 p-4 shadow-sm transition duration-200 hover:-translate-y-1 hover:border-indigo-200 dark:hover:border-indigo-500/50 hover:bg-white dark:hover:bg-slate-900 hover:shadow-[0_18px_45px_-24px_rgba(79,70,229,.38)] dark:hover:shadow-[0_18px_45px_-24px_rgba(79,70,229,.6)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
     >
       <div className="flex items-start gap-3">
         <CompanyBadge company={company} size={48} />
         <div className="min-w-0 flex-1 pt-0.5">
           <div className="flex items-center gap-2">
-            <span className="truncate text-sm font-black text-slate-900">{company.name}</span>
+            <span className="truncate text-sm font-black text-slate-900 dark:text-white animate-text-reveal">{company.name}</span>
             <span className={`shrink-0 rounded-lg border px-1.5 py-0.5 text-[10px] font-black ${PRIORITY_TONE[company.priority]}`} title={PRIORITY_LABEL[company.priority]}>
               P{company.priority}
             </span>
           </div>
-          <p className="mt-1 truncate text-[11px] font-medium text-slate-500" title={company.track}>{company.track}</p>
-          <p className="mt-1 truncate text-[10px] font-semibold text-slate-400">{TAG_BY_ID[company.tag].label}</p>
+          <p className="mt-1 truncate text-[11px] font-medium text-slate-500 dark:text-slate-400" title={company.track}>{company.track}</p>
+          <p className="mt-1 truncate text-[10px] font-semibold text-slate-400 dark:text-slate-500">{TAG_BY_ID[company.tag].label}</p>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-1.5 text-[10px] font-semibold text-slate-500">
-        <span className="rounded-full bg-slate-100 px-2.5 py-1">⏱ {facts.minutes} min</span>
-        <span className="rounded-full bg-slate-100 px-2.5 py-1">{facts.rounds} rounds</span>
-        <span className="rounded-full bg-slate-100 px-2.5 py-1">{facts.questions} questions</span>
+      <div className="flex flex-wrap gap-1.5 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+        <span className="rounded-full bg-slate-100 dark:bg-white/8 text-slate-600 dark:text-slate-300 px-2.5 py-1">⏱ {facts.minutes} min</span>
+        <span className="rounded-full bg-slate-100 dark:bg-white/8 text-slate-600 dark:text-slate-300 px-2.5 py-1">{facts.rounds} rounds</span>
+        <span className="rounded-full bg-slate-100 dark:bg-white/8 text-slate-600 dark:text-slate-300 px-2.5 py-1">{facts.questions} questions</span>
       </div>
 
-      <div className="mt-auto flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
+      <div className="mt-auto flex items-center justify-between gap-2 border-t border-slate-100 dark:border-white/8 pt-3">
         {done ? (
           <>
             <span className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${VERDICT_STYLE[attempt?.verdict || 'not-yet'] || VERDICT_STYLE['not-yet']}`}>
               {attempt?.score != null ? `${Math.round(Number(attempt.score))}/100` : 'Completed'}
             </span>
-            <span className="text-xs font-bold text-indigo-600 transition group-hover:translate-x-0.5">View report →</span>
+            <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 transition group-hover:translate-x-0.5">View report →</span>
           </>
         ) : open ? (
           <>
-            <span className="animate-pulse rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700">In progress</span>
-            <span className="text-xs font-bold text-amber-700 transition group-hover:translate-x-0.5">Resume →</span>
+            <span className="animate-pulse rounded-full border border-amber-200 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/60 px-2.5 py-1 text-[11px] font-bold text-amber-700 dark:text-amber-400">In progress</span>
+            <span className="text-xs font-bold text-amber-700 dark:text-amber-400 transition group-hover:translate-x-0.5">Resume →</span>
           </>
         ) : (
           <>
-            <span className="text-[11px] font-semibold text-slate-400">1 attempt</span>
-            <span className="text-xs font-bold text-indigo-600 transition group-hover:translate-x-0.5">Explore →</span>
+            <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">1 attempt</span>
+            <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 transition group-hover:translate-x-0.5">Explore →</span>
           </>
         )}
       </div>
@@ -219,23 +219,23 @@ export function CompanyCatalog({ heading = true, onAttempts }: {
         </div>
       )}
 
-      <div className="mt-5 rounded-3xl border border-slate-200/80 bg-white/80 p-3 shadow-[0_16px_42px_-30px_rgba(30,41,59,.38)] backdrop-blur sm:p-4">
+      <div className="mt-5 rounded-3xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-slate-900/80 p-3 shadow-[0_16px_42px_-30px_rgba(30,41,59,.38)] dark:shadow-[0_16px_42px_-30px_rgba(0,0,0,.8)] backdrop-blur sm:p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <label className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" aria-hidden />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search company by name (e.g. TCS, Google, Infosys)…"
               aria-label="Search company by name"
-              className="field !h-11 !rounded-2xl !border-slate-200 !bg-slate-50/70 !pl-10 !pr-10 !py-2.5 focus:!bg-white"
+              className="field !h-11 !rounded-2xl !border-slate-200 dark:!border-white/10 !bg-slate-50/70 dark:!bg-slate-800/70 !pl-10 !pr-10 !py-2.5 focus:!bg-white dark:focus:!bg-slate-800 text-slate-800 dark:text-slate-100"
             />
             {query && (
               <button
                 type="button"
                 onClick={() => setQuery('')}
                 aria-label="Clear search"
-                className="absolute right-2.5 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-slate-400 transition hover:bg-slate-200/70 hover:text-slate-700"
+                className="absolute right-2.5 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-slate-400 hover:bg-slate-200/70 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200 transition"
               >
                 <X className="h-3.5 w-3.5" aria-hidden />
               </button>
@@ -243,32 +243,32 @@ export function CompanyCatalog({ heading = true, onAttempts }: {
           </label>
 
           <div className="flex shrink-0 items-center gap-2">
-            <span className="hidden text-[11px] font-bold text-slate-400 sm:inline">Group by</span>
-            <div role="group" aria-label="Group company assessments" className="inline-flex rounded-2xl border border-slate-200 bg-slate-100/80 p-1">
+            <span className="hidden text-[11px] font-bold text-slate-400 dark:text-slate-500 sm:inline">Group by</span>
+            <div role="group" aria-label="Group company assessments" className="inline-flex rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-100/80 dark:bg-slate-800/80 p-1">
               {(['tag', 'priority'] as GroupBy[]).map((group) => (
                 <button
                   key={group}
                   type="button"
                   onClick={() => setGroupBy(group)}
                   aria-pressed={groupBy === group}
-                  className={`whitespace-nowrap rounded-xl px-3 py-2 text-xs font-extrabold transition sm:px-4 ${groupBy === group ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                  className={`whitespace-nowrap rounded-xl px-3 py-2 text-xs font-extrabold transition sm:px-4 ${groupBy === group ? 'bg-slate-900 dark:bg-indigo-600 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'}`}
                 >
                   {group === 'tag' ? 'Category' : 'Priority'}
                 </button>
               ))}
             </div>
           </div>
-          {!loaded && user?.id && <span className="text-[11px] text-slate-400">Loading attempts…</span>}
+          {!loaded && user?.id && <span className="text-[11px] text-slate-400 dark:text-slate-500">Loading attempts…</span>}
         </div>
 
-        <div role="group" aria-label="Filter companies by category" className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+        <div role="group" aria-label="Filter companies by category" className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 dark:border-white/8 pt-3">
           <button
             type="button"
             onClick={() => { setFilter('all'); setQuery('') }}
             aria-pressed={filter === 'all' && !query}
-            className={`rounded-xl border px-3 py-2 text-xs font-extrabold transition ${filter === 'all' && !query ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm shadow-indigo-200' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/50'}`}
+            className={`rounded-xl border px-3 py-2 text-xs font-extrabold transition ${filter === 'all' && !query ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm shadow-indigo-200 dark:shadow-indigo-900/50' : 'border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:border-indigo-200 dark:hover:border-indigo-500/40 hover:bg-indigo-50/50 dark:hover:bg-slate-700/80'}`}
           >
-            All categories <span className={filter === 'all' && !query ? 'ml-1 text-indigo-100' : 'ml-1 text-slate-400'}>{COMPANIES.length}</span>
+            All categories <span className={filter === 'all' && !query ? 'ml-1 text-indigo-100' : 'ml-1 text-slate-400 dark:text-slate-500'}>{COMPANIES.length}</span>
           </button>
           {COMPANY_TAGS.map((tag) => {
             const count = COMPANIES.filter((company) => company.tag === tag.id).length
@@ -278,21 +278,21 @@ export function CompanyCatalog({ heading = true, onAttempts }: {
                 type="button"
                 onClick={() => { setFilter(tag.id); setQuery('') }}
                 aria-pressed={filter === tag.id && !query}
-                className={`rounded-xl border px-3 py-2 text-xs font-bold transition ${filter === tag.id && !query ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm shadow-indigo-200' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/50'}`}
+                className={`rounded-xl border px-3 py-2 text-xs font-bold transition ${filter === tag.id && !query ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm shadow-indigo-200 dark:shadow-indigo-900/50' : 'border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:border-indigo-200 dark:hover:border-indigo-500/40 hover:bg-indigo-50/50 dark:hover:bg-slate-700/80'}`}
               >
-                <span aria-hidden>{tag.icon}</span> {tag.short} <span className={filter === tag.id && !query ? 'ml-1 text-indigo-100' : 'ml-1 text-slate-400'}>{count}</span>
+                <span aria-hidden>{tag.icon}</span> {tag.short} <span className={filter === tag.id && !query ? 'ml-1 text-indigo-100' : 'ml-1 text-slate-400 dark:text-slate-500'}>{count}</span>
               </button>
             )
           })}
         </div>
 
         {groupBy === 'priority' && !query && (
-          <fieldset className="mt-3 rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50/90 to-white p-3 sm:p-4">
+          <fieldset className="mt-3 rounded-2xl border border-slate-200/80 dark:border-white/10 bg-gradient-to-br from-slate-50/90 to-white dark:from-slate-800/80 dark:to-slate-900/80 p-3 sm:p-4">
             <legend className="sr-only">Filter companies by priority</legend>
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
               <div className="min-w-0">
-                <p className="text-xs font-black text-slate-800">Priority checklist</p>
-                <p className="mt-0.5 text-[11px] text-slate-500">Choose the tiers you want to see. You can select more than one.</p>
+                <p className="text-xs font-black text-slate-800 dark:text-slate-100">Priority checklist</p>
+                <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">Choose the tiers you want to see. You can select more than one.</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 {PRIORITIES.map((priority) => {
@@ -301,23 +301,23 @@ export function CompanyCatalog({ heading = true, onAttempts }: {
                   return (
                     <label
                       key={priority}
-                      className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 transition ${checked ? 'border-indigo-200 bg-white shadow-sm' : 'border-slate-200 bg-slate-100/60 hover:bg-white'}`}
+                      className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 transition ${checked ? 'border-indigo-200 dark:border-indigo-500/50 bg-white dark:bg-slate-800 shadow-sm' : 'border-slate-200 dark:border-white/10 bg-slate-100/60 dark:bg-slate-800/40 hover:bg-white dark:hover:bg-slate-800'}`}
                     >
                       <input
                         type="checkbox"
                         checked={checked}
                         onChange={() => togglePriority(priority)}
                         aria-label={`Show priority ${priority} companies`}
-                        className="h-4 w-4 rounded border-slate-300 text-indigo-600 accent-indigo-600 focus:ring-indigo-500"
+                        className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-indigo-600 accent-indigo-600 focus:ring-indigo-500"
                       />
                       <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-black ${PRIORITY_TONE[priority]}`}>P{priority}</span>
-                      <span className="text-xs font-bold text-slate-700">{PRIORITY_SHORT[priority]}</span>
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{count}</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{PRIORITY_SHORT[priority]}</span>
+                      <span className="rounded-full bg-slate-100 dark:bg-white/10 px-2 py-0.5 text-[10px] font-bold text-slate-500 dark:text-slate-400">{count}</span>
                     </label>
                   )
                 })}
                 {selectedPriorities.length < PRIORITIES.length && (
-                  <button type="button" onClick={() => setSelectedPriorities(PRIORITIES)} className="rounded-xl px-2.5 py-2 text-[11px] font-bold text-indigo-600 transition hover:bg-indigo-50">
+                  <button type="button" onClick={() => setSelectedPriorities(PRIORITIES)} className="rounded-xl px-2.5 py-2 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 transition hover:bg-indigo-50 dark:hover:bg-indigo-950/50">
                     Select all
                   </button>
                 )}
@@ -372,16 +372,16 @@ export function CompanyCatalog({ heading = true, onAttempts }: {
       <div className="mt-6 space-y-8">
         {groups.map((group) => (
           <section key={group.key} aria-label={group.title}>
-            <div className="mb-3 flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-gradient-to-r from-white to-slate-50/80 px-3.5 py-3 shadow-sm sm:px-4">
+            <div className="mb-3 flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 dark:border-white/10 bg-gradient-to-r from-white to-slate-50/80 dark:from-slate-900/95 dark:to-slate-850 dark:to-slate-800/90 px-3.5 py-3 shadow-sm sm:px-4">
               <div className="flex min-w-0 items-center gap-3">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white bg-white text-xl shadow-sm" aria-hidden>{group.icon}</span>
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/80 dark:border-white/10 bg-white dark:bg-slate-800 text-xl shadow-sm" aria-hidden>{group.icon}</span>
                 <div className="min-w-0">
-                  <h3 className="truncate text-sm font-black text-slate-900">{group.title}</h3>
-                  <p className="mt-0.5 text-[11px] leading-4 text-slate-500">{group.subtitle}</p>
+                  <h3 className="truncate text-sm font-black text-slate-900 dark:text-white animate-text-reveal">{group.title}</h3>
+                  <p className="mt-0.5 text-[11px] leading-4 text-slate-500 dark:text-slate-400">{group.subtitle}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-extrabold text-slate-600">
+                <span className="rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 px-2.5 py-1 text-[10px] font-extrabold text-slate-600 dark:text-slate-300">
                   {group.companies.length} of {group.totalCount} {group.totalCount === 1 ? 'company' : 'companies'}
                 </span>
               </div>

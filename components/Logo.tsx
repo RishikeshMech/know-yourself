@@ -1,5 +1,5 @@
 import Image from 'next/image'
-import logo from '@/public/logo.svg'
+import logo from '@/public/logo.png'
 
 type LogoProps = {
   height?: number
@@ -10,8 +10,8 @@ export function Logo({ height = 36, className = '' }: LogoProps) {
   return (
     <Image
       src={logo}
-      alt="CalibiAI logo"
-      width={Math.round(height * logo.width / logo.height)}
+      alt="Calibi Score logo"
+      width={height}
       height={height}
       className={`shrink-0 object-contain ${className}`}
       priority

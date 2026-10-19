@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,6 +8,7 @@
 
 :root {
   --bg: #eef1fb;
+  --ring-track: rgba(226, 232, 240, 0.4);
 }
 
 html { scroll-behavior: smooth; }
@@ -27,6 +30,13 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.75);
     box-shadow: 0 10px 40px -12px rgba(79, 70, 229, 0.18), 0 2px 8px -2px rgba(15, 23, 42, 0.06);
   }
+  .dark .glass {
+    background: rgba(15, 23, 42, 0.72);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 16px 48px -12px rgba(0, 0, 0, 0.65), 0 2px 10px -2px rgba(0, 0, 0, 0.4);
+  }
   .glass-card {
     @apply glass rounded-3xl p-6 sm:p-8;
   }
@@ -34,6 +44,9 @@ body {
   /* Soft inset panel on top of a card */
   .panel {
     @apply rounded-2xl border border-slate-200/70 bg-white/55;
+  }
+  .dark .panel {
+    @apply border-white/10 bg-slate-800/60 text-slate-200;
   }
 
   /* Dark code / terminal surface for reading code (stays dark for contrast) */
@@ -46,13 +59,19 @@ body {
   .field {
     @apply w-full rounded-xl border border-slate-200 bg-white/80 px-3.5 py-2.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-100;
   }
+  .dark .field {
+    @apply border-slate-700 bg-slate-900/80 text-slate-100 placeholder:text-slate-500 focus:border-indigo-400 focus:bg-slate-900 focus:ring-indigo-500/20;
+  }
 
   /* Buttons */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-300/50 transition duration-200 hover:shadow-xl hover:shadow-violet-300/50 hover:brightness-105 active:scale-[.98] disabled:opacity-50 disabled:shadow-none;
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-300/50 dark:shadow-indigo-900/50 transition duration-200 hover:shadow-xl hover:shadow-violet-300/50 hover:brightness-105 active:scale-[.98] disabled:opacity-50 disabled:shadow-none;
   }
   .btn-soft {
     @apply inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white/70 px-6 py-3 text-sm font-semibold text-slate-700 backdrop-blur transition duration-200 hover:bg-white hover:shadow-md active:scale-[.98] disabled:opacity-40;
+  }
+  .dark .btn-soft {
+    @apply border-white/10 bg-slate-800/80 text-slate-100 hover:bg-slate-700/90 hover:border-indigo-400/40 hover:text-white;
   }
   .btn-danger {
     @apply inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-rose-500 to-red-500 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-rose-300/50 transition hover:brightness-105 active:scale-[.98];
@@ -61,6 +80,9 @@ body {
   /* Pills / chips */
   .chip {
     @apply inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/70 px-3 py-1 text-xs font-medium text-slate-600 backdrop-blur;
+  }
+  .dark .chip {
+    @apply border-white/10 bg-slate-800/70 text-slate-300;
   }
 
   /* Gradient text */
@@ -159,26 +181,17 @@ body {
 .dot-in          { transform-box: fill-box; transform-origin: center; animation: dot-in .35s ease both; }
 
 /* ---------- Skill category pie chart ---------- */
-/* Each slice is a thick stroked circle whose circumference is reduced as
-   `stroke-dasharray` reveals it. The `pathLength="100"` attribute on the
-   <circle> normalises the perimeter to 100 so the math is just `offset =
-   100 - percent`. The chart re-mounts via React `key` on the parent
-   <svg> whenever the data changes, so the animation replays automatically. */
 .pie-slice {
-  transform-box: fill-box;
-  transform-origin: center;
   fill: none;
-  stroke-width: 22;
-  stroke-linecap: butt;
-  stroke-dasharray: 0 100;
-  transition: stroke-width .22s cubic-bezier(.2,.8,.2,1), opacity .22s ease, filter .22s ease;
+  cursor: pointer;
+  stroke-linecap: round;
+  transition: stroke-width 0.2s cubic-bezier(.2,.8,.2,1), opacity 0.2s ease, filter 0.2s ease;
 }
-.pie-slice.is-drawing { animation: pie-draw .9s cubic-bezier(.22,.8,.32,1) both; }
-.pie-slice:hover      { cursor: pointer; }
-.pie-slice:focus-visible { outline: none; }
-@keyframes pie-draw {
-  from { stroke-dasharray: 0 100; }
-  to   { stroke-dasharray: var(--pie-len) 100; }
+.pie-slice:hover {
+  cursor: pointer;
+}
+.pie-slice:focus-visible {
+  outline: none;
 }
 
 /* ---------- Bar / line entrance for self-reported + resume charts ---------- */
@@ -402,3 +415,257 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .animate-marquee-track { animation: none; overflow-x: auto; }
 }
+
+/* ------------------------------------------------------------------ */
+/* Dark Theme Global Contrast & Typography Engine                     */
+/* ------------------------------------------------------------------ */
+html.dark {
+  color-scheme: dark;
+  --ring-track: rgba(255, 255, 255, 0.12);
+}
+
+html.dark body {
+  background:
+    radial-gradient(1200px 600px at 100% -10%, rgba(99, 102, 241, 0.22), transparent 60%),
+    radial-gradient(1000px 500px at -10% 10%, rgba(139, 92, 246, 0.2), transparent 55%),
+    linear-gradient(160deg, #07090e 0%, #0c101a 40%, #101424 75%, #080a12 100%) !important;
+  background-attachment: fixed !important;
+  color: #f1f5f9;
+}
+
+/* =========================================================
+   DARK MODE — HIGH-CONTRAST TYPOGRAPHY
+   Every text-slate-N gets a guaranteed readable luminance.
+   ========================================================= */
+html.dark .text-slate-900 { color: #f8fafc !important; }
+html.dark .text-slate-800 { color: #f1f5f9 !important; }
+html.dark .text-slate-700 { color: #e2e8f0 !important; }
+html.dark .text-slate-600 { color: #cbd5e1 !important; }
+html.dark .text-slate-500 { color: #94a3b8 !important; }
+html.dark .text-slate-400 { color: #94a3b8 !important; }
+
+/* =========================================================
+   DARK MODE — INNER SUB-PANEL BACKGROUNDS
+   The white semi-transparent panels inside glass-card must
+   flip to a dark surface so text stays legible.
+   ========================================================= */
+html.dark .bg-white { background-color: #111827 !important; }
+/* Frosted/translucent white panels inside cards */
+html.dark .bg-white\/55,
+html.dark .bg-white\/60,
+html.dark .bg-white\/65,
+html.dark .bg-white\/70,
+html.dark .bg-white\/75,
+html.dark .bg-white\/80,
+html.dark .bg-white\/85,
+html.dark .bg-white\/90 { background-color: rgba(17, 24, 39, 0.85) !important; }
+
+/* Performance/category inner panels: give them a distinct dark surface */
+html.dark .rounded-2xl.border.border-slate-100.bg-white\/75,
+html.dark .rounded-2xl.border.border-slate-200\/70.bg-white\/70 {
+  background-color: rgba(15, 23, 42, 0.9) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.dark .bg-slate-50,
+html.dark .bg-slate-50\/50,
+html.dark .bg-slate-50\/60,
+html.dark .bg-slate-50\/70,
+html.dark .bg-slate-50\/80,
+html.dark .bg-slate-50\/90 { background-color: rgba(15, 23, 42, 0.7) !important; }
+html.dark .bg-slate-100 { background-color: #1e293b !important; }
+
+/* =========================================================
+   DARK MODE — BORDERS
+   ========================================================= */
+html.dark .border-slate-200,
+html.dark .border-slate-200\/60,
+html.dark .border-slate-200\/70,
+html.dark .border-slate-200\/80,
+html.dark .border-slate-200\/90,
+html.dark .border-slate-100 { border-color: rgba(255, 255, 255, 0.1) !important; }
+
+html.dark .border-white\/50,
+html.dark .border-white\/60,
+html.dark .border-white\/75 { border-color: rgba(255, 255, 255, 0.1) !important; }
+
+/* =========================================================
+   DARK MODE — COLORED ACCENT SURFACES
+   (WCAG AA: text contrast ≥ 4.5:1 on the accent bg)
+   ========================================================= */
+html.dark .bg-indigo-50,
+html.dark .bg-indigo-50\/70,
+html.dark .bg-indigo-50\/80,
+html.dark .bg-indigo-50\/90,
+html.dark .bg-indigo-50\/40 { background-color: rgba(79, 70, 229, 0.18) !important; }
+html.dark .text-indigo-700,
+html.dark .text-indigo-600 { color: #a5b4fc !important; }
+html.dark .text-indigo-500 { color: #818cf8 !important; }
+html.dark .border-indigo-100,
+html.dark .border-indigo-200,
+html.dark .border-indigo-200\/60,
+html.dark .border-indigo-200\/80 { border-color: rgba(165, 180, 252, 0.25) !important; }
+
+/* Emerald (What's working, success states) */
+html.dark .bg-emerald-50,
+html.dark .bg-emerald-50\/80,
+html.dark .bg-emerald-50\/90 { background-color: rgba(5, 46, 22, 0.9) !important; }
+html.dark .border-emerald-100,
+html.dark .border-emerald-200 { border-color: rgba(52, 211, 153, 0.35) !important; }
+html.dark .text-emerald-700,
+html.dark .text-emerald-800 { color: #34d399 !important; }
+/* Body text inside emerald box */
+html.dark .bg-emerald-50 .text-slate-700,
+html.dark .bg-emerald-50\/80 .text-slate-700 { color: #d1fae5 !important; }
+html.dark .text-\[10px\].text-emerald-700 { color: #34d399 !important; }
+
+/* Amber */
+html.dark .bg-amber-50,
+html.dark .bg-amber-50\/90 { background-color: rgba(92, 45, 0, 0.6) !important; }
+html.dark .text-amber-700,
+html.dark .text-amber-800 { color: #fcd34d !important; }
+html.dark .border-amber-200 { border-color: rgba(252, 211, 77, 0.3) !important; }
+
+/* Violet */
+html.dark .bg-violet-50 { background-color: rgba(109, 40, 217, 0.2) !important; }
+html.dark .text-violet-700,
+html.dark .text-violet-600 { color: #c4b5fd !important; }
+
+/* Rose / red */
+html.dark .bg-rose-50 { background-color: rgba(136, 19, 55, 0.3) !important; }
+html.dark .text-rose-600 { color: #fb7185 !important; }
+
+/* Sky */
+html.dark .text-sky-700,
+html.dark .text-sky-600 { color: #7dd3fc !important; }
+
+/* =========================================================
+   DARK MODE — ASSESSMENT REPORT CARDS (article elements)
+   ========================================================= */
+html.dark article.rounded-2xl {
+  background-color: rgba(15, 23, 42, 0.92) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+html.dark article.rounded-2xl:hover {
+  border-color: rgba(165, 180, 252, 0.4) !important;
+}
+
+/* Download PDF button inside article */
+html.dark article .bg-white {
+  background-color: rgba(30, 41, 59, 0.9) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #e2e8f0 !important;
+}
+
+/* =========================================================
+   DARK MODE — SKILL MAP INNER PANELS
+   ========================================================= */
+html.dark .rounded-2xl.border-slate-200\/70.bg-white\/70 {
+  background-color: rgba(15, 23, 42, 0.88) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+html.dark .bar-grow {
+  filter: brightness(1.15) saturate(1.2);
+}
+/* Skill count text */
+html.dark .font-mono.text-slate-600 { color: #cbd5e1 !important; }
+
+/* Radar guide rings in dark mode */
+html.dark svg polygon[stroke="#e2e8f0"] {
+  stroke: rgba(255, 255, 255, 0.12);
+}
+html.dark svg circle[stroke="white"] {
+  stroke: #1e293b;
+}
+/* Legend text */
+html.dark .font-semibold.text-slate-700 { color: #e2e8f0 !important; }
+
+/* =========================================================
+   DARK MODE — RESUME HEALTH CARD
+   ========================================================= */
+html.dark aside[aria-label="Resume and next steps"] > div:first-child {
+  background: rgba(12, 16, 26, 0.95) !important;
+  border-color: rgba(165, 180, 252, 0.2) !important;
+}
+/* The conic-gradient score ring background — keep it using JS inline styles */
+html.dark aside[aria-label="Resume and next steps"] .rounded-full.bg-white {
+  background-color: #111827 !important;
+}
+/* Score number inside resume ring */
+html.dark aside[aria-label="Resume and next steps"] .text-indigo-600 { color: #818cf8 !important; }
+/* "out of 100" label */
+html.dark aside[aria-label="Resume and next steps"] .text-xs.font-bold.text-slate-700 { color: #e2e8f0 !important; }
+
+/* =========================================================
+   DARK MODE — PROGRESS BARS
+   ========================================================= */
+html.dark .h-2\.5.bg-slate-100,
+html.dark .h-2.bg-slate-100 {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+html.dark .h-2\.5.bg-slate-100 > div,
+html.dark .h-2.bg-slate-100 > div {
+  filter: brightness(1.1);
+}
+
+/* =========================================================
+   DARK MODE — HEADER & FOOTER
+   ========================================================= */
+html.dark header {
+  background-color: rgba(7, 9, 14, 0.8) !important;
+  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+}
+html.dark footer {
+  background-color: rgba(7, 9, 14, 0.85) !important;
+  border-top-color: rgba(255, 255, 255, 0.08) !important;
+}
+html.dark footer .bg-slate-50\/50 {
+  background-color: rgba(5, 7, 12, 0.9) !important;
+  border-top-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* =========================================================
+   DARK MODE — RECHARTS
+   ========================================================= */
+html.dark .recharts-default-tooltip {
+  background-color: #0f172a !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: #f8fafc !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6) !important;
+}
+html.dark .recharts-cartesian-grid line,
+html.dark .recharts-polar-grid line,
+html.dark .recharts-polar-grid-angle line,
+html.dark .recharts-polar-grid-concentric path {
+  stroke: rgba(255, 255, 255, 0.12) !important;
+}
+html.dark .recharts-polar-angle-axis text,
+html.dark .recharts-xAxis text,
+html.dark .recharts-yAxis text {
+  fill: #94a3b8 !important;
+}
+
+/* =========================================================
+   TEXT & NUMBER ENTRANCE ANIMATIONS
+   ========================================================= */
+@keyframes stat-count-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.88); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes text-reveal {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes label-pop {
+  from { opacity: 0; transform: scale(0.8) translateY(4px); }
+  60%  { opacity: 1; transform: scale(1.04) translateY(-1px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes shimmer-bg {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.animate-stat-in  { animation: stat-count-in .55s cubic-bezier(.22,.8,.32,1.1) both; }
+.animate-text-reveal { animation: text-reveal .5s cubic-bezier(.22,.8,.32,1) both; }
+.animate-label-pop   { animation: label-pop .5s cubic-bezier(.22,.8,.32,1.4) both; }
+

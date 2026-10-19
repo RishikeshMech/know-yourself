@@ -1,44 +1,54 @@
 'use client'
 
 /**
- * AnimatedScore — a circular score display for the profile page.
+ * AnimatedScore — a premium glassmorphic metric badge for the Assessment Overview.
  *
- * Combines a soft pulsing halo, a progress ring that fills clockwise on
- * mount, and a large gradient number in the middle. The number itself is
- * bound to React state (so it never lies), while the ring's `pathLength` of
- * 100 keeps the math simple: `dasharray = score/10`.
+ * Replaces the cramped circular design with a modern, high-contrast
+ * glass podium card:
+ * - Top glowing pill with Grade/Tier status
+ * - Bold, crystal-clear score typography (/1000)
+ * - Sleek glowing readiness progress bar
+ * - Distinct metadata sublabel (e.g. "Average of 2 assessments")
  */
 import { useEffect, useState } from 'react'
 
 interface Props {
-  /** CalibiAI score 0-1000. Null/undefined renders a quiet placeholder. */
+  /** Calibi score 0-1000. Null/undefined renders a quiet placeholder. */
   score: number | null | undefined
-  /** Tier label shown under the number ("Bronze", "Silver", "Gold", "Platinum"). */
+  /** Tier label ("Grade D", "Grade A+", "Gold", "Platinum", etc.). */
   tier?: string
-  /** Hex gradient stops for the ring + number [from, to]. */
+  /** Hex gradient stops for accent [from, to]. */
   gradient?: [string, string]
-  /** Hex stroke colour for the ring (overrides gradient if set). */
+  /** Hex stroke colour for accent. */
   ringColor?: string
-  /** Size in px (square). */
+  /** Size in px (optional override). */
   size?: number
   /** Optional sublabel under the tier. */
   sublabel?: string
 }
 
-export function AnimatedScore({ score, tier, gradient = ['#a5b4fc', '#f0abfc'], ringColor, size = 168, sublabel }: Props) {
+export function AnimatedScore({
+  score,
+  tier,
+  gradient = ['#818cf8', '#c084fc'],
+  sublabel,
+}: Props) {
   const numeric = Number.isFinite(Number(score)) ? Math.max(0, Math.min(1000, Number(score))) : 0
-  const share = numeric / 10 // 0..100, matches `pathLength="100"`
-  const stroke = ringColor || gradient[0]
-  // Count-up animation for the number itself.
+  const percent = Math.round((numeric / 1000) * 100)
+
+  // Smooth count-up animation for the number
   const [display, setDisplay] = useState(0)
   useEffect(() => {
-    if (!Number.isFinite(numeric) || numeric === 0) { setDisplay(0); return }
+    if (!Number.isFinite(numeric) || numeric === 0) {
+      setDisplay(0)
+      return
+    }
     let raf = 0
     const start = performance.now()
-    const dur = 1100
+    const dur = 1000
     const tick = (now: number) => {
       const t = Math.min(1, (now - start) / dur)
-      // ease-out cubic for a confident "settle" feel.
+      // Ease-out cubic for a crisp settle
       const eased = 1 - Math.pow(1 - t, 3)
       setDisplay(Math.round(eased * numeric))
       if (t < 1) raf = requestAnimationFrame(tick)
@@ -47,38 +57,83 @@ export function AnimatedScore({ score, tier, gradient = ['#a5b4fc', '#f0abfc'], 
     return () => cancelAnimationFrame(raf)
   }, [numeric])
 
-  const gid = `score-grad-${Math.random().toString(36).slice(2, 8)}`
   return (
-    <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
-      <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full" role="img" aria-label={`CalibiAI score ${numeric} out of 1000`}>
-        <defs>
-          <linearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor={gradient[0]} />
-            <stop offset="100%" stopColor={gradient[1]} />
-          </linearGradient>
-        </defs>
-        {/* Soft pulsing halo behind everything. */}
-        <circle cx="50" cy="50" r="46" fill={gradient[0]} opacity="0.18" className="halo-pulse" />
-        {/* Background track */}
-        <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(99,102,241,0.15)" strokeWidth="6" />
-        {/* Animated progress ring (clamped so a zero score shows a dot, not nothing). */}
-        <circle
-          cx="50" cy="50" r="40"
-          className="score-ring"
-          pathLength="100"
-          stroke={stroke}
-          strokeWidth="6"
-          style={{ ['--ring-len' as any]: `${Math.max(0.5, share)}` } as React.CSSProperties}
-        />
-      </svg>
-      <div className="relative flex flex-col items-center justify-center text-center">
-        <div className="score-in text-[44px] font-black leading-none tabular-nums" style={{ background: `linear-gradient(135deg, ${gradient[0]}, ${gradient[1]})`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>
-          {Number.isFinite(numeric) ? display : '—'}
-        </div>
-        <div className="mt-0.5 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-300">/ 1000</div>
-        {tier && <div className="mt-1 text-[11px] font-black uppercase tracking-wider text-indigo-200">{tier}</div>}
-        {sublabel && <div className="mt-0.5 text-[11px] font-semibold text-slate-300">{sublabel}</div>}
+    <div className="relative group overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-b from-white/15 via-white/8 to-white/5 p-4 sm:p-5 shadow-2xl shadow-indigo-950/60 backdrop-blur-2xl w-full sm:w-[210px] text-center flex flex-col items-center justify-between transition-all duration-300 hover:border-indigo-400/50 hover:shadow-indigo-500/20">
+      {/* Ambient neon backglow */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -inset-1 rounded-3xl opacity-30 blur-xl transition duration-500 group-hover:opacity-60"
+        style={{
+          background: `radial-gradient(circle at center, ${gradient[0]}, ${gradient[1]}, transparent 70%)`,
+        }}
+      />
+
+      {/* Top subtle accent line */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-indigo-400 via-violet-400 to-fuchsia-400"
+      />
+
+      {/* Top Tier/Grade Pill */}
+      <div className="relative z-10 w-full flex items-center justify-center">
+        {tier ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-300/30 bg-indigo-950/70 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-indigo-200 shadow-sm">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            {tier}
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-300">
+            Score Card
+          </span>
+        )}
       </div>
+
+      {/* Massive Bold Score Typography */}
+      <div className="relative z-10 my-3 flex flex-col items-center justify-center">
+        <div className="flex items-baseline justify-center gap-1.5">
+          <span
+            className="text-5xl sm:text-6xl font-black tracking-tight tabular-nums leading-none animate-stat-in"
+            style={{
+              background: `linear-gradient(135deg, #ffffff 30%, ${gradient[0]} 80%, ${gradient[1]} 100%)`,
+              WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
+              color: 'transparent',
+              filter: 'drop-shadow(0 2px 10px rgba(129, 140, 248, 0.35))',
+            }}
+          >
+            {Number.isFinite(numeric) ? display : '—'}
+          </span>
+          <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-indigo-200/80">
+            / 1000
+          </span>
+        </div>
+      </div>
+
+      {/* Glowing Linear Readiness Bar */}
+      <div className="relative z-10 w-full px-1 mb-2">
+        <div className="flex items-center justify-between text-[10px] font-bold text-indigo-200/80 mb-1">
+          <span className="uppercase tracking-wider">Readiness</span>
+          <span className="font-mono text-white font-black">{percent}%</span>
+        </div>
+        <div className="h-2 w-full overflow-hidden rounded-full bg-black/40 border border-white/10 p-[1px]">
+          <div
+            className="h-full rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(168,85,247,0.5)]"
+            style={{
+              width: `${Math.max(3, Math.min(100, percent))}%`,
+              background: `linear-gradient(90deg, ${gradient[0]}, ${gradient[1]})`,
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Clean Sublabel Pill */}
+      {sublabel && (
+        <div className="relative z-10 w-full mt-1">
+          <div className="rounded-xl border border-white/10 bg-black/25 px-2.5 py-1 text-[11px] font-semibold text-indigo-100/90 leading-tight truncate" title={sublabel}>
+            {sublabel}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

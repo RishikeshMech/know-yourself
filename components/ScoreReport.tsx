@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { Navbar } from '@/components/Navbar'
+import { Footer } from '@/components/Footer'
 import { useStore } from '@/lib/store'
 import { isProfileComplete } from '@/lib/validate'
 import { SAMPLE_PROFILE, SAMPLE_USER } from '@/lib/sample'
@@ -60,21 +61,21 @@ export function ScoreReport({ scores, sample = false }: Props) {
       <Navbar />
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         {sample && (
-          <div className="animate-fade-up rounded-2xl border border-indigo-200 bg-indigo-50/80 px-4 py-3 text-sm text-indigo-700">
-            <b>Sample report</b> — this is a preview of what your CalibiAI Score report looks like after completing the assessment.
+          <div className="animate-fade-up rounded-2xl border border-indigo-200 dark:border-indigo-800/80 bg-indigo-50/80 dark:bg-indigo-950/70 px-4 py-3 text-sm text-indigo-700 dark:text-indigo-300">
+            <b>Sample report</b> — this is a preview of what your Calibi Score report looks like after completing the assessment.
           </div>
         )}
         {/* Hero */}
         <div className="glass-card animate-fade-up">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <div className="text-xs font-bold tracking-widest text-indigo-600 uppercase">CalibiAI Assessment score</div>
+              <div className="text-xs font-bold tracking-widest text-indigo-600 dark:text-indigo-400 uppercase">Calibi Score Assessment</div>
               <div className="mt-2 flex items-baseline gap-3 flex-wrap">
                 <span className="text-6xl font-black text-gradient leading-none">{scores.total}</span>
-                <span className="text-slate-400 text-2xl font-bold">/ 1000</span>
+                <span className="text-slate-400 dark:text-slate-500 text-2xl font-bold">/ 1000</span>
                 <span className={`px-3 py-1 rounded-full text-white text-sm font-bold ${gradeColor[scores.grade]}`}>Grade {scores.grade}</span>
               </div>
-              <div className="text-sm text-slate-500 mt-2">{scores.percentile}th percentile · {String(scores.verifiable_hash).slice(0, 24)}…</div>
+              <div className="text-sm text-slate-500 dark:text-slate-400 mt-2">{scores.percentile}th percentile · {String(scores.verifiable_hash).slice(0, 24)}…</div>
             </div>
             <div className="flex gap-2 flex-wrap">
               <button onClick={downloadPDF} disabled={rendering} className="btn-primary disabled:opacity-50">{rendering ? 'Rendering…' : '⬇ Download PDF report'}</button>
@@ -175,6 +176,7 @@ export function ScoreReport({ scores, sample = false }: Props) {
         )}
 
       </main>
+      <Footer />
     </div>
   )
 }

@@ -101,8 +101,12 @@ function Inner(){
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ student_id: user.id, question_seed: seed, assessment_no: 1 }),
       })
-      const sessionData = await sessionRes.json()
+      const sessionData = await sessionRes.json().catch(() => ({}))
       if (!sessionRes.ok || !sessionData?.session?.id || sessionData.saved !== true) {
+        if (sessionRes.status === 409 || sessionData?.code === 'ALREADY_FINAL' || /already final|completed/i.test(sessionData?.error || '')) {
+          go(AFTER_ASSESSMENT_ROUTE)
+          return
+        }
         throw new Error(sessionData?.error || 'The assessment session was not saved. Please retry.')
       }
       const session = sessionData.session

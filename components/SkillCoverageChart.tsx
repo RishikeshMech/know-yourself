@@ -79,15 +79,15 @@ export function SkillCoverageChart({ skills, palette }: { skills: string; palett
 
   const max = Math.max(1, ...bars.map((b) => b.count))
   const headerTint = palette === 'indigo'
-    ? 'text-indigo-600'
-    : 'text-rose-600'
+    ? 'text-indigo-600 dark:text-indigo-400'
+    : 'text-rose-600 dark:text-rose-400'
 
   return (
     <div key={skills} className="min-w-0 space-y-2.5">
       {bars.map((b, i) => (
-        <div key={b.family} className="grid min-w-0 grid-cols-[minmax(4rem,5rem)_minmax(2rem,1fr)_auto] items-center gap-2 text-[11px]">
+        <div key={b.family} className="grid min-w-0 grid-cols-[minmax(4rem,5rem)_minmax(2rem,1fr)_auto] items-center gap-2 text-[11px] animate-text-reveal" style={{ animationDelay: `${i * 60}ms` }}>
           <div className={`min-w-0 truncate font-bold ${headerTint}`} title={b.family}>{b.family}</div>
-          <div className="relative h-2.5 min-w-0 overflow-hidden rounded-full bg-slate-100">
+          <div className="relative h-2.5 min-w-0 overflow-hidden rounded-full bg-slate-100 dark:bg-white/8">
             <div
               className="bar-grow h-full rounded-full"
               style={{
@@ -97,7 +97,7 @@ export function SkillCoverageChart({ skills, palette }: { skills: string; palett
               }}
             />
           </div>
-          <div className="shrink-0 whitespace-nowrap text-right font-mono text-[10px] font-bold text-slate-600">{b.count} skill{b.count === 1 ? '' : 's'}</div>
+          <div className="shrink-0 whitespace-nowrap text-right font-mono text-[10px] font-bold text-slate-600 dark:text-slate-300">{b.count} skill{b.count === 1 ? '' : 's'}</div>
         </div>
       ))}
     </div>

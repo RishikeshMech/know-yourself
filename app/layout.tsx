@@ -1,45 +1,52 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { StoreProvider } from '@/lib/store'
+import { ThemeProvider } from '@/components/ThemeProvider'
 
 export const metadata: Metadata = {
-  title: 'CalibiAI Score — Your verified employability score',
-  description: 'One 1000-point CalibiAI Score: communication, problem solving, AI skills and cognition — assessed and verified.',
+  title: 'Calibi Score — Your verified employability score',
+  description: 'One 1000-point Calibi Score: communication, problem solving, AI skills and cognition — assessed and verified.',
+  icons: {
+    icon: [
+      { url: '/logo.png', type: 'image/png' },
+      { url: '/favicon.ico?v=3', sizes: 'any' },
+    ],
+    apple: [
+      { url: '/logo.png', sizes: '96x96' },
+    ],
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <head>
-        {/* Favicon: .ico (classic) + SVG (sharp) + PNG (retina/Apple). Next also
-            auto-serves app/icon.png, so the tab icon is always present.
-            All four assets are generated FROM public/logo.svg (see the brand
-            mark in the navbar) — they used to be an unrelated purple "C"
-            placeholder, which is why the tab icon never "reflected" the logo.
-            The `?v=` suffix busts the aggressive favicon cache of browsers that
-            still hold the old placeholder. */}
-        <link rel="icon" href="/favicon.ico?v=2" sizes="any" />
-        <link rel="icon" type="image/svg+xml" href="/icon.svg?v=2" />
-        <link rel="apple-touch-icon" href="/icon-512.png?v=2" sizes="512x512" />
-        {/* Inter is applied to every element (`* { font-family: Inter, … }`), so
-            the webfont arriving late repaints the whole page — a visible flash
-            on arrival. Start the TLS handshakes immediately so the stylesheet
-            and the font files are on their way before the HTML finishes
-            parsing, shrinking the fallback→Inter swap window. */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
-      </head>
-      <body className="min-h-screen text-slate-800 antialiased">
+    <html lang="en" suppressHydrationWarning>
+      <body className="min-h-screen text-slate-800 dark:text-slate-100 antialiased transition-colors duration-300">
+        {/* Anti-flash script to apply dark theme immediately before first paint */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                var t = localStorage.getItem('calibi_theme');
+                if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                  document.documentElement.classList.add('dark');
+                } else {
+                  document.documentElement.classList.remove('dark');
+                }
+              } catch (_) {}
+            `,
+          }}
+        />
         {/* Animated ambient blobs behind the frosted glass */}
         <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-          <div className="blob-a absolute -top-24 -left-24 h-[26rem] w-[26rem] rounded-full bg-indigo-300/40 blur-3xl" />
-          <div className="blob-b absolute top-1/3 -right-28 h-[28rem] w-[28rem] rounded-full bg-fuchsia-300/30 blur-3xl" />
-          <div className="blob-a absolute bottom-0 left-1/3 h-[22rem] w-[22rem] rounded-full bg-sky-300/30 blur-3xl" />
+          <div className="blob-a absolute -top-24 -left-24 h-[26rem] w-[26rem] rounded-full bg-indigo-300/40 dark:bg-indigo-600/20 blur-3xl" />
+          <div className="blob-b absolute top-1/3 -right-28 h-[28rem] w-[28rem] rounded-full bg-fuchsia-300/30 dark:bg-purple-600/15 blur-3xl" />
+          <div className="blob-a absolute bottom-0 left-1/3 h-[22rem] w-[22rem] rounded-full bg-sky-300/30 dark:bg-sky-600/15 blur-3xl" />
         </div>
-        <StoreProvider>
-          {children}
-        </StoreProvider>
+        <ThemeProvider>
+          <StoreProvider>
+            {children}
+          </StoreProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

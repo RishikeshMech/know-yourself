@@ -78,7 +78,23 @@ function goConvert(shape: any, expression: string): string {
 
 function cppHelpers() {
   return String.raw`
-#include <bits/stdc++.h>
+#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <unordered_map>
+#include <map>
+#include <unordered_set>
+#include <set>
+#include <queue>
+#include <deque>
+#include <stack>
+#include <algorithm>
+#include <cmath>
+#include <cstdint>
+#include <cctype>
+#include <climits>
+#include <iomanip>
 using namespace std;
 struct JsonValue { enum Kind { Null, Boolean, Number, String, Array } kind = Null; bool boolean = false; string text; vector<JsonValue> array; };
 struct JsonParser {

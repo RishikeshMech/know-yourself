@@ -408,7 +408,7 @@ function ProfileInner() {
                   </div>
                   <div className="min-w-0 w-full flex-1 sm:w-auto">
                     <div className="text-[11px] font-black uppercase tracking-[0.16em] text-indigo-200">Assessment overview</div>
-                    <h2 className="mt-1 text-2xl font-black tracking-tight text-white sm:text-3xl">Your CalibiAI Score</h2>
+                    <h2 className="mt-1 text-2xl font-black tracking-tight text-white sm:text-3xl">Your Calibi Score</h2>
                     <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-slate-200">
                       {CALIBI_RULE}
                     </p>
@@ -435,10 +435,10 @@ function ProfileInner() {
                 </div>
               </div>
               {/* Actions strip — clearly aligned with the rest of the page. */}
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-white/60 px-5 py-4 sm:px-7">
-                <div className="text-xs text-slate-600">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 dark:border-white/10 bg-white/60 dark:bg-slate-900/90 px-5 py-4 sm:px-7 transition-colors">
+                <div className="text-xs text-slate-600 dark:text-slate-300">
                   {calibi.count > 0
-                    ? <>Based on <span className="font-bold text-slate-700">{calibi.count} completed assessment{calibi.count === 1 ? '' : 's'}</span>. Grades are computed from your final CalibiAI score.</>
+                    ? <>Based on <span className="font-bold text-slate-700 dark:text-white">{calibi.count} completed assessment{calibi.count === 1 ? '' : 's'}</span>. Grades are computed from your final Calibi score.</>
                     : <>Take your first assessment to see your score here.</>}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">

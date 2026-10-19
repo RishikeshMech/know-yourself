@@ -141,39 +141,39 @@ export function HeroMockup() {
       <div aria-hidden className="animate-glow absolute -inset-8 -z-10 rounded-[48px] bg-gradient-to-tr from-indigo-400/35 via-violet-400/25 to-fuchsia-300/35 blur-3xl" />
 
       {/* Floating mini-cards */}
-      <div aria-hidden className="absolute -left-6 top-8 z-20 hidden animate-float-slow lg:flex items-center gap-2 rounded-2xl border border-white/70 bg-white/80 px-3.5 py-2.5 shadow-xl shadow-indigo-200/50 backdrop-blur">
+      <div aria-hidden className="absolute -left-6 top-8 z-20 hidden animate-float-slow lg:flex items-center gap-2 rounded-2xl border border-white/70 bg-white/80 dark:border-slate-700/80 dark:bg-slate-900/90 dark:shadow-indigo-950/50 px-3.5 py-2.5 shadow-xl shadow-indigo-200/50 backdrop-blur">
         <span className="flex h-7 w-7 items-center justify-center rounded-xl calibiai-gradient text-xs text-white">🧠</span>
         <div>
-          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Evaluated by</div>
-          <div className="text-xs font-bold text-slate-800">CalibiAI</div>
+          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-400">Evaluated by</div>
+          <div className="text-xs font-bold text-slate-800 dark:text-slate-100">CalibiAI</div>
         </div>
       </div>
-      <div aria-hidden className="absolute -right-4 bottom-14 z-20 hidden animate-float-slower lg:flex items-center gap-2 rounded-2xl border border-white/70 bg-white/80 px-3.5 py-2.5 shadow-xl shadow-violet-200/50 backdrop-blur">
+      <div aria-hidden className="absolute -right-4 bottom-14 z-20 hidden animate-float-slower lg:flex items-center gap-2 rounded-2xl border border-white/70 bg-white/80 dark:border-slate-700/80 dark:bg-slate-900/90 dark:shadow-violet-950/50 px-3.5 py-2.5 shadow-xl shadow-violet-200/50 backdrop-blur">
         <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-emerald-500 text-xs text-white">✓</span>
         <div>
-          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Credential</div>
-          <div className="text-xs font-bold text-slate-800">Shareable PDF</div>
+          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-400">Credential</div>
+          <div className="text-xs font-bold text-slate-800 dark:text-slate-100">Shareable PDF</div>
         </div>
       </div>
 
       {/* MacBook */}
       <div className="relative mx-auto max-w-[580px]">
-        <div className="relative rounded-[26px] border-[10px] border-slate-900 bg-slate-900 shadow-[0_50px_100px_-28px_rgba(79,70,229,.5)]">
-          <div className="relative overflow-hidden rounded-[16px] bg-gradient-to-br from-white via-white to-slate-50">
+        <div className="relative rounded-[26px] border-[10px] border-slate-900 dark:border-slate-800 bg-slate-900 dark:bg-slate-950 shadow-[0_50px_100px_-28px_rgba(79,70,229,.5)] dark:shadow-[0_50px_100px_-28px_rgba(79,70,229,.25)]">
+          <div className="relative overflow-hidden rounded-[16px] bg-gradient-to-br from-white via-white to-slate-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
             {/* Notch */}
-            <div aria-hidden className="absolute left-1/2 top-0 z-20 h-2.5 w-24 -translate-x-1/2 rounded-b-xl bg-slate-900" />
+            <div aria-hidden className="absolute left-1/2 top-0 z-20 h-2.5 w-24 -translate-x-1/2 rounded-b-xl bg-slate-900 dark:bg-slate-950" />
 
             {/* Browser chrome */}
-            <div className="flex items-center gap-2 border-b border-slate-100 bg-white/90 px-4 py-2.5">
+            <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 bg-white/90 dark:bg-slate-900/95 px-4 py-2.5">
               <span className="flex gap-1.5">
                 <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
                 <span className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" />
                 <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
               </span>
-              <span className="mx-auto flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-[10px] font-medium text-slate-500">
+              <span className="mx-auto flex items-center gap-1.5 rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1 text-[10px] font-medium text-slate-500 dark:text-slate-300">
                 <span aria-hidden>🔒</span> calibiai.app/score
               </span>
-              <span className="hidden items-center gap-1 text-[8px] font-bold uppercase tracking-widest text-emerald-600 sm:flex">
+              <span className="hidden items-center gap-1 text-[8px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 sm:flex">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" /> Live
               </span>
             </div>
@@ -188,17 +188,17 @@ export function HeroMockup() {
               {/* Headline — appears once the report is "ready" */}
               <div className={`flex items-end justify-between gap-3 transition-all duration-500 ${done ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'}`}>
                 <div>
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-indigo-600">CalibiAI Score</div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">Calibi Score</div>
                   <div className="mt-1 flex items-baseline gap-2">
                     <span className="text-4xl font-black text-gradient sm:text-[2.6rem]">842</span>
-                    <span className="text-xs font-bold text-slate-400">/1000</span>
+                    <span className="text-xs font-bold text-slate-400 dark:text-slate-500">/1000</span>
                   </div>
                 </div>
-                <span className="chip !px-2.5 !py-1 text-[10px] font-bold !text-indigo-700 !bg-indigo-50/80 !border-indigo-100">Grade A · 92nd pct</span>
+                <span className="chip !px-2.5 !py-1 text-[10px] font-bold !text-indigo-700 dark:!text-indigo-300 !bg-indigo-50/80 dark:!bg-indigo-950/60 !border-indigo-100 dark:!border-indigo-800/60">Grade A · 92nd pct</span>
               </div>
 
               {/* Chart */}
-              <div className="mt-4 rounded-xl border border-slate-100 bg-white/60 p-2">
+              <div className="mt-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-white/60 dark:bg-slate-800/50 p-2">
                 <ScoreChart cycle={cycle} />
               </div>
 
@@ -208,19 +208,19 @@ export function HeroMockup() {
                   <div key={i} className={`flex h-5 items-center justify-between gap-3 ${r.full ? '' : r.current ? '' : 'opacity-30'}`}>
                     <div className="flex min-w-0 items-center gap-2">
                       {r.full && <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white">✓</span>}
-                      <span className={`truncate text-[11px] font-semibold sm:text-xs ${r.full ? 'text-slate-700' : 'text-slate-500'}`}>{r.label}</span>
+                      <span className={`truncate text-[11px] font-semibold sm:text-xs ${r.full ? 'text-slate-700 dark:text-slate-200' : 'text-slate-500 dark:text-slate-400'}`}>{r.label}</span>
                     </div>
                     <div className="flex shrink-0 items-center gap-1.5">
-                      <span className={`font-mono text-[11px] font-bold sm:text-xs ${r.full ? 'text-slate-900' : 'text-slate-500'}`}>{r.value}</span>
-                      {r.current && <span aria-hidden className="cursor-blink h-3.5 w-[2px] rounded bg-indigo-600" />}
+                      <span className={`font-mono text-[11px] font-bold sm:text-xs ${r.full ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>{r.value}</span>
+                      {r.current && <span aria-hidden className="cursor-blink h-3.5 w-[2px] rounded bg-indigo-600 dark:bg-indigo-400" />}
                     </div>
                   </div>
                 ))}
               </div>
 
               {/* Status line */}
-              <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
-                <span className={`flex items-center gap-1.5 text-[10px] font-semibold ${done ? 'text-emerald-600' : 'text-slate-400'}`}>
+              <div className="mt-4 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-3">
+                <span className={`flex items-center gap-1.5 text-[10px] font-semibold ${done ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}`}>
                   {done ? (
                     <>
                       <span aria-hidden>✓</span> Report verified
@@ -231,7 +231,7 @@ export function HeroMockup() {
                     </>
                   )}
                 </span>
-                <span className="font-mono text-[9px] text-slate-400">sha256:9f4c2e8a</span>
+                <span className="font-mono text-[9px] text-slate-400 dark:text-slate-500">sha256:9f4c2e8a</span>
               </div>
             </div>
           </div>

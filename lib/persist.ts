@@ -34,7 +34,7 @@ export const PROFILE_SELECT = [
 
 export const ASSESSMENT_RESULT_SELECT = [
   'id', 'session_id', 'student_id', 'scores', 'total', 'grade', 'percentile',
-  'verifiable_hash', 'ai_feedback', 'report_storage_key', 'created_at',
+  'verifiable_hash', 'ai_feedback', 'report_storage_key', 'created_at', 'assessment_no',
 ].join(',')
 
 /**

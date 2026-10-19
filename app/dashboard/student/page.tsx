@@ -5,6 +5,7 @@ import { FeedbackGate } from '@/components/FeedbackGate'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Navbar } from '@/components/Navbar'
+import { Footer } from '@/components/Footer'
 import { useStore } from '@/lib/store'
 import { isProfileComplete } from '@/lib/validate'
 import { consumeJustSubmittedTicket } from '@/lib/justSubmitted'
@@ -121,13 +122,20 @@ function Inner(){
       if(data.analysis) setResume(data.analysis)
     }).catch(()=>{})
     authenticatedFetch('/api/user/scores?student_id='+encodeURIComponent(user.id), { cache: 'no-store' }).then(r=>r.json()).then(data=>{
-      // Always write through — including `null` when there is no result, so a
-      // stale cached score from a deleted/previous account never lingers on
-      // screen or in the downloaded PDF.
-      setScores(flattenAssessmentResult(data.result))
+      if (data?.result) {
+        setScores(flattenAssessmentResult(data.result))
+      } else {
+        const cached = typeof window !== 'undefined' ? localStorage.getItem('calibiai_scores') : null
+        if (!cached) setScores(null)
+      }
     }).catch(()=>{})
     authenticatedFetch('/api/user/scores?student_id='+encodeURIComponent(user.id)+'&assessment=2', { cache: 'no-store' }).then(r=>r.json()).then(data=>{
-      setScores2(flattenAssessmentResult(data.result))
+      if (data?.result) {
+        setScores2(flattenAssessmentResult(data.result))
+      } else {
+        const cached2 = typeof window !== 'undefined' ? localStorage.getItem('calibiai2_scores') : null
+        if (!cached2) setScores2(null)
+      }
     }).catch(()=>{})
   // The setters are intentionally omitted: they are context wrappers whose
   // identity changes when the store updates. Including them recreates `refresh`,
@@ -199,8 +207,8 @@ function Inner(){
       <Navbar />
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
         <div className="animate-fade-up">
-          <h1 className="text-2xl font-black text-slate-900">Hello{profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''} 👋</h1>
-          <p className="text-slate-500 text-sm mt-1">Here's your readiness overview and next steps.</p>
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white">Hello{profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''} 👋</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Here's your readiness overview and next steps.</p>
         </div>
 
         {/* Shown once, right after the assessment is submitted. */}
@@ -251,16 +259,18 @@ function Inner(){
         <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)] lg:items-start">
         <div className="glass-card !p-5 sm:!p-6 animate-fade-up">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div><div className="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-500">Your readiness</div><h2 className="mt-1 text-lg font-black text-slate-900">Your skill map</h2></div>
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-500 dark:text-indigo-400">Your readiness</div>
+              <h2 className="mt-1 text-lg font-black text-slate-900 dark:text-white">Your skill map</h2>
+            </div>
             <div className="flex gap-3">
-              <Link href="/profile" className="text-xs font-semibold text-indigo-600">See my profile →</Link>
-              <Link href="/edit-profile" className="text-xs font-semibold text-indigo-600">Edit profile →</Link>
+              <Link href="/profile" className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors">See my profile →</Link>
+              <Link href="/edit-profile" className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors">Edit profile →</Link>
             </div>
           </div>
-          {/* Scored-skill section: the long chip list is replaced by a 6-slice
-              donut/pie that rolls every assessed skill up into a category. */}
+          {/* Scored-skill section */}
           <div className="mt-4">
-            <div className="mb-2 text-[10px] font-black uppercase tracking-[0.15em] text-indigo-600">Skills mapped from completed assessments</div>
+            <div className="mb-2 text-[10px] font-black uppercase tracking-[0.15em] text-indigo-600 dark:text-indigo-400">Skills mapped from completed assessments</div>
             <SkillCategoryChart skills={assessmentSkillRollups} />
           </div>
           {/* The two claim-based sources — what the student wrote on their
@@ -268,21 +278,21 @@ function Inner(){
               visualised as small charts so the section is glanceable and
               clearly differentiated from the scored-skill pie above. */}
           <div className="mt-5 grid gap-4 lg:grid-cols-2">
-            <div className="rounded-2xl border border-slate-200/70 bg-white/70 p-4">
+            <div className="rounded-2xl border border-slate-200/70 dark:border-white/10 bg-white/70 dark:bg-slate-900/85 p-4 transition-colors duration-300">
               <div className="mb-3 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-indigo-600">
+                <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-indigo-600 dark:text-indigo-400">
                   <span aria-hidden>🛠️</span> Self-reported skills
                 </div>
-                <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-600 border border-indigo-200/70">Claimed</span>
+                <span className="rounded-full bg-indigo-50 dark:bg-indigo-900/50 px-2 py-0.5 text-[10px] font-bold text-indigo-600 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-700/50">Claimed</span>
               </div>
               <SkillCoverageChart skills={profile?.skills} palette="indigo" />
             </div>
-            <div className="rounded-2xl border border-slate-200/70 bg-white/70 p-4">
+            <div className="rounded-2xl border border-slate-200/70 dark:border-white/10 bg-white/70 dark:bg-slate-900/85 p-4 transition-colors duration-300">
               <div className="mb-3 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-rose-600">
+                <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-rose-600 dark:text-rose-400">
                   <span aria-hidden>📄</span> Resume-detected skills
                 </div>
-                <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-600 border border-rose-200/70">Parsed</span>
+                <span className="rounded-full bg-rose-50 dark:bg-rose-900/30 px-2 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-300 border border-rose-200/70 dark:border-rose-700/50">Parsed</span>
               </div>
               <ResumeSkillRadar skills={Array.isArray(resume?.parsed?.skills) ? resume.parsed.skills.join(', ') : ''} />
             </div>
@@ -348,6 +358,7 @@ function Inner(){
         )}
 
       </main>
+      <Footer />
     </div>
   )
 }

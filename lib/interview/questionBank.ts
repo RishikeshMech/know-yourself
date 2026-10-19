@@ -192,7 +192,7 @@ export const QUESTION_BANK: InterviewQuestion[] = [
         python: 'def twoSum(nums, target):\n    # return list of two indices\n    pass',
         javascript: 'function twoSum(nums, target) {\n  // return [i,j]\n}',
         java: 'class Solution { public int[] twoSum(int[] nums, int target) { return new int[0]; } }',
-        cpp: '#include <bits/stdc++.h>\nusing namespace std;\nvector<int> twoSum(vector<int>& nums, int target) { return {}; }',
+        cpp: '#include <vector>\nusing namespace std;\nvector<int> twoSum(vector<int>& nums, int target) { return {}; }',
         c: '#include <stdio.h>\nint* twoSum(int* nums, int numsSize, int target, int* returnSize) { return NULL; }',
         rust: 'fn two_sum(nums: Vec<i32>, target: i32) -> Vec<i32> { vec![] }',
         go: 'func twoSum(nums []int, target int) []int { return []int{} }',

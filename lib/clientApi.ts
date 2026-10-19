@@ -1,4 +1,5 @@
 import { supabaseAuthHeaders } from './clientAuth.ts'
+import { getSupabase } from './supabase.ts'
 
 export interface JsonPostOptions {
   timeoutMs?: number
@@ -59,6 +60,21 @@ export async function postJsonWithRetry<T = Record<string, unknown>>(
           ? 'The hosting gateway closed this request (HTTP 444). Please retry; if it continues, the site administrator should check the reverse-proxy/WAF logs.'
           : String(data?.error || data?.detail || `Request failed (${response.status})`)
         const error = new JsonApiError(message, response.status, data)
+        if (response.status === 401 && attempt < retries) {
+          try {
+            const supabase = getSupabase()
+            if (supabase) {
+              const { data: refreshData, error: refreshErr } = await supabase.auth.refreshSession()
+              if (!refreshErr && refreshData?.session?.access_token) {
+                retryable = true
+                lastError = error
+                continue
+              }
+            }
+          } catch {
+            // fall through
+          }
+        }
         retryable = response.status >= 500 || response.status === 444
         if (!retryable || attempt === retries) throw error
         lastError = error

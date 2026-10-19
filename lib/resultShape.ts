@@ -18,8 +18,10 @@ export function flattenAssessmentResult(result: any): any {
   // treated as "no result" so callers clear stale cached scores.
   if (result.total === undefined && result.scores === undefined) return null
   const scores = (result.scores && typeof result.scores === 'object') ? result.scores : {}
+  const assessmentNo = Number(result.assessment_no ?? scores.assessment_no ?? 1) === 2 ? 2 : 1
   return {
     session_id: result.session_id,
+    assessment_no: assessmentNo,
     ...scores,
     created_at: result.created_at ?? scores.created_at ?? null,
     total: result.total,

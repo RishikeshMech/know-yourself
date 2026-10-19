@@ -87,7 +87,15 @@ export async function POST(req: Request) {
 
     if (ctx.supabase) {
       const outcome = await persistAssessmentSession(ctx.db!, session, { start: true })
-      if (!outcome.ok || !outcome.session) return storageUnavailable()
+      if (!outcome.ok || !outcome.session) {
+        if (outcome.code === 'P0001' || /already final/i.test(outcome.message || '')) {
+          return NextResponse.json(
+            { error: 'Assessment attempt is already final.', code: 'ALREADY_FINAL' },
+            { status: 409, headers: { 'Cache-Control': 'no-store' } },
+          )
+        }
+        return storageUnavailable()
+      }
       return NextResponse.json(
         { session: publicSession(outcome.session), saved: true, supabase: true },
         { headers: { 'Cache-Control': 'no-store' } },

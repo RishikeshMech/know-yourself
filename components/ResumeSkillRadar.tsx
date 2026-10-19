@@ -63,7 +63,7 @@ export function ResumeSkillRadar({ skills }: { skills: string }) {
             key={t}
             points={FAMILIES.map((_, i) => { const p = point(i, r * t); return `${p.x},${p.y}` }).join(' ')}
             fill="none"
-            stroke="#e2e8f0"
+            className="stroke-slate-200 dark:stroke-white/10"
             strokeWidth={1}
             strokeDasharray={t === 1 ? '0' : '2 3'}
           />
@@ -100,9 +100,9 @@ export function ResumeSkillRadar({ skills }: { skills: string }) {
               cy={p.y}
               r={3}
               fill={COLORS[i]}
-              stroke="white"
+              stroke="currentColor"
               strokeWidth={1.5}
-              className="dot-pop"
+              className="dot-pop text-white dark:text-slate-900"
               style={{ animationDelay: `${800 + i * 90}ms` }}
             />
           )
@@ -110,10 +110,10 @@ export function ResumeSkillRadar({ skills }: { skills: string }) {
       </svg>
       <ul className="grid min-w-0 gap-1.5 text-xs">
         {FAMILIES.map((f, i) => (
-          <li key={f} className="flex min-w-0 items-center gap-2">
+          <li key={f} className="flex min-w-0 items-center gap-2 animate-text-reveal" style={{ animationDelay: `${900 + i * 60}ms` }}>
             <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: COLORS[i % COLORS.length] }} />
-            <span className="min-w-0 flex-1 truncate font-semibold text-slate-700">{f}</span>
-            <span className="shrink-0 font-mono text-[11px] font-bold tabular-nums text-slate-600">{counts[i]}</span>
+            <span className="min-w-0 flex-1 truncate font-semibold text-slate-700 dark:text-slate-300">{f}</span>
+            <span className="shrink-0 font-mono text-[11px] font-bold tabular-nums text-slate-600 dark:text-slate-400">{counts[i]}</span>
           </li>
         ))}
       </ul>

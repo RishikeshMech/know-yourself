@@ -9,11 +9,13 @@ export async function POST(req: Request) {
     if (!safeEqual(username, ADMIN_USERNAME) || !safeEqual(password, ADMIN_PASSWORD)) {
       return NextResponse.json({ error: 'Invalid username or password.' }, { status: 401 })
     }
+    const proto = req.headers.get('x-forwarded-proto')
+    const isHttps = proto ? proto === 'https' : (req.url?.startsWith('https') ?? false)
     const res = NextResponse.json({ ok: true, message: 'Signed in.' })
     res.cookies.set(ADMIN_COOKIE, signSession(), {
       httpOnly: true,
       sameSite: 'lax',
-      secure: req.url?.startsWith('https') ?? false,
+      secure: isHttps,
       path: '/',
       maxAge: 8 * 60 * 60,
     })

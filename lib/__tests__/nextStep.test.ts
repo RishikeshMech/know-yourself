@@ -81,5 +81,6 @@ test('dashboardRouteForRole falls back to the student dashboard, never a 404', (
 
 test('dashboardRouteForRole is case-insensitive (role may come from user_metadata)', () => {
   assert.equal(dashboardRouteForRole('Faculty'), '/dashboard/faculty')
-  assert.equal(dashboardRouteForRole('ADMIN'), '/dashboard/institution')
+  assert.equal(dashboardRouteForRole('ADMIN'), '/admin')
+  assert.equal(dashboardRouteForRole('Institution'), '/dashboard/institution')
 })
