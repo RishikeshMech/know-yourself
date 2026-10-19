@@ -40,8 +40,6 @@ export async function supabaseAuthHeaders(input?: HeadersInit): Promise<Headers>
       headers.set('Authorization', `Bearer ${token}`)
       headers.set('x-access-token', token)
       syncClientAuthCookie(token)
-    } else {
-      syncClientAuthCookie(null)
     }
   } catch {
     // The API will reject a Supabase-mode request without a valid token. Local

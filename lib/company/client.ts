@@ -90,10 +90,10 @@ export const companyApi = {
   list: (studentId: string) =>
     call<{ attempts: AttemptSummary[] }>('GET', `/api/company-assessments?${q({ student_id: studentId })}`),
   start: (studentId: string, company: string) =>
-    call<Partial<AttemptView> & { outcome: 'created' | 'resumed' | 'completed'; attempt?: AttemptSummary }>(
+    call<Partial<AttemptView> & { outcome: 'created' | 'resumed' | 'completed'; attempt?: AttemptSummary; result?: PublicResult | null }>(
       'POST', '/api/company-assessments/start', { student_id: studentId, company }),
   attempt: (studentId: string, company: string) =>
-    call<Partial<AttemptView> & { state: 'none' | 'in_progress' | 'completed' }>(
+    call<Partial<AttemptView> & { state: 'none' | 'in_progress' | 'completed'; result?: PublicResult | null }>(
       'GET', `/api/company-assessments/attempt?${q({ student_id: studentId, company })}`),
   save: (studentId: string, company: string, answers: Record<string, unknown>, proctoring: unknown, keepalive = false) =>
     call<{ saved: boolean; reason?: string }>('POST', '/api/company-assessments/save', { student_id: studentId, company, answers, proctoring }, { keepalive, timeoutMs: 15_000 }),
@@ -120,11 +120,13 @@ export interface CachedCompanyResult {
 export function saveCompanyResultCache(
   slug: string,
   attempt: AttemptSummary & { proctoring?: { strikes: number; camera: boolean | null }; submit_reason?: string | null },
-  result: PublicResult | null,
+  result?: PublicResult | null,
 ): void {
   if (typeof window === 'undefined') return
   try {
-    const payload: CachedCompanyResult = { attempt, result, savedAt: Date.now() }
+    const existing = getCompanyResultCache(slug)
+    const finalResult = result || existing?.result || null
+    const payload: CachedCompanyResult = { attempt, result: finalResult, savedAt: Date.now() }
     const str = JSON.stringify(payload)
     sessionStorage.setItem(`calibiai_company_result_${slug}`, str)
     localStorage.setItem(`calibiai_company_result_${slug}`, str)

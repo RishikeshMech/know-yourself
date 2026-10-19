@@ -47,47 +47,57 @@ export default function Page({ params }: { params: { slug: string } }) {
     if (!user?.id) { router.replace('/login'); return }
     if (!company) { setLoading(false); return }
     let cancelled = false
+    setLoading(true)
+
     companyApi.result(user.id, company.slug).then((res) => {
       if (cancelled) return
       if (!res.ok) {
-        // If we already have the cached result, keep displaying it rather than showing a blocking error
-        if (!result && !attempt) {
+        if (!result) {
           if (search?.get('just') === '1' && retryCount < 3) {
             setTimeout(() => { if (!cancelled) setRetryCount((c) => c + 1) }, 2000)
             return
           }
-          setError(res.status === 401 ? 'Your session has expired — please sign in again.' : (res.data?.error || 'Could not load your result.'))
+          setError(res.status === 401 ? 'Your session has expired — please sign in again.' : (res.data?.error || 'Could not load your result. Please try again.'))
         }
         setLoading(false)
         return
       }
       if (res.data.state === 'completed' && res.data.attempt) {
         setAttempt(res.data.attempt)
-        setResult(res.data.result || null)
-        saveCompanyResultCache(company.slug, res.data.attempt, res.data.result || null)
-        setError('')
+        if (res.data.result) {
+          setResult(res.data.result)
+          saveCompanyResultCache(company.slug, res.data.attempt, res.data.result)
+          setError('')
+        } else if (!result) {
+          setError('Your assessment was completed, but detailed scoring is still being finalized. Please check again in a moment.')
+        }
         setLoading(false)
         return
       }
-      if (res.data.state === 'in_progress' || res.data.state === 'none') {
-        if (!result && !attempt) {
-          if (search?.get('just') === '1' && retryCount < 4) {
-            setTimeout(() => { if (!cancelled) setRetryCount((c) => c + 1) }, 2000)
-            return
-          }
-          setError(
-            res.data.state === 'in_progress'
-              ? 'Your assessment is currently in progress.'
-              : 'No completed attempt was found for this assessment.',
-          )
+      if (res.data.state === 'in_progress') {
+        if (!result) {
+          setError('Your assessment is currently in progress.')
+        }
+        setLoading(false)
+        return
+      }
+      if (res.data.state === 'none') {
+        if (!result) {
+          setError('No attempt was found for this company assessment.')
         }
         setLoading(false)
         return
       }
       setLoading(false)
+    }).catch((err) => {
+      if (cancelled) return
+      if (!result) {
+        setError(err?.message || 'Could not load your result. Please try again.')
+      }
+      setLoading(false)
     })
     return () => { cancelled = true }
-  }, [hydrated, user?.id, company, router, retryCount, search, result, attempt])
+  }, [hydrated, user?.id, company, router, retryCount, search])
 
   // Areas with at least two questions (or one written/coding task) give a
   // meaningful signal; single 1-mark MCQs are too noisy to call a strength.
@@ -117,12 +127,25 @@ export default function Page({ params }: { params: { slug: string } }) {
             <span className="text-sm font-bold text-slate-700">Loading your result…</span>
           </div>
         ) : error || !result || !attempt ? (
-          <div className="mt-6 glass-card text-center !p-8">
-            <p className="text-sm font-semibold text-slate-700">{error || 'No result is available yet.'}</p>
+          <div className="mt-6 glass-card text-center !p-8 animate-fade-up">
+            <div className="text-3xl mb-3">
+              {error.toLowerCase().includes('sign in') || error.toLowerCase().includes('session') ? '🔒' : error.toLowerCase().includes('in progress') ? '⏱️' : '📋'}
+            </div>
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{error || 'No result is available yet.'}</p>
             <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-              <button onClick={() => { setLoading(true); setError(''); setRetryCount((c) => c + 1) }} className="btn-primary !py-2 !px-4 !text-xs">
-                🔄 Check again
-              </button>
+              {error.toLowerCase().includes('sign in') || error.toLowerCase().includes('session') ? (
+                <Link href="/login" className="btn-primary !py-2 !px-4 !text-xs">
+                  Sign in again →
+                </Link>
+              ) : error.toLowerCase().includes('in progress') ? (
+                <Link href={`/company-assessments/${company.slug}/test`} className="btn-primary !py-2 !px-4 !text-xs">
+                  Resume assessment →
+                </Link>
+              ) : (
+                <button onClick={() => { setLoading(true); setError(''); setRetryCount((c) => c + 1) }} className="btn-primary !py-2 !px-4 !text-xs">
+                  🔄 Check again
+                </button>
+              )}
               <Link href={`/company-assessments/${company.slug}`} className="btn-secondary !py-2 !px-4 !text-xs">
                 Assessment details
               </Link>

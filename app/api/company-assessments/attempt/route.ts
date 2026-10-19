@@ -12,6 +12,7 @@ import { getCompany } from '@/lib/company/catalog'
 import {
   SUBMIT_GRACE_MS, clientView, finalizeExpired, isFinal, isPastDeadline, loadAttempt, toSummary,
 } from '@/lib/company/attempts'
+import { toPublicResult } from '@/lib/company/scoring'
 import { jsonError, limited, ok } from '@/lib/company/http'
 
 export async function GET(req: Request) {
@@ -30,7 +31,13 @@ export async function GET(req: Request) {
     if (!isFinal(attempt) && isPastDeadline(attempt, new Date(), SUBMIT_GRACE_MS)) {
       attempt = await finalizeExpired(attempt, { sb })
     }
-    if (isFinal(attempt)) return ok({ state: 'completed', attempt: toSummary(attempt) })
+    if (isFinal(attempt)) {
+      return ok({
+        state: 'completed',
+        attempt: toSummary(attempt),
+        result: attempt.result ? toPublicResult(attempt.result) : null,
+      })
+    }
     return ok({ state: 'in_progress', ...clientView(attempt, { sb }) })
   } catch (e: any) {
     return jsonError(ctx.supabase ? 503 : 500, ctx.supabase ? 'Assessment data is temporarily unavailable; no local fallback was used.' : 'Could not load the assessment', { detail: String(e?.message || e) })

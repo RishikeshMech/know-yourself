@@ -28,6 +28,30 @@ export async function GET(req: Request) {
       attempt = await finalizeExpired(attempt, { sb })
     }
     if (!isFinal(attempt)) return ok({ state: 'in_progress', attempt: toSummary(attempt) })
+
+    if (isFinal(attempt) && !attempt.result) {
+      try {
+        const { loadBank } = await import('@/lib/company/bank')
+        const { scoreAttempt } = await import('@/lib/company/scoring')
+        const { gradeWritten } = await import('@/lib/company/grading')
+        const { runCodingTests } = await import('@/lib/company/codeRunner')
+        const bank = loadBank()
+        const scored = await scoreAttempt(attempt.paper, attempt.answers || {}, bank, {
+          gradeWritten: (q, a) => gradeWritten(q, a),
+          runCode: async (q, code, lang) => runCodingTests(q, code, lang),
+          concurrency: 4,
+        })
+        attempt.result = scored
+        attempt.score = scored.score
+        if (sb) {
+          const { persistCompanyAttempt } = await import('@/lib/persist')
+          await persistCompanyAttempt(sb, attempt)
+        }
+      } catch (scoreErr) {
+        console.warn('[company-assessments] on-the-fly scoring failed:', scoreErr)
+      }
+    }
+
     return ok({
       state: 'completed',
       attempt: { ...toSummary(attempt), proctoring: { strikes: attempt.proctoring?.strikes || 0, camera: attempt.proctoring?.camera ?? null }, submit_reason: attempt.submit_reason || null },

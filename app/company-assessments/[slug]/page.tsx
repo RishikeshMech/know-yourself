@@ -71,7 +71,7 @@ export default function Page({ params }: { params: { slug: string } }) {
       if (res.data.state === 'completed') {
         if (res.data.attempt) {
           setCompletedAttempt(res.data.attempt)
-          saveCompanyResultCache(company.slug, res.data.attempt, (res.data as any).result || null)
+          saveCompanyResultCache(company.slug, res.data.attempt, res.data.result || null)
         }
         setState('completed')
         return
@@ -114,7 +114,7 @@ export default function Page({ params }: { params: { slug: string } }) {
     }
     if (res.status === 409) {
       if (res.data?.attempt) {
-        saveCompanyResultCache(company.slug, res.data.attempt, (res.data as any).result || null)
+        saveCompanyResultCache(company.slug, res.data.attempt, res.data.result || null)
       }
       router.replace(`/company-assessments/${company.slug}/result`)
       return

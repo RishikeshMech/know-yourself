@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic'
 import { requireStudentApi } from '@/lib/studentApi'
 import { getCompany } from '@/lib/company/catalog'
 import { clientView, startAttempt, toSummary } from '@/lib/company/attempts'
+import { toPublicResult } from '@/lib/company/scoring'
 import { jsonError, limited, ok, readJson } from '@/lib/company/http'
 import { NextResponse } from 'next/server'
 
@@ -25,7 +26,12 @@ export async function POST(req: Request) {
     const res = await startAttempt(studentId, company.slug, { sb })
     if (res.outcome === 'completed') {
       return NextResponse.json(
-        { outcome: 'completed', error: 'You have already taken this assessment — only one attempt is allowed.', attempt: toSummary(res.attempt) },
+        {
+          outcome: 'completed',
+          error: 'You have already taken this assessment — only one attempt is allowed.',
+          attempt: toSummary(res.attempt),
+          result: res.attempt.result ? toPublicResult(res.attempt.result) : null,
+        },
         { status: 409, headers: { 'Cache-Control': 'no-store' } },
       )
     }
