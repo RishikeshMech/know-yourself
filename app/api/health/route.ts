@@ -46,6 +46,8 @@ export async function GET() {
       heap_total_mb: Math.round(mem.heapTotal / 1048576),
     },
     store: { ok: storeOk, error: storeError },
+    supabase_url: (process.env.NEXT_PUBLIC_SUPABASE_URL || 'FALLBACK'),
+    service_role_configured: !!(process.env.SUPABASE_SERVICE_ROLE_KEY),
   }
 
   return NextResponse.json(body, {
