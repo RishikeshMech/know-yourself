@@ -37,7 +37,7 @@ export async function POST(req: Request) {
       try {
         const auth = await supabaseSignUp(sb, { email, password, full_name: fullName, role })
         await persistProfile(sb, { id: auth.user.id, email, full_name: fullName })
-        return NextResponse.json({
+        const res = NextResponse.json({
           user: {
             id: auth.user.id,
             email: auth.user.email,
@@ -50,6 +50,22 @@ export async function POST(req: Request) {
           supabase: true,
           message: 'Account created successfully.',
         }, { status: 201 })
+        if (auth.access_token) {
+          const isProd = process.env.NODE_ENV === 'production'
+          res.cookies.set('sb-access-token', auth.access_token, {
+            path: '/',
+            maxAge: 60 * 60 * 24 * 7,
+            sameSite: 'lax',
+            secure: isProd,
+          })
+          res.cookies.set('calibiai_token', auth.access_token, {
+            path: '/',
+            maxAge: 60 * 60 * 24 * 7,
+            sameSite: 'lax',
+            secure: isProd,
+          })
+        }
+        return res
       } catch (e: any) {
         return NextResponse.json({ error: e?.message || 'Sign up failed.' }, { status: 400 })
       }

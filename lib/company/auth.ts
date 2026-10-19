@@ -13,6 +13,7 @@
  * student id is used, consistent with the rest of the demo API.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { extractAuthToken } from '../cookieAuth.ts'
 
 export type Identity = { ok: true; studentId: string } | { ok: false; status: number; error: string }
 
@@ -42,8 +43,7 @@ export async function resolveStudent(
   if (!sb) {
     return claimed ? { ok: true, studentId: claimed } : { ok: false, status: 400, error: 'Missing student_id' }
   }
-  const header = req.headers.get('authorization') || ''
-  const token = header.replace(/^Bearer\s+/i, '').trim()
+  const token = extractAuthToken(req)
   if (!token) return { ok: false, status: 401, error: 'Your session has expired — please sign in again.' }
 
   const now = Date.now()

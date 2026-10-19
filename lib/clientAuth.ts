@@ -1,6 +1,7 @@
 'use client'
 
 import { getSupabase } from './supabase.ts'
+import { syncClientAuthCookie } from './cookieAuth.ts'
 
 /** Attach the current Supabase access token to same-origin API requests. */
 export async function supabaseAuthHeaders(input?: HeadersInit): Promise<Headers> {
@@ -35,7 +36,13 @@ export async function supabaseAuthHeaders(input?: HeadersInit): Promise<Headers>
       }
     }
 
-    if (token) headers.set('Authorization', `Bearer ${token}`)
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`)
+      headers.set('x-access-token', token)
+      syncClientAuthCookie(token)
+    } else {
+      syncClientAuthCookie(null)
+    }
   } catch {
     // The API will reject a Supabase-mode request without a valid token. Local
     // demo mode intentionally has no Supabase session.
@@ -60,8 +67,11 @@ export async function authenticatedFetch(input: RequestInfo | URL, init: Request
       if (supabase) {
         const { data: refreshData, error: refreshErr } = await supabase.auth.refreshSession()
         if (!refreshErr && refreshData?.session?.access_token) {
+          const newToken = refreshData.session.access_token
           const retryHeaders = new Headers(init.headers)
-          retryHeaders.set('Authorization', `Bearer ${refreshData.session.access_token}`)
+          retryHeaders.set('Authorization', `Bearer ${newToken}`)
+          retryHeaders.set('x-access-token', newToken)
+          syncClientAuthCookie(newToken)
           if (typeof window !== 'undefined' && !retryHeaders.has('x-student-id')) {
             const rawUser = localStorage.getItem('calibiai_user')
             const studentId = rawUser ? JSON.parse(rawUser)?.id : null

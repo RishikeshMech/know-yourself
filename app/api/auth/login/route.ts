@@ -38,7 +38,7 @@ export async function POST(req: Request) {
         const auth = await supabaseSignIn(sb, { email, password })
         const hasAssessment = await hasAssessmentResult(sb, auth.user.id)
         const profile = await fetchProfile(sb, auth.user.id)
-        return NextResponse.json({
+        const res = NextResponse.json({
           access_token: auth.access_token,
           refresh_token: auth.refresh_token,
           expires_in: 900,
@@ -58,6 +58,22 @@ export async function POST(req: Request) {
           has_onboarding: isProfileComplete(profile),
           supabase: true,
         })
+        if (auth.access_token) {
+          const isProd = process.env.NODE_ENV === 'production'
+          res.cookies.set('sb-access-token', auth.access_token, {
+            path: '/',
+            maxAge: 60 * 60 * 24 * 7,
+            sameSite: 'lax',
+            secure: isProd,
+          })
+          res.cookies.set('calibiai_token', auth.access_token, {
+            path: '/',
+            maxAge: 60 * 60 * 24 * 7,
+            sameSite: 'lax',
+            secure: isProd,
+          })
+        }
+        return res
       } catch (e: any) {
         return NextResponse.json({ error: e?.message || 'Invalid credentials.' }, { status: 401 })
       }

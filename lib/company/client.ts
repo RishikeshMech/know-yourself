@@ -30,6 +30,7 @@ async function call<T>(method: 'GET' | 'POST', path: string, body?: unknown, opt
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
       cache: 'no-store',
+      credentials: 'same-origin',
       keepalive: opts.keepalive,
       signal: ctrl.signal,
     })
@@ -41,12 +42,19 @@ async function call<T>(method: 'GET' | 'POST', path: string, body?: unknown, opt
         if (sb) {
           const { data: refreshData, error: refreshErr } = await sb.auth.refreshSession()
           if (!refreshErr && refreshData?.session?.access_token) {
-            headers.set('Authorization', `Bearer ${refreshData.session.access_token}`)
+            const newToken = refreshData.session.access_token
+            headers.set('Authorization', `Bearer ${newToken}`)
+            headers.set('x-access-token', newToken)
+            try {
+              const { syncClientAuthCookie } = await import('../cookieAuth.ts')
+              syncClientAuthCookie(newToken)
+            } catch {}
             res = await fetch(path, {
               method,
               headers,
               body: body === undefined ? undefined : JSON.stringify(body),
               cache: 'no-store',
+              credentials: 'same-origin',
               keepalive: opts.keepalive,
               signal: ctrl.signal,
             })
