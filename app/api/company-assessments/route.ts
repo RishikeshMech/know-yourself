@@ -17,8 +17,8 @@ export async function GET(req: Request) {
   const sb = ctx.supabase ? ctx.db : null
   const studentId = ctx.studentId
   try {
-    const attempts = await listSummaries(studentId, { sb })
-    return ok({ attempts, server_now: new Date().toISOString() })
+    const check = sb ? await sb.from('company_assessment_attempts').select('id, student_id, company_slug').limit(5) : null
+    return ok({ attempts, server_now: new Date().toISOString(), _check: { studentId, hasSb: !!sb, checkError: check?.error?.message || null, checkCount: check?.data?.length ?? null, sampleStudent: check?.data?.[0]?.student_id ?? null } })
   } catch (e: any) {
     return jsonError(ctx.supabase ? 503 : 500, ctx.supabase ? 'Company assessment data is temporarily unavailable; no local fallback was used.' : 'Could not load company assessments', { detail: String(e?.message || e) })
   }
