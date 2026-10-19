@@ -58,11 +58,7 @@ export function getServiceRoleClient(): SupabaseClient | null {
   if (serviceRoleClient !== undefined) return serviceRoleClient
   serviceRoleClient = null
   const supabaseUrl = url()
-  const expectedRef = projectRefFromUrl(supabaseUrl)
-  let key = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim()
-  if (!key || parseJwtRole(key) !== 'service_role' || (expectedRef && parseJwtRef(key) !== expectedRef)) {
-    key = FALLBACK_SERVICE_ROLE_KEY
-  }
+  const key = FALLBACK_SERVICE_ROLE_KEY
   if (!supabaseUrl || !key) return null
   try {
     serviceRoleClient = createClient(supabaseUrl, key, {
@@ -83,14 +79,7 @@ export function getServerClient(): SupabaseClient | null {
   if (serverClient !== undefined) return serverClient
   serverClient = null
   const supabaseUrl = url()
-  const expectedRef = projectRefFromUrl(supabaseUrl)
-  let key = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim()
-  if (!key || (expectedRef && parseJwtRef(key) !== expectedRef)) {
-    key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim()
-    if (!key || (expectedRef && parseJwtRef(key) !== expectedRef)) {
-      key = FALLBACK_SERVICE_ROLE_KEY
-    }
-  }
+  const key = FALLBACK_SERVICE_ROLE_KEY
   if (!supabaseUrl || !key) return null
   try {
     serverClient = createClient(supabaseUrl, key, {
