@@ -7,12 +7,12 @@
  * basis of the one-attempt-per-company rule. In local demo mode there is no
  * token and the server falls back to the student id.
  */
-import { getSupabase } from '../supabase'
-import { supabaseAuthHeaders } from '../clientAuth'
-import type { AttemptSummary, ClientPaper } from './types'
-import type { PublicResult } from './scoring'
-import type { TestRunResult } from '../runTests'
-import type { OnDemandReview } from './aiReview'
+import { getSupabase } from '../supabase.ts'
+import { supabaseAuthHeaders } from '../clientAuth.ts'
+import type { AttemptSummary, ClientPaper } from './types.ts'
+import type { PublicResult } from './scoring.ts'
+import type { TestRunResult } from '../runTests.ts'
+import type { OnDemandReview } from './aiReview.ts'
 
 export interface ApiResponse<T> {
   ok: boolean
@@ -101,4 +101,77 @@ export const companyApi = {
   result: (studentId: string, company: string) =>
     call<{ state: 'none' | 'in_progress' | 'completed'; attempt?: AttemptSummary & { proctoring?: { strikes: number; camera: boolean | null }; submit_reason?: string | null }; result?: PublicResult | null }>(
       'GET', `/api/company-assessments/result?${q({ student_id: studentId, company })}`),
+}
+
+export interface CachedCompanyResult {
+  attempt: AttemptSummary & { proctoring?: { strikes: number; camera: boolean | null }; submit_reason?: string | null }
+  result: PublicResult | null
+  savedAt: number
+}
+
+export function saveCompanyResultCache(
+  slug: string,
+  attempt: AttemptSummary & { proctoring?: { strikes: number; camera: boolean | null }; submit_reason?: string | null },
+  result: PublicResult | null,
+): void {
+  if (typeof window === 'undefined') return
+  try {
+    const payload: CachedCompanyResult = { attempt, result, savedAt: Date.now() }
+    const str = JSON.stringify(payload)
+    sessionStorage.setItem(`calibiai_company_result_${slug}`, str)
+    localStorage.setItem(`calibiai_company_result_${slug}`, str)
+
+    // Also update the list in calibiai_company_attempts
+    const list = getCompanyAttemptsCache()
+    const idx = list.findIndex((a) => a.company === slug)
+    if (idx >= 0) list[idx] = attempt
+    else list.push(attempt)
+    saveCompanyAttemptsCache(list)
+
+    window.dispatchEvent(new CustomEvent('calibiai_company_attempt_updated', { detail: attempt }))
+  } catch {
+    // Ignore storage quota errors
+  }
+}
+
+export function getCompanyResultCache(slug: string): CachedCompanyResult | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const fromSession = sessionStorage.getItem(`calibiai_company_result_${slug}`)
+    if (fromSession) {
+      const parsed = JSON.parse(fromSession)
+      if (parsed?.attempt) return parsed
+    }
+    const fromLocal = localStorage.getItem(`calibiai_company_result_${slug}`)
+    if (fromLocal) {
+      const parsed = JSON.parse(fromLocal)
+      if (parsed?.attempt) return parsed
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return null
+}
+
+export function getCompanyAttemptsCache(): AttemptSummary[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = localStorage.getItem('calibiai_company_attempts')
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) return parsed
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return []
+}
+
+export function saveCompanyAttemptsCache(attempts: AttemptSummary[]): void {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem('calibiai_company_attempts', JSON.stringify(attempts))
+  } catch {
+    // Ignore storage quota errors
+  }
 }

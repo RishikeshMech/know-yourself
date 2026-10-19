@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { Search, X } from 'lucide-react'
 import { useStore } from '@/lib/store'
 import { COMPANIES, COMPANY_ORDER, COMPANY_TAGS, PRIORITY_LABEL, TAG_BY_ID, byPlanOrder, companyMockFacts } from '@/lib/company/catalog'
-import { companyApi } from '@/lib/company/client'
+import { companyApi, getCompanyAttemptsCache, saveCompanyAttemptsCache } from '@/lib/company/client'
 import type { AttemptSummary, Company, CompanyTagId, Priority } from '@/lib/company/types'
 import { CompanyBadge } from './CompanyBadge'
 
@@ -97,8 +97,11 @@ export function CompanyCatalog({ heading = true, onAttempts }: {
   const [groupBy, setGroupBy] = useState<GroupBy>('tag')
   const [selectedPriorities, setSelectedPriorities] = useState<Priority[]>([1, 2, 3])
   const [query, setQuery] = useState('')
-  const [attempts, setAttempts] = useState<Record<string, AttemptSummary>>({})
-  const [loaded, setLoaded] = useState(false)
+  const [attempts, setAttempts] = useState<Record<string, AttemptSummary>>(() => {
+    const cached = getCompanyAttemptsCache()
+    return Object.fromEntries(cached.map((a) => [a.company, a]))
+  })
+  const [loaded, setLoaded] = useState(() => getCompanyAttemptsCache().length > 0)
   const lastFetch = useRef(0)
   const onAttemptsRef = useRef(onAttempts)
   onAttemptsRef.current = onAttempts
@@ -113,11 +116,12 @@ export function CompanyCatalog({ heading = true, onAttempts }: {
 
   const refresh = useCallback(async (force = false) => {
     if (!user?.id) return
-    if (!force && Date.now() - lastFetch.current < 30_000) return
+    if (!force && Date.now() - lastFetch.current < 20_000) return
     lastFetch.current = Date.now()
     const res = await companyApi.list(user.id)
     if (res.ok && Array.isArray(res.data.attempts)) {
       setAttempts(Object.fromEntries(res.data.attempts.map((a) => [a.company, a])))
+      saveCompanyAttemptsCache(res.data.attempts)
       onAttemptsRef.current?.(res.data.attempts)
     } else {
       onAttemptsRef.current?.(null)
@@ -131,6 +135,16 @@ export function CompanyCatalog({ heading = true, onAttempts }: {
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
   }, [refresh])
+
+  useEffect(() => {
+    const onAttemptUpdate = (e: any) => {
+      const updated = e.detail as AttemptSummary
+      if (!updated?.company) return
+      setAttempts((prev) => ({ ...prev, [updated.company]: updated }))
+    }
+    window.addEventListener('calibiai_company_attempt_updated', onAttemptUpdate)
+    return () => window.removeEventListener('calibiai_company_attempt_updated', onAttemptUpdate)
+  }, [])
 
   // Search matches every company by name only
   const matching = useMemo(() => {

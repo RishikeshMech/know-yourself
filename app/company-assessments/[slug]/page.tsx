@@ -9,11 +9,11 @@ import { isProfileComplete } from '@/lib/validate'
 import { PRIORITY_LABEL, TAG_BY_ID, candidateStepText, companyMockFacts, getCompany } from '@/lib/company/catalog'
 import { getBlueprint } from '@/lib/company/blueprints'
 import { SECTION_BY_ID } from '@/lib/company/sections'
-import { companyApi } from '@/lib/company/client'
+import { companyApi, getCompanyResultCache } from '@/lib/company/client'
 import { CompanyBadge } from '@/components/company/CompanyBadge'
 import { MAX_FOCUS_STRIKES } from '@/lib/proctoring'
 import { authenticatedFetch } from '@/lib/clientAuth'
-import type { SectionId } from '@/lib/company/types'
+import type { AttemptSummary, SectionId } from '@/lib/company/types'
 
 function Spinner({ label }: { label: string }) {
   return (
@@ -45,7 +45,11 @@ export default function Page({ params }: { params: { slug: string } }) {
   const company = getCompany(params.slug)
   const blueprint = company ? getBlueprint(company.blueprint) : undefined
   const facts = company ? companyMockFacts(company) : null
-  const [state, setState] = useState<'checking' | 'none' | 'in_progress' | 'error'>('checking')
+  const cachedResult = useMemo(() => company ? getCompanyResultCache(company.slug) : null, [company])
+  const [state, setState] = useState<'checking' | 'none' | 'in_progress' | 'completed' | 'error'>(
+    cachedResult?.attempt ? 'completed' : 'checking',
+  )
+  const [completedAttempt, setCompletedAttempt] = useState<AttemptSummary | null>(cachedResult?.attempt || null)
   const [error, setError] = useState('')
   const [consent, setConsent] = useState(false)
   const [starting, setStarting] = useState(false)
@@ -58,15 +62,21 @@ export default function Page({ params }: { params: { slug: string } }) {
     companyApi.attempt(user.id, company.slug).then((res) => {
       if (cancelled) return
       if (!res.ok) {
-        setError(res.status === 401 ? 'Your session has expired — please sign in again.' : (res.data?.error || 'Could not check your attempt status.'))
-        setState('error')
+        if (!completedAttempt) {
+          setError(res.status === 401 ? 'Your session has expired — please sign in again.' : (res.data?.error || 'Could not check your attempt status.'))
+          setState('error')
+        }
         return
       }
-      if (res.data.state === 'completed') { router.replace(`/company-assessments/${company.slug}/result`); return }
+      if (res.data.state === 'completed') {
+        if (res.data.attempt) setCompletedAttempt(res.data.attempt)
+        setState('completed')
+        return
+      }
       setState(res.data.state === 'in_progress' ? 'in_progress' : 'none')
     })
     return () => { cancelled = true }
-  }, [hydrated, user?.id, company, router])
+  }, [hydrated, user?.id, company, router, completedAttempt])
 
   const sections = useMemo(() => {
     const set = new Set<SectionId>()
@@ -208,7 +218,25 @@ export default function Page({ params }: { params: { slug: string } }) {
                     Complete your profile before starting a company assessment. <Link href="/onboarding" className="font-bold underline">Complete profile →</Link>
                   </div>
                 )}
-                {state === 'in_progress' ? (
+                {state === 'completed' ? (
+                  <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-bold text-emerald-800">Assessment Completed</span>
+                      {completedAttempt?.score != null && (
+                        <span className="rounded-full bg-emerald-600 px-2.5 py-0.5 text-xs font-black text-white">
+                          {Math.round(Number(completedAttempt.score))}/100
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs text-emerald-700">You have completed your one attempt for {company.name}.</p>
+                    <Link
+                      href={`/company-assessments/${company.slug}/result`}
+                      className="btn-primary mt-3 flex w-full items-center justify-center gap-1.5 !py-3 text-center text-xs font-bold"
+                    >
+                      View Assessment Report →
+                    </Link>
+                  </div>
+                ) : state === 'in_progress' ? (
                   <button onClick={() => router.push(`/company-assessments/${company.slug}/test`)} className="btn-primary mt-5 w-full !py-3.5">Resume your attempt →</button>
                 ) : (
                   <>

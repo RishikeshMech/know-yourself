@@ -7,7 +7,7 @@ import { Logo } from '@/components/Logo'
 import { AssessmentReview } from '@/components/AssessmentReview'
 import { getCompany } from '@/lib/company/catalog'
 import { SECTION_BY_ID } from '@/lib/company/sections'
-import { companyApi, type AttemptView } from '@/lib/company/client'
+import { companyApi, saveCompanyResultCache, type AttemptView } from '@/lib/company/client'
 import { buildCompanyReview, itemAnswered } from '@/lib/company/review'
 import { MAX_FOCUS_STRIKES, restoredStrikes, shouldTerminateOnRestore } from '@/lib/proctoring'
 import type { ClientItem } from '@/lib/company/types'
@@ -101,6 +101,9 @@ export function CompanyAssessmentRunner({ slug }: { slug: string }) {
     proctorRef.current?.releaseMedia()
     const res = await companyApi.submit(user.id, slug, answersRef.current, proctorRef.current?.report(), auto, reason)
     if (res.ok || res.status === 409) {
+      if (res.data?.attempt) {
+        saveCompanyResultCache(slug, res.data.attempt, res.data.result || null)
+      }
       setSubmitted(true)
       setSubmitting(false)
       try { if (document.fullscreenElement) await document.exitFullscreen() } catch { /* ignore */ }

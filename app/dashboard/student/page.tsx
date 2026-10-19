@@ -23,14 +23,21 @@ import { ResumeSkillRadar } from '@/components/ResumeSkillRadar'
 import { platformAssessmentSkills, rollupAssessmentSkills } from '@/lib/assessmentSkills'
 import type { AttemptSummary } from '@/lib/company/types'
 import { authenticatedFetch } from '@/lib/clientAuth'
+import { companyApi, getCompanyAttemptsCache, saveCompanyAttemptsCache } from '@/lib/company/client'
 
 function Inner(){
   const router = useRouter()
   const { user, profile, setProfile, resume, setResume, scores, setScores, scores2, setScores2, hydrated, setUser, reconcileForUser } = useStore()
   const [showReport, setShowReport] = useState(false)
-  const [companyAttempts, setCompanyAttempts] = useState<AttemptSummary[]>([])
-  const [companyLoaded, setCompanyLoaded] = useState(false)
-  const onCompanyAttempts = useCallback((list: AttemptSummary[] | null) => { if (list) setCompanyAttempts(list); setCompanyLoaded(true) }, [])
+  const [companyAttempts, setCompanyAttempts] = useState<AttemptSummary[]>(() => getCompanyAttemptsCache())
+  const [companyLoaded, setCompanyLoaded] = useState(() => getCompanyAttemptsCache().length > 0)
+  const onCompanyAttempts = useCallback((list: AttemptSummary[] | null) => {
+    if (list) {
+      setCompanyAttempts(list)
+      saveCompanyAttemptsCache(list)
+    }
+    setCompanyLoaded(true)
+  }, [])
   // Which assessment the report pop-up is showing (1 = CalibiAI, 2 = Capgemini mock).
   const [reportFor, setReportFor] = useState<1 | 2>(1)
   // True only on the landing right after the assessment was submitted.
@@ -137,11 +144,36 @@ function Inner(){
         if (!cached2) setScores2(null)
       }
     }).catch(()=>{})
+    companyApi.list(user.id).then((res) => {
+      if (res.ok && Array.isArray(res.data.attempts)) {
+        setCompanyAttempts(res.data.attempts)
+        saveCompanyAttemptsCache(res.data.attempts)
+        setCompanyLoaded(true)
+      }
+    }).catch(()=>{})
   // The setters are intentionally omitted: they are context wrappers whose
   // identity changes when the store updates. Including them recreates `refresh`,
   // which re-runs the forced refresh effect and loops back into Supabase.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[user?.id, validated])
+
+  useEffect(()=>{
+    const onAttemptUpdate = (e: any) => {
+      const updated = e.detail as AttemptSummary
+      if (!updated?.company) return
+      setCompanyAttempts((prev) => {
+        const list = [...prev]
+        const idx = list.findIndex((a) => a.company === updated.company)
+        if (idx >= 0) list[idx] = updated
+        else list.push(updated)
+        saveCompanyAttemptsCache(list)
+        return list
+      })
+      setCompanyLoaded(true)
+    }
+    window.addEventListener('calibiai_company_attempt_updated', onAttemptUpdate)
+    return () => window.removeEventListener('calibiai_company_attempt_updated', onAttemptUpdate)
+  },[])
 
   useEffect(()=>{
     refresh(true)
