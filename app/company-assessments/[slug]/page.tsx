@@ -9,7 +9,7 @@ import { isProfileComplete } from '@/lib/validate'
 import { PRIORITY_LABEL, TAG_BY_ID, candidateStepText, companyMockFacts, getCompany } from '@/lib/company/catalog'
 import { getBlueprint } from '@/lib/company/blueprints'
 import { SECTION_BY_ID } from '@/lib/company/sections'
-import { companyApi, getCompanyResultCache } from '@/lib/company/client'
+import { companyApi, getCompanyResultCache, saveCompanyResultCache } from '@/lib/company/client'
 import { CompanyBadge } from '@/components/company/CompanyBadge'
 import { MAX_FOCUS_STRIKES } from '@/lib/proctoring'
 import { authenticatedFetch } from '@/lib/clientAuth'
@@ -69,7 +69,10 @@ export default function Page({ params }: { params: { slug: string } }) {
         return
       }
       if (res.data.state === 'completed') {
-        if (res.data.attempt) setCompletedAttempt(res.data.attempt)
+        if (res.data.attempt) {
+          setCompletedAttempt(res.data.attempt)
+          saveCompanyResultCache(company.slug, res.data.attempt, (res.data as any).result || null)
+        }
         setState('completed')
         return
       }
@@ -109,7 +112,13 @@ export default function Page({ params }: { params: { slug: string } }) {
       setStarting(false)
       return
     }
-    if (res.status === 409) { router.replace(`/company-assessments/${company.slug}/result`); return }
+    if (res.status === 409) {
+      if (res.data?.attempt) {
+        saveCompanyResultCache(company.slug, res.data.attempt, (res.data as any).result || null)
+      }
+      router.replace(`/company-assessments/${company.slug}/result`)
+      return
+    }
     if (!res.ok) { setError(res.data?.error || 'Could not start the assessment. Please retry.'); setStarting(false); return }
     try {
       if (typeof window !== 'undefined' && res.data) {

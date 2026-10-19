@@ -52,11 +52,16 @@ jobs:
             npm ci --include=dev
             npm run build
 
-            # 5) Restart: kill the old server, let MilesWeb's "persistent app"
-            #    supervisor respawn it with the new build.
-            #    (The [ ] trick stops these patterns matching this script itself.)
-            pkill -f "next-serve[r]" || true        # frees port 3000
-            pkill -f "next start -p 300[0]" || true # triggers respawn
-            sleep 5
-            CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 http://localhost:3000/ || true)
+            # 5) Restart: kill the old server, touch passenger restart, and let
+            #    MilesWeb's supervisor / passenger respawn with the new build.
+            mkdir -p tmp && touch tmp/restart.txt
+            fuser -k 3000/tcp 2>/dev/null || true
+            lsof -ti:3000 | xargs kill -9 2>/dev/null || true
+            pkill -9 -f "next-serve[r]" 2>/dev/null || true
+            pkill -9 -f "next start" 2>/dev/null || true
+            pkill -9 -f "node.*3000" 2>/dev/null || true
+            command -v pm2 >/dev/null && pm2 restart all 2>/dev/null || true
+            mkdir -p tmp && touch tmp/restart.txt
+            sleep 6
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 http://localhost:3000/ || true)
             echo "App HTTP status after restart: ${CODE:-000}"
