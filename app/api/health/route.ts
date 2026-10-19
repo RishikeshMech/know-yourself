@@ -1,6 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { NextResponse } from 'next/server'
+import { parseJwtRole } from '@/lib/supabaseServer'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -48,6 +49,7 @@ export async function GET() {
     store: { ok: storeOk, error: storeError },
     supabase_url: (process.env.NEXT_PUBLIC_SUPABASE_URL || 'FALLBACK'),
     service_role_configured: !!(process.env.SUPABASE_SERVICE_ROLE_KEY),
+    env_key_role: parseJwtRole(process.env.SUPABASE_SERVICE_ROLE_KEY || ''),
   }
 
   return NextResponse.json(body, {

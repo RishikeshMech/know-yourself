@@ -26,12 +26,24 @@ export function isSupabaseEnvironmentConfigured(): boolean {
   return true
 }
 
+export function parseJwtRole(key: string): string {
+  try {
+    const payload = JSON.parse(Buffer.from(key.split('.')[1] || '', 'base64url').toString('utf8'))
+    return payload?.role || 'unknown'
+  } catch {
+    return 'invalid'
+  }
+}
+
 /** Trusted server-side database client. Returns null unless service role is configured. */
 export function getServiceRoleClient(): SupabaseClient | null {
   if (serviceRoleClient !== undefined) return serviceRoleClient
   serviceRoleClient = null
   const supabaseUrl = url()
-  const key = (process.env.SUPABASE_SERVICE_ROLE_KEY || FALLBACK_SERVICE_ROLE_KEY).trim()
+  let key = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim()
+  if (!key || parseJwtRole(key) !== 'service_role') {
+    key = FALLBACK_SERVICE_ROLE_KEY
+  }
   if (!supabaseUrl || !key) return null
   try {
     serviceRoleClient = createClient(supabaseUrl, key, {
