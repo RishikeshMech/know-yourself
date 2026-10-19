@@ -149,11 +149,7 @@ export function Footer() {
                   Join Community <ExternalLink className="h-3 w-3" />
                 </a>
               </li>
-              <li>
-                <Link href="/admin/login" className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition text-xs">
-                  Admin Console
-                </Link>
-              </li>
+
             </ul>
           </div>
 

@@ -8,23 +8,11 @@
  * token and the server falls back to the student id.
  */
 import { getSupabase } from '../supabase'
+import { supabaseAuthHeaders } from '../clientAuth'
 import type { AttemptSummary, ClientPaper } from './types'
 import type { PublicResult } from './scoring'
 import type { TestRunResult } from '../runTests'
 import type { OnDemandReview } from './aiReview'
-
-async function authHeaders(): Promise<Record<string, string>> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  try {
-    const sb = getSupabase()
-    if (sb) {
-      const { data } = await sb.auth.getSession()
-      const token = data?.session?.access_token
-      if (token) headers.Authorization = `Bearer ${token}`
-    }
-  } catch { /* demo mode or transient — the server decides */ }
-  return headers
-}
 
 export interface ApiResponse<T> {
   ok: boolean
@@ -36,14 +24,39 @@ async function call<T>(method: 'GET' | 'POST', path: string, body?: unknown, opt
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 30_000)
   try {
-    const res = await fetch(path, {
+    const headers = await supabaseAuthHeaders({ 'Content-Type': 'application/json' })
+    let res = await fetch(path, {
       method,
-      headers: await authHeaders(),
+      headers,
       body: body === undefined ? undefined : JSON.stringify(body),
       cache: 'no-store',
       keepalive: opts.keepalive,
       signal: ctrl.signal,
     })
+
+    // If unauthorized (401), the access token may have expired. Refresh session and retry once.
+    if (res.status === 401) {
+      try {
+        const sb = getSupabase()
+        if (sb) {
+          const { data: refreshData, error: refreshErr } = await sb.auth.refreshSession()
+          if (!refreshErr && refreshData?.session?.access_token) {
+            headers.set('Authorization', `Bearer ${refreshData.session.access_token}`)
+            res = await fetch(path, {
+              method,
+              headers,
+              body: body === undefined ? undefined : JSON.stringify(body),
+              cache: 'no-store',
+              keepalive: opts.keepalive,
+              signal: ctrl.signal,
+            })
+          }
+        }
+      } catch {
+        // Refresh failed — keep original response
+      }
+    }
+
     let data: any = {}
     try { data = await res.json() } catch { data = {} }
     return { ok: res.ok, status: res.status, data }

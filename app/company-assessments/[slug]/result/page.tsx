@@ -47,7 +47,12 @@ export default function Page({ params }: { params: { slug: string } }) {
     let cancelled = false
     companyApi.result(user.id, company.slug).then((res) => {
       if (cancelled) return
-      if (!res.ok) { setError(res.data?.error || 'Could not load your result.'); setLoading(false); return }
+      if (!res.ok) {
+        if (res.status === 401) { router.replace('/login'); return }
+        setError(res.data?.error || 'Could not load your result.')
+        setLoading(false)
+        return
+      }
       if (res.data.state === 'none') { router.replace(`/company-assessments/${company.slug}`); return }
       if (res.data.state === 'in_progress') { router.replace(`/company-assessments/${company.slug}/test`); return }
       setAttempt(res.data.attempt || null)

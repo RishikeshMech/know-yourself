@@ -174,7 +174,11 @@ export function CompanyAssessmentRunner({ slug }: { slug: string }) {
       const res = await companyApi.attempt(user.id, company.slug)
       if (cancelled) return
       if (!res.ok) {
-        setLoadError(res.status === 401 ? 'Your session has expired — please sign in again.' : res.data?.error || 'Could not load your assessment.')
+        if (res.status === 401) {
+          router.replace('/login')
+          return
+        }
+        setLoadError(res.data?.error || 'Could not load your assessment.')
         setPhase('error')
         return
       }
@@ -448,12 +452,20 @@ export function CompanyAssessmentRunner({ slug }: { slug: string }) {
     )
   }
   if (phase === 'error' || !view || !round) {
+    const isAuthError = (loadError || '').toLowerCase().includes('session') || (loadError || '').toLowerCase().includes('sign in')
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
         <div className="glass-card max-w-md text-center !p-8">
           <div className="text-4xl">⚠️</div>
           <p className="mt-3 text-sm font-semibold text-slate-700">{loadError || 'Could not load your assessment.'}</p>
-          <button onClick={() => router.replace('/dashboard/student')} className="btn-primary mt-5">Back to dashboard</button>
+          <div className="mt-5 flex items-center justify-center gap-3">
+            {isAuthError ? (
+              <button onClick={() => router.replace('/login')} className="btn-primary">Sign in again →</button>
+            ) : (
+              <button onClick={() => window.location.reload()} className="btn-primary">Retry</button>
+            )}
+            <button onClick={() => router.replace('/dashboard/student')} className="btn-secondary !bg-slate-100 hover:!bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-sm font-semibold transition">Back to dashboard</button>
+          </div>
         </div>
       </div>
     )

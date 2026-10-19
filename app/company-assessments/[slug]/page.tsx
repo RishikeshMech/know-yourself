@@ -57,7 +57,12 @@ export default function Page({ params }: { params: { slug: string } }) {
     let cancelled = false
     companyApi.attempt(user.id, company.slug).then((res) => {
       if (cancelled) return
-      if (!res.ok) { setError(res.data?.error || 'Could not check your attempt status.'); setState('error'); return }
+      if (!res.ok) {
+        if (res.status === 401) { router.replace('/login'); return }
+        setError(res.data?.error || 'Could not check your attempt status.')
+        setState('error')
+        return
+      }
       if (res.data.state === 'completed') { router.replace(`/company-assessments/${company.slug}/result`); return }
       setState(res.data.state === 'in_progress' ? 'in_progress' : 'none')
     })
@@ -90,6 +95,7 @@ export default function Page({ params }: { params: { slug: string } }) {
     setStarting(true)
     setError('')
     const res = await companyApi.start(user.id, company.slug)
+    if (res.status === 401) { router.replace('/login'); return }
     if (res.status === 409) { router.replace(`/company-assessments/${company.slug}/result`); return }
     if (!res.ok) { setError(res.data?.error || 'Could not start the assessment. Please retry.'); setStarting(false); return }
     router.push(`/company-assessments/${company.slug}/test`)
