@@ -161,10 +161,37 @@ export function projectRefFromUrl(u: string): string {
   }
 }
 
+/**
+ * Supabase transport that is NEVER served from Next.js's Data Cache.
+ *
+ * `next build` replaces the global `fetch` with a caching one: in a production
+ * build every GET a server module makes is written to `.next/cache/fetch-cache`
+ * with `revalidate: 31536000` (a year) and replayed from disk afterwards. The
+ * route segment's `dynamic = 'force-dynamic'` does not cover these calls —
+ * supabase-js holds a module-scoped client, so its requests are not attributed
+ * to the handler's segment — and `.next/cache` survives both a rebuild and a
+ * restart, which is why redeploying never cleared it.
+ *
+ * Every server-side Supabase read was therefore answered from a frozen
+ * snapshot: PostgREST `GET company_assessment_attempts?...&company_slug=eq.X`
+ * replayed its pre-submission body, so a finished attempt came back as "no
+ * attempt". The candidate saw their score (scored in memory and returned by
+ * /submit), but the dashboard list, /result and /attempt all read the stale
+ * snapshot — no report, and the one-attempt guard let them start again.
+ * Student profiles and assessment 1/2 results went stale the same way, and a
+ * cached `/auth/v1/user` kept validating a token for a year.
+ *
+ * `cache: 'no-store'` opts every Supabase request out of that cache. It must
+ * stay on this client: a bare `fetch` here is silently cached for a year.
+ */
+const noStoreFetch: typeof fetch = (input, init) =>
+  fetch(input as any, { ...(init || {}), cache: 'no-store' })
+
 function makeClient(supabaseUrl: string, key: string): SupabaseClient | null {
   try {
     return createClient(supabaseUrl, key, {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+      global: { fetch: noStoreFetch },
     })
   } catch (e) {
     console.error('[supabase] client unavailable:', (e as Error)?.message || e)
