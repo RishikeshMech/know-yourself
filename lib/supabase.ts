@@ -25,28 +25,66 @@ function warnOnce(msg: string) {
   console.warn(`[supabase] ${msg} Falling back to local demo mode.`)
 }
 
+const env = (name: string): string => (process.env[name] || '').trim()
+
+/** Project ref of a Supabase URL (`https://<ref>.supabase.co` → `<ref>`). */
+function projectRef(u: string): string {
+  try {
+    return new URL(u).hostname.split('.')[0] || ''
+  } catch {
+    return ''
+  }
+}
+
+/** JWT `ref` claim — the project a Supabase API key was issued for. */
+function keyRef(key: string): string {
+  try {
+    return JSON.parse(Buffer.from(key.split('.')[1] || '', 'base64url').toString('utf8'))?.ref || ''
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * Resolve the browser API key that belongs to `supabaseUrl`.
+ *
+ * A Supabase API key only works for the project it was issued for, so the URL
+ * and the key must always come from the same project: when
+ * NEXT_PUBLIC_SUPABASE_URL points somewhere else than the built-in default,
+ * the built-in anon key is NOT substituted (that pairing makes every request
+ * fail with 401 Invalid API key). Without a matching key the app runs in local
+ * demo mode, which is loud in the console rather than silently broken.
+ */
+function anonKeyFor(supabaseUrl: string): string {
+  const fromEnv = env('NEXT_PUBLIC_SUPABASE_ANON_KEY')
+  if (env('NEXT_PUBLIC_SUPABASE_URL')) return fromEnv
+  if (!fromEnv) return FALLBACK_SUPABASE_ANON_KEY
+  const ref = projectRef(supabaseUrl)
+  return !ref || !keyRef(fromEnv) || keyRef(fromEnv) === ref ? fromEnv : FALLBACK_SUPABASE_ANON_KEY
+}
+
 export function isSupabaseConfigured(): boolean {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || FALLBACK_SUPABASE_URL
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || FALLBACK_SUPABASE_ANON_KEY
-  return !!(url && key && /^https?:\/\//i.test(url.trim()))
+  const supabaseUrl = (env('NEXT_PUBLIC_SUPABASE_URL') || FALLBACK_SUPABASE_URL).trim()
+  const key = anonKeyFor(supabaseUrl).trim()
+  return !!(supabaseUrl && key && /^https?:\/\//i.test(supabaseUrl))
 }
 
 export function getSupabase(): SupabaseClient | null {
   if (resolved) return client
   resolved = true
-  const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || FALLBACK_SUPABASE_URL)?.trim()
-  const key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || FALLBACK_SUPABASE_ANON_KEY)?.trim()
-  if (!url || !key) {
+  const supabaseUrl = (env('NEXT_PUBLIC_SUPABASE_URL') || FALLBACK_SUPABASE_URL)?.trim()
+  const key = anonKeyFor(supabaseUrl)?.trim()
+  if (!supabaseUrl || !key) {
     client = null
     return null
   }
-  if (!/^https?:\/\//i.test(url)) {
-    warnOnce(`NEXT_PUBLIC_SUPABASE_URL ("${url}") must be a valid http(s) URL.`)
+  if (!/^https?:\/\//i.test(supabaseUrl)) {
+    warnOnce(`NEXT_PUBLIC_SUPABASE_URL ("${supabaseUrl}") must be a valid http(s) URL.`)
     client = null
     return null
   }
   try {
-    client = createClient(url, key, {
+    client = createClient(supabaseUrl, key, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,

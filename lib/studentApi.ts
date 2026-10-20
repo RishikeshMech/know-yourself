@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { resolveStudent } from './company/auth.ts'
-import { getServerClient, getServiceRoleClient, isSupabaseEnvironmentConfigured } from './supabaseServer.ts'
+import {
+  getServerClient, getServiceRoleClient, isSupabaseEnvironmentConfigured, supabaseCredentialReport,
+} from './supabaseServer.ts'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export type StudentApiContext =
@@ -17,10 +19,22 @@ export type StudentApiContext =
 export async function requireStudentApi(req: Request, claimedId: unknown): Promise<StudentApiContext> {
   const authClient = getServiceRoleClient() || getServerClient()
   if (!authClient && isSupabaseEnvironmentConfigured()) {
+    // Say exactly what is wrong. A URL without its own key used to fall back to
+    // a hard-coded key from another project, so every call was rejected with
+    // 401 and the candidate saw a misleading "session expired".
+    const creds = supabaseCredentialReport()
+    const detail = creds.key
+      ? `The configured SUPABASE_SERVICE_ROLE_KEY does not belong to ${creds.url} (key project "${creds.keyRef}", URL project "${creds.urlRef}").`
+      : `SUPABASE_SERVICE_ROLE_KEY is not set for ${creds.url}.`
     return {
       ok: false,
       response: NextResponse.json(
-        { error: 'Supabase is configured but its server connection is incomplete. Assessment data has not been accepted.' },
+        {
+          error:
+            'Supabase is configured but the server cannot reach it. Assessment data has not been accepted. ' +
+            detail +
+            ' Set NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and NEXT_PUBLIC_SUPABASE_ANON_KEY for the same project and restart.',
+        },
         { status: 503, headers: { 'Cache-Control': 'no-store', 'Retry-After': '30' } },
       ),
     }
@@ -46,10 +60,18 @@ export async function requireStudentApi(req: Request, claimedId: unknown): Promi
 
   const db = getServiceRoleClient()
   if (!db) {
+    const creds = supabaseCredentialReport()
     return {
       ok: false,
       response: NextResponse.json(
-        { error: 'Supabase storage is not ready. Please contact support; your test has not been accepted.' },
+        {
+          error:
+            'Supabase storage is not ready — your test has not been accepted. ' +
+            (creds.key
+              ? `The configured SUPABASE_SERVICE_ROLE_KEY does not belong to ${creds.url} (key project "${creds.keyRef}", URL project "${creds.urlRef}").`
+              : `SUPABASE_SERVICE_ROLE_KEY is not set for ${creds.url}.`) +
+            ' Set it for the same project as NEXT_PUBLIC_SUPABASE_URL and restart.',
+        },
         { status: 503, headers: { 'Cache-Control': 'no-store', 'Retry-After': '30' } },
       ),
     }

@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { NextResponse } from 'next/server'
-import { parseJwtRef, parseJwtRole } from '@/lib/supabaseServer'
+import { supabaseCredentialReport } from '@/lib/supabaseServer'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -19,6 +19,10 @@ export const dynamic = 'force-dynamic'
  *                             node when this is false.
  *   - `memory` / `uptime`     let ops spot a node that is about to OOM.
  *   - `pid` / `node`          help correlate to PM2 `id`.
+ *   - `supabase`              the EFFECTIVE server credentials: which project
+ *                             the server actually talks to, and whether the API
+ *                             key belongs to it. `key_matches_url: false` is the
+ *                             reason assessments would not open, save or score.
  */
 export async function GET() {
   let storeOk = true
@@ -33,6 +37,7 @@ export async function GET() {
   }
 
   const mem = process.memoryUsage()
+  const creds = supabaseCredentialReport()
   const body = {
     status: storeOk ? 'ok' : 'degraded',
     ready: storeOk,
@@ -47,10 +52,17 @@ export async function GET() {
       heap_total_mb: Math.round(mem.heapTotal / 1048576),
     },
     store: { ok: storeOk, error: storeError },
-    supabase_url: (process.env.NEXT_PUBLIC_SUPABASE_URL || 'FALLBACK'),
-    service_role_configured: !!(process.env.SUPABASE_SERVICE_ROLE_KEY),
-    env_key_role: parseJwtRole(process.env.SUPABASE_SERVICE_ROLE_KEY || ''),
-    env_key_ref: parseJwtRef(process.env.SUPABASE_SERVICE_ROLE_KEY || ''),
+    supabase_url: creds.urlFromEnv ? creds.url : 'FALLBACK (built-in project)',
+    service_role_configured: creds.serviceRoleReady,
+    env_key_role: creds.keyRole,
+    env_key_ref: creds.keyRef,
+    supabase: {
+      client_ready: creds.clientReady,
+      service_role_ready: creds.serviceRoleReady,
+      url_project_ref: creds.urlRef,
+      key_project_ref: creds.keyRef === 'unknown' || creds.keyRef === 'invalid' ? null : creds.keyRef,
+      key_matches_url: creds.matches,
+    },
   }
 
   return NextResponse.json(body, {
