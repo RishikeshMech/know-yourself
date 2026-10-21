@@ -50,6 +50,19 @@ jobs:
 
             # 4) Install deps (dev deps are REQUIRED to build Next.js) + build
             npm ci --include=dev
+
+            # Drop Next.js's persistent fetch Data Cache. A production build
+            # replaces the global fetch with a caching one, so every server-side
+            # GET (Supabase REST + Auth included) was written here with a
+            # one-year revalidate and replayed from disk — and this directory
+            # survives both the rebuild and the restart, which is why a redeploy
+            # never cleared a stale company-assessment read. The Supabase client
+            # now sends `cache: 'no-store'` (lib/supabaseServer.ts); this purge
+            # is the belt-and-braces so no already-poisoned entry can be served.
+            # Only the fetch cache is removed — webpack/swc caches are kept so
+            # the build stays fast.
+            rm -rf .next/cache/fetch-cache || true
+
             npm run build
 
             # 5) Restart: kill the old server, let MilesWeb's "persistent app"
